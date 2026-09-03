@@ -3,6 +3,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import vm from "node:vm";
 
+import { tokenizer } from "acorn";
+
 import {
   buildDirectory,
   runtimeAssetFiles,
@@ -72,7 +74,69 @@ function requestPath(reference, baseDirectory = "") {
 }
 
 function stripJavaScriptComments(source) {
-  return source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+  const comments = [];
+  const tokens = tokenizer(source, {
+    allowHashBang: true,
+    ecmaVersion: "latest",
+    onComment(_isBlock, _text, start, end) {
+      comments.push({ start, end });
+    },
+  });
+
+  while (tokens.getToken().type.label !== "eof") {
+    // Tokenizing lets Acorn distinguish comments from comment markers inside
+    // strings, template literals, and regular expressions.
+  }
+
+  let uncommented = source;
+  for (const { start, end } of comments.reverse()) {
+    const whitespace = source.slice(start, end).replace(/[^\r\n]/g, " ");
+    uncommented = `${uncommented.slice(0, start)}${whitespace}${uncommented.slice(end)}`;
+  }
+  return uncommented;
+}
+
+function localStylesheetReferences(html) {
+  const references = [];
+  const pattern = /<link\b[^>]*\brel=["']stylesheet["'][^>]*\bhref=["']([^"']+)["'][^>]*>/gi;
+
+  for (const match of html.matchAll(pattern)) {
+    const reference = match[1].split(/[?#]/, 1)[0];
+    if (!/^(?:[a-z]+:|\/\/|\/)/i.test(reference)) references.push(reference);
+  }
+  return references;
+}
+
+async function verifyStyleBundle() {
+  const sourceIndex = await readFile(path.join(sourceRoot, "index.html"), "utf8");
+  const stylesheetFiles = localStylesheetReferences(sourceIndex);
+  const chunks = [];
+
+  for (const filename of stylesheetFiles) {
+    chunks.push(await readFile(path.join(sourceRoot, filename), "utf8"));
+  }
+
+  const expected = `${chunks.join("\n\n")}\n\n`;
+  const actual = await readFile(path.join(buildRoot, "css/style.css"), "utf8");
+  if (actual !== expected) {
+    throw new Error("css/style.css does not contain every local source stylesheet in order");
+  }
+}
+
+function verifyCommentTokenizer() {
+  const fixture = [
+    'const marker = "/* live string */";',
+    '// new Worker("commented-line-worker.js");',
+    'const worker = new Worker("live-worker.js"); /* trailing comment */',
+  ].join("\n");
+  const uncommented = stripJavaScriptComments(fixture);
+
+  if (!uncommented.includes('"/* live string */"')) {
+    throw new Error("JavaScript comment tokenizer removed a comment marker inside a string");
+  }
+  if (uncommented.includes("commented-line-worker.js") || uncommented.includes("trailing comment")) {
+    throw new Error("JavaScript comment tokenizer left comment content active");
+  }
 }
 
 async function verifyOutputReference(reference, baseDirectory, consumer) {
@@ -196,6 +260,8 @@ for (const filename of requiredFiles) {
   await verifyOutputReference(filename, "", "build manifest");
 }
 
+verifyCommentTokenizer();
+
 for (const filename of runtimeAssetFiles) {
   if (!runtimeRequestFiles.has(filename)) {
     throw new Error(`Copied runtime asset is not assigned to a feature: ${filename}`);
@@ -260,6 +326,7 @@ await verifyNestedRuntimeRequests();
 await verifyHtmlReferences("index.html", "");
 await verifyHtmlReferences("c64/index.html", "");
 await verifyHtmlReferences("c64page/index.html", "c64page");
+await verifyStyleBundle();
 await verifyCssReferences("css/style.css");
 await verifyCssReferences("css/ui-mobile.css");
 

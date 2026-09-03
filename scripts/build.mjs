@@ -203,7 +203,11 @@ async function buildLibraryBundle(indexHtml) {
 }
 
 async function buildStyles(indexHtml) {
-  const paths = referencesFromHtml(indexHtml, "href", "css/");
+  const paths = referencesFromHtml(indexHtml, "href", "").filter(
+    (filename) =>
+      filename.endsWith(".css") &&
+      !/^(?:[a-z]+:|\/\/|\/)/i.test(filename),
+  );
   await writeFile(path.join(buildRoot, "css/style.css"), await concatenateFiles(paths));
 }
 

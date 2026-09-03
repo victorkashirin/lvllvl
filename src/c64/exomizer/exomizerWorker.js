@@ -99,6 +99,10 @@ ExomizerWorker.prototype = {
           console.log(_this.stderr);
           exomizer = null;
           options = null;
+          callback({
+            success: false,
+            errors: [{ lineNumber: 0, text: _this.stderr }]
+          });
         } else {
           try {
             _this.output = exomizer['FS'].readFile('output.prg', { encoding: 'binary' });  

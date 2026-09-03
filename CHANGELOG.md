@@ -2,8 +2,21 @@
 
 ## Unreleased
 
+### Changed
+
+- Adopt the MIT License for contributions and material the current maintainers
+  have authority to license, while documenting the unresolved license status of
+  the inherited upstream code.
+
 ### Fixed
 
+- Bundle the Perfect Scrollbar and CodeMirror styles required by production UI
+  panels and the music scripting editor.
+- Make runtime dependency discovery preserve comment markers inside JavaScript
+  strings, and exercise lazy workers, WebAssembly modules, and editors in a
+  production-browser smoke test.
+- Return an explicit failure from the Exomizer worker instead of leaving callers
+  waiting indefinitely when compression reports an error.
 - Include the runtime workers, WebAssembly modules, and lazy-loaded editor
   scripts needed by GIF export, CA65 assembly, music scripting, and Ace, plus
   the missing mobile start-page icon.
