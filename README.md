@@ -30,11 +30,15 @@ The reviewed runtime inventory is maintained in
 generated SPDX SBOM and `THIRD_PARTY_NOTICES.md`. `npm run dependencies:check`
 rejects stale inventory output, unlisted runtime entry points, unreachable files in
 `src/lib`, invalid SPDX license expressions, missing package URLs or time-limited
-audit exemptions, and package assets whose exact npm version is not locked.
+audit exemptions, package assets whose exact npm version is not locked, and retained
+files without an immutable revision, reproduction instructions, ownership, current
+review deadline, or named compatibility test.
 
 Package-managed browser files keep their existing public `lib/` URLs through the
 mapping in `scripts/build-config.mjs`. The SBOM includes the transitive packages
 bundled into those browser files with `DEPENDS_ON` and `CONTAINS` relationships.
+The small set of intentionally retained files records its provenance and review data
+in the same inventory and is checksum-tracked in both generated artifacts.
 `npm run audit:dependencies` scans the installed runtime packages, while CI also
 runs OSV-Scanner against the complete SBOM with an SPDX license allowlist on pull
 requests, main-branch pushes, and a weekly schedule. Deployment waits for both

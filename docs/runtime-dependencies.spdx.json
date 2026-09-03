@@ -2,10 +2,10 @@
   "spdxVersion": "SPDX-2.3",
   "dataLicense": "CC0-1.0",
   "SPDXID": "SPDXRef-DOCUMENT",
-  "name": "lvllvl-runtime-0.496.2",
-  "documentNamespace": "https://github.com/jaammees/lvllvl/sbom/0.496.2/66fa77ac8c02a7f08800f5df4fbe45cae741d8d0850f649ef39e4b007a9c6070",
+  "name": "lvllvl-runtime-0.496.3",
+  "documentNamespace": "https://github.com/jaammees/lvllvl/sbom/0.496.3/818636225690696135248b2e73431bfb28577434e1249b42c89bf0b9d57de0a4",
   "creationInfo": {
-    "created": "2026-09-03T00:00:00Z",
+    "created": "2026-09-04T00:00:00Z",
     "creators": [
       "Tool: lvllvl dependency-inventory.mjs"
     ]
@@ -15,16 +15,16 @@
       "SPDXID": "SPDXRef-Package-ace",
       "name": "Ace",
       "versionInfo": "1.4.5",
-      "downloadLocation": "https://github.com/ajaxorg/ace",
+      "downloadLocation": "https://registry.npmjs.org/ace-builds/-/ace-builds-1.4.5.tgz",
       "filesAnalyzed": false,
       "licenseConcluded": "BSD-3-Clause",
       "licenseDeclared": "BSD-3-Clause",
       "copyrightText": "NOASSERTION",
-      "comment": "Code editor, language modes, themes, and syntax workers. Delivery: vendored. Modification status: modified. Audit identity: pkg:npm/ace-builds@1.4.5. Reachable entry points: lib/ace/src/ace.js, lib/ace/src/ext-language_tools.js, lib/ace/src/mode-assembly_6502.js, lib/ace/src/mode-c64basic.js, lib/ace/src/mode-javascript_custom.js, lib/ace/src/mode-json.js, lib/ace/src/mode-text.js, lib/ace/src/theme-chrome.js, lib/ace/src/theme-tomorrow_night.js, lib/ace/src/worker-javascript.js, lib/ace/src/worker-json.js.",
+      "comment": "Code editor, language modes, themes, and syntax workers. Delivery: npm: ace-builds. Modification status: unmodified. Audit identity: pkg:npm/ace-builds@1.4.5. Reachable entry points: lib/ace/src/ace.js, lib/ace/src/ext-language_tools.js, lib/ace/src/mode-json.js, lib/ace/src/mode-text.js, lib/ace/src/theme-chrome.js, lib/ace/src/theme-tomorrow_night.js, lib/ace/src/worker-javascript.js, lib/ace/src/worker-json.js.",
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "cde65d793838347f0b23956966b1e289dbd3fdcdb607a4c2ee2627cfe71ef8f0"
+          "checksumValue": "5db64575b279a8cadc77a94c81c1c7bd8013a6180a09fc0d773e36c3ea6a10de"
         }
       ],
       "externalRefs": [
@@ -36,15 +36,32 @@
       ]
     },
     {
+      "SPDXID": "SPDXRef-Package-ace-custom-modes",
+      "name": "lvllvl Ace custom modes",
+      "versionInfo": "snapshot-2023-11-08",
+      "downloadLocation": "https://github.com/jaammees/lvllvl/tree/5e1b2776104b5b9d0f5518471273669109c9a731/src/lib/ace/src",
+      "filesAnalyzed": false,
+      "licenseConcluded": "BSD-3-Clause",
+      "licenseDeclared": "BSD-3-Clause",
+      "copyrightText": "NOASSERTION",
+      "comment": "Provides the application-specific JavaScript, 6502 assembly, and C64 BASIC editor modes. Delivery: retained: modified-source. Modification status: modified. Audit identity: exempt until 2027-09-04. Retention: modified-source, revision 5e1b2776104b5b9d0f5518471273669109c9a731, owner lvllvl maintainers, review by 2027-09-04. Reachable entry points: lib/ace/src/mode-assembly_6502.js, lib/ace/src/mode-c64basic.js, lib/ace/src/mode-javascript_custom.js.",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "8d1e6e0a35449c854e7d91e87f78775b66bb4fcfdb93dc11ce2bac680305b209"
+        }
+      ]
+    },
+    {
       "SPDXID": "SPDXRef-Package-babel-standalone",
       "name": "Babel Standalone",
       "versionInfo": "6.26.0",
-      "downloadLocation": "https://github.com/babel/babel-standalone",
+      "downloadLocation": "https://registry.npmjs.org/babel-standalone/-/babel-standalone-6.26.0.tgz",
       "filesAnalyzed": false,
       "licenseConcluded": "MIT",
       "licenseDeclared": "MIT",
       "copyrightText": "NOASSERTION",
-      "comment": "Compiles user scripts in the browser. Delivery: vendored. Modification status: unverified. Audit identity: pkg:npm/babel-standalone@6.26.0. Reachable entry points: lib/babel/babel.min.js.",
+      "comment": "Compiles user scripts in the browser. Delivery: npm: babel-standalone. Modification status: unmodified. Audit identity: pkg:npm/babel-standalone@6.26.0. Reachable entry points: lib/babel/babel.min.js.",
       "checksums": [
         {
           "algorithm": "SHA256",
@@ -62,13 +79,13 @@
     {
       "SPDXID": "SPDXRef-Package-cc65-wasm",
       "name": "cc65 WebAssembly builds",
-      "versionInfo": "unknown",
-      "downloadLocation": "https://github.com/cc65/cc65",
+      "versionInfo": "snapshot-2023-11-08",
+      "downloadLocation": "https://github.com/jaammees/lvllvl/tree/5e1b2776104b5b9d0f5518471273669109c9a731/src/lib/ca65",
       "filesAnalyzed": false,
       "licenseConcluded": "Zlib",
       "licenseDeclared": "Zlib",
       "copyrightText": "NOASSERTION",
-      "comment": "Provides the CA65 assembler and LD65 linker runtimes. Delivery: vendored. Modification status: modified. Audit identity: exempt until 2027-09-03. Reachable entry points: lib/ca65/ca65.js, lib/ca65/ca65.wasm, lib/ca65/ld65.js, lib/ca65/ld65.wasm.",
+      "comment": "Provides the CA65 assembler and LD65 linker runtimes. Delivery: retained: binary-artifact. Modification status: modified. Audit identity: exempt until 2027-09-04. Retention: binary-artifact, revision 5e1b2776104b5b9d0f5518471273669109c9a731, owner lvllvl maintainers, review by 2027-09-04. Reachable entry points: lib/ca65/ca65.js, lib/ca65/ca65.wasm, lib/ca65/ld65.js, lib/ca65/ld65.wasm.",
       "checksums": [
         {
           "algorithm": "SHA256",
@@ -80,12 +97,12 @@
       "SPDXID": "SPDXRef-Package-chroma-js",
       "name": "chroma.js",
       "versionInfo": "2.1.0",
-      "downloadLocation": "https://github.com/gka/chroma.js",
+      "downloadLocation": "https://registry.npmjs.org/chroma-js/-/chroma-js-2.1.0.tgz",
       "filesAnalyzed": false,
       "licenseConcluded": "BSD-3-Clause",
       "licenseDeclared": "BSD-3-Clause",
       "copyrightText": "NOASSERTION",
-      "comment": "Color conversion and interpolation. Delivery: vendored. Modification status: unverified. Audit identity: pkg:npm/chroma-js@2.1.0. Reachable entry points: lib/chroma/chroma.min.js.",
+      "comment": "Color conversion and interpolation. Delivery: npm: chroma-js. Modification status: unmodified. Audit identity: pkg:npm/chroma-js@2.1.0. Reachable entry points: lib/chroma/chroma.min.js.",
       "checksums": [
         {
           "algorithm": "SHA256",
@@ -127,13 +144,13 @@
     {
       "SPDXID": "SPDXRef-Package-colour",
       "name": "Colour",
-      "versionInfo": "unknown",
-      "downloadLocation": "NOASSERTION",
+      "versionInfo": "snapshot-2023-11-08",
+      "downloadLocation": "https://github.com/jaammees/lvllvl/blob/5e1b2776104b5b9d0f5518471273669109c9a731/src/lib/colour/colour.js",
       "filesAnalyzed": false,
       "licenseConcluded": "NOASSERTION",
       "licenseDeclared": "NOASSERTION",
       "copyrightText": "NOASSERTION",
-      "comment": "Legacy color-space conversion helpers. Delivery: vendored. Modification status: unverified. Audit identity: exempt until 2027-09-03. Reachable entry points: lib/colour/colour.js.",
+      "comment": "Legacy color-space conversion helpers. Delivery: retained: unattributed-source. Modification status: unverified. Audit identity: exempt until 2027-09-04. Retention: unattributed-source, revision 5e1b2776104b5b9d0f5518471273669109c9a731, owner lvllvl maintainers, review by 2027-09-04. Reachable entry points: lib/colour/colour.js.",
       "checksums": [
         {
           "algorithm": "SHA256",
@@ -144,17 +161,24 @@
     {
       "SPDXID": "SPDXRef-Package-download-js",
       "name": "download.js",
-      "versionInfo": "unknown",
-      "downloadLocation": "https://github.com/rndme/download",
+      "versionInfo": "1.4.7",
+      "downloadLocation": "https://registry.npmjs.org/downloadjs/-/downloadjs-1.4.7.tgz",
       "filesAnalyzed": false,
       "licenseConcluded": "MIT",
       "licenseDeclared": "MIT",
       "copyrightText": "NOASSERTION",
-      "comment": "Starts client-side file downloads. Delivery: vendored. Modification status: unverified. Audit identity: exempt until 2027-09-03. Reachable entry points: lib/download/download.js.",
+      "comment": "Starts client-side file downloads. Delivery: npm: downloadjs. Modification status: unmodified. Audit identity: pkg:npm/downloadjs@1.4.7. Reachable entry points: lib/download/download.js.",
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "e068a5e78e14d1742167286a08e413238490e5cbc1b17947619f1427d1656982"
+          "checksumValue": "adc0250c8c5898d469fb28ae99a610ecf6eb2f92ce9d4e00c66226d65d977d8a"
+        }
+      ],
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/downloadjs@1.4.7"
         }
       ]
     },
@@ -162,16 +186,16 @@
       "SPDXID": "SPDXRef-Package-gif-js",
       "name": "gif.js",
       "versionInfo": "0.1.6",
-      "downloadLocation": "https://github.com/jnordberg/gif.js",
+      "downloadLocation": "https://registry.npmjs.org/gif.js/-/gif.js-0.1.6.tgz",
       "filesAnalyzed": false,
       "licenseConcluded": "MIT",
       "licenseDeclared": "MIT",
       "copyrightText": "NOASSERTION",
-      "comment": "Encodes animated GIF exports in a worker. Delivery: vendored. Modification status: unverified. Audit identity: pkg:npm/gif.js@0.1.6. Reachable entry points: lib/gif/gif.js, lib/gif/gif.worker.js.",
+      "comment": "Encodes animated GIF exports in a worker. Delivery: npm: gif.js. Modification status: unmodified. Audit identity: pkg:npm/gif.js@0.1.6. Reachable entry points: lib/gif/gif.js, lib/gif/gif.worker.js.",
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "2d7a8cdfdf15e520bc2d375c89f54f7e721ec719e27bc0eafeed1403fe4cffd7"
+          "checksumValue": "453f8bd23977a58a2fb0e2b7e3c5ed0652d230fc116577e3a7791e5519bddbe8"
         }
       ],
       "externalRefs": [
@@ -186,16 +210,16 @@
       "SPDXID": "SPDXRef-Package-hammer-js",
       "name": "Hammer.js",
       "versionInfo": "2.0.8",
-      "downloadLocation": "https://github.com/hammerjs/hammer.js",
+      "downloadLocation": "https://registry.npmjs.org/hammerjs/-/hammerjs-2.0.8.tgz",
       "filesAnalyzed": false,
       "licenseConcluded": "MIT",
       "licenseDeclared": "MIT",
       "copyrightText": "NOASSERTION",
-      "comment": "Normalizes touch gestures. Delivery: vendored. Modification status: unverified. Audit identity: pkg:npm/hammerjs@2.0.8. Reachable entry points: lib/hammer/hammer.min.js.",
+      "comment": "Normalizes touch gestures. Delivery: npm: hammerjs. Modification status: unmodified. Audit identity: pkg:npm/hammerjs@2.0.8. Reachable entry points: lib/hammer/hammer.min.js.",
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "6f62e248f54290727bf36ec662a62b6eae557dcdefb03d9e8410ecfb8e9a123f"
+          "checksumValue": "0fddb775346da34213fd231d52b335a6759048eb7e7351b387ee0a0286d1e398"
         }
       ],
       "externalRefs": [
@@ -234,16 +258,16 @@
       "SPDXID": "SPDXRef-Package-jquery-mousewheel",
       "name": "jQuery Mouse Wheel",
       "versionInfo": "3.1.13",
-      "downloadLocation": "https://github.com/jquery/jquery-mousewheel",
+      "downloadLocation": "https://registry.npmjs.org/jquery-mousewheel/-/jquery-mousewheel-3.1.13.tgz",
       "filesAnalyzed": false,
       "licenseConcluded": "MIT",
       "licenseDeclared": "MIT",
       "copyrightText": "NOASSERTION",
-      "comment": "Normalizes mouse-wheel events for legacy UI controls. Delivery: vendored. Modification status: unmodified. Audit identity: pkg:npm/jquery-mousewheel@3.1.13. Reachable entry points: lib/jquery/jquery.mousewheel.min.13.js.",
+      "comment": "Normalizes mouse-wheel events for legacy UI controls. Delivery: npm: jquery-mousewheel. Modification status: unmodified. Audit identity: pkg:npm/jquery-mousewheel@3.1.13. Reachable entry points: lib/jquery/jquery.mousewheel.min.13.js.",
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "e48bce1101e5c3896a0ab0114e85d248d2c25afd49928b0c87a9547ae133cf26"
+          "checksumValue": "f9ffd2eeff4f83914d509e8abbfb9f80f4e1dcf7186468ff9e7bfac1722abfa2"
         }
       ],
       "externalRefs": [
@@ -257,54 +281,61 @@
     {
       "SPDXID": "SPDXRef-Package-jsfeat",
       "name": "jsfeat",
-      "versionInfo": "alpha",
-      "downloadLocation": "https://github.com/inspirit/jsfeat",
+      "versionInfo": "0.0.8",
+      "downloadLocation": "https://registry.npmjs.org/jsfeat/-/jsfeat-0.0.8.tgz",
       "filesAnalyzed": false,
       "licenseConcluded": "MIT",
       "licenseDeclared": "MIT",
       "copyrightText": "NOASSERTION",
-      "comment": "Computer-vision routines used by image import. Delivery: vendored. Modification status: unverified. Audit identity: exempt until 2027-09-03. Reachable entry points: lib/jsfeat/jsfeat-min.js.",
+      "comment": "Computer-vision routines used by image import. Delivery: npm: jsfeat. Modification status: unmodified. Audit identity: pkg:npm/jsfeat@0.0.8. Reachable entry points: lib/jsfeat/jsfeat-min.js.",
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "88975c6aad245db2898af03a3aaa43504d80cc7c4d8a2074252814a16e6b5282"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-jshint",
-      "name": "JSHint",
-      "versionInfo": "2.9.4",
-      "downloadLocation": "https://github.com/jshint/jshint",
-      "filesAnalyzed": false,
-      "licenseConcluded": "MIT AND JSON",
-      "licenseDeclared": "MIT AND JSON",
-      "copyrightText": "NOASSERTION",
-      "comment": "Lints user-authored music scripts. Delivery: vendored. Modification status: unmodified. Audit identity: pkg:npm/jshint@2.9.4. Reachable entry points: lib/jshint/jshint.js.",
-      "checksums": [
-        {
-          "algorithm": "SHA256",
-          "checksumValue": "4e43c99e3e740125c6866d69bd4b85355e76db9784b93624c2bb1e0168e0ebd1"
+          "checksumValue": "4b213909fd44cee609d314bf68b887a0776cca22e0adaac923735ed935fc35da"
         }
       ],
       "externalRefs": [
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:npm/jshint@2.9.4"
+          "referenceLocator": "pkg:npm/jsfeat@0.0.8"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-jshint",
+      "name": "JSHint",
+      "versionInfo": "2.13.6",
+      "downloadLocation": "https://registry.npmjs.org/jshint/-/jshint-2.13.6.tgz",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "NOASSERTION",
+      "comment": "Lints user-authored music scripts. Delivery: npm: jshint. Modification status: unmodified. Audit identity: pkg:npm/jshint@2.13.6. Reachable entry points: lib/jshint/jshint.js.",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "10a65bf861707b8a2a22ab560516e476ac1cf2331e69408ac23aa8f6a20d86f6"
+        }
+      ],
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/jshint@2.13.6"
         }
       ]
     },
     {
       "SPDXID": "SPDXRef-Package-js-interpreter",
       "name": "JS-Interpreter with Acorn",
-      "versionInfo": "unknown",
-      "downloadLocation": "https://github.com/NeilFraser/JS-Interpreter",
+      "versionInfo": "snapshot-2023-11-08",
+      "downloadLocation": "https://github.com/jaammees/lvllvl/blob/5e1b2776104b5b9d0f5518471273669109c9a731/src/lib/jsinterpreter/acorn_interpreter.js",
       "filesAnalyzed": false,
       "licenseConcluded": "Apache-2.0",
       "licenseDeclared": "Apache-2.0",
       "copyrightText": "NOASSERTION",
-      "comment": "Runs user scripts in an interpreter. Delivery: vendored. Modification status: modified. Audit identity: exempt until 2027-09-03. Reachable entry points: lib/jsinterpreter/acorn_interpreter.js.",
+      "comment": "Runs user scripts in an interpreter. Delivery: retained: modified-source. Modification status: modified. Audit identity: exempt until 2027-09-04. Retention: modified-source, revision 5e1b2776104b5b9d0f5518471273669109c9a731, owner lvllvl maintainers, review by 2027-09-04. Reachable entry points: lib/jsinterpreter/acorn_interpreter.js.",
       "checksums": [
         {
           "algorithm": "SHA256",
@@ -316,12 +347,12 @@
       "SPDXID": "SPDXRef-Package-jsmanipulate",
       "name": "JSManipulate",
       "versionInfo": "1.0",
-      "downloadLocation": "https://github.com/JoelBesada/JSManipulate",
+      "downloadLocation": "https://github.com/jaammees/lvllvl/blob/5e1b2776104b5b9d0f5518471273669109c9a731/src/lib/jsmanipulate/jsmanipulate.min.js",
       "filesAnalyzed": false,
       "licenseConcluded": "MIT",
       "licenseDeclared": "MIT",
       "copyrightText": "NOASSERTION",
-      "comment": "Applies image filters and effects. Delivery: vendored. Modification status: unverified. Audit identity: exempt until 2027-09-03. Reachable entry points: lib/jsmanipulate/jsmanipulate.min.js.",
+      "comment": "Applies image filters and effects. Delivery: retained: unpublished-source. Modification status: unverified. Audit identity: exempt until 2027-09-04. Retention: unpublished-source, revision 5e1b2776104b5b9d0f5518471273669109c9a731, owner lvllvl maintainers, review by 2027-09-04. Reachable entry points: lib/jsmanipulate/jsmanipulate.min.js.",
       "checksums": [
         {
           "algorithm": "SHA256",
@@ -356,17 +387,24 @@
     {
       "SPDXID": "SPDXRef-Package-jszip-utils",
       "name": "JSZipUtils",
-      "versionInfo": "unknown",
-      "downloadLocation": "https://github.com/Stuk/jszip-utils",
+      "versionInfo": "0.0.2",
+      "downloadLocation": "https://registry.npmjs.org/jszip-utils/-/jszip-utils-0.0.2.tgz",
       "filesAnalyzed": false,
       "licenseConcluded": "MIT OR GPL-3.0-only",
       "licenseDeclared": "MIT OR GPL-3.0-only",
       "copyrightText": "NOASSERTION",
-      "comment": "Loads binary inputs for JSZip. Delivery: vendored. Modification status: unverified. Audit identity: exempt until 2027-09-03. Reachable entry points: lib/jszip/jszip-utils.js.",
+      "comment": "Loads binary inputs for JSZip. Delivery: npm: jszip-utils. Modification status: unmodified. Audit identity: pkg:npm/jszip-utils@0.0.2. Reachable entry points: lib/jszip/jszip-utils.js.",
       "checksums": [
         {
           "algorithm": "SHA256",
           "checksumValue": "f1c22080d2baed2911898751ffb538bd523d1ea8a56c02ea9208edbe6a6c5db9"
+        }
+      ],
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/jszip-utils@0.0.2"
         }
       ]
     },
@@ -374,12 +412,12 @@
       "SPDXID": "SPDXRef-Package-localforage",
       "name": "localForage no-Promise build",
       "versionInfo": "1.7.3",
-      "downloadLocation": "https://github.com/localForage/localForage",
+      "downloadLocation": "https://registry.npmjs.org/localforage/-/localforage-1.7.3.tgz",
       "filesAnalyzed": false,
       "licenseConcluded": "Apache-2.0",
       "licenseDeclared": "Apache-2.0",
       "copyrightText": "NOASSERTION",
-      "comment": "Persists projects and autosaves in browser storage. Delivery: vendored. Modification status: unmodified. Audit identity: pkg:npm/localforage@1.7.3. Reachable entry points: lib/localForage/localforage.nopromises.min.js.",
+      "comment": "Persists projects and autosaves in browser storage. Delivery: npm: localforage. Modification status: unmodified. Audit identity: pkg:npm/localforage@1.7.3. Reachable entry points: lib/localForage/localforage.nopromises.min.js.",
       "checksums": [
         {
           "algorithm": "SHA256",
@@ -391,30 +429,6 @@
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
           "referenceLocator": "pkg:npm/localforage@1.7.3"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-modernizr",
-      "name": "Modernizr custom build",
-      "versionInfo": "3.6.0",
-      "downloadLocation": "https://github.com/Modernizr/Modernizr",
-      "filesAnalyzed": false,
-      "licenseConcluded": "MIT",
-      "licenseDeclared": "MIT",
-      "copyrightText": "NOASSERTION",
-      "comment": "Detects CSS scrollbar support. Delivery: vendored. Modification status: modified. Audit identity: pkg:npm/modernizr@3.6.0. Reachable entry points: lib/modernizr/modernizr.js.",
-      "checksums": [
-        {
-          "algorithm": "SHA256",
-          "checksumValue": "9cbb2db5a066bc728bdb2e29ad149ae7c3d61d63270c269adf5d1be27e763a45"
-        }
-      ],
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceType": "purl",
-          "referenceLocator": "pkg:npm/modernizr@3.6.0"
         }
       ]
     },
@@ -445,30 +459,37 @@
     {
       "SPDXID": "SPDXRef-Package-rgbquant",
       "name": "RgbQuant.js",
-      "versionInfo": "unknown",
-      "downloadLocation": "https://github.com/leeoniya/RgbQuant.js",
+      "versionInfo": "1.1.2",
+      "downloadLocation": "https://registry.npmjs.org/rgbquant/-/rgbquant-1.1.2.tgz",
       "filesAnalyzed": false,
       "licenseConcluded": "MIT",
       "licenseDeclared": "MIT",
       "copyrightText": "NOASSERTION",
-      "comment": "Quantizes imported and exported image colors. Delivery: vendored. Modification status: unverified. Audit identity: exempt until 2027-09-03. Reachable entry points: lib/rgbQuant/rgbQuant.js.",
+      "comment": "Quantizes imported and exported image colors. Delivery: npm: rgbquant. Modification status: unmodified. Audit identity: pkg:npm/rgbquant@1.1.2. Reachable entry points: lib/rgbQuant/rgbQuant.js.",
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "332b6a74150a6309b6202ec31c3afe1857a6eb5244fadecf8815c588da931107"
+          "checksumValue": "536d649f5bbaedf46555cfc43ec87f85274b1795e499019f29df44f604338112"
+        }
+      ],
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/rgbquant@1.1.2"
         }
       ]
     },
     {
       "SPDXID": "SPDXRef-Package-ripple-js",
       "name": "rippleJS",
-      "versionInfo": "unknown",
-      "downloadLocation": "https://github.com/samthor/rippleJS",
+      "versionInfo": "snapshot-2023-11-08",
+      "downloadLocation": "https://github.com/jaammees/lvllvl/blob/5e1b2776104b5b9d0f5518471273669109c9a731/src/lib/ripplejs/ripplejs.js",
       "filesAnalyzed": false,
       "licenseConcluded": "Apache-2.0",
       "licenseDeclared": "Apache-2.0",
       "copyrightText": "NOASSERTION",
-      "comment": "Adds material-style pointer feedback. Delivery: vendored. Modification status: unverified. Audit identity: exempt until 2027-09-03. Reachable entry points: lib/ripplejs/ripplejs.js.",
+      "comment": "Adds material-style pointer feedback. Delivery: retained: modified-source. Modification status: modified. Audit identity: exempt until 2027-09-04. Retention: modified-source, revision 5e1b2776104b5b9d0f5518471273669109c9a731, owner lvllvl maintainers, review by 2027-09-04. Reachable entry points: lib/ripplejs/ripplejs.js.",
       "checksums": [
         {
           "algorithm": "SHA256",
@@ -480,12 +501,12 @@
       "SPDXID": "SPDXRef-Package-three",
       "name": "three.js and examples",
       "versionInfo": "0.129.0",
-      "downloadLocation": "https://github.com/mrdoob/three.js",
+      "downloadLocation": "https://registry.npmjs.org/three/-/three-0.129.0.tgz",
       "filesAnalyzed": false,
       "licenseConcluded": "MIT",
       "licenseDeclared": "MIT",
       "copyrightText": "NOASSERTION",
-      "comment": "Renders 3D scenes, exports models, and supplies post-processing effects. Delivery: vendored. Modification status: unverified. Audit identity: pkg:npm/three@0.129.0. Reachable entry points: lib/threejs/controls/OrbitControls.js, lib/threejs/exporters/GLTFExporter.js, lib/threejs/exporters/OBJExporter.js, lib/threejs/postprocessing/BloomPass.js, lib/threejs/postprocessing/DotScreenPass.js, lib/threejs/postprocessing/EffectComposer.js, lib/threejs/postprocessing/FilmPass.js, lib/threejs/postprocessing/GlitchPass.js, lib/threejs/postprocessing/MaskPass.js, lib/threejs/postprocessing/RenderPass.js, lib/threejs/postprocessing/ShaderPass.js, lib/threejs/postprocessing/TexturePass.js, lib/threejs/postprocessing/UnrealBloomPass.js, lib/threejs/shaders/BleachBypassShader.js, lib/threejs/shaders/BrightnessContrastShader.js, lib/threejs/shaders/ColorifyShader.js, lib/threejs/shaders/ConvolutionShader.js, lib/threejs/shaders/CopyShader.js, lib/threejs/shaders/DigitalGlitch.js, lib/threejs/shaders/DotScreenShader.js, lib/threejs/shaders/FilmShader.js, lib/threejs/shaders/FocusShader.js, lib/threejs/shaders/HorizontalBlurShader.js, lib/threejs/shaders/HueSaturationShader.js, lib/threejs/shaders/KaleidoShader.js, lib/threejs/shaders/LuminosityHighPassShader.js, lib/threejs/shaders/RGBShiftShader.js, lib/threejs/shaders/SepiaShader.js, lib/threejs/shaders/TechnicolorShader.js, lib/threejs/shaders/VerticalBlurShader.js, lib/threejs/shaders/VignetteShader.js, lib/threejs/three.min.js, lib/threejs/utils/BufferGeometryUtils.js.",
+      "comment": "Renders 3D scenes, exports models, and supplies post-processing effects. Delivery: npm: three. Modification status: unmodified. Audit identity: pkg:npm/three@0.129.0. Reachable entry points: lib/threejs/controls/OrbitControls.js, lib/threejs/exporters/GLTFExporter.js, lib/threejs/exporters/OBJExporter.js, lib/threejs/postprocessing/BloomPass.js, lib/threejs/postprocessing/DotScreenPass.js, lib/threejs/postprocessing/EffectComposer.js, lib/threejs/postprocessing/FilmPass.js, lib/threejs/postprocessing/GlitchPass.js, lib/threejs/postprocessing/MaskPass.js, lib/threejs/postprocessing/RenderPass.js, lib/threejs/postprocessing/ShaderPass.js, lib/threejs/postprocessing/TexturePass.js, lib/threejs/postprocessing/UnrealBloomPass.js, lib/threejs/shaders/BleachBypassShader.js, lib/threejs/shaders/BrightnessContrastShader.js, lib/threejs/shaders/ColorifyShader.js, lib/threejs/shaders/ConvolutionShader.js, lib/threejs/shaders/CopyShader.js, lib/threejs/shaders/DigitalGlitch.js, lib/threejs/shaders/DotScreenShader.js, lib/threejs/shaders/FilmShader.js, lib/threejs/shaders/FocusShader.js, lib/threejs/shaders/HorizontalBlurShader.js, lib/threejs/shaders/HueSaturationShader.js, lib/threejs/shaders/KaleidoShader.js, lib/threejs/shaders/LuminosityHighPassShader.js, lib/threejs/shaders/RGBShiftShader.js, lib/threejs/shaders/SepiaShader.js, lib/threejs/shaders/TechnicolorShader.js, lib/threejs/shaders/VerticalBlurShader.js, lib/threejs/shaders/VignetteShader.js, lib/threejs/three.min.js, lib/threejs/utils/BufferGeometryUtils.js.",
       "checksums": [
         {
           "algorithm": "SHA256",
@@ -503,30 +524,37 @@
     {
       "SPDXID": "SPDXRef-Package-stats-js",
       "name": "stats.js",
-      "versionInfo": "unknown",
-      "downloadLocation": "https://github.com/mrdoob/stats.js",
+      "versionInfo": "0.17.0",
+      "downloadLocation": "https://registry.npmjs.org/stats.js/-/stats.js-0.17.0.tgz",
       "filesAnalyzed": false,
       "licenseConcluded": "MIT",
       "licenseDeclared": "MIT",
       "copyrightText": "NOASSERTION",
-      "comment": "Displays optional rendering performance statistics. Delivery: vendored. Modification status: unverified. Audit identity: exempt until 2027-09-03. Reachable entry points: lib/threejs/stats.min.js.",
+      "comment": "Displays optional rendering performance statistics. Delivery: npm: stats.js. Modification status: unmodified. Audit identity: pkg:npm/stats.js@0.17.0. Reachable entry points: lib/threejs/stats.min.js.",
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "dfa50f6290b4cd5bac9357374b0e3ac3e3744a6f6ff3bfc51b60e74446198ad1"
+          "checksumValue": "217091b1e5b50dc695aa3937e512bb76522a1bb08fc38eade6d8d862730d5aba"
+        }
+      ],
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/stats.js@0.17.0"
         }
       ]
     },
     {
       "SPDXID": "SPDXRef-Package-tuna",
       "name": "Tuna",
-      "versionInfo": "unknown",
-      "downloadLocation": "https://github.com/Theodeus/tuna",
+      "versionInfo": "snapshot-2023-11-08",
+      "downloadLocation": "https://github.com/jaammees/lvllvl/blob/5e1b2776104b5b9d0f5518471273669109c9a731/src/lib/tuna/tuna.js",
       "filesAnalyzed": false,
       "licenseConcluded": "MIT",
       "licenseDeclared": "MIT",
       "copyrightText": "NOASSERTION",
-      "comment": "Provides Web Audio effects for the music editor. Delivery: vendored. Modification status: unverified. Audit identity: exempt until 2027-09-03. Reachable entry points: lib/tuna/tuna.js.",
+      "comment": "Provides Web Audio effects for the music editor. Delivery: retained: incompatible-published-package. Modification status: unverified. Audit identity: exempt until 2027-09-04. Retention: incompatible-published-package, revision 5e1b2776104b5b9d0f5518471273669109c9a731, owner lvllvl maintainers, review by 2027-09-04. Reachable entry points: lib/tuna/tuna.js.",
       "checksums": [
         {
           "algorithm": "SHA256",
@@ -537,30 +565,37 @@
     {
       "SPDXID": "SPDXRef-Package-tween-js",
       "name": "tween.js",
-      "versionInfo": "11dev",
-      "downloadLocation": "https://github.com/tweenjs/tween.js",
+      "versionInfo": "16.6.0",
+      "downloadLocation": "https://registry.npmjs.org/tween.js/-/tween.js-16.6.0.tgz",
       "filesAnalyzed": false,
       "licenseConcluded": "MIT",
       "licenseDeclared": "MIT",
       "copyrightText": "NOASSERTION",
-      "comment": "Animates 3D editor transitions. Delivery: vendored. Modification status: unverified. Audit identity: exempt until 2027-09-03. Reachable entry points: lib/tween/tween.min.js.",
+      "comment": "Animates 3D editor transitions. Delivery: npm: tween.js. Modification status: unmodified. Audit identity: pkg:npm/tween.js@16.6.0. Reachable entry points: lib/tween/tween.min.js.",
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "97eecef5e519cf91c3c99d2a670c36cb8b0a6c131921cb717a19aa48a192ddb8"
+          "checksumValue": "b2abd7e3fc7befbd5f5351fd9c8dc8e5b0da71ab7da6ec8c8c92f1ad8e75abb3"
+        }
+      ],
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/tween.js@16.6.0"
         }
       ]
     },
     {
       "SPDXID": "SPDXRef-Package-typr-js",
       "name": "Typr.js",
-      "versionInfo": "unknown",
-      "downloadLocation": "https://github.com/photopea/Typr.js",
+      "versionInfo": "snapshot-2023-11-08",
+      "downloadLocation": "https://github.com/jaammees/lvllvl/tree/5e1b2776104b5b9d0f5518471273669109c9a731/src/lib/typr",
       "filesAnalyzed": false,
       "licenseConcluded": "MIT",
       "licenseDeclared": "MIT",
       "copyrightText": "NOASSERTION",
-      "comment": "Parses font files and extracts glyph outlines. Delivery: vendored. Modification status: unverified. Audit identity: exempt until 2027-09-03. Reachable entry points: lib/typr/src/Typr.U.js, lib/typr/src/Typr.js.",
+      "comment": "Parses font files and extracts glyph outlines. Delivery: retained: incompatible-published-package. Modification status: unverified. Audit identity: exempt until 2027-09-04. Retention: incompatible-published-package, revision 5e1b2776104b5b9d0f5518471273669109c9a731, owner lvllvl maintainers, review by 2027-09-04. Reachable entry points: lib/typr/src/Typr.U.js, lib/typr/src/Typr.js.",
       "checksums": [
         {
           "algorithm": "SHA256",
@@ -590,16 +625,682 @@
       "SPDXID": "SPDXRef-Package-google-api-loader",
       "name": "Google API JavaScript loader",
       "versionInfo": "snapshot-2026-09-03",
-      "downloadLocation": "https://apis.google.com/js/api.js",
+      "downloadLocation": "https://github.com/jaammees/lvllvl/blob/3fc6dcf73e11d449fea06485bf08b360fb18d54f/src/lib/google-api/api.js",
       "filesAnalyzed": false,
       "licenseConcluded": "Apache-2.0",
       "licenseDeclared": "Apache-2.0",
       "copyrightText": "NOASSERTION",
-      "comment": "Loads the Google Drive API client. Delivery: vendored. Modification status: unmodified. Audit identity: exempt until 2027-09-03. Reachable entry points: lib/google-api/api.js.",
+      "comment": "Loads the Google Drive API client. Delivery: retained: provider-snapshot. Modification status: unmodified. Audit identity: exempt until 2027-09-04. Retention: provider-snapshot, revision 3fc6dcf73e11d449fea06485bf08b360fb18d54f, owner lvllvl maintainers, review by 2027-09-04. Reachable entry points: lib/google-api/api.js.",
       "checksums": [
         {
           "algorithm": "SHA256",
           "checksumValue": "a94c69ac59a5a63c53c6605e138f2b8bbc6ac8eff51e8b750d3374667c9ad2aa"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-npm-cross-env-6.0.3",
+      "name": "cross-env",
+      "versionInfo": "6.0.3",
+      "downloadLocation": "https://registry.npmjs.org/cross-env/-/cross-env-6.0.3.tgz",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "NOASSERTION",
+      "comment": "Bundled transitive dependency of a package-managed browser asset. Delivery: bundled in chroma-js. Modification status: unmodified. Audit identity: pkg:npm/cross-env@6.0.3. Reachable entry points: lib/chroma/chroma.min.js.",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/cross-env@6.0.3"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-npm-cross-spawn-7.0.6",
+      "name": "cross-spawn",
+      "versionInfo": "7.0.6",
+      "downloadLocation": "https://registry.npmjs.org/cross-spawn/-/cross-spawn-7.0.6.tgz",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "NOASSERTION",
+      "comment": "Bundled transitive dependency of a package-managed browser asset. Delivery: bundled in chroma-js. Modification status: unmodified. Audit identity: pkg:npm/cross-spawn@7.0.6. Reachable entry points: lib/chroma/chroma.min.js.",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/cross-spawn@7.0.6"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-npm-path-key-3.1.1",
+      "name": "path-key",
+      "versionInfo": "3.1.1",
+      "downloadLocation": "https://registry.npmjs.org/path-key/-/path-key-3.1.1.tgz",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "NOASSERTION",
+      "comment": "Bundled transitive dependency of a package-managed browser asset. Delivery: bundled in chroma-js. Modification status: unmodified. Audit identity: pkg:npm/path-key@3.1.1. Reachable entry points: lib/chroma/chroma.min.js.",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/path-key@3.1.1"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-npm-shebang-command-2.0.0",
+      "name": "shebang-command",
+      "versionInfo": "2.0.0",
+      "downloadLocation": "https://registry.npmjs.org/shebang-command/-/shebang-command-2.0.0.tgz",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "NOASSERTION",
+      "comment": "Bundled transitive dependency of a package-managed browser asset. Delivery: bundled in chroma-js. Modification status: unmodified. Audit identity: pkg:npm/shebang-command@2.0.0. Reachable entry points: lib/chroma/chroma.min.js.",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/shebang-command@2.0.0"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-npm-shebang-regex-3.0.0",
+      "name": "shebang-regex",
+      "versionInfo": "3.0.0",
+      "downloadLocation": "https://registry.npmjs.org/shebang-regex/-/shebang-regex-3.0.0.tgz",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "NOASSERTION",
+      "comment": "Bundled transitive dependency of a package-managed browser asset. Delivery: bundled in chroma-js. Modification status: unmodified. Audit identity: pkg:npm/shebang-regex@3.0.0. Reachable entry points: lib/chroma/chroma.min.js.",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/shebang-regex@3.0.0"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-npm-which-2.0.2",
+      "name": "which",
+      "versionInfo": "2.0.2",
+      "downloadLocation": "https://registry.npmjs.org/which/-/which-2.0.2.tgz",
+      "filesAnalyzed": false,
+      "licenseConcluded": "ISC",
+      "licenseDeclared": "ISC",
+      "copyrightText": "NOASSERTION",
+      "comment": "Bundled transitive dependency of a package-managed browser asset. Delivery: bundled in chroma-js. Modification status: unmodified. Audit identity: pkg:npm/which@2.0.2. Reachable entry points: lib/chroma/chroma.min.js.",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/which@2.0.2"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-npm-isexe-2.0.0",
+      "name": "isexe",
+      "versionInfo": "2.0.0",
+      "downloadLocation": "https://registry.npmjs.org/isexe/-/isexe-2.0.0.tgz",
+      "filesAnalyzed": false,
+      "licenseConcluded": "ISC",
+      "licenseDeclared": "ISC",
+      "copyrightText": "NOASSERTION",
+      "comment": "Bundled transitive dependency of a package-managed browser asset. Delivery: bundled in chroma-js. Modification status: unmodified. Audit identity: pkg:npm/isexe@2.0.0. Reachable entry points: lib/chroma/chroma.min.js.",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/isexe@2.0.0"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-npm-cli-1.0.1",
+      "name": "cli",
+      "versionInfo": "1.0.1",
+      "downloadLocation": "https://registry.npmjs.org/cli/-/cli-1.0.1.tgz",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "NOASSERTION",
+      "comment": "Bundled transitive dependency of a package-managed browser asset. Delivery: bundled in jshint. Modification status: unmodified. Audit identity: pkg:npm/cli@1.0.1. Reachable entry points: lib/jshint/jshint.js.",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/cli@1.0.1"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-npm-exit-0.1.2",
+      "name": "exit",
+      "versionInfo": "0.1.2",
+      "downloadLocation": "https://registry.npmjs.org/exit/-/exit-0.1.2.tgz",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "NOASSERTION",
+      "comment": "Bundled transitive dependency of a package-managed browser asset. Delivery: bundled in jshint. Modification status: unmodified. Audit identity: pkg:npm/exit@0.1.2. Reachable entry points: lib/jshint/jshint.js.",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/exit@0.1.2"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-npm-glob-7.2.3",
+      "name": "glob",
+      "versionInfo": "7.2.3",
+      "downloadLocation": "https://registry.npmjs.org/glob/-/glob-7.2.3.tgz",
+      "filesAnalyzed": false,
+      "licenseConcluded": "ISC",
+      "licenseDeclared": "ISC",
+      "copyrightText": "NOASSERTION",
+      "comment": "Bundled transitive dependency of a package-managed browser asset. Delivery: bundled in jshint. Modification status: unmodified. Audit identity: pkg:npm/glob@7.2.3. Reachable entry points: lib/jshint/jshint.js.",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/glob@7.2.3"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-npm-fs.realpath-1.0.0",
+      "name": "fs.realpath",
+      "versionInfo": "1.0.0",
+      "downloadLocation": "https://registry.npmjs.org/fs.realpath/-/fs.realpath-1.0.0.tgz",
+      "filesAnalyzed": false,
+      "licenseConcluded": "ISC",
+      "licenseDeclared": "ISC",
+      "copyrightText": "NOASSERTION",
+      "comment": "Bundled transitive dependency of a package-managed browser asset. Delivery: bundled in jshint. Modification status: unmodified. Audit identity: pkg:npm/fs.realpath@1.0.0. Reachable entry points: lib/jshint/jshint.js.",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/fs.realpath@1.0.0"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-npm-inflight-1.0.6",
+      "name": "inflight",
+      "versionInfo": "1.0.6",
+      "downloadLocation": "https://registry.npmjs.org/inflight/-/inflight-1.0.6.tgz",
+      "filesAnalyzed": false,
+      "licenseConcluded": "ISC",
+      "licenseDeclared": "ISC",
+      "copyrightText": "NOASSERTION",
+      "comment": "Bundled transitive dependency of a package-managed browser asset. Delivery: bundled in jshint. Modification status: unmodified. Audit identity: pkg:npm/inflight@1.0.6. Reachable entry points: lib/jshint/jshint.js.",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/inflight@1.0.6"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-npm-once-1.4.0",
+      "name": "once",
+      "versionInfo": "1.4.0",
+      "downloadLocation": "https://registry.npmjs.org/once/-/once-1.4.0.tgz",
+      "filesAnalyzed": false,
+      "licenseConcluded": "ISC",
+      "licenseDeclared": "ISC",
+      "copyrightText": "NOASSERTION",
+      "comment": "Bundled transitive dependency of a package-managed browser asset. Delivery: bundled in jshint. Modification status: unmodified. Audit identity: pkg:npm/once@1.4.0. Reachable entry points: lib/jshint/jshint.js.",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/once@1.4.0"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-npm-wrappy-1.0.2",
+      "name": "wrappy",
+      "versionInfo": "1.0.2",
+      "downloadLocation": "https://registry.npmjs.org/wrappy/-/wrappy-1.0.2.tgz",
+      "filesAnalyzed": false,
+      "licenseConcluded": "ISC",
+      "licenseDeclared": "ISC",
+      "copyrightText": "NOASSERTION",
+      "comment": "Bundled transitive dependency of a package-managed browser asset. Delivery: bundled in jshint. Modification status: unmodified. Audit identity: pkg:npm/wrappy@1.0.2. Reachable entry points: lib/jshint/jshint.js.",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/wrappy@1.0.2"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-npm-inherits-2.0.4",
+      "name": "inherits",
+      "versionInfo": "2.0.4",
+      "downloadLocation": "https://registry.npmjs.org/inherits/-/inherits-2.0.4.tgz",
+      "filesAnalyzed": false,
+      "licenseConcluded": "ISC",
+      "licenseDeclared": "ISC",
+      "copyrightText": "NOASSERTION",
+      "comment": "Bundled transitive dependency of a package-managed browser asset. Delivery: bundled in jshint, jszip. Modification status: unmodified. Audit identity: pkg:npm/inherits@2.0.4. Reachable entry points: lib/jshint/jshint.js, lib/jszip/jszip.min.js.",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/inherits@2.0.4"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-npm-minimatch-3.0.8",
+      "name": "minimatch",
+      "versionInfo": "3.0.8",
+      "downloadLocation": "https://registry.npmjs.org/minimatch/-/minimatch-3.0.8.tgz",
+      "filesAnalyzed": false,
+      "licenseConcluded": "ISC",
+      "licenseDeclared": "ISC",
+      "copyrightText": "NOASSERTION",
+      "comment": "Bundled transitive dependency of a package-managed browser asset. Delivery: bundled in jshint. Modification status: unmodified. Audit identity: pkg:npm/minimatch@3.0.8. Reachable entry points: lib/jshint/jshint.js.",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/minimatch@3.0.8"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-npm-brace-expansion-1.1.18",
+      "name": "brace-expansion",
+      "versionInfo": "1.1.18",
+      "downloadLocation": "https://registry.npmjs.org/brace-expansion/-/brace-expansion-1.1.18.tgz",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "NOASSERTION",
+      "comment": "Bundled transitive dependency of a package-managed browser asset. Delivery: bundled in jshint. Modification status: unmodified. Audit identity: pkg:npm/brace-expansion@1.1.18. Reachable entry points: lib/jshint/jshint.js.",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/brace-expansion@1.1.18"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-npm-balanced-match-1.0.2",
+      "name": "balanced-match",
+      "versionInfo": "1.0.2",
+      "downloadLocation": "https://registry.npmjs.org/balanced-match/-/balanced-match-1.0.2.tgz",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "NOASSERTION",
+      "comment": "Bundled transitive dependency of a package-managed browser asset. Delivery: bundled in jshint. Modification status: unmodified. Audit identity: pkg:npm/balanced-match@1.0.2. Reachable entry points: lib/jshint/jshint.js.",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/balanced-match@1.0.2"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-npm-concat-map-0.0.1",
+      "name": "concat-map",
+      "versionInfo": "0.0.1",
+      "downloadLocation": "https://registry.npmjs.org/concat-map/-/concat-map-0.0.1.tgz",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "NOASSERTION",
+      "comment": "Bundled transitive dependency of a package-managed browser asset. Delivery: bundled in jshint. Modification status: unmodified. Audit identity: pkg:npm/concat-map@0.0.1. Reachable entry points: lib/jshint/jshint.js.",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/concat-map@0.0.1"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-npm-path-is-absolute-1.0.1",
+      "name": "path-is-absolute",
+      "versionInfo": "1.0.1",
+      "downloadLocation": "https://registry.npmjs.org/path-is-absolute/-/path-is-absolute-1.0.1.tgz",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "NOASSERTION",
+      "comment": "Bundled transitive dependency of a package-managed browser asset. Delivery: bundled in jshint. Modification status: unmodified. Audit identity: pkg:npm/path-is-absolute@1.0.1. Reachable entry points: lib/jshint/jshint.js.",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/path-is-absolute@1.0.1"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-npm-console-browserify-1.1.0",
+      "name": "console-browserify",
+      "versionInfo": "1.1.0",
+      "downloadLocation": "https://registry.npmjs.org/console-browserify/-/console-browserify-1.1.0.tgz",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "NOASSERTION",
+      "comment": "Bundled transitive dependency of a package-managed browser asset. Delivery: bundled in jshint. Modification status: unmodified. Audit identity: pkg:npm/console-browserify@1.1.0. Reachable entry points: lib/jshint/jshint.js.",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/console-browserify@1.1.0"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-npm-date-now-0.1.4",
+      "name": "date-now",
+      "versionInfo": "0.1.4",
+      "downloadLocation": "https://registry.npmjs.org/date-now/-/date-now-0.1.4.tgz",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "NOASSERTION",
+      "comment": "Bundled transitive dependency of a package-managed browser asset. Delivery: bundled in jshint. Modification status: unmodified. Audit identity: pkg:npm/date-now@0.1.4. Reachable entry points: lib/jshint/jshint.js.",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/date-now@0.1.4"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-npm-htmlparser2-3.8.3",
+      "name": "htmlparser2",
+      "versionInfo": "3.8.3",
+      "downloadLocation": "https://registry.npmjs.org/htmlparser2/-/htmlparser2-3.8.3.tgz",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "NOASSERTION",
+      "comment": "Bundled transitive dependency of a package-managed browser asset. Delivery: bundled in jshint. Modification status: unmodified. Audit identity: pkg:npm/htmlparser2@3.8.3. Reachable entry points: lib/jshint/jshint.js.",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/htmlparser2@3.8.3"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-npm-domelementtype-1.3.1",
+      "name": "domelementtype",
+      "versionInfo": "1.3.1",
+      "downloadLocation": "https://registry.npmjs.org/domelementtype/-/domelementtype-1.3.1.tgz",
+      "filesAnalyzed": false,
+      "licenseConcluded": "BSD-2-Clause",
+      "licenseDeclared": "BSD-2-Clause",
+      "copyrightText": "NOASSERTION",
+      "comment": "Bundled transitive dependency of a package-managed browser asset. Delivery: bundled in jshint. Modification status: unmodified. Audit identity: pkg:npm/domelementtype@1.3.1. Reachable entry points: lib/jshint/jshint.js.",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/domelementtype@1.3.1"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-npm-domhandler-2.3.0",
+      "name": "domhandler",
+      "versionInfo": "2.3.0",
+      "downloadLocation": "https://registry.npmjs.org/domhandler/-/domhandler-2.3.0.tgz",
+      "filesAnalyzed": false,
+      "licenseConcluded": "BSD-2-Clause",
+      "licenseDeclared": "BSD-2-Clause",
+      "copyrightText": "NOASSERTION",
+      "comment": "Bundled transitive dependency of a package-managed browser asset. Delivery: bundled in jshint. Modification status: unmodified. Audit identity: pkg:npm/domhandler@2.3.0. Reachable entry points: lib/jshint/jshint.js.",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/domhandler@2.3.0"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-npm-domutils-1.5.1",
+      "name": "domutils",
+      "versionInfo": "1.5.1",
+      "downloadLocation": "https://registry.npmjs.org/domutils/-/domutils-1.5.1.tgz",
+      "filesAnalyzed": false,
+      "licenseConcluded": "BSD-2-Clause",
+      "licenseDeclared": "BSD-2-Clause",
+      "copyrightText": "NOASSERTION",
+      "comment": "Bundled transitive dependency of a package-managed browser asset. Delivery: bundled in jshint. Modification status: unmodified. Audit identity: pkg:npm/domutils@1.5.1. Reachable entry points: lib/jshint/jshint.js.",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/domutils@1.5.1"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-npm-dom-serializer-0.2.2",
+      "name": "dom-serializer",
+      "versionInfo": "0.2.2",
+      "downloadLocation": "https://registry.npmjs.org/dom-serializer/-/dom-serializer-0.2.2.tgz",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "NOASSERTION",
+      "comment": "Bundled transitive dependency of a package-managed browser asset. Delivery: bundled in jshint. Modification status: unmodified. Audit identity: pkg:npm/dom-serializer@0.2.2. Reachable entry points: lib/jshint/jshint.js.",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/dom-serializer@0.2.2"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-npm-entities-4.5.0",
+      "name": "entities",
+      "versionInfo": "4.5.0",
+      "downloadLocation": "https://registry.npmjs.org/entities/-/entities-4.5.0.tgz",
+      "filesAnalyzed": false,
+      "licenseConcluded": "BSD-2-Clause",
+      "licenseDeclared": "BSD-2-Clause",
+      "copyrightText": "NOASSERTION",
+      "comment": "Bundled transitive dependency of a package-managed browser asset. Delivery: bundled in jshint. Modification status: unmodified. Audit identity: pkg:npm/entities@4.5.0. Reachable entry points: lib/jshint/jshint.js.",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/entities@4.5.0"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-npm-readable-stream-2.3.8",
+      "name": "readable-stream",
+      "versionInfo": "2.3.8",
+      "downloadLocation": "https://registry.npmjs.org/readable-stream/-/readable-stream-2.3.8.tgz",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "NOASSERTION",
+      "comment": "Bundled transitive dependency of a package-managed browser asset. Delivery: bundled in jshint, jszip. Modification status: unmodified. Audit identity: pkg:npm/readable-stream@2.3.8. Reachable entry points: lib/jshint/jshint.js, lib/jszip/jszip.min.js.",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/readable-stream@2.3.8"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-npm-core-util-is-1.0.3",
+      "name": "core-util-is",
+      "versionInfo": "1.0.3",
+      "downloadLocation": "https://registry.npmjs.org/core-util-is/-/core-util-is-1.0.3.tgz",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "NOASSERTION",
+      "comment": "Bundled transitive dependency of a package-managed browser asset. Delivery: bundled in jshint, jszip. Modification status: unmodified. Audit identity: pkg:npm/core-util-is@1.0.3. Reachable entry points: lib/jshint/jshint.js, lib/jszip/jszip.min.js.",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/core-util-is@1.0.3"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-npm-isarray-1.0.0",
+      "name": "isarray",
+      "versionInfo": "1.0.0",
+      "downloadLocation": "https://registry.npmjs.org/isarray/-/isarray-1.0.0.tgz",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "NOASSERTION",
+      "comment": "Bundled transitive dependency of a package-managed browser asset. Delivery: bundled in jshint, jszip. Modification status: unmodified. Audit identity: pkg:npm/isarray@1.0.0. Reachable entry points: lib/jshint/jshint.js, lib/jszip/jszip.min.js.",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/isarray@1.0.0"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-npm-process-nextick-args-2.0.1",
+      "name": "process-nextick-args",
+      "versionInfo": "2.0.1",
+      "downloadLocation": "https://registry.npmjs.org/process-nextick-args/-/process-nextick-args-2.0.1.tgz",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "NOASSERTION",
+      "comment": "Bundled transitive dependency of a package-managed browser asset. Delivery: bundled in jshint, jszip. Modification status: unmodified. Audit identity: pkg:npm/process-nextick-args@2.0.1. Reachable entry points: lib/jshint/jshint.js, lib/jszip/jszip.min.js.",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/process-nextick-args@2.0.1"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-npm-safe-buffer-5.1.2",
+      "name": "safe-buffer",
+      "versionInfo": "5.1.2",
+      "downloadLocation": "https://registry.npmjs.org/safe-buffer/-/safe-buffer-5.1.2.tgz",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "NOASSERTION",
+      "comment": "Bundled transitive dependency of a package-managed browser asset. Delivery: bundled in jshint, jszip. Modification status: unmodified. Audit identity: pkg:npm/safe-buffer@5.1.2. Reachable entry points: lib/jshint/jshint.js, lib/jszip/jszip.min.js.",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/safe-buffer@5.1.2"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-npm-string-decoder-1.1.1",
+      "name": "string_decoder",
+      "versionInfo": "1.1.1",
+      "downloadLocation": "https://registry.npmjs.org/string_decoder/-/string_decoder-1.1.1.tgz",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "NOASSERTION",
+      "comment": "Bundled transitive dependency of a package-managed browser asset. Delivery: bundled in jshint, jszip. Modification status: unmodified. Audit identity: pkg:npm/string_decoder@1.1.1. Reachable entry points: lib/jshint/jshint.js, lib/jszip/jszip.min.js.",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/string_decoder@1.1.1"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-npm-util-deprecate-1.0.2",
+      "name": "util-deprecate",
+      "versionInfo": "1.0.2",
+      "downloadLocation": "https://registry.npmjs.org/util-deprecate/-/util-deprecate-1.0.2.tgz",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "NOASSERTION",
+      "comment": "Bundled transitive dependency of a package-managed browser asset. Delivery: bundled in jshint, jszip. Modification status: unmodified. Audit identity: pkg:npm/util-deprecate@1.0.2. Reachable entry points: lib/jshint/jshint.js, lib/jszip/jszip.min.js.",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/util-deprecate@1.0.2"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-npm-lodash-4.17.23",
+      "name": "lodash",
+      "versionInfo": "4.17.23",
+      "downloadLocation": "https://registry.npmjs.org/lodash/-/lodash-4.17.23.tgz",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "NOASSERTION",
+      "comment": "Bundled transitive dependency of a package-managed browser asset. Delivery: bundled in jshint. Modification status: unmodified. Audit identity: pkg:npm/lodash@4.17.23. Reachable entry points: lib/jshint/jshint.js.",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/lodash@4.17.23"
+        }
+      ]
+    },
+    {
+      "SPDXID": "SPDXRef-Package-npm-strip-json-comments-1.0.4",
+      "name": "strip-json-comments",
+      "versionInfo": "1.0.4",
+      "downloadLocation": "https://registry.npmjs.org/strip-json-comments/-/strip-json-comments-1.0.4.tgz",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MIT",
+      "licenseDeclared": "MIT",
+      "copyrightText": "NOASSERTION",
+      "comment": "Bundled transitive dependency of a package-managed browser asset. Delivery: bundled in jshint. Modification status: unmodified. Audit identity: pkg:npm/strip-json-comments@1.0.4. Reachable entry points: lib/jshint/jshint.js.",
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/strip-json-comments@1.0.4"
         }
       ]
     },
@@ -612,7 +1313,7 @@
       "licenseConcluded": "MIT",
       "licenseDeclared": "MIT",
       "copyrightText": "NOASSERTION",
-      "comment": "Bundled transitive dependency of a package-managed browser asset. Delivery: bundled in jszip. Modification status: unmodified. Audit identity: pkg:npm/lie@3.3.0. Reachable entry points: lib/jszip/jszip.min.js.",
+      "comment": "Bundled transitive dependency of a package-managed browser asset. Delivery: bundled in jszip, localforage. Modification status: unmodified. Audit identity: pkg:npm/lie@3.3.0. Reachable entry points: lib/jszip/jszip.min.js, lib/localForage/localforage.nopromises.min.js.",
       "externalRefs": [
         {
           "referenceCategory": "PACKAGE-MANAGER",
@@ -630,7 +1331,7 @@
       "licenseConcluded": "MIT",
       "licenseDeclared": "MIT",
       "copyrightText": "NOASSERTION",
-      "comment": "Bundled transitive dependency of a package-managed browser asset. Delivery: bundled in jszip. Modification status: unmodified. Audit identity: pkg:npm/immediate@3.0.6. Reachable entry points: lib/jszip/jszip.min.js.",
+      "comment": "Bundled transitive dependency of a package-managed browser asset. Delivery: bundled in jszip, localforage. Modification status: unmodified. Audit identity: pkg:npm/immediate@3.0.6. Reachable entry points: lib/jszip/jszip.min.js, lib/localForage/localforage.nopromises.min.js.",
       "externalRefs": [
         {
           "referenceCategory": "PACKAGE-MANAGER",
@@ -658,150 +1359,6 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-npm-readable-stream-2.3.8",
-      "name": "readable-stream",
-      "versionInfo": "2.3.8",
-      "downloadLocation": "https://registry.npmjs.org/readable-stream/-/readable-stream-2.3.8.tgz",
-      "filesAnalyzed": false,
-      "licenseConcluded": "MIT",
-      "licenseDeclared": "MIT",
-      "copyrightText": "NOASSERTION",
-      "comment": "Bundled transitive dependency of a package-managed browser asset. Delivery: bundled in jszip. Modification status: unmodified. Audit identity: pkg:npm/readable-stream@2.3.8. Reachable entry points: lib/jszip/jszip.min.js.",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceType": "purl",
-          "referenceLocator": "pkg:npm/readable-stream@2.3.8"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-npm-core-util-is-1.0.3",
-      "name": "core-util-is",
-      "versionInfo": "1.0.3",
-      "downloadLocation": "https://registry.npmjs.org/core-util-is/-/core-util-is-1.0.3.tgz",
-      "filesAnalyzed": false,
-      "licenseConcluded": "MIT",
-      "licenseDeclared": "MIT",
-      "copyrightText": "NOASSERTION",
-      "comment": "Bundled transitive dependency of a package-managed browser asset. Delivery: bundled in jszip. Modification status: unmodified. Audit identity: pkg:npm/core-util-is@1.0.3. Reachable entry points: lib/jszip/jszip.min.js.",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceType": "purl",
-          "referenceLocator": "pkg:npm/core-util-is@1.0.3"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-npm-inherits-2.0.4",
-      "name": "inherits",
-      "versionInfo": "2.0.4",
-      "downloadLocation": "https://registry.npmjs.org/inherits/-/inherits-2.0.4.tgz",
-      "filesAnalyzed": false,
-      "licenseConcluded": "ISC",
-      "licenseDeclared": "ISC",
-      "copyrightText": "NOASSERTION",
-      "comment": "Bundled transitive dependency of a package-managed browser asset. Delivery: bundled in jszip. Modification status: unmodified. Audit identity: pkg:npm/inherits@2.0.4. Reachable entry points: lib/jszip/jszip.min.js.",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceType": "purl",
-          "referenceLocator": "pkg:npm/inherits@2.0.4"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-npm-isarray-1.0.0",
-      "name": "isarray",
-      "versionInfo": "1.0.0",
-      "downloadLocation": "https://registry.npmjs.org/isarray/-/isarray-1.0.0.tgz",
-      "filesAnalyzed": false,
-      "licenseConcluded": "MIT",
-      "licenseDeclared": "MIT",
-      "copyrightText": "NOASSERTION",
-      "comment": "Bundled transitive dependency of a package-managed browser asset. Delivery: bundled in jszip. Modification status: unmodified. Audit identity: pkg:npm/isarray@1.0.0. Reachable entry points: lib/jszip/jszip.min.js.",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceType": "purl",
-          "referenceLocator": "pkg:npm/isarray@1.0.0"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-npm-process-nextick-args-2.0.1",
-      "name": "process-nextick-args",
-      "versionInfo": "2.0.1",
-      "downloadLocation": "https://registry.npmjs.org/process-nextick-args/-/process-nextick-args-2.0.1.tgz",
-      "filesAnalyzed": false,
-      "licenseConcluded": "MIT",
-      "licenseDeclared": "MIT",
-      "copyrightText": "NOASSERTION",
-      "comment": "Bundled transitive dependency of a package-managed browser asset. Delivery: bundled in jszip. Modification status: unmodified. Audit identity: pkg:npm/process-nextick-args@2.0.1. Reachable entry points: lib/jszip/jszip.min.js.",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceType": "purl",
-          "referenceLocator": "pkg:npm/process-nextick-args@2.0.1"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-npm-safe-buffer-5.1.2",
-      "name": "safe-buffer",
-      "versionInfo": "5.1.2",
-      "downloadLocation": "https://registry.npmjs.org/safe-buffer/-/safe-buffer-5.1.2.tgz",
-      "filesAnalyzed": false,
-      "licenseConcluded": "MIT",
-      "licenseDeclared": "MIT",
-      "copyrightText": "NOASSERTION",
-      "comment": "Bundled transitive dependency of a package-managed browser asset. Delivery: bundled in jszip. Modification status: unmodified. Audit identity: pkg:npm/safe-buffer@5.1.2. Reachable entry points: lib/jszip/jszip.min.js.",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceType": "purl",
-          "referenceLocator": "pkg:npm/safe-buffer@5.1.2"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-npm-string-decoder-1.1.1",
-      "name": "string_decoder",
-      "versionInfo": "1.1.1",
-      "downloadLocation": "https://registry.npmjs.org/string_decoder/-/string_decoder-1.1.1.tgz",
-      "filesAnalyzed": false,
-      "licenseConcluded": "MIT",
-      "licenseDeclared": "MIT",
-      "copyrightText": "NOASSERTION",
-      "comment": "Bundled transitive dependency of a package-managed browser asset. Delivery: bundled in jszip. Modification status: unmodified. Audit identity: pkg:npm/string_decoder@1.1.1. Reachable entry points: lib/jszip/jszip.min.js.",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceType": "purl",
-          "referenceLocator": "pkg:npm/string_decoder@1.1.1"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-npm-util-deprecate-1.0.2",
-      "name": "util-deprecate",
-      "versionInfo": "1.0.2",
-      "downloadLocation": "https://registry.npmjs.org/util-deprecate/-/util-deprecate-1.0.2.tgz",
-      "filesAnalyzed": false,
-      "licenseConcluded": "MIT",
-      "licenseDeclared": "MIT",
-      "copyrightText": "NOASSERTION",
-      "comment": "Bundled transitive dependency of a package-managed browser asset. Delivery: bundled in jszip. Modification status: unmodified. Audit identity: pkg:npm/util-deprecate@1.0.2. Reachable entry points: lib/jszip/jszip.min.js.",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceType": "purl",
-          "referenceLocator": "pkg:npm/util-deprecate@1.0.2"
-        }
-      ]
-    },
-    {
       "SPDXID": "SPDXRef-Package-npm-setimmediate-1.0.5",
       "name": "setimmediate",
       "versionInfo": "1.0.5",
@@ -825,6 +1382,11 @@
       "spdxElementId": "SPDXRef-DOCUMENT",
       "relationshipType": "DESCRIBES",
       "relatedSpdxElement": "SPDXRef-Package-ace"
+    },
+    {
+      "spdxElementId": "SPDXRef-DOCUMENT",
+      "relationshipType": "DESCRIBES",
+      "relatedSpdxElement": "SPDXRef-Package-ace-custom-modes"
     },
     {
       "spdxElementId": "SPDXRef-DOCUMENT",
@@ -914,11 +1476,6 @@
     {
       "spdxElementId": "SPDXRef-DOCUMENT",
       "relationshipType": "DESCRIBES",
-      "relatedSpdxElement": "SPDXRef-Package-modernizr"
-    },
-    {
-      "spdxElementId": "SPDXRef-DOCUMENT",
-      "relationshipType": "DESCRIBES",
       "relatedSpdxElement": "SPDXRef-Package-perfect-scrollbar"
     },
     {
@@ -967,22 +1524,182 @@
       "relatedSpdxElement": "SPDXRef-Package-google-api-loader"
     },
     {
-      "spdxElementId": "SPDXRef-Package-jszip",
+      "spdxElementId": "SPDXRef-Package-chroma-js",
       "relationshipType": "DEPENDS_ON",
-      "relatedSpdxElement": "SPDXRef-Package-npm-lie-3.3.0"
+      "relatedSpdxElement": "SPDXRef-Package-npm-cross-env-6.0.3"
     },
     {
-      "spdxElementId": "SPDXRef-Package-npm-lie-3.3.0",
+      "spdxElementId": "SPDXRef-Package-npm-cross-env-6.0.3",
       "relationshipType": "DEPENDS_ON",
-      "relatedSpdxElement": "SPDXRef-Package-npm-immediate-3.0.6"
+      "relatedSpdxElement": "SPDXRef-Package-npm-cross-spawn-7.0.6"
     },
     {
-      "spdxElementId": "SPDXRef-Package-jszip",
+      "spdxElementId": "SPDXRef-Package-npm-cross-spawn-7.0.6",
       "relationshipType": "DEPENDS_ON",
-      "relatedSpdxElement": "SPDXRef-Package-npm-pako-1.0.11"
+      "relatedSpdxElement": "SPDXRef-Package-npm-path-key-3.1.1"
     },
     {
-      "spdxElementId": "SPDXRef-Package-jszip",
+      "spdxElementId": "SPDXRef-Package-npm-cross-spawn-7.0.6",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-npm-shebang-command-2.0.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-npm-shebang-command-2.0.0",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-npm-shebang-regex-3.0.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-npm-cross-spawn-7.0.6",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-npm-which-2.0.2"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-npm-which-2.0.2",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-npm-isexe-2.0.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jshint",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-npm-cli-1.0.1"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-npm-cli-1.0.1",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-npm-exit-0.1.2"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-npm-cli-1.0.1",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-npm-glob-7.2.3"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-npm-glob-7.2.3",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-npm-fs.realpath-1.0.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-npm-glob-7.2.3",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-npm-inflight-1.0.6"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-npm-inflight-1.0.6",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-npm-once-1.4.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-npm-once-1.4.0",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-npm-wrappy-1.0.2"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-npm-inflight-1.0.6",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-npm-wrappy-1.0.2"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-npm-glob-7.2.3",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-npm-inherits-2.0.4"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-npm-glob-7.2.3",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-npm-minimatch-3.0.8"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-npm-minimatch-3.0.8",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-npm-brace-expansion-1.1.18"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-npm-brace-expansion-1.1.18",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-npm-balanced-match-1.0.2"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-npm-brace-expansion-1.1.18",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-npm-concat-map-0.0.1"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-npm-glob-7.2.3",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-npm-once-1.4.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-npm-glob-7.2.3",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-npm-path-is-absolute-1.0.1"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jshint",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-npm-console-browserify-1.1.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-npm-console-browserify-1.1.0",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-npm-date-now-0.1.4"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jshint",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-npm-exit-0.1.2"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jshint",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-npm-htmlparser2-3.8.3"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-npm-htmlparser2-3.8.3",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-npm-domelementtype-1.3.1"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-npm-htmlparser2-3.8.3",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-npm-domhandler-2.3.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-npm-domhandler-2.3.0",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-npm-domelementtype-1.3.1"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-npm-htmlparser2-3.8.3",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-npm-domutils-1.5.1"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-npm-domutils-1.5.1",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-npm-dom-serializer-0.2.2"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-npm-dom-serializer-0.2.2",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-npm-domelementtype-1.3.1"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-npm-dom-serializer-0.2.2",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-npm-entities-4.5.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-npm-domutils-1.5.1",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-npm-domelementtype-1.3.1"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-npm-htmlparser2-3.8.3",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-npm-entities-4.5.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-npm-htmlparser2-3.8.3",
       "relationshipType": "DEPENDS_ON",
       "relatedSpdxElement": "SPDXRef-Package-npm-readable-stream-2.3.8"
     },
@@ -1027,9 +1744,234 @@
       "relatedSpdxElement": "SPDXRef-Package-npm-util-deprecate-1.0.2"
     },
     {
+      "spdxElementId": "SPDXRef-Package-jshint",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-npm-lodash-4.17.23"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jshint",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-npm-minimatch-3.0.8"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jshint",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-npm-strip-json-comments-1.0.4"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jszip",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-npm-lie-3.3.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-npm-lie-3.3.0",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-npm-immediate-3.0.6"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jszip",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-npm-pako-1.0.11"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jszip",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-npm-readable-stream-2.3.8"
+    },
+    {
       "spdxElementId": "SPDXRef-Package-jszip",
       "relationshipType": "DEPENDS_ON",
       "relatedSpdxElement": "SPDXRef-Package-npm-setimmediate-1.0.5"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-localforage",
+      "relationshipType": "DEPENDS_ON",
+      "relatedSpdxElement": "SPDXRef-Package-npm-lie-3.3.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-chroma-js",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-npm-cross-env-6.0.3"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-chroma-js",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-npm-cross-spawn-7.0.6"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-chroma-js",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-npm-path-key-3.1.1"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-chroma-js",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-npm-shebang-command-2.0.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-chroma-js",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-npm-shebang-regex-3.0.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-chroma-js",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-npm-which-2.0.2"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-chroma-js",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-npm-isexe-2.0.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jshint",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-npm-cli-1.0.1"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jshint",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-npm-exit-0.1.2"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jshint",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-npm-glob-7.2.3"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jshint",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-npm-fs.realpath-1.0.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jshint",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-npm-inflight-1.0.6"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jshint",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-npm-once-1.4.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jshint",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-npm-wrappy-1.0.2"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jshint",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-npm-inherits-2.0.4"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jshint",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-npm-minimatch-3.0.8"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jshint",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-npm-brace-expansion-1.1.18"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jshint",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-npm-balanced-match-1.0.2"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jshint",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-npm-concat-map-0.0.1"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jshint",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-npm-path-is-absolute-1.0.1"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jshint",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-npm-console-browserify-1.1.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jshint",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-npm-date-now-0.1.4"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jshint",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-npm-htmlparser2-3.8.3"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jshint",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-npm-domelementtype-1.3.1"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jshint",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-npm-domhandler-2.3.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jshint",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-npm-domutils-1.5.1"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jshint",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-npm-dom-serializer-0.2.2"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jshint",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-npm-entities-4.5.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jshint",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-npm-readable-stream-2.3.8"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jshint",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-npm-core-util-is-1.0.3"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jshint",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-npm-isarray-1.0.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jshint",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-npm-process-nextick-args-2.0.1"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jshint",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-npm-safe-buffer-5.1.2"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jshint",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-npm-string-decoder-1.1.1"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jshint",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-npm-util-deprecate-1.0.2"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jshint",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-npm-lodash-4.17.23"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-jshint",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-npm-strip-json-comments-1.0.4"
     },
     {
       "spdxElementId": "SPDXRef-Package-jszip",
@@ -1090,6 +2032,16 @@
       "spdxElementId": "SPDXRef-Package-jszip",
       "relationshipType": "CONTAINS",
       "relatedSpdxElement": "SPDXRef-Package-npm-setimmediate-1.0.5"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-localforage",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-npm-lie-3.3.0"
+    },
+    {
+      "spdxElementId": "SPDXRef-Package-localforage",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-Package-npm-immediate-3.0.6"
     }
   ]
 }

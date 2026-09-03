@@ -23,7 +23,7 @@ ColorPalettePanel.prototype = {
 
       _this.uiComponent.load('html/textMode/colorPalettePanel.html', function() {
         _this.initEvents();
-        if (!Modernizr.cssscrollbar) {
+        if (!supportsCssScrollbars()) {
           _this.scrollbar = new PerfectScrollbar('#colorPaletteHolder');
         }
       });

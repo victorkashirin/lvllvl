@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+## 0.496.3 - 2026-09-04
+
+### Changed
+
+- Move 15 additional browser-library families to exact npm dependencies while
+  preserving their legacy public URLs, and remove their checked-in copies.
+- Reduce `src/lib` to 16 intentionally retained files with immutable revisions,
+  reproduction metadata, ownership, review deadlines, checksums, and focused
+  browser compatibility coverage.
+- Replace the custom Modernizr build with a first-party CSS-scrollbar capability
+  check and enforce the retained-source policy in the dependency inventory.
+- Reclassify the initial dependency inventory work as a mitigation and complete
+  the remaining migration or formal-retention work tracked by P1.6.
+
 ## 0.496.2 - 2026-09-04
 
 ### Changed

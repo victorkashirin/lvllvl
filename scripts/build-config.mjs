@@ -1,6 +1,6 @@
 export const sourceDirectory = "src";
 export const buildDirectory = "dist";
-export const version = "0.496.2";
+export const version = "0.496.3";
 
 export const mainBundleExcludes = [
   "js/c64/wasm/c64.js",
@@ -64,6 +64,19 @@ export const assetDirectories = [
 // exact npm packages. Each migration can move one library without forcing the
 // legacy application to adopt modules at the same time.
 export const packageAssetFiles = {
+  "lib/ace/src/ace.js": "node_modules/ace-builds/src/ace.js",
+  "lib/ace/src/ext-language_tools.js":
+    "node_modules/ace-builds/src/ext-language_tools.js",
+  "lib/ace/src/mode-json.js": "node_modules/ace-builds/src/mode-json.js",
+  "lib/ace/src/mode-text.js": "node_modules/ace-builds/src/mode-text.js",
+  "lib/ace/src/theme-chrome.js": "node_modules/ace-builds/src/theme-chrome.js",
+  "lib/ace/src/theme-tomorrow_night.js":
+    "node_modules/ace-builds/src/theme-tomorrow_night.js",
+  "lib/ace/src/worker-javascript.js":
+    "node_modules/ace-builds/src/worker-javascript.js",
+  "lib/ace/src/worker-json.js": "node_modules/ace-builds/src/worker-json.js",
+  "lib/babel/babel.min.js": "node_modules/babel-standalone/babel.min.js",
+  "lib/chroma/chroma.min.js": "node_modules/chroma-js/chroma.min.js",
   "lib/codemirror/addon/dialog/dialog.css":
     "node_modules/codemirror/addon/dialog/dialog.css",
   "lib/codemirror/addon/dialog/dialog.js":
@@ -80,12 +93,91 @@ export const packageAssetFiles = {
   "lib/codemirror/codemirror.js": "node_modules/codemirror/lib/codemirror.js",
   "lib/codemirror/mode/javascript/javascript.js":
     "node_modules/codemirror/mode/javascript/javascript.js",
+  "lib/download/download.js": "node_modules/downloadjs/download.js",
+  "lib/gif/gif.js": "node_modules/gif.js/dist/gif.js",
+  "lib/gif/gif.worker.js": "node_modules/gif.js/dist/gif.worker.js",
+  "lib/hammer/hammer.min.js": "node_modules/hammerjs/hammer.min.js",
   "lib/jquery/jquery.min.js": "node_modules/jquery/dist/jquery.min.js",
+  "lib/jquery/jquery.mousewheel.min.13.js":
+    "node_modules/jquery-mousewheel/jquery.mousewheel.js",
+  "lib/jsfeat/jsfeat-min.js": "node_modules/jsfeat/build/jsfeat-min.js",
+  "lib/jshint/jshint.js": "node_modules/jshint/dist/jshint.js",
+  "lib/jszip/jszip-utils.js": "node_modules/jszip-utils/dist/jszip-utils.js",
   "lib/jszip/jszip.min.js": "node_modules/jszip/dist/jszip.min.js",
+  "lib/localForage/localforage.nopromises.min.js":
+    "node_modules/localforage/dist/localforage.nopromises.min.js",
   "lib/perfect-scrollbar/perfect-scrollbar.css":
     "node_modules/perfect-scrollbar/css/perfect-scrollbar.css",
   "lib/perfect-scrollbar/perfect-scrollbar.min.js":
     "node_modules/perfect-scrollbar/dist/perfect-scrollbar.min.js",
+  "lib/rgbQuant/rgbQuant.js": "node_modules/rgbquant/src/rgbquant.js",
+  "lib/threejs/controls/OrbitControls.js":
+    "node_modules/three/examples/js/controls/OrbitControls.js",
+  "lib/threejs/exporters/GLTFExporter.js":
+    "node_modules/three/examples/js/exporters/GLTFExporter.js",
+  "lib/threejs/exporters/OBJExporter.js":
+    "node_modules/three/examples/js/exporters/OBJExporter.js",
+  "lib/threejs/postprocessing/BloomPass.js":
+    "node_modules/three/examples/js/postprocessing/BloomPass.js",
+  "lib/threejs/postprocessing/DotScreenPass.js":
+    "node_modules/three/examples/js/postprocessing/DotScreenPass.js",
+  "lib/threejs/postprocessing/EffectComposer.js":
+    "node_modules/three/examples/js/postprocessing/EffectComposer.js",
+  "lib/threejs/postprocessing/FilmPass.js":
+    "node_modules/three/examples/js/postprocessing/FilmPass.js",
+  "lib/threejs/postprocessing/GlitchPass.js":
+    "node_modules/three/examples/js/postprocessing/GlitchPass.js",
+  "lib/threejs/postprocessing/MaskPass.js":
+    "node_modules/three/examples/js/postprocessing/MaskPass.js",
+  "lib/threejs/postprocessing/RenderPass.js":
+    "node_modules/three/examples/js/postprocessing/RenderPass.js",
+  "lib/threejs/postprocessing/ShaderPass.js":
+    "node_modules/three/examples/js/postprocessing/ShaderPass.js",
+  "lib/threejs/postprocessing/TexturePass.js":
+    "node_modules/three/examples/js/postprocessing/TexturePass.js",
+  "lib/threejs/postprocessing/UnrealBloomPass.js":
+    "node_modules/three/examples/js/postprocessing/UnrealBloomPass.js",
+  "lib/threejs/shaders/BleachBypassShader.js":
+    "node_modules/three/examples/js/shaders/BleachBypassShader.js",
+  "lib/threejs/shaders/BrightnessContrastShader.js":
+    "node_modules/three/examples/js/shaders/BrightnessContrastShader.js",
+  "lib/threejs/shaders/ColorifyShader.js":
+    "node_modules/three/examples/js/shaders/ColorifyShader.js",
+  "lib/threejs/shaders/ConvolutionShader.js":
+    "node_modules/three/examples/js/shaders/ConvolutionShader.js",
+  "lib/threejs/shaders/CopyShader.js":
+    "node_modules/three/examples/js/shaders/CopyShader.js",
+  "lib/threejs/shaders/DigitalGlitch.js":
+    "node_modules/three/examples/js/shaders/DigitalGlitch.js",
+  "lib/threejs/shaders/DotScreenShader.js":
+    "node_modules/three/examples/js/shaders/DotScreenShader.js",
+  "lib/threejs/shaders/FilmShader.js":
+    "node_modules/three/examples/js/shaders/FilmShader.js",
+  "lib/threejs/shaders/FocusShader.js":
+    "node_modules/three/examples/js/shaders/FocusShader.js",
+  "lib/threejs/shaders/HorizontalBlurShader.js":
+    "node_modules/three/examples/js/shaders/HorizontalBlurShader.js",
+  "lib/threejs/shaders/HueSaturationShader.js":
+    "node_modules/three/examples/js/shaders/HueSaturationShader.js",
+  "lib/threejs/shaders/KaleidoShader.js":
+    "node_modules/three/examples/js/shaders/KaleidoShader.js",
+  "lib/threejs/shaders/LuminosityHighPassShader.js":
+    "node_modules/three/examples/js/shaders/LuminosityHighPassShader.js",
+  "lib/threejs/shaders/RGBShiftShader.js":
+    "node_modules/three/examples/js/shaders/RGBShiftShader.js",
+  "lib/threejs/shaders/SepiaShader.js":
+    "node_modules/three/examples/js/shaders/SepiaShader.js",
+  "lib/threejs/shaders/TechnicolorShader.js":
+    "node_modules/three/examples/js/shaders/TechnicolorShader.js",
+  "lib/threejs/shaders/VerticalBlurShader.js":
+    "node_modules/three/examples/js/shaders/VerticalBlurShader.js",
+  "lib/threejs/shaders/VignetteShader.js":
+    "node_modules/three/examples/js/shaders/VignetteShader.js",
+  "lib/threejs/three.min.js": "node_modules/three/build/three.min.js",
+  "lib/threejs/utils/BufferGeometryUtils.js":
+    "node_modules/three/examples/js/utils/BufferGeometryUtils.js",
+  "lib/threejs/stats.min.js": "node_modules/stats.js/build/stats.min.js",
+  "lib/tween/tween.min.js": "node_modules/tween.js/src/Tween.js",
 };
 
 // Files requested after the initial page load must be listed here. Unlike the

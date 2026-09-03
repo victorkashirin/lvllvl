@@ -500,7 +500,7 @@ Layers.prototype = {
     var _this = this;
     UI.on('ready', function() {
       UI.number.initControls('#layerOpacity');
-      if (!Modernizr.cssscrollbar) {
+      if (!supportsCssScrollbars()) {
         _this.scrollbar = new PerfectScrollbar('#layersHolder');
       }
 

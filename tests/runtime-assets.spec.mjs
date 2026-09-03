@@ -141,6 +141,56 @@ test("package-managed jQuery and JSZip retain their browser APIs", async ({ page
   assertNoFailures();
 });
 
+test("package-managed browser libraries preserve their legacy global APIs", async ({ page }) => {
+  const assertNoFailures = await openHarness(page);
+  await loadScript(page, "/js/libs.js");
+
+  const result = await page.evaluate(() => {
+    const matrix = new jsfeat.matrix_t(2, 2, jsfeat.U8C1_t);
+    const quantizer = new RgbQuant({ colors: 2 });
+    const tweened = { value: 0 };
+    new TWEEN.Tween(tweened).to({ value: 1 }, 10).start(0);
+    TWEEN.update(10);
+    const linted = JSHINT("var answer = 42;", { esversion: 5 });
+    const stats = new Stats();
+    const manager = new Hammer.Manager(document.body);
+    manager.destroy();
+
+    return {
+      babel: Babel.version,
+      chroma: chroma("#336699").hex(),
+      download: typeof download,
+      hammer: typeof Hammer.Manager,
+      jsfeat: [matrix.cols, matrix.rows],
+      jshint: linted,
+      jszipUtils: typeof JSZipUtils.getBinaryContent,
+      localForage: typeof localforage.getItem,
+      mousewheel: typeof $.event.special.mousewheel,
+      rgbQuant: quantizer.colors,
+      stats: stats.REVISION,
+      three: [THREE.REVISION, typeof THREE.OrbitControls, typeof THREE.GLTFExporter],
+      tween: tweened.value,
+    };
+  });
+
+  expect(result).toEqual({
+    babel: "6.26.0",
+    chroma: "#336699",
+    download: "function",
+    hammer: "function",
+    jsfeat: [2, 2],
+    jshint: true,
+    jszipUtils: "function",
+    localForage: "function",
+    mousewheel: "object",
+    rgbQuant: 2,
+    stats: 16,
+    three: ["129", "function", "function"],
+    tween: 1,
+  });
+  assertNoFailures();
+});
+
 test("GitHub API adapter preserves the legacy client contract", async ({ page }) => {
   const assertNoFailures = await openHarness(page);
   const requests = [];
@@ -257,6 +307,138 @@ test("Ace loads its lazy themes and workers", async ({ page }) => {
     "/lib/ace/src/worker-javascript.js",
     "/lib/ace/src/worker-json.js",
   ]));
+  assertNoFailures();
+});
+
+test("retained Ace modes expose their legacy module IDs", async ({ page }) => {
+  const assertNoFailures = await openHarness(page);
+  await loadScript(page, "/js/libs.js");
+
+  const modeIds = await page.evaluate(() =>
+    ["assembly_6502", "c64basic", "javascript"].map((name) => {
+      const Mode = ace.require(`ace/mode/${name}`).Mode;
+      return new Mode().$id;
+    }));
+
+  expect(modeIds).toEqual([
+    "ace/mode/assembly_6502",
+    "ace/mode/c64basic",
+    "ace/mode/javascript",
+  ]);
+  assertNoFailures();
+});
+
+test("retained color and image helpers preserve their browser APIs", async ({ page }) => {
+  const assertNoFailures = await openHarness(page);
+  await loadScript(page, "/js/libs.js");
+
+  const result = await page.evaluate(() => {
+    const image = {
+      data: new Uint8ClampedArray([10, 20, 30, 255]),
+      height: 1,
+      width: 1,
+    };
+    JSManipulate.invert.filter(image);
+    return {
+      color: Colour.fromString("#336699").toString(),
+      filterNames: [JSManipulate.blur.name, JSManipulate.invert.name],
+      pixels: [...image.data],
+    };
+  });
+
+  expect(result).toEqual({
+    color: "#336699",
+    filterNames: ["Blur", "Invert"],
+    pixels: [245, 235, 225, 255],
+  });
+  assertNoFailures();
+});
+
+test("retained scripting and audio helpers preserve their browser APIs", async ({ page }) => {
+  const assertNoFailures = await openHarness(page);
+  await loadScript(page, "/js/libs.js");
+
+  const result = await page.evaluate(async () => {
+    const interpreter = new Interpreter("var answer = 6 * 7;");
+    interpreter.run();
+    const answer = interpreter.pseudoToNative(
+      interpreter.getProperty(interpreter.global, "answer"),
+    );
+    const audioContext = new AudioContext();
+    const tuna = new Tuna(audioContext);
+    const effects = ["Chorus", "Compressor", "Gain"].map(
+      (name) => typeof tuna[name],
+    );
+    await audioContext.close();
+    return { answer, effects };
+  });
+
+  expect(result).toEqual({ answer: 42, effects: ["function", "function", "function"] });
+  assertNoFailures();
+});
+
+test("retained UI helpers preserve their browser APIs", async ({ page }) => {
+  const assertNoFailures = await openHarness(
+    page,
+    '<div class="rippleJS" id="target" style="width:20px;height:20px"></div>',
+  );
+  await loadScript(page, "/js/libs.js");
+
+  const result = await page.evaluate(async () => {
+    const target = document.querySelector("#target");
+    startRipple("mousedown", { offsetX: 4, offsetY: 5, target }, target);
+    const activeRipples = target.querySelectorAll(".ripple").length;
+    document.dispatchEvent(new MouseEvent("mouseup"));
+    await new Promise((resolve) => setTimeout(resolve, 700));
+    return {
+      activeRipples,
+      initialized: typeof rippleJSInit,
+      remainingRipples: target.querySelectorAll(".ripple").length,
+    };
+  });
+
+  expect(result).toEqual({
+    activeRipples: 1,
+    initialized: "function",
+    remainingRipples: 0,
+  });
+  assertNoFailures();
+});
+
+test("retained font parser preserves its split-script browser API", async ({ page }) => {
+  const assertNoFailures = await openHarness(page);
+  await loadScript(page, "/js/libs.js");
+
+  const result = await page.evaluate(() => {
+    const path = { cmds: [], crds: [] };
+    Typr.U.P.moveTo(path, 1, 2);
+    Typr.U.P.lineTo(path, 3, 4);
+    Typr.U.P.closePath(path);
+    return {
+      commands: path.cmds,
+      coordinates: path.crds,
+      parse: typeof Typr.parse,
+    };
+  });
+
+  expect(result).toEqual({
+    commands: ["M", "L", "Z"],
+    coordinates: [1, 2, 3, 4],
+    parse: "function",
+  });
+  assertNoFailures();
+});
+
+test("retained provider loader exposes the Google API bootstrap", async ({ page }) => {
+  const assertNoFailures = await openHarness(page);
+  await loadScript(page, "/lib/google-api/api.js");
+
+  const result = await page.evaluate(() => ({
+    bootstrapState: typeof window.___jsl,
+    load: typeof window.gapi?.load,
+  }));
+
+  expect(result).toEqual({ bootstrapState: "object", load: "function" });
   assertNoFailures();
 });
 

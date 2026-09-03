@@ -756,7 +756,7 @@ ImportImage.prototype = {
 
 
       // set up the scrollbars..
-      if (!Modernizr.cssscrollbar) {
+      if (!supportsCssScrollbars()) {
         this.scrollbar1 = new PerfectScrollbar('#importImageHolder');
         this.scrollbar2 = new PerfectScrollbar('#importEffectsHolder');
         this.scrollbar3 = new PerfectScrollbar('#importImageAllSettings');
@@ -4199,4 +4199,3 @@ ImportImage.prototype = {
     }
   }
 }
-

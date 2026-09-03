@@ -17,7 +17,22 @@ const inventoryFile = path.join(projectRoot, "docs/runtime-dependencies.json");
 const noticeFile = path.join(projectRoot, "THIRD_PARTY_NOTICES.md");
 const sbomFile = path.join(projectRoot, "docs/runtime-dependencies.spdx.json");
 const validModificationStatuses = new Set(["modified", "unmodified", "unverified"]);
+const validRetentionCategories = new Set([
+  "binary-artifact",
+  "incompatible-published-package",
+  "modified-source",
+  "provider-snapshot",
+  "unattributed-source",
+  "unpublished-source",
+]);
 const purlPattern = /^pkg:[a-z0-9.+-]+\/[^\s]+@[^\s]+$/;
+const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+const gitRevisionPattern = /^[0-9a-f]{40}$/;
+// These legacy releases ship a BSD 2-Clause LICENSE but omit license metadata.
+const legacyLicenseOverrides = new Map([
+  ["domhandler@2.3.0", "BSD-2-Clause"],
+  ["domutils@1.5.1", "BSD-2-Clause"],
+]);
 
 function referencesFromHtml(html) {
   const activeHtml = html.replace(/<!--[\s\S]*?-->/g, "");
@@ -90,13 +105,14 @@ function renderNotices(inventory, resolvedComponents) {
     "",
     "This file is generated from `docs/runtime-dependencies.json` by",
     "`npm run dependencies:update`. It inventories code loaded by the production",
-    "application from `src/lib` or an external production URL; it is not a substitute",
+    "application from exact npm packages, intentionally retained `src/lib` files, or",
+    "an external production URL; it is not a substitute",
     "for the upstream license texts.",
     "",
     `Last reviewed: ${inventory.reviewedAt}`,
     "",
-    "| Component | Version | License | Delivery | Audit identity | Modification | Purpose | Source |",
-    "| --- | --- | --- | --- | --- | --- | --- | --- |",
+    "| Component | Version | License | Delivery | Audit identity | Modification | Provenance / review | Purpose | Source |",
+    "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
   ];
 
   for (const component of resolvedComponents) {
@@ -106,19 +122,26 @@ function renderNotices(inventory, resolvedComponents) {
     const source = component.source === "NOASSERTION"
       ? "NOASSERTION"
       : `[upstream](${component.source})`;
+    const provenance = component.retention
+      ? `${component.retention.revision.slice(0, 12)}; ${component.retention.owner}; review by ${component.retention.reviewBy}`
+      : component.package
+        ? "exact dependency + lockfile"
+        : "external URL";
     lines.push(
       `| ${markdownCell(component.name)} | ${markdownCell(component.version)} | ` +
         `${markdownCell(component.license)} | ${markdownCell(delivery)} | ` +
         `${markdownCell(auditIdentity)} | ${markdownCell(component.modificationStatus)} | ` +
-        `${markdownCell(component.purpose)} | ${source} |`,
+        `${markdownCell(provenance)} | ${markdownCell(component.purpose)} | ${source} |`,
     );
   }
 
   lines.push(
     "",
-    "Components without a resolvable package URL have a time-limited audit exemption",
-    "with a documented reason in the source inventory. `NOASSERTION`, `unknown`, and",
-    "`unverified` preserve unresolved provenance instead of guessing.",
+    "Retained components are pinned to immutable Git revisions with reproduction steps,",
+    "ownership, compatibility coverage, and a review deadline. Components without a",
+    "resolvable package URL have a time-limited audit exemption with a documented reason",
+    "in the source inventory. `NOASSERTION` and `unverified` preserve unresolved facts",
+    "instead of guessing.",
     "",
   );
   return lines.join("\n");
@@ -140,7 +163,7 @@ function npmPackageEntry(packageLock, name) {
   return entry;
 }
 
-function bundledNpmComponents(packageLock, resolvedComponents) {
+async function bundledNpmComponents(packageLock, resolvedComponents) {
   const components = new Map();
   const dependencyRelationships = new Map();
   const containsRelationships = new Map();
@@ -154,7 +177,7 @@ function bundledNpmComponents(packageLock, resolvedComponents) {
     });
   }
 
-  function visit(rootComponent, parentId, packageName, ancestors) {
+  async function visit(rootComponent, parentId, packageName, ancestors) {
     if (ancestors.has(packageName)) return;
     const parentEntry = npmPackageEntry(packageLock, packageName);
     const nextAncestors = new Set(ancestors).add(packageName);
@@ -166,10 +189,22 @@ function bundledNpmComponents(packageLock, resolvedComponents) {
       let component = components.get(purl);
 
       if (!component) {
-        if (!dependencyEntry.license) {
-          throw new Error(`${dependencyName}@${dependencyEntry.version} has no lockfile license`);
+        let license = dependencyEntry.license ??
+          legacyLicenseOverrides.get(`${dependencyName}@${dependencyEntry.version}`);
+        if (!license) {
+          const dependencyManifest = JSON.parse(await readFile(
+            path.join(projectRoot, "node_modules", dependencyName, "package.json"),
+            "utf8",
+          ));
+          license = dependencyManifest.license ?? dependencyManifest.licenses
+            ?.map((candidate) => candidate.type)
+            .filter(Boolean)
+            .join(" OR ");
         }
-        parseSpdxExpression(dependencyEntry.license);
+        if (typeof license !== "string" || !license.trim()) {
+          throw new Error(`${dependencyName}@${dependencyEntry.version} has no declared license`);
+        }
+        parseSpdxExpression(license);
         component = {
           id: `npm-${dependencyName}-${dependencyEntry.version}`,
           spdxId: dependencyId,
@@ -178,7 +213,7 @@ function bundledNpmComponents(packageLock, resolvedComponents) {
           purpose: "Bundled transitive dependency of a package-managed browser asset.",
           source: dependencyEntry.resolved ?? "NOASSERTION",
           downloadLocation: dependencyEntry.resolved ?? "NOASSERTION",
-          license: dependencyEntry.license,
+          license,
           purl,
           modificationStatus: "unmodified",
           delivery: "bundled",
@@ -197,12 +232,12 @@ function bundledNpmComponents(packageLock, resolvedComponents) {
         "CONTAINS",
         dependencyId,
       );
-      visit(rootComponent, dependencyId, dependencyName, nextAncestors);
+      await visit(rootComponent, dependencyId, dependencyName, nextAncestors);
     }
   }
 
   for (const component of resolvedComponents.filter((candidate) => candidate.package)) {
-    visit(component, `SPDXRef-Package-${component.id}`, component.package.name, new Set());
+    await visit(component, `SPDXRef-Package-${component.id}`, component.package.name, new Set());
   }
 
   return {
@@ -235,6 +270,10 @@ function renderSpdx(inventory, packageJson, resolvedComponents, bundled) {
         `${component.purpose} Delivery: ${component.delivery}. ` +
         `Modification status: ${component.modificationStatus}. ` +
         `Audit identity: ${component.purl ?? `exempt until ${component.auditExemption.expiresAt}`}. ` +
+        (component.retention
+          ? `Retention: ${component.retention.category}, revision ${component.retention.revision}, ` +
+            `owner ${component.retention.owner}, review by ${component.retention.reviewBy}. `
+          : "") +
         `Reachable entry points: ${component.entryPoints.join(", ")}.`,
     };
 
@@ -288,13 +327,71 @@ function validateException(component, field) {
     !exception ||
     typeof exception.reason !== "string" ||
     !exception.reason.trim() ||
-    !/^\d{4}-\d{2}-\d{2}$/.test(exception.expiresAt)
+    !datePattern.test(exception.expiresAt)
   ) {
     throw new Error(`${component.id} requires a reason and expiry in ${field}`);
   }
   const today = new Date().toISOString().slice(0, 10);
   if (exception.expiresAt <= today) {
     throw new Error(`${component.id} has an expired ${field}: ${exception.expiresAt}`);
+  }
+}
+
+async function validateRetention(component, testFiles) {
+  const retention = component.retention;
+  if (!retention || typeof retention !== "object") {
+    throw new Error(`${component.id} is retained locally but has no retention metadata`);
+  }
+  if (!validRetentionCategories.has(retention.category)) {
+    throw new Error(`${component.id} has an invalid retention category`);
+  }
+  for (const field of ["reproductionCommand", "toolchain", "owner"]) {
+    if (typeof retention[field] !== "string" || !retention[field].trim()) {
+      throw new Error(`${component.id} retention metadata is missing ${field}`);
+    }
+  }
+  if (!gitRevisionPattern.test(retention.revision)) {
+    throw new Error(`${component.id} must be pinned to a full Git revision`);
+  }
+  if (!component.source.includes(retention.revision)) {
+    throw new Error(`${component.id} source is not pinned to its retained revision`);
+  }
+  if (!retention.reproductionCommand.includes(retention.revision)) {
+    throw new Error(`${component.id} reproduction command is not pinned to its revision`);
+  }
+  if (!Array.isArray(retention.patches) || retention.patches.some((patch) => typeof patch !== "string")) {
+    throw new Error(`${component.id} retention patches must be an array of paths`);
+  }
+  if (!datePattern.test(retention.reviewedAt) || !datePattern.test(retention.reviewBy)) {
+    throw new Error(`${component.id} retention review dates are invalid`);
+  }
+  const today = new Date().toISOString().slice(0, 10);
+  if (retention.reviewBy <= today) {
+    throw new Error(`${component.id} retention review is not current`);
+  }
+  if (
+    !Array.isArray(retention.compatibilityTests) ||
+    !retention.compatibilityTests.length ||
+    retention.compatibilityTests.some((reference) => typeof reference !== "string")
+  ) {
+    throw new Error(`${component.id} must list compatibility tests`);
+  }
+
+  for (const reference of retention.compatibilityTests) {
+    const separator = reference.indexOf(": ");
+    const filename = reference.slice(0, separator);
+    const title = reference.slice(separator + 2);
+    if (separator < 1 || !filename.startsWith("tests/") || !title) {
+      throw new Error(`${component.id} has an invalid compatibility test reference: ${reference}`);
+    }
+    let testSource = testFiles.get(filename);
+    if (!testSource) {
+      testSource = await readFile(path.join(projectRoot, filename), "utf8");
+      testFiles.set(filename, testSource);
+    }
+    if (!testSource.includes(`test("${title}"`) && !testSource.includes(`test('${title}'`)) {
+      throw new Error(`${component.id} compatibility test is missing: ${reference}`);
+    }
   }
 }
 
@@ -313,11 +410,12 @@ async function buildInventory() {
   );
   const allEntryPoints = [...localEntryPoints, ...externalEntryPoints].sort();
 
-  if (inventory.schemaVersion !== 2 || !/^\d{4}-\d{2}-\d{2}$/.test(inventory.reviewedAt)) {
+  if (inventory.schemaVersion !== 3 || !datePattern.test(inventory.reviewedAt)) {
     throw new Error("Dependency inventory schemaVersion or reviewedAt is invalid");
   }
 
   const ids = new Set();
+  const testFiles = new Map();
   for (const component of inventory.components) {
     for (const field of ["id", "name", "version", "purpose", "source", "license", "modificationStatus"]) {
       if (typeof component[field] !== "string" || !component[field].trim()) {
@@ -326,6 +424,9 @@ async function buildInventory() {
     }
     if (ids.has(component.id)) throw new Error(`Duplicate dependency id: ${component.id}`);
     ids.add(component.id);
+    if (component.version === "unknown") {
+      throw new Error(`${component.id} must have an investigated version or dated snapshot`);
+    }
     if (!validModificationStatuses.has(component.modificationStatus)) {
       throw new Error(`Invalid modification status for ${component.id}`);
     }
@@ -364,6 +465,13 @@ async function buildInventory() {
     if (!component.paths?.length && !component.pathPrefixes?.length && !component.externalEntryPoints?.length) {
       throw new Error(`${component.id} does not identify any entry points`);
     }
+    if (component.package || component.externalEntryPoints?.length) {
+      if (component.retention) {
+        throw new Error(`${component.id} cannot have retention metadata for non-retained delivery`);
+      }
+    } else {
+      await validateRetention(component, testFiles);
+    }
   }
 
   for (const entryPoint of allEntryPoints) componentFor(inventory.components, entryPoint);
@@ -386,7 +494,10 @@ async function buildInventory() {
     if (!localEntryPoints.has(filename) && !supportFiles.has(filename)) {
       throw new Error(`Unreachable vendored file is not allowed: ${filename}`);
     }
-    componentFor(inventory.components, filename);
+    const component = componentFor(inventory.components, filename);
+    if (!component.retention) {
+      throw new Error(`Vendored file has no intentional retention record: ${filename}`);
+    }
   }
   for (const filename of supportFiles) await readFile(path.join(sourceRoot, filename));
 
@@ -400,6 +511,11 @@ async function buildInventory() {
     }
     const component = componentFor(inventory.components, entryPoint);
     if (!component.package) throw new Error(`${entryPoint} has no package metadata`);
+    const normalizedAsset = packageAsset.replaceAll("\\", "/");
+    const packageRoot = `node_modules/${component.package.name}/`;
+    if (!normalizedAsset.startsWith(packageRoot)) {
+      throw new Error(`${entryPoint} is not sourced from its declared package ${component.package.name}`);
+    }
     if (packageJson.dependencies?.[component.package.name] !== component.package.version) {
       throw new Error(`${component.package.name} is not an exact matching runtime dependency`);
     }
@@ -427,7 +543,7 @@ async function buildInventory() {
         ? `npm: ${component.package.name}`
         : component.externalEntryPoints
           ? "external"
-          : "vendored",
+          : `retained: ${component.retention.category}`,
       downloadLocation: component.package
         ? npmPackageEntry(packageLock, component.package.name).resolved
         : component.source,
@@ -436,7 +552,7 @@ async function buildInventory() {
     });
   }
 
-  const bundled = bundledNpmComponents(packageLock, resolvedComponents);
+  const bundled = await bundledNpmComponents(packageLock, resolvedComponents);
   const allComponents = [...resolvedComponents, ...bundled.components];
 
   return {
@@ -484,5 +600,5 @@ console.log(
     `(${generated.summary.directComponents} direct and ` +
     `${generated.summary.bundledComponents} bundled), ` +
     `${generated.summary.local} local entry points, ${generated.summary.external} external entry points, ` +
-    `and ${generated.summary.vendoredFiles} vendored files`,
+    `and ${generated.summary.vendoredFiles} intentionally retained files`,
 );

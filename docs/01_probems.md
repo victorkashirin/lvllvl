@@ -227,16 +227,25 @@ The build requires Node 20.19 or later, while Terser is configured to emit ECMA5
 
 ### P1.6 Remaining active runtime libraries are still vendored
 
-**Status: Open.** After the P1.1 cleanup, `src/lib` still contains 72 files assigned
-to 24 direct vendored components. Four direct components are package-managed, while
-14 components still require expiring advisory-audit exemptions because their exact
-package identity or immutable upstream revision is unresolved.
+**Status: Closed on 2026-09-04.** Nineteen direct browser components are now exact,
+lockfile-resolved npm dependencies, the externally delivered Firebase scripts are
+version-pinned, and `src/lib` has been reduced from 72 files to 16 files belonging to
+nine intentionally retained components. No component has an uninvestigated version.
 
-The inventory, checksums, license validation, and CI scanning make these dependencies
-visible and controlled, but upgrades and provenance review remain manual. Some files
-are ordinary published browser libraries that should be sourced from exact packages;
-others are modified editor modes, workers, emulators, assemblers, or WebAssembly
-artifacts that may need to remain local.
+Ace, Babel Standalone, chroma.js, download.js, GIF.js, Hammer.js, jquery-mousewheel,
+jsfeat, JSHint, JSZipUtils, localForage, RGBQuant, Three.js, stats.js, and tween.js
+now come from exact npm packages while retaining their legacy public URLs. The custom
+Modernizr build was removed in favor of a first-party CSS-scrollbar capability check.
+
+The remaining custom modes, assembler WebAssembly artifacts, inherited helpers,
+provider snapshot, interpreter, audio helper, and font parser are pinned to immutable
+Git revisions. Their inventory records retention category, reproduction command,
+toolchain status, patch list, checksum, license status, owner, review deadline, and
+named browser compatibility coverage. The schema rejects unknown versions, expired
+exceptions, unpinned retained sources, package assets outside their declared package,
+and missing compatibility tests. The nine remaining advisory exemptions exist because
+the retained components have no package identity in a supported advisory ecosystem,
+not because their versions were left uninvestigated.
 
 **Recommended change:**
 
