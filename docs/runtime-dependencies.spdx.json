@@ -2,8 +2,8 @@
   "spdxVersion": "SPDX-2.3",
   "dataLicense": "CC0-1.0",
   "SPDXID": "SPDXRef-DOCUMENT",
-  "name": "lvllvl-runtime-0.496.1",
-  "documentNamespace": "https://github.com/jaammees/lvllvl/sbom/0.496.1/66fa77ac8c02a7f08800f5df4fbe45cae741d8d0850f649ef39e4b007a9c6070",
+  "name": "lvllvl-runtime-0.496.2",
+  "documentNamespace": "https://github.com/jaammees/lvllvl/sbom/0.496.2/66fa77ac8c02a7f08800f5df4fbe45cae741d8d0850f649ef39e4b007a9c6070",
   "creationInfo": {
     "created": "2026-09-03T00:00:00Z",
     "creators": [

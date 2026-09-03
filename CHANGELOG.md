@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.496.2 - 2026-09-04
+
 ### Changed
 
 - Reclassify dependency inventory work as a mitigation and track migration or
