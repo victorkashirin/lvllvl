@@ -11,15 +11,25 @@
     "build": "node scripts/build.mjs",
     "dev": "node scripts/dev.mjs",
     "preview": "vite preview --host 127.0.0.1",
-    "check": "node --check scripts/build.mjs && node --check scripts/dev.mjs && node --check scripts/verify-build.mjs",
+    "check": "node --check scripts/build.mjs && node --check scripts/dependency-inventory.mjs && node --check scripts/dev.mjs && node --check scripts/verify-build.mjs",
+    "dependencies:check": "node scripts/dependency-inventory.mjs --check",
+    "dependencies:update": "node scripts/dependency-inventory.mjs --write",
+    "audit:dependencies": "npm audit --omit=dev",
     "test": "npm run test:static && npm run test:browser",
-    "test:static": "node scripts/verify-build.mjs",
+    "test:static": "npm run dependencies:check && node scripts/verify-build.mjs",
     "test:browser": "playwright test"
+  },
+  "dependencies": {
+    "codemirror": "5.65.21",
+    "jquery": "3.7.1",
+    "jszip": "3.10.1",
+    "perfect-scrollbar": "1.4.0"
   },
   "devDependencies": {
     "@playwright/test": "1.62.1",
     "acorn": "8.18.0",
     "html-minifier-terser": "7.2.0",
+    "spdx-expression-parse": "5.0.0",
     "terser": "5.51.2",
     "vite": "8.2.2"
   }

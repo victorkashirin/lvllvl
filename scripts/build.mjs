@@ -9,6 +9,7 @@ import {
   assetDirectories,
   buildDirectory,
   mainBundleExcludes,
+  packageAssetFiles,
   runtimeAssetFiles,
   sourceDirectory,
   variableReplacements,
@@ -19,6 +20,8 @@ const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "
 const sourceRoot = path.join(projectRoot, sourceDirectory);
 const buildRoot = path.join(projectRoot, buildDirectory);
 const constantsFile = path.join(projectRoot, "buildUtils/constants.js");
+const thirdPartyNoticesFile = path.join(projectRoot, "THIRD_PARTY_NOTICES.md");
+const thirdPartySbomFile = path.join(projectRoot, "docs/runtime-dependencies.spdx.json");
 
 const outputDirectories = [
   "js/html",
@@ -30,6 +33,13 @@ const outputDirectories = [
 
 let identifierIndex = 0;
 const variableMap = new Map();
+
+function sourceFile(relativePath) {
+  const packageAsset = packageAssetFiles[relativePath];
+  return packageAsset
+    ? path.join(projectRoot, packageAsset)
+    : path.join(sourceRoot, relativePath);
+}
 
 function replaceAll(content, search, replacement) {
   return content.split(search).join(replacement);
@@ -121,7 +131,7 @@ async function concatenateFiles(relativePaths) {
   const chunks = [];
 
   for (const relativePath of relativePaths) {
-    const filename = path.join(sourceRoot, relativePath);
+    const filename = sourceFile(relativePath);
     chunks.push(await readFile(filename, "utf8"));
   }
 
@@ -270,7 +280,7 @@ async function copyRuntimeAssets() {
   for (const relativePath of runtimeAssetFiles) {
     const destination = path.join(buildRoot, relativePath);
     await mkdir(path.dirname(destination), { recursive: true });
-    await cp(path.join(sourceRoot, relativePath), destination, { force: true });
+    await cp(sourceFile(relativePath), destination, { force: true });
   }
 }
 
@@ -307,6 +317,11 @@ async function build() {
     path.join(sourceRoot, "js/utils/storageManager.js"),
     path.join(buildRoot, "js/storageManager.js"),
   );
+  await cp(
+    path.join(sourceRoot, "js/file/githubApi.js"),
+    path.join(buildRoot, "js/githubApi.js"),
+    { force: true },
+  );
   await copyWithBuildReplacements(
     path.join(sourceRoot, "js/file/githubClient.js"),
     path.join(buildRoot, "js/githubClient.js"),
@@ -325,6 +340,12 @@ async function build() {
     force: true,
   });
   await cp(path.join(sourceRoot, "manifest.json"), path.join(buildRoot, "manifest.json"), {
+    force: true,
+  });
+  await cp(thirdPartyNoticesFile, path.join(buildRoot, "THIRD_PARTY_NOTICES.md"), {
+    force: true,
+  });
+  await cp(thirdPartySbomFile, path.join(buildRoot, "runtime-dependencies.spdx.json"), {
     force: true,
   });
   await writeIndexes();

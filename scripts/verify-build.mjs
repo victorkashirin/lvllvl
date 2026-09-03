@@ -7,6 +7,7 @@ import { tokenizer } from "acorn";
 
 import {
   buildDirectory,
+  packageAssetFiles,
   runtimeAssetFiles,
   runtimeFeatureRequests,
   sourceDirectory,
@@ -16,15 +17,27 @@ import {
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const sourceRoot = path.join(projectRoot, sourceDirectory);
 const buildRoot = path.join(projectRoot, buildDirectory);
+const thirdPartyNoticesFile = path.join(projectRoot, "THIRD_PARTY_NOTICES.md");
+const thirdPartySbomFile = path.join(projectRoot, "docs/runtime-dependencies.spdx.json");
+
+function sourceFile(relativePath) {
+  const packageAsset = packageAssetFiles[relativePath];
+  return packageAsset
+    ? path.join(projectRoot, packageAsset)
+    : path.join(sourceRoot, relativePath);
+}
 
 const coreFiles = [
   "index.html",
   "manifest.json",
+  "THIRD_PARTY_NOTICES.md",
+  "runtime-dependencies.spdx.json",
   "css/style.css",
   "js/main.js",
   "js/libs.js",
   "js/html/htmlcache.js",
   "js/storageManager.js",
+  "js/githubApi.js",
   "js/githubClient.js",
   "js/acmeAssembler.js",
   "js/ca65Assembler.js",
@@ -113,7 +126,7 @@ async function verifyStyleBundle() {
   const chunks = [];
 
   for (const filename of stylesheetFiles) {
-    chunks.push(await readFile(path.join(sourceRoot, filename), "utf8"));
+    chunks.push(await readFile(sourceFile(filename), "utf8"));
   }
 
   const expected = `${chunks.join("\n\n")}\n\n`;
@@ -260,13 +273,25 @@ for (const filename of requiredFiles) {
   await verifyOutputReference(filename, "", "build manifest");
 }
 
+const sourceNotices = await readFile(thirdPartyNoticesFile);
+const builtNotices = await readFile(path.join(buildRoot, "THIRD_PARTY_NOTICES.md"));
+if (!sourceNotices.equals(builtNotices)) {
+  throw new Error("The production third-party notices differ from the reviewed inventory");
+}
+
+const sourceSbom = await readFile(thirdPartySbomFile);
+const builtSbom = await readFile(path.join(buildRoot, "runtime-dependencies.spdx.json"));
+if (!sourceSbom.equals(builtSbom)) {
+  throw new Error("The production SPDX SBOM differs from the reviewed inventory");
+}
+
 verifyCommentTokenizer();
 
 for (const filename of runtimeAssetFiles) {
   if (!runtimeRequestFiles.has(filename)) {
     throw new Error(`Copied runtime asset is not assigned to a feature: ${filename}`);
   }
-  const source = await readFile(path.join(sourceRoot, filename));
+  const source = await readFile(sourceFile(filename));
   const output = await readFile(path.join(buildRoot, filename));
   if (!source.equals(output)) throw new Error(`${filename} differs from its source`);
 }

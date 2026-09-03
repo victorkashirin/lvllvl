@@ -1,0 +1,406 @@
+{
+  "schemaVersion": 2,
+  "reviewedAt": "2026-09-03",
+  "components": [
+    {
+      "id": "ace",
+      "name": "Ace",
+      "version": "1.4.5",
+      "purpose": "Code editor, language modes, themes, and syntax workers.",
+      "source": "https://github.com/ajaxorg/ace",
+      "license": "BSD-3-Clause",
+      "purl": "pkg:npm/ace-builds@1.4.5",
+      "modificationStatus": "modified",
+      "pathPrefixes": ["lib/ace/"]
+    },
+    {
+      "id": "babel-standalone",
+      "name": "Babel Standalone",
+      "version": "6.26.0",
+      "purpose": "Compiles user scripts in the browser.",
+      "source": "https://github.com/babel/babel-standalone",
+      "license": "MIT",
+      "purl": "pkg:npm/babel-standalone@6.26.0",
+      "modificationStatus": "unverified",
+      "pathPrefixes": ["lib/babel/"]
+    },
+    {
+      "id": "cc65-wasm",
+      "name": "cc65 WebAssembly builds",
+      "version": "unknown",
+      "purpose": "Provides the CA65 assembler and LD65 linker runtimes.",
+      "source": "https://github.com/cc65/cc65",
+      "license": "Zlib",
+      "auditExemption": {
+        "reason": "The checked-in WebAssembly build does not expose its cc65 commit or release tag.",
+        "expiresAt": "2027-09-03"
+      },
+      "modificationStatus": "modified",
+      "pathPrefixes": ["lib/ca65/"]
+    },
+    {
+      "id": "chroma-js",
+      "name": "chroma.js",
+      "version": "2.1.0",
+      "purpose": "Color conversion and interpolation.",
+      "source": "https://github.com/gka/chroma.js",
+      "license": "BSD-3-Clause",
+      "purl": "pkg:npm/chroma-js@2.1.0",
+      "modificationStatus": "unverified",
+      "pathPrefixes": ["lib/chroma/"]
+    },
+    {
+      "id": "codemirror",
+      "name": "CodeMirror",
+      "version": "5.65.21",
+      "purpose": "Music scripting editor and search UI.",
+      "source": "https://github.com/codemirror/codemirror5",
+      "license": "MIT",
+      "purl": "pkg:npm/codemirror@5.65.21",
+      "modificationStatus": "unmodified",
+      "pathPrefixes": ["lib/codemirror/"],
+      "package": {
+        "name": "codemirror",
+        "version": "5.65.21"
+      }
+    },
+    {
+      "id": "colour",
+      "name": "Colour",
+      "version": "unknown",
+      "purpose": "Legacy color-space conversion helpers.",
+      "source": "NOASSERTION",
+      "license": "NOASSERTION",
+      "auditExemption": {
+        "reason": "This inherited helper has no identifiable upstream release or package ecosystem.",
+        "expiresAt": "2027-09-03"
+      },
+      "sourceExemption": {
+        "reason": "No upstream attribution is present in the inherited source file.",
+        "expiresAt": "2027-09-03"
+      },
+      "licenseExemption": {
+        "reason": "No license notice or attributable upstream source could be identified.",
+        "expiresAt": "2027-09-03"
+      },
+      "modificationStatus": "unverified",
+      "pathPrefixes": ["lib/colour/"]
+    },
+    {
+      "id": "download-js",
+      "name": "download.js",
+      "version": "unknown",
+      "purpose": "Starts client-side file downloads.",
+      "source": "https://github.com/rndme/download",
+      "license": "MIT",
+      "auditExemption": {
+        "reason": "The inherited file does not identify which download.js release it was built from.",
+        "expiresAt": "2027-09-03"
+      },
+      "modificationStatus": "unverified",
+      "pathPrefixes": ["lib/download/"]
+    },
+    {
+      "id": "gif-js",
+      "name": "gif.js",
+      "version": "0.1.6",
+      "purpose": "Encodes animated GIF exports in a worker.",
+      "source": "https://github.com/jnordberg/gif.js",
+      "license": "MIT",
+      "purl": "pkg:npm/gif.js@0.1.6",
+      "modificationStatus": "unverified",
+      "pathPrefixes": ["lib/gif/"]
+    },
+    {
+      "id": "hammer-js",
+      "name": "Hammer.js",
+      "version": "2.0.8",
+      "purpose": "Normalizes touch gestures.",
+      "source": "https://github.com/hammerjs/hammer.js",
+      "license": "MIT",
+      "purl": "pkg:npm/hammerjs@2.0.8",
+      "modificationStatus": "unverified",
+      "pathPrefixes": ["lib/hammer/"]
+    },
+    {
+      "id": "jquery",
+      "name": "jQuery",
+      "version": "3.7.1",
+      "purpose": "Legacy DOM, event, and Ajax API.",
+      "source": "https://github.com/jquery/jquery",
+      "license": "MIT",
+      "purl": "pkg:npm/jquery@3.7.1",
+      "modificationStatus": "unmodified",
+      "paths": ["lib/jquery/jquery.min.js"],
+      "package": {
+        "name": "jquery",
+        "version": "3.7.1"
+      }
+    },
+    {
+      "id": "jquery-mousewheel",
+      "name": "jQuery Mouse Wheel",
+      "version": "3.1.13",
+      "purpose": "Normalizes mouse-wheel events for legacy UI controls.",
+      "source": "https://github.com/jquery/jquery-mousewheel",
+      "license": "MIT",
+      "purl": "pkg:npm/jquery-mousewheel@3.1.13",
+      "modificationStatus": "unmodified",
+      "paths": ["lib/jquery/jquery.mousewheel.min.13.js"]
+    },
+    {
+      "id": "jsfeat",
+      "name": "jsfeat",
+      "version": "alpha",
+      "purpose": "Computer-vision routines used by image import.",
+      "source": "https://github.com/inspirit/jsfeat",
+      "license": "MIT",
+      "auditExemption": {
+        "reason": "The file identifies only an ALPHA revision, not an immutable jsfeat release.",
+        "expiresAt": "2027-09-03"
+      },
+      "modificationStatus": "unverified",
+      "pathPrefixes": ["lib/jsfeat/"]
+    },
+    {
+      "id": "jshint",
+      "name": "JSHint",
+      "version": "2.9.4",
+      "purpose": "Lints user-authored music scripts.",
+      "source": "https://github.com/jshint/jshint",
+      "license": "MIT AND JSON",
+      "purl": "pkg:npm/jshint@2.9.4",
+      "modificationStatus": "unmodified",
+      "pathPrefixes": ["lib/jshint/"]
+    },
+    {
+      "id": "js-interpreter",
+      "name": "JS-Interpreter with Acorn",
+      "version": "unknown",
+      "purpose": "Runs user scripts in an interpreter.",
+      "source": "https://github.com/NeilFraser/JS-Interpreter",
+      "license": "Apache-2.0",
+      "auditExemption": {
+        "reason": "The modified combined Acorn/JS-Interpreter artifact has no recoverable release identifier.",
+        "expiresAt": "2027-09-03"
+      },
+      "modificationStatus": "modified",
+      "pathPrefixes": ["lib/jsinterpreter/"]
+    },
+    {
+      "id": "jsmanipulate",
+      "name": "JSManipulate",
+      "version": "1.0",
+      "purpose": "Applies image filters and effects.",
+      "source": "https://github.com/JoelBesada/JSManipulate",
+      "license": "MIT",
+      "auditExemption": {
+        "reason": "JSManipulate 1.0 is not published in an advisory-supported package ecosystem.",
+        "expiresAt": "2027-09-03"
+      },
+      "modificationStatus": "unverified",
+      "pathPrefixes": ["lib/jsmanipulate/"]
+    },
+    {
+      "id": "jszip",
+      "name": "JSZip",
+      "version": "3.10.1",
+      "purpose": "Reads and writes project and export ZIP archives.",
+      "source": "https://github.com/Stuk/jszip",
+      "license": "MIT OR GPL-3.0-or-later",
+      "purl": "pkg:npm/jszip@3.10.1",
+      "modificationStatus": "unmodified",
+      "paths": ["lib/jszip/jszip.min.js"],
+      "package": {
+        "name": "jszip",
+        "version": "3.10.1"
+      }
+    },
+    {
+      "id": "jszip-utils",
+      "name": "JSZipUtils",
+      "version": "unknown",
+      "purpose": "Loads binary inputs for JSZip.",
+      "source": "https://github.com/Stuk/jszip-utils",
+      "license": "MIT OR GPL-3.0-only",
+      "auditExemption": {
+        "reason": "The inherited browser bundle differs from published JSZipUtils artifacts and has no embedded version.",
+        "expiresAt": "2027-09-03"
+      },
+      "modificationStatus": "unverified",
+      "paths": ["lib/jszip/jszip-utils.js"]
+    },
+    {
+      "id": "localforage",
+      "name": "localForage no-Promise build",
+      "version": "1.7.3",
+      "purpose": "Persists projects and autosaves in browser storage.",
+      "source": "https://github.com/localForage/localForage",
+      "license": "Apache-2.0",
+      "purl": "pkg:npm/localforage@1.7.3",
+      "modificationStatus": "unmodified",
+      "pathPrefixes": ["lib/localForage/"]
+    },
+    {
+      "id": "modernizr",
+      "name": "Modernizr custom build",
+      "version": "3.6.0",
+      "purpose": "Detects CSS scrollbar support.",
+      "source": "https://github.com/Modernizr/Modernizr",
+      "license": "MIT",
+      "purl": "pkg:npm/modernizr@3.6.0",
+      "modificationStatus": "modified",
+      "pathPrefixes": ["lib/modernizr/"]
+    },
+    {
+      "id": "perfect-scrollbar",
+      "name": "Perfect Scrollbar",
+      "version": "1.4.0",
+      "purpose": "Provides styled scrollbars for application panels.",
+      "source": "https://github.com/mdbootstrap/perfect-scrollbar",
+      "license": "MIT",
+      "purl": "pkg:npm/perfect-scrollbar@1.4.0",
+      "modificationStatus": "unmodified",
+      "paths": [
+        "lib/perfect-scrollbar/perfect-scrollbar.css",
+        "lib/perfect-scrollbar/perfect-scrollbar.min.js"
+      ],
+      "package": {
+        "name": "perfect-scrollbar",
+        "version": "1.4.0"
+      }
+    },
+    {
+      "id": "rgbquant",
+      "name": "RgbQuant.js",
+      "version": "unknown",
+      "purpose": "Quantizes imported and exported image colors.",
+      "source": "https://github.com/leeoniya/RgbQuant.js",
+      "license": "MIT",
+      "auditExemption": {
+        "reason": "The inherited RgbQuant file does not match a published package artifact or identify a release.",
+        "expiresAt": "2027-09-03"
+      },
+      "modificationStatus": "unverified",
+      "pathPrefixes": ["lib/rgbQuant/"]
+    },
+    {
+      "id": "ripple-js",
+      "name": "rippleJS",
+      "version": "unknown",
+      "purpose": "Adds material-style pointer feedback.",
+      "source": "https://github.com/samthor/rippleJS",
+      "license": "Apache-2.0",
+      "auditExemption": {
+        "reason": "The modified rippleJS file has no recoverable upstream release identifier.",
+        "expiresAt": "2027-09-03"
+      },
+      "modificationStatus": "unverified",
+      "pathPrefixes": ["lib/ripplejs/"]
+    },
+    {
+      "id": "three",
+      "name": "three.js and examples",
+      "version": "0.129.0",
+      "purpose": "Renders 3D scenes, exports models, and supplies post-processing effects.",
+      "source": "https://github.com/mrdoob/three.js",
+      "license": "MIT",
+      "purl": "pkg:npm/three@0.129.0",
+      "modificationStatus": "unverified",
+      "paths": [
+        "lib/threejs/controls/OrbitControls.js",
+        "lib/threejs/exporters/GLTFExporter.js",
+        "lib/threejs/exporters/OBJExporter.js",
+        "lib/threejs/three.min.js",
+        "lib/threejs/utils/BufferGeometryUtils.js"
+      ],
+      "pathPrefixes": ["lib/threejs/postprocessing/", "lib/threejs/shaders/"]
+    },
+    {
+      "id": "stats-js",
+      "name": "stats.js",
+      "version": "unknown",
+      "purpose": "Displays optional rendering performance statistics.",
+      "source": "https://github.com/mrdoob/stats.js",
+      "license": "MIT",
+      "auditExemption": {
+        "reason": "The minified stats.js artifact has no embedded version and does not match the current package artifact.",
+        "expiresAt": "2027-09-03"
+      },
+      "modificationStatus": "unverified",
+      "paths": ["lib/threejs/stats.min.js"]
+    },
+    {
+      "id": "tuna",
+      "name": "Tuna",
+      "version": "unknown",
+      "purpose": "Provides Web Audio effects for the music editor.",
+      "source": "https://github.com/Theodeus/tuna",
+      "license": "MIT",
+      "auditExemption": {
+        "reason": "The inherited Tuna source has no embedded release or commit identifier.",
+        "expiresAt": "2027-09-03"
+      },
+      "modificationStatus": "unverified",
+      "pathPrefixes": ["lib/tuna/"]
+    },
+    {
+      "id": "tween-js",
+      "name": "tween.js",
+      "version": "11dev",
+      "purpose": "Animates 3D editor transitions.",
+      "source": "https://github.com/tweenjs/tween.js",
+      "license": "MIT",
+      "auditExemption": {
+        "reason": "Revision 11dev is not an immutable published tween.js release.",
+        "expiresAt": "2027-09-03"
+      },
+      "modificationStatus": "unverified",
+      "pathPrefixes": ["lib/tween/"]
+    },
+    {
+      "id": "typr-js",
+      "name": "Typr.js",
+      "version": "unknown",
+      "purpose": "Parses font files and extracts glyph outlines.",
+      "source": "https://github.com/photopea/Typr.js",
+      "license": "MIT",
+      "auditExemption": {
+        "reason": "The split Typr.js sources do not identify or match a published package release.",
+        "expiresAt": "2027-09-03"
+      },
+      "modificationStatus": "unverified",
+      "pathPrefixes": ["lib/typr/src/"],
+      "supportFiles": ["lib/typr/LICENSE"]
+    },
+    {
+      "id": "firebase",
+      "name": "Firebase JavaScript SDK",
+      "version": "10.9.0",
+      "purpose": "Production authentication and Firestore client.",
+      "source": "https://github.com/firebase/firebase-js-sdk",
+      "license": "Apache-2.0",
+      "purl": "pkg:npm/firebase@10.9.0",
+      "modificationStatus": "unmodified",
+      "externalEntryPoints": [
+        "https://www.gstatic.com/firebasejs/10.9.0/firebase-app-compat.js",
+        "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth-compat.js",
+        "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore-compat.js"
+      ]
+    },
+    {
+      "id": "google-api-loader",
+      "name": "Google API JavaScript loader",
+      "version": "snapshot-2026-09-03",
+      "purpose": "Loads the Google Drive API client.",
+      "source": "https://apis.google.com/js/api.js",
+      "license": "Apache-2.0",
+      "auditExemption": {
+        "reason": "Google does not publish the loader in an advisory-supported package ecosystem; the reviewed file is self-hosted and checksum-pinned by the inventory.",
+        "expiresAt": "2027-09-03"
+      },
+      "modificationStatus": "unmodified",
+      "paths": ["lib/google-api/api.js"]
+    }
+  ]
+}

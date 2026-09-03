@@ -2,6 +2,37 @@
 
 ## Unreleased
 
+### Changed
+
+- Reclassify dependency inventory work as a mitigation and track migration or
+  formal retention of the remaining 24 vendored runtime components as P1.6.
+- Upgrade the browser runtimes to jQuery 3.7.1, JSZip 3.10.1, and CodeMirror
+  5.65.21 through exact npm dependencies while preserving their legacy URLs.
+- Upgrade the production Firebase compatibility SDK from 7.6.0 to 10.9.0.
+- Self-host a checksum-tracked snapshot of the Google API loader instead of
+  executing its mutable provider-managed entry point.
+- Scan the generated runtime SBOM for vulnerabilities and disallowed licenses on
+  pull requests, deployments, and a weekly schedule, with expiring documented
+  exemptions for artifacts that have no advisory-supported package identity.
+- Include package URLs, locked transitive browser dependencies, and SPDX
+  `DEPENDS_ON`/`CONTAINS` relationships in the generated inventory artifacts.
+- Add a validated third-party dependency inventory, generated SPDX SBOM, and
+  production third-party notices covering every reachable `src/lib` entry point
+  and external production dependency URL.
+- Source Perfect Scrollbar 1.4.0 from an exact npm dependency while preserving
+  its legacy browser URLs and verified browser API.
+- Remove 1,833 unreachable vendored library files, reducing `src/lib` from
+  approximately 62 MB to 5 MB.
+- Audit npm-managed runtime packages before deployment and enable weekly
+  Dependabot updates.
+
+### Fixed
+
+- Replace the vulnerable bundled GitHub.js/axios client with a tested first-party
+  Fetch adapter that preserves the legacy GitHub client contract.
+- Generate a content-addressed SPDX document namespace so distinct SBOM revisions
+  cannot reuse the same identifier.
+
 ## 0.496.1 - 2026-09-03
 
 ### Changed
