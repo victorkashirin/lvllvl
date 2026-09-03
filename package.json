@@ -1,0 +1,20 @@
+{
+  "name": "lvllvl",
+  "version": "0.496.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "dev": "node scripts/dev.mjs",
+    "check": "node --check scripts/build.mjs && node --check scripts/dev.mjs && node --check scripts/verify-build.mjs",
+    "test": "node scripts/verify-build.mjs"
+  },
+  "devDependencies": {
+    "html-minifier-terser": "7.2.0",
+    "terser": "5.51.2",
+    "vite": "8.2.2"
+  }
+}
