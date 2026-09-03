@@ -260,7 +260,11 @@ Editor.prototype = {
     this.createDocumentStructure(this.doc);
 
     var _this = this;
-    this.doc.openBrowserStorageProject(args, function() {
+    this.doc.openBrowserStorageProject(args, function(result) {
+      if(result && result.success === false) {
+        _this.openingProject = false;
+        return;
+      }
 
       _this.fileManager.filename = projectName;
       var settings = g_app.doc.getDocRecord('/settings');      

@@ -811,7 +811,7 @@ FileManager.prototype = {
 
       if(true) {
         var _this = this;
-        localforage.removeItem(key, function() {
+        BrowserStorage.removeItem(key, function() {
           _this.removeBrowserStorageFiles(fileList, fileIndex, callback);
         });
       } else {
@@ -823,7 +823,7 @@ FileManager.prototype = {
   checkCacheExpiry: function(callback) {
     var _this = this;
 
-    localforage.getItem('cachedir', function(err, result) {
+    BrowserStorage.getItem('cachedir', function(err, result) {
       var cacheEntries = result;
       if(typeof cacheEntries === 'undefined' || !cacheEntries) {
         cacheEntries = [];
@@ -844,7 +844,7 @@ FileManager.prototype = {
       }
 
 
-      localforage.setItem('cachedir', newCacheEntries, function(err) {
+      BrowserStorage.setItem('cachedir', newCacheEntries, function(err) {
         _this.removeBrowserStorageFiles(toRemoveKeys, 0, function() {
           if(typeof callback != 'undefined') {
             callback();
@@ -853,7 +853,7 @@ FileManager.prototype = {
       });
 
 /*
-      localforage.setItem('cachedir', newCacheEntries, function(err) {
+      BrowserStorage.setItem('cachedir', newCacheEntries, function(err) {
         if(typeof callback != 'undefined') {
           callback();
         }
@@ -867,7 +867,7 @@ FileManager.prototype = {
     var _this = this;
 
 
-    localforage.getItem('cachedir', function(err, result) {
+    BrowserStorage.getItem('cachedir', function(err, result) {
       var cacheEntries = result;
       if(typeof cacheEntries === 'undefined' || !cacheEntries) {
         cacheEntries = [];
@@ -895,8 +895,8 @@ FileManager.prototype = {
       } else {
         cacheEntries.push(cacheDirEntry);
       }
-      localforage.setItem('cachedir', cacheEntries, function(err) {
-        localforage.setItem(key, file, function(err) {
+      BrowserStorage.setItem('cachedir', cacheEntries, function(err) {
+        BrowserStorage.setItem(key, file, function(err) {
           // success!
           if(typeof callback != 'undefined') {
             callback(err);
@@ -909,7 +909,7 @@ FileManager.prototype = {
   getCacheFile: function(key, callback) {
 
     this.checkCacheExpiry(function() {
-      localforage.getItem(key, function(err, result) {
+      BrowserStorage.getItem(key, function(err, result) {
         if(typeof result == 'undefined') {
           callback(null);
         }
@@ -922,35 +922,64 @@ FileManager.prototype = {
 
 
 
-  autosave: function() {
+  autosave: function(callback) {
     var doc = g_app.doc.data;
     var currentEditor = g_app.projectNavigator.getCurrentEditor();
+    var thumbnailCanvas = null;
+    var thumbnailData = null;
 
-    if(currentEditor && typeof currentEditor.getThumbnailCanvas !== 'undefined') {
-      thumbnailCanvas = currentEditor.getThumbnailCanvas();
-      if(thumbnailCanvas) {
-        thumbnailData = thumbnailCanvas.toDataURL();
+    try {
+      if(currentEditor && typeof currentEditor.getThumbnailCanvas !== 'undefined') {
+        thumbnailCanvas = currentEditor.getThumbnailCanvas();
+        if(thumbnailCanvas) {
+          thumbnailData = thumbnailCanvas.toDataURL();
+        }
       }
+    } catch(error) {
+      // A thumbnail is optional; never let a tainted or unavailable canvas
+      // prevent the recovery data itself from being saved.
+      console.warn('Unable to create autosave thumbnail', error);
     }
 
-    localforage.setItem('__autosaveData', doc, function(err) {
+    var _this = this;
+    var snapshot = {
+      data: doc,
+      savedAt: Date.now(),
+      thumbnailData: thumbnailData
+    };
 
-      if(typeof thumbnailData !== 'undefined') {
-        localforage.setItem('__autosaveThumbnail', thumbnailData, function(err) {
-
-        });
+    return BrowserStorage.commitVersioned(BrowserStorage.AUTOSAVE_KEY, snapshot).then(function(commit) {
+      BrowserStorage.cleanupPreviousVersion(commit);
+      _this.clearBrowserStorageError('Autosave');
+      var result = { success: true };
+      if(typeof callback != 'undefined') {
+        callback(result);
       }
+      return result;
+    }).catch(function(error) {
+      _this.showBrowserStorageError('Autosave', error);
+      var result = { success: false, error: error };
+      if(typeof callback != 'undefined') {
+        callback(result);
+      }
+      return result;
     });
   },
 
 
   getAutosaveSummary: function(callback) {
-    localforage.getItem("__autosaveThumbnail", function(err, result) {
-      if(err != null) {
-        callback({ success: false });
-      } else {
-        callback({success: true, thumbnailData: result});
+    BrowserStorage.getVersionedItem(BrowserStorage.AUTOSAVE_KEY).then(function(snapshot) {
+      if(snapshot && snapshot.data) {
+        callback({ success: true, thumbnailData: snapshot.thumbnailData });
+        return;
       }
+
+      // Read pre-P0.2 autosaves so existing users keep their recovery copy.
+      return BrowserStorage.getItem('__autosaveThumbnail').then(function(thumbnailData) {
+        callback({ success: thumbnailData !== null, thumbnailData: thumbnailData });
+      });
+    }).catch(function(error) {
+      callback({ success: false, error: error });
     });
   },
 
@@ -1000,8 +1029,13 @@ FileManager.prototype = {
   },
 
   loadAutosave: function() {
-    localforage.getItem("__autosaveData", function(err, result) {
-      if(err == null) {
+    BrowserStorage.getVersionedItem(BrowserStorage.AUTOSAVE_KEY).then(function(snapshot) {
+      if(snapshot && snapshot.data) {
+        return snapshot.data;
+      }
+      return BrowserStorage.getItem('__autosaveData');
+    }).then(function(result) {
+      if(result !== null && typeof result != 'undefined') {
 
         g_app.doc = new Document();  
         g_app.doc.data = result;
@@ -1027,15 +1061,53 @@ FileManager.prototype = {
           }
         }
         g_app.setMode('2d');    
-
-
-
       }
+    }).catch(function(error) {
+      g_app.fileManager.showBrowserStorageError('Autosave recovery', error);
     });
   },
 
   setProjectName: function(projectName) {
     this.filename = projectName;
+  },
+
+  showBrowserStorageError: function(operation, error) {
+    var message = operation + ' failed. Your unsaved work is still open. ' +
+      'Free some browser storage, use Download As to make a backup, then retry.';
+    if(error && error.message) {
+      message += ' (' + error.message + ')';
+    }
+
+    console.error(message, error);
+
+    var errorPanel = document.getElementById('browserStorageSaveError');
+    if(!errorPanel) {
+      errorPanel = document.createElement('div');
+      errorPanel.id = 'browserStorageSaveError';
+      errorPanel.setAttribute('role', 'alert');
+      errorPanel.style.position = 'fixed';
+      errorPanel.style.left = '12px';
+      errorPanel.style.right = '12px';
+      errorPanel.style.bottom = '12px';
+      errorPanel.style.zIndex = '100000';
+      errorPanel.style.padding = '12px';
+      errorPanel.style.color = '#fff';
+      errorPanel.style.background = '#9c2424';
+      errorPanel.style.border = '1px solid #ff8a8a';
+      document.body.appendChild(errorPanel);
+    }
+
+    errorPanel.textContent = message;
+    errorPanel.setAttribute('data-storage-operation', operation);
+    errorPanel.style.display = 'block';
+  },
+
+  clearBrowserStorageError: function(operation) {
+    var errorPanel = document.getElementById('browserStorageSaveError');
+    if(errorPanel && (typeof operation == 'undefined' ||
+      errorPanel.getAttribute('data-storage-operation') == operation)) {
+      errorPanel.style.display = 'none';
+    }
   },
 
   getProjectName: function() {
@@ -1138,26 +1210,20 @@ FileManager.prototype = {
 
     if(method == 'browserStorage') {
       this.getProjectId({ name: filename, type: 'project', saveTo: method }, function(result) {
+        if(!result.success && result.error) {
+          callback(result);
+          return;
+        }
         if(result.success) {
           if(!confirm('A project with this name already exists, do you want to overwrite?')) {
             callback({ success: false });
             return;          
           }
-
-          // need to delete old project
-          _this.deleteBrowserStorageProject({ projectId: result.projectId }, function(result) {
-
-            // now save the new one
-            _this.setIsNew(false);
-            _this.save({ filename: filename, saveTo: method }, callback);    
-          });
-
-          return;
         } 
 
-        // can just save
-        _this.setIsNew(false);
-        _this.save({ filename: filename, saveTo: method }, callback);        
+        // The versioned save replaces an existing project only after the new
+        // contents have committed, so Save As never deletes the recovery copy.
+        _this.save({ filename: filename, saveTo: method, saveAs: true }, callback);
       });
 
       return;
@@ -1215,7 +1281,7 @@ FileManager.prototype = {
   save: function(args, callback) {
 
     // if not yet saved, prompt for a filename
-    if(this.getIsNew()) {
+    if(this.getIsNew() && (!args || args.saveAs !== true)) {
       this.showSaveAs();
       return;      
     }
@@ -1238,27 +1304,33 @@ FileManager.prototype = {
       }
     }
 
+    if(saveTo == 'browserStorage') {
+      // call persist storage if it exists
+      if(typeof persistStorage != 'undefined') {
+        Promise.resolve(persistStorage()).catch(function(error) {
+          console.warn('Unable to request persistent browser storage', error);
+        });
+      }
+
+      var _this = this;
+      return g_app.doc.saveToBrowserStorage({filename: filename }, function(result) {
+        if(result.success) {
+          _this.filename = filename;
+          _this.saveTo = saveTo;
+          _this.setIsNew(false);
+          _this.clearBrowserStorageError();
+        }
+
+        if(typeof callback !== 'undefined') {
+          callback(result);
+        }
+      });
+    }
 
 
     this.filename = filename;
     this.saveTo = saveTo;
     this.setIsNew(false);
-
-
-    if(this.saveTo == 'browserStorage') {
-      // call persist storage if it exists
-      if(typeof persistStorage != 'undefined') {
-        persistStorage();
-      }
-    
-      g_app.doc.saveToBrowserStorage({filename: filename });      
-
-      if(typeof callback !== 'undefined') {
-        callback({ success: true });
-      }
-      return;
-    }
-
 
     if(this.saveTo == 'googleDrive') {
       var _this = this;
@@ -1315,7 +1387,7 @@ FileManager.prototype = {
       var fileId = this.filesToDelete[this.filesDeleted].id;
 
       var _this = this;
-      localforage.removeItem(fileId, function() {
+      BrowserStorage.removeItem(fileId, function() {
         _this.filesDeleted++;
         _this.deleteBrowserStorageFiles(callback);
       });
@@ -1332,9 +1404,9 @@ FileManager.prototype = {
       _this.filesToDelete = files;
       _this.filesDeleted = 0;
       _this.deleteBrowserStorageFiles(function() {
-        localforage.removeItem(projectId, function() {
-          localforage.removeItem(projectId + '-thumbnail', function() {
-            localforage.getItem('projects', function(err, projects) {
+        BrowserStorage.removeItem(projectId, function() {
+          BrowserStorage.removeItem(projectId + '-thumbnail', function() {
+            BrowserStorage.getItem('projects', function(err, projects) {
 
               var projectList = [];
               var newProjectList = [];
@@ -1348,7 +1420,7 @@ FileManager.prototype = {
                 }
               }
 
-              localforage.setItem('projects', newProjectList, function() {
+              BrowserStorage.setItem('projects', newProjectList, function() {
                 callback();
               });
             });
@@ -1456,27 +1528,37 @@ FileManager.prototype = {
     var type = 'project';    
     var owner = args.owner;
     var repository = args.repository;
-    // get the projects..
     var _this = this;
-
-    localforage.getItem('projects', function(err, projects) {
+    var promise = BrowserStorage.getItem('projects').then(function(projects) {
+      if(projects === null || typeof projects == 'undefined' || typeof projects.length == 'undefined') {
+        projects = [];
+      }
+      var projectFound = false;
       // does project already exist?
       for(var i = 0; i < projects.length; i++) {
         if(projects[i].name == name && projects[i].type == type) {
           // found it
           projects[i].githubRepository = repository;
           projects[i].githubOwner = owner;
+          projectFound = true;
           break;
         }
       }
-      localforage.setItem('projects', projects, function(err) {
-        if(typeof callback !== 'undefined') {
-          callback();
-        }
+      if(!projectFound) {
+        throw new Error('The local project could not be found.');
+      }
+      return BrowserStorage.setItem('projects', projects).then(function() {
+        return { success: true };
       });
-
+    }).catch(function(error) {
+      _this.showBrowserStorageError('Saving repository details', error);
+      return { success: false, error: error };
     });
 
+    if(typeof callback !== 'undefined') {
+      promise.then(callback);
+    }
+    return promise;
   },
 
   updateFileSHA: function(repositoryId, treeFiles, files, callback) {
@@ -1484,8 +1566,16 @@ FileManager.prototype = {
     var _this = this;
     // nned to find the project id 
     this.getProjectId({ name: projectName }, function(result) {
+      if(!result.success) {
+        callback({ success: false, error: result.error || new Error('Project not found.') });
+        return;
+      }
       var projectId = result.projectId;
       _this.getProjectFiles({projectId: projectId }, function(result) {
+        if(!result.success) {
+          callback(result);
+          return;
+        }
         var files = result.files;
 
         for(var i = 0; i < treeFiles.length; i++) {
@@ -1499,8 +1589,12 @@ FileManager.prototype = {
           }
         }
 
-        localforage.setItem(projectId, files, function(err) {
-          callback();
+        BrowserStorage.commitVersioned(projectId, files).then(function(commit) {
+          BrowserStorage.cleanupPreviousVersion(commit);
+          callback({ success: true });
+        }).catch(function(error) {
+          _this.showBrowserStorageError('Saving repository file status', error);
+          callback({ success: false, error: error });
         });
 
 
@@ -1516,6 +1610,10 @@ FileManager.prototype = {
 
     // get the list of projects to make sure name is unique
     g_app.fileManager.getProjectList({ type: 'project' }, function(result) {
+      if(!result.success) {
+        callback({ success: false, error: result.error });
+        return;
+      }
       var projects = result.projects;
       var nameFound = true;
       var newName = projectName;
@@ -1531,154 +1629,181 @@ FileManager.prototype = {
           }
         }
       }
-      callback(projectName);
+      callback({ success: true, name: newName });
     });
   },
 
 
-  // this just saves the project record in the list of all projects...
+  mergeProjectMetadata: function(projects, projectData) {
+    var projectList = [];
+    if(projects !== null && typeof projects != 'undefined' && typeof projects.length != 'undefined') {
+      projectList = projects.slice(0);
+    }
+
+    var projectIndex = false;
+    for(var i = 0; i < projectList.length; i++) {
+      if(projectList[i].id == projectData.id) {
+        projectIndex = i;
+        break;
+      }
+    }
+
+    if(projectIndex === false) {
+      projectList.push(projectData);
+    } else {
+      projectList[projectIndex] = projectData;
+    }
+    return projectList;
+  },
+
+  prepareProjectSave: function(args) {
+    return BrowserStorage.getItem('projects').then(function(projects) {
+      var projectList = [];
+      if(projects !== null && typeof projects != 'undefined' && typeof projects.length != 'undefined') {
+        projectList = projects;
+      }
+
+      var type = typeof args.type == 'undefined' ? 'project' : args.type;
+      var existingProject = null;
+      for(var i = 0; i < projectList.length; i++) {
+        if(projectList[i].name == args.name && projectList[i].type == type) {
+          existingProject = projectList[i];
+          break;
+        }
+      }
+
+      var projectId = existingProject ? existingProject.id : false;
+      if(!projectId && args.projectId) {
+        var preferredIdIsUnused = true;
+        for(var j = 0; j < projectList.length; j++) {
+          if(projectList[j].id == args.projectId) {
+            preferredIdIsUnused = false;
+            break;
+          }
+        }
+        if(preferredIdIsUnused) {
+          projectId = args.projectId;
+        }
+      }
+      if(!projectId) {
+        projectId = g_app.getGuid();
+      }
+
+      var projectData = {};
+      if(existingProject) {
+        for(var key in existingProject) {
+          if(existingProject.hasOwnProperty(key)) {
+            projectData[key] = existingProject[key];
+          }
+        }
+      }
+
+      projectData.id = projectId;
+      projectData.name = args.name;
+      projectData.type = type;
+      projectData.lastModified = Date.now();
+      projectData.projectNavVisible = typeof args.projectNavVisible == 'undefined' ? false : args.projectNavVisible;
+
+      if(typeof args.currentPath != 'undefined' && args.currentPath !== false) {
+        projectData.currentPath = args.currentPath;
+      }
+      if(typeof args.owner != 'undefined' && typeof args.repository != 'undefined') {
+        projectData.githubOwner = args.owner;
+        projectData.githubRepository = args.repository;
+      }
+
+      return {
+        projectData: projectData,
+        projectId: projectId,
+        thumbnailData: typeof args.thumbnailData == 'undefined' ? null : args.thumbnailData
+      };
+    });
+  },
+
+  writeProjectMetadata: function(saveDetails) {
+    var _this = this;
+    return BrowserStorage.getItem('projects').then(function(projects) {
+      var projectList = _this.mergeProjectMetadata(projects, saveDetails.projectData);
+      return BrowserStorage.setItem(saveDetails.projectId + '-thumbnail', saveDetails.thumbnailData).then(function() {
+        return BrowserStorage.setItem('projects', projectList);
+      });
+    });
+  },
+
+  cleanupCommittedProjectSave: function(saveDetails) {
+    var cleanupKeys = (saveDetails.staleFileIds || []).slice(0);
+    if(saveDetails.previousVersionKey &&
+      saveDetails.previousVersionKey != saveDetails.commitKey) {
+      cleanupKeys.push(saveDetails.previousVersionKey);
+    }
+
+    var cleanup = Promise.resolve();
+    for(var i = 0; i < cleanupKeys.length; i++) {
+      (function(key) {
+        cleanup = cleanup.then(function() {
+          return BrowserStorage.removeItem(key);
+        });
+      })(cleanupKeys[i]);
+    }
+    return cleanup;
+  },
+
+  recoverPendingProjectSave: function() {
+    var _this = this;
+    return BrowserStorage.getItem(BrowserStorage.PROJECT_SAVE_JOURNAL_KEY).then(function(journal) {
+      if(!journal || !journal.projectId || !journal.commitKey) {
+        return { recovered: false };
+      }
+
+      return BrowserStorage.getItem(journal.projectId).then(function(pointer) {
+        var commitIsActive = BrowserStorage.isVersionPointer(pointer) &&
+          pointer.activeVersion == journal.commitKey;
+
+        if(commitIsActive) {
+          return _this.writeProjectMetadata(journal).then(function() {
+            return _this.cleanupCommittedProjectSave(journal);
+          }).then(function() {
+            return BrowserStorage.removeItem(BrowserStorage.PROJECT_SAVE_JOURNAL_KEY);
+          }).then(function() {
+            return { recovered: true, projectId: journal.projectId };
+          });
+        }
+
+        var staleKeys = journal.stagedFileIds || [];
+        staleKeys = staleKeys.concat([journal.commitKey]);
+        var cleanup = Promise.resolve();
+        for(var i = 0; i < staleKeys.length; i++) {
+          (function(key) {
+            cleanup = cleanup.then(function() {
+              return BrowserStorage.removeItem(key).catch(function() {});
+            });
+          })(staleKeys[i]);
+        }
+
+        return cleanup.then(function() {
+          return BrowserStorage.removeItem(BrowserStorage.PROJECT_SAVE_JOURNAL_KEY);
+        }).then(function() {
+          return { recovered: false, rolledBack: true };
+        });
+      });
+    });
+  },
+
+  // Save project-list metadata with the same error contract as file writes.
   saveProject: function(args, callback) {
     var _this = this;
-
-    // the project name
-    var name = args.name;
-    var type = 'project';    
-    if(typeof args.type != 'undefined') {
-      type = args.type;
-    }
-
-    // the current path open in the editor
-    var currentPath = false;
-    if(typeof args.currentPath != 'undefined') {
-      currentPath = args.currentPath
-    }
-
-    var repository = false;
-    var owner = false;
-    if(typeof args.owner != 'undefined' && typeof args.repository != 'undefined') {
-      owner = args.owner;
-      repository = args.repository;
-    }
-
-    var thumbnailData = null;
-    if(typeof args.thumbnailData != 'undefined') {
-      thumbnailData = args.thumbnailData;
-    }
-
-    var projectNavVisible = false;
-    if(typeof args.projectNavVisible != 'undefined') {
-      projectNavVisible = args.projectNavVisible;
-    }
-
-    var date = new Date();
-    var lastModified = date.getTime();
-
-
-    try {
-
-      // get the list of projects..
-      localforage.getItem('projects', function(err, projects) {
-
-        var projectList = [];
-        if(projects !== 'undefined' && projects !== null && typeof projects.length !== 'undefined') {
-          projectList = projects;
-        }
-
-        var projectIndex = false;
-
-        // does project already exist?
-        for(var i = 0; i < projectList.length; i++) {      
-          if(projectList[i].name == name && projectList[i].type == type) {
-            projectIndex = i;
-            break;    
-          }
-        }
-
-        if(projectIndex !== false) {
-          // ok project already exists..
-          var projectId = projectList[projectIndex].id;
-
-          // update the project information
-          projectList[projectIndex].lastModified = lastModified;
-          projectList[projectIndex].currentPath = currentPath;         
-          projectList[projectIndex].projectNavVisible = projectNavVisible;
-          
-          if(repository !== false) {
-            projects[projectIndex].githubRepository = repository;
-            projects[projectIndex].githubOwner = owner;
-          }
-
-          // save the updated information in the project list
-          localforage.setItem('projects', projectList, function(err) {
-            // set the thumbnail for the project
-            localforage.setItem(projectId + '-thumbnail', thumbnailData, function(err) {
-              callback({ success: true, projectId: projectId });
-            });
-          });
-          return;
-
-
-          // ok, need to delete first (stopgap.....)
-          _this.deleteBrowserStorageProject({ projectId: id }, function(err) {
-            localforage.setItem('projects', projectList, function(err) {
-              localforage.setItem(id + '-thumbnail', thumbnailData, function(err) {
-                callback({ success: true, projectId: id });
-              });
-            });
-          });
-        } else {
-          // project does not already exist
-
-          if(projectIndex === false) {
-
-
-            // make a new project id
-            var id = '';
-
-            // make sure the id is unique
-            var idIsUnique = false;
-            while(!idIsUnique) {
-              id = g_app.getGuid();
-              idIsUnique = true;
-              for(var i = 0; i < projectList.length; i++) {      
-                if(projectList[i].id === id) {
-                  idIsUnique = false;
-                  break;
-                }
-              }
-            }
-    
-            // its a new project
-            var projectData = {
-              id: id,
-              name: name,
-              type: type,
-              lastModified: lastModified,
-              projectNavVisible: projectNavVisible
-            };
-
-            if(repository !== false) {
-              projectData['githubRepository'] = repository;
-              projectData['githubOwner'] = owner;
-            }
-
-            if(currentPath !== false) {
-              projectData.currentPath = currentPath;
-            }
-            projectList.push(projectData);
-          }
-
-          localforage.setItem('projects', projectList, function(err) {
-            localforage.setItem(id + '-thumbnail', thumbnailData, function(err) {
-              callback({ success: true, projectId: id });
-            });
-          });
-        }
+    var promise = this.prepareProjectSave(args).then(function(saveDetails) {
+      return _this.writeProjectMetadata(saveDetails).then(function() {
+        return { success: true, projectId: saveDetails.projectId };
       });
-    } catch(err) {
-      alert('uh oh, an error occurred while trying to save the project information');
-      console.log(err);
+    }).catch(function(error) {
+      return { success: false, error: error };
+    });
+
+    if(typeof callback != 'undefined') {
+      promise.then(callback);
     }
+    return promise;
   },
 
 
@@ -1732,7 +1857,7 @@ FileManager.prototype = {
     var project = this.projectList[this.projectThumbnailsLoaded];
     var projectId = project.id;
 
-    localforage.getItem(projectId + '-thumbnail', function(err, result) {
+    BrowserStorage.getItem(projectId + '-thumbnail', function(err, result) {
       if(_this.projectThumbnailsLoaded < _this.projectList.length) {
         _this.projectList[_this.projectThumbnailsLoaded].thumbnailData = result;
       }
@@ -1756,7 +1881,9 @@ FileManager.prototype = {
 
     var _this = this;
 
-    localforage.getItem('projects', function(err, projects) {
+    this.recoverPendingProjectSave().then(function() {
+      return BrowserStorage.getItem('projects');
+    }).then(function(projects) {
 
       _this.projectList = [];
       if(projects !== 'undefined' && projects != null && typeof projects.length !== 'undefined') {
@@ -1774,7 +1901,9 @@ FileManager.prototype = {
       } else {
          callback({ success: true, projects: _this.projectList });
       }
-
+    }).catch(function(error) {
+      _this.showBrowserStorageError('Recovering an interrupted save', error);
+      callback({ success: false, error: error, projects: [] });
     });
 
   },
@@ -1789,6 +1918,10 @@ FileManager.prototype = {
     }
 
     this.getProjectList({ type: type }, function(result) {
+      if(!result.success) {
+        callback({ success: false, error: result.error });
+        return;
+      }
 
       var projects = result.projects;
 
@@ -1815,104 +1948,62 @@ FileManager.prototype = {
       // should make sure doesn't exist??
     }
 
-    localforage.setItem(fileId, file.content, function(err) {
-      callback({ success: true, fileId: fileId });
+    var promise = BrowserStorage.setItem(fileId, file.content).then(function() {
+      return { success: true, fileId: fileId };
+    }).catch(function(error) {
+      return { success: false, error: error, fileId: fileId };
     });
-  },
 
-  /*
-  saveFileToProject: function(args, callback) {
-    var projectId = args.projectId;
-    var file = args.file;
-
-    //var name = args.name;
-    var path = file.path;
-    var date = new Date();
-    var lastModified = date.getTime();
-    var sha = '';
-    if(typeof file.sha != 'undefined') {
-      sha = file.sha;
+    if(typeof callback != 'undefined') {
+      promise.then(callback);
     }
-
-
-    var _this = this;
-    // get the project directory listing
-    localforage.getItem(projectId, function(err, result) {
-      var projectFiles = [];
-
-      if(typeof result != 'undefined' && result !== null) {
-        projectFiles = result;
-      }
-
-
-      var fileRecord = {
-        path: path,
-        lastModified: lastModified,
-        sha: sha
-      };
-
-
-      // look for the files
-      var fileIndex = false;
-
-      for(var i = 0; i < projectFiles.length; i++) {
-        if(projectFiles[i].path == file.path) {
-          fileRecord = projectFiles[i];
-          fileIndex = i;
-          break;
-        } 
-      }
-
-
-      var fileId = '';
-
-      if(fileIndex === false) {
-
-        fileId = g_app.getGuid();
-
-        fileRecord.id = fileId;
-        projectFiles.push(fileRecord);
-      } else {
-        fileId = fileRecord.id;
-      }
-
-      localforage.setItem(projectId, projectFiles, function(err) {
-        localforage.setItem(fileId, file.content, function(err) {
-          callback({ success: true });
-        });
-      });
-    });
+    return promise;
   },
-*/
-
 
   getBrowserFile: function(args, callback) {
     var fileId = args.fileId;
 
-    localforage.getItem(fileId, function(err, result) {
-      callback({ success: true, content: result });
+    var promise = BrowserStorage.getItem(fileId).then(function(result) {
+      if(result === null || typeof result == 'undefined') {
+        throw new Error('A saved project file is missing.');
+      }
+      return { success: true, content: result };
+    }).catch(function(error) {
+      return { success: false, error: error };
     });
+
+    if(typeof callback != 'undefined') {
+      promise.then(callback);
+    }
+    return promise;
   },
 
   // get the list of files in the project..
   getProjectFiles: function(args, callback) {
     var projectId = args.projectId;
 
-    try {
-
-      localforage.getItem(projectId, function(err, result) {
-        var projectFiles = [];
-
-        if(typeof result != 'undefined' && result !== null) {
-          projectFiles = result;
+    var promise = BrowserStorage.getVersionedRecord(projectId).then(function(record) {
+      var result = record.value;
+      var projectFiles = [];
+      if(typeof result != 'undefined' && result !== null) {
+        if(typeof result.length == 'undefined') {
+          throw new Error('The saved project manifest is invalid.');
         }
-        callback({ files: projectFiles });
-      });
-    } catch(err) {
-      alert("coudn't get list of current project files");
-      console.log(err);
-    }
+        projectFiles = result;
+      }
+      return {
+        success: true,
+        files: projectFiles,
+        versionKey: record.versionKey
+      };
+    }).catch(function(error) {
+      return { success: false, error: error, files: [] };
+    });
 
+    if(typeof callback != 'undefined') {
+      promise.then(callback);
+    }
+    return promise;
   },
 
 
@@ -1920,9 +2011,8 @@ FileManager.prototype = {
     var projectId = args.projectId;
     var name = args.name;
 
-    localforage.getItem('projects', function(err, projects) {
-
-      var projectList = [];
+    var _this = this;
+    var promise = BrowserStorage.getItem('projects').then(function(projects) {
       if(projects !== 'undefined' && projects != null && typeof projects.length !== 'undefined') {
         for(var i = 0; i < projects.length; i++) {
           if(projects[i].id == projectId) {
@@ -1931,10 +2021,18 @@ FileManager.prototype = {
         }
       }
 
-      localforage.setItem('projects', projects, function(err, projects) {
-        callback({ success: true  });
+      return BrowserStorage.setItem('projects', projects).then(function() {
+        return { success: true };
       });
+    }).catch(function(error) {
+      _this.showBrowserStorageError('Renaming project', error);
+      return { success: false, error: error };
     });
+
+    if(typeof callback != 'undefined') {
+      promise.then(callback);
+    }
+    return promise;
   },
 
 

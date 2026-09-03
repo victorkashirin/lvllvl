@@ -74,6 +74,21 @@ The current verifier in `scripts/verify-build.mjs` checks only a small fixed set
 
 ### P0.2 Save operations can silently lose data
 
+**Status: Fixed on 2026-09-04.** Browser persistence now goes through one
+Promise-based error boundary. Project files are written as immutable blobs and
+published through a version pointer only after every blob succeeds; a save
+journal completes committed metadata after reload or rolls back an interrupted
+staging attempt. Documents are marked clean only after the project manifest,
+thumbnail, and project catalog all commit, with per-edit revisions preserving
+changes made during an in-flight save. Autosaves use the same versioned commit
+scheme, Save As no longer deletes the previous project first, and failures leave
+work dirty while showing a persistent message with retry and local-backup
+guidance. Revision snapshots are captured before asynchronous work, recovery
+cleans superseded storage generations, and Save As and GitHub callers propagate
+their local persistence failures. Browser tests inject file, manifest, catalog,
+cleanup, lookup, and autosave failures and cover recovery, retry, and in-flight
+edit behavior.
+
 Important persistence callbacks discard their error arguments:
 
 - `src/js/file/fileManager.js` writes file content with `localforage.setItem(...)` and calls back with `{ success: true }` regardless of the write result.

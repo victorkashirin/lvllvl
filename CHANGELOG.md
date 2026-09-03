@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+## 0.496.4 - 2026-09-04
+
+### Fixed
+
+- Make browser project saves and autosaves propagate storage failures, retain
+  dirty in-memory edits across every in-flight timing window, publish immutable
+  versioned commits, and recover interrupted metadata or cleanup through a save
+  journal instead of reporting success or deleting the previous Save As copy
+  prematurely. Save As and GitHub workflows now also stop when their local
+  persistence prerequisites fail.
+
 ## 0.496.3 - 2026-09-04
 
 ### Changed

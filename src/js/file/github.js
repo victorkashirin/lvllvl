@@ -870,7 +870,13 @@ GitHubUI.prototype = {
 
             // record changes in firebase
             _this.recordRepository(args, function(response) {
-              _this.repositorySaveLocalVersion(args, function() {
+              _this.repositorySaveLocalVersion(args, function(result) {
+                if(!result.success) {
+                  _this.repoOkButton.setEnabled(true);
+                  _this.repoCloseButton.setEnabled(true);
+                  $('#githubRepositoryProgress').hide();
+                  return;
+                }
                 _this.saveToRepository(args);
               });
             });
@@ -916,6 +922,12 @@ GitHubUI.prototype = {
 
     // get the list of projects to make sure name is unique
     g_app.fileManager.getProjectList({ type: 'project', thumbnails: false }, function(result) {
+      if(!result.success) {
+        if(typeof callback != 'undefined') {
+          callback(result);
+        }
+        return;
+      }
       var projects = result.projects;
 
       if(g_app.fileManager.getIsNew()) {
@@ -939,11 +951,17 @@ GitHubUI.prototype = {
 
 
       // save the project to browser storage
-      g_app.doc.saveToBrowserStorage({ filename: projectName }, function() {
+      g_app.doc.saveToBrowserStorage({ filename: projectName }, function(result) {
+        if(!result.success) {
+          if(typeof callback != 'undefined') {
+            callback(result);
+          }
+          return;
+        }
         g_app.fileManager.setIsNew(false);
         g_app.fileManager.setProjectName(projectName);
         if(typeof callback != 'undefined') {
-          callback();
+          callback(result);
         }
       });
     });    
@@ -965,8 +983,13 @@ GitHubUI.prototype = {
     var _this = this;
 
     // if the user wants a local version, save it..
-    this.repositorySaveLocalVersion(args, function() {
-
+    this.repositorySaveLocalVersion(args, function(result) {
+      if(!result.success) {
+        _this.repoOkButton.setEnabled(true);
+        _this.repoCloseButton.setEnabled(true);
+        $('#githubRepositoryProgress').hide();
+        return;
+      }
 
       // ok, now create the repository
       _this.githubClient.setRepositoryFolder('');
@@ -1005,7 +1028,13 @@ GitHubUI.prototype = {
           _this.recordRepository(args, function(response) {
             // save the repository details to the browser storage project
             console.log("SAVE PROJECT REPOSITORY DETAUILSSSS!!!!!!!!!!!!!!!!!!!");
-            g_app.fileManager.saveProjectRepositoryDetails({ owner: args.owner, repository: args.repository }, function() {              
+            g_app.fileManager.saveProjectRepositoryDetails({ owner: args.owner, repository: args.repository }, function(result) {
+              if(!result.success) {
+                _this.repoOkButton.setEnabled(true);
+                _this.repoCloseButton.setEnabled(true);
+                $('#githubRepositoryProgress').hide();
+                return;
+              }
               // push the changes
               _this.saveToRepository(args);
             });
@@ -1207,69 +1236,73 @@ GitHubUI.prototype = {
         UI.closeDialog();
         _this.setRepositoryDetails(args.owner, args.repository);
 
+        var finishOpen = function(result) {
+          if(result && result.success === false) {
+            if(typeof callback != 'undefined') {
+              callback(result);
+            }
+            return;
+          }
+
+          g_app.projectNavigator.refreshTree();
+
+          if(view === false) {
+            // get the first screen
+            var dir = g_app.doc.dir('/screens');
+
+            if(dir && dir.length > 0) {
+              var firstScreen = dir[0].name;
+              if(view === false) {
+                view = '/screens/' + firstScreen;
+              }
+
+              view = view.trim();
+              if(view.length > 0 && view[0] != '/') {
+                view = '/' + view;
+              }
+
+              var record = g_app.doc.getDocRecord(view);
+              if(!record) {
+                // uh oh, the view doesn't exist...
+                view = false;
+              }
+            }
+          }
+
+          if(view != false) {
+            g_app.projectNavigator.showDocRecord(view);
+          } else {
+            g_app.setMode('none');
+          }
+
+          if(typeof callback != 'undefined') {
+            callback({ success: true });
+          }
+        };
+
         if(createLocalProject) {
           console.log("CREATE LOCAL PROJECT!!!!!!!!!");
 
-          g_app.fileManager.getUniqueProjectName(repository, function(projectName) {
-            // need to create a local project..
-            var fileManager = g_app.fileManager;
+          g_app.fileManager.getUniqueProjectName(repository, function(nameResult) {
+            if(!nameResult.success) {
+              finishOpen(nameResult);
+              return;
+            }
 
-            /*
-            var projectArgs = {
-              name: projectName,
-              owner: args.owner, 
-              repository: args.repository
-            };
-            */
-
+            var projectName = nameResult.name;
             var projectArgs = {
               filename: projectName,
-              owner: args.owner, 
+              owner: args.owner,
               repository: args.repository
             };
 
-
             console.log("CREATE LOCAL PROJECT WITH NAME " + projectName);
-            g_app.doc.saveToBrowserStorage(projectArgs, function() {
-
+            g_app.doc.saveToBrowserStorage(projectArgs, function(saveResult) {
+              finishOpen(saveResult);
             });
-
           });
-        }
-
-        g_app.projectNavigator.refreshTree();
-
-        if(view === false) {
-          // get the first screen
-          var dir = g_app.doc.dir('/screens');
-
-          if(dir && dir.length > 0) {
-            var firstScreen = dir[0].name;
-            if(view === false) {
-              view = '/screens/' + firstScreen;
-            }
-
-            view = view.trim();
-            if(view.length > 0 && view[0] != '/') {
-              view = '/' + view;
-            }
-        
-            var record = g_app.doc.getDocRecord(view);
-            if(!record) {
-              // uh oh, the view doesn't exist...
-              view = false;
-            }
-          }
-        }
-
-        if(view != false) {
-          g_app.projectNavigator.showDocRecord(view);
         } else {
-          g_app.setMode('none');
-        }
-        
-        if(typeof callback != 'undefined') {
-          callback({ success: true });
+          finishOpen({ success: true });
         }
       }
 

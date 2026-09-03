@@ -874,9 +874,17 @@ var GitHubClient = function() {
 
         // set all the files to get..
         treeFiles = response.data.tree;
-        _this.updateBrowserFiles(treeFiles, files, function() {
+        _this.updateBrowserFiles(treeFiles, files, function(updateResult) {
           if(callback) {
-            callback(response);
+            if(!updateResult.success) {
+              callback({
+                error: true,
+                success: false,
+                message: updateResult.error ? updateResult.error.message : 'Unable to save repository file status.'
+              });
+            } else {
+              callback(response);
+            }
           }      
         });
 
@@ -893,8 +901,10 @@ var GitHubClient = function() {
 
 
   this.updateBrowserFiles = function(treeFiles, files, callback) {
-    // need to update in memory doc files
+    // Apply SHA changes to the in-memory document only after the browser
+    // manifest accepts them, so a failed local write remains retryable.
     var doc = g_app.doc;
+    var updatedRecords = [];
     for(var i = 0; i < treeFiles.length; i++) {
       var path = treeFiles[i].path;
       if(path.length > 0 && path[0] != '/') {
@@ -930,7 +940,7 @@ var GitHubClient = function() {
       var record = doc.getDocRecord(path);
 
       if(record) {
-        record.sha = sha;
+        updatedRecords.push({ record: record, sha: sha });
       } else {
         console.error('couldnt find: ' + path);
       }
@@ -938,8 +948,13 @@ var GitHubClient = function() {
 
     // update browser saved files
     var repositoryId = repositoryOwner + '/' + repositoryName;
-    g_app.fileManager.updateFileSHA(repositoryId, treeFiles, files, function() {
-      callback();
+    g_app.fileManager.updateFileSHA(repositoryId, treeFiles, files, function(result) {
+      if(result.success) {
+        for(var i = 0; i < updatedRecords.length; i++) {
+          updatedRecords[i].record.sha = updatedRecords[i].sha;
+        }
+      }
+      callback(result);
     });
 
     return;
