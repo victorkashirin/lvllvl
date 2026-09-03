@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.496.1 - 2026-09-03
+
 ### Changed
 
 - Adopt the MIT License for contributions and material the current maintainers
