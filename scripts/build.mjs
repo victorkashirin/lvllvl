@@ -9,6 +9,7 @@ import {
   assetDirectories,
   buildDirectory,
   mainBundleExcludes,
+  runtimeAssetFiles,
   sourceDirectory,
   variableReplacements,
   version,
@@ -261,6 +262,14 @@ async function copyAssets() {
   }
 }
 
+async function copyRuntimeAssets() {
+  for (const relativePath of runtimeAssetFiles) {
+    const destination = path.join(buildRoot, relativePath);
+    await mkdir(path.dirname(destination), { recursive: true });
+    await cp(path.join(sourceRoot, relativePath), destination, { force: true });
+  }
+}
+
 async function cleanBuildDirectory() {
   const expectedBuildRoot = path.join(projectRoot, "dist");
   if (buildRoot !== expectedBuildRoot || path.basename(buildRoot) !== "dist") {
@@ -282,6 +291,7 @@ async function build() {
   }
 
   await copyAssets();
+  await copyRuntimeAssets();
 
   const indexHtml = await readFile(path.join(sourceRoot, "index.html"), "utf8");
   await buildHtmlCache();
@@ -313,14 +323,6 @@ async function build() {
   await cp(path.join(sourceRoot, "manifest.json"), path.join(buildRoot, "manifest.json"), {
     force: true,
   });
-  for (const theme of ["chrome", "tomorrow_night"]) {
-    const relativePath = `lib/ace/src/theme-${theme}.js`;
-    await mkdir(path.dirname(path.join(buildRoot, relativePath)), { recursive: true });
-    await cp(path.join(sourceRoot, relativePath), path.join(buildRoot, relativePath), {
-      force: true,
-    });
-  }
-
   await writeIndexes();
   await patchC64Runtime();
 

@@ -756,7 +756,7 @@ AssemblerEditor.prototype = {
 
     if(this.exomizerWorker == null) {
       var _this = this;
-      this.exomizerWorker = new Worker("lib/exomizer/exomizerWorker.js");
+      this.exomizerWorker = new Worker("c64/exomizer/exomizerWorker.js");
 
       this.exomizerWorker.onmessage = function(e)  {
         if(e.data.success) {
@@ -1175,4 +1175,3 @@ message
   !scr  "                  blah blah                       "
   
 */
-  
