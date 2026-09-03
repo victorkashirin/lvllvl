@@ -1,0 +1,8 @@
+- Performance optimisation
+- SVG export from text mode / petscii
+- fix animation panel (compare to deployed version 489)
+- custom keyboard shortcuts
+- fix browser errors
+- shift + swipe to move around
+- filter/search tilesets and palettes
+- favorites in tilesets and palettes

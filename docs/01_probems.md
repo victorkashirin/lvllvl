@@ -281,9 +281,11 @@ intentional local modifications or artifacts that cannot reasonably be package-m
 each with provenance, license, checksum, owner, review date, and compatibility coverage;
 no exemption remains solely because a version was never investigated.
 
-## P2: improve maintenance and operations
+## P2.1: improve maintenance
 
 - Add static analysis incrementally: formatting, lint rules that prevent new globals and unsafe HTML sinks, and type checking at module boundaries. Avoid formatting the whole legacy tree in the same changes that alter behavior.
+
+## P2.2: improve operations
 - Add release diagnostics: source mapping, build metadata, actionable client-side error reporting, and checks that the deployed version matches the package version.
 - Expand the README with architecture, data-storage behavior, browser support, backend setup, and troubleshooting.
 - Add `CONTRIBUTING.md` and `SECURITY.md`, including a private vulnerability-reporting route and the validation commands contributors should run.
