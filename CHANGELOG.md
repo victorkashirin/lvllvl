@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.496.9 - 2026-09-04
+
 ### Fixed
 
 - Keep the web app manifest, install scope, and start URL relative so deployments

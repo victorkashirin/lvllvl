@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
-  "releaseVersion": "0.496.8",
+  "releaseVersion": "0.496.9",
   "artifacts": {
     "index.html": {
       "bytes": 2172,
-      "sha256": "1fad5ec870eb5538b53fdf731cd7a06ebdabcfcfb4e06ccb50f06705f11b6220"
+      "sha256": "e36b87df59d70836b642103ea054c710842d5b182ee2c428512a18d09a1bc5eb"
     },
     "c64/index.html": {
       "bytes": 2189,
-      "sha256": "eaa31e6090d89d79a5fc088113fcb4426c8d923ed109b6c73ce64dcd0ca3b755"
+      "sha256": "dea679bb95aa548b5c5fbcf8dfb997231b138a6546ae6311b8d967b5c47adb93"
     },
     "css/style.css": {
       "bytes": 135310,
@@ -28,15 +28,15 @@
     },
     "js/main.js": {
       "bytes": 3276473,
-      "sha256": "d6462c619592f933e15fd11e497a9d8a112a920fb774fbb8ae37c571b7ce2561"
+      "sha256": "53db382835aa6d9319ebc46faa880d9668fc5a5ab4e21756eaf8a1a0fd59ed37"
     },
     "js/main.js.map": {
       "bytes": 10449690,
-      "sha256": "fb702ef975ccd2d43c07e4be0e72c8889c1dc059f05f241338d4033193bc9dbb"
+      "sha256": "f9db990f518ac37c8bdcc91c9cf06995d351675c04d9a5c50964dfadf79a7fd4"
     },
     "js/bootstrap.mjs": {
       "bytes": 897,
-      "sha256": "2628b8f62240505472c6d7d2619e9509e35dff316d5d15968ccf15cef4b3aba9"
+      "sha256": "ea1797ba1cc1bf65f4122363e3f27f2c2f5f426b227634d89c4207974b8f4a66"
     },
     "js/modules/featureRegistry.mjs": {
       "bytes": 3139,
