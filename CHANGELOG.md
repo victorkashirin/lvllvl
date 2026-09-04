@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+## 0.497.0 - 2026-09-04
+
+### Added
+
+- Export text-mode, C64 standard, and C64 ECM graphics as SVG geometry generated
+  from their binary tile pixels, including cell colors, backgrounds, flips, and
+  rotations.
+
+### Fixed
+
+- Size SVG exports from the selected layer instead of assuming a 40 by 25 grid,
+  preserve transparent backgrounds, and use the standard SVG MIME type.
+
 ## 0.496.10 - 2026-09-04
 
 ### Added

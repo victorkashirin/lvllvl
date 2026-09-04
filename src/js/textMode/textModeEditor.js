@@ -1626,11 +1626,7 @@ TextModeEditor.prototype = {
     }
 
 
-    if(screenMode == 'vector') {
-      UI('export-svg').setEnabled(true);
-    } else {
-      UI('export-svg').setEnabled(false);
-    }    
+    UI('export-svg').setEnabled(this.isSVGExportSupported(screenMode));
 
     this.tileSetManager.tileSetUpdated();
     this.syncColorPickers();
@@ -1653,11 +1649,7 @@ TextModeEditor.prototype = {
   },
 
   setScreenMode: function(screenMode) {
-    if(screenMode == 'vector') {
-      UI('export-svg').setEnabled(true);
-    } else {
-      UI('export-svg').setEnabled(false);
-    }
+    UI('export-svg').setEnabled(this.isSVGExportSupported(screenMode));
 
 
     var layer = this.layers.getSelectedLayerObject();
@@ -1671,6 +1663,14 @@ TextModeEditor.prototype = {
       _this.setInterfaceScreenMode(screenMode);
       _this.layers.updateLayerLabel(layer.getId());
     });
+  },
+
+
+  isSVGExportSupported: function(screenMode) {
+    return screenMode == TextModeEditor.Mode.VECTOR
+      || screenMode == TextModeEditor.Mode.TEXTMODE
+      || screenMode == TextModeEditor.Mode.C64STANDARD
+      || screenMode == TextModeEditor.Mode.C64ECM;
   },
 
 
