@@ -5,7 +5,7 @@ var StartPage = function() {
 
   this.renameDialog = null;
 
-  this.projects = {};
+  this.projects = Object.create(null);
   this.localProjectList = [];
   this.githubProjectList = [];
   this.googleDriveProjectList = [];
@@ -361,12 +361,25 @@ StartPage.prototype = {
 
 
   updateProjectThumbnails: function() {
+    var thumbnailElements = document.querySelectorAll(
+      '#browserStorage_projects .start-tile-image.project-open[data-id]'
+    );
 
+    for(var i = 0; i < thumbnailElements.length; i++) {
+      var projectId = thumbnailElements[i].getAttribute('data-id');
+      if(Object.prototype.hasOwnProperty.call(this.projects, projectId)) {
+        SafeHTML.setRasterBackgroundImage(
+          thumbnailElements[i],
+          this.projects[projectId].thumbnailData
+        );
+      }
+    }
   },
 
   drawProjects: function() {
     var _this = this;
     var projectsHTML = '';
+    this.projects = Object.create(null);
 
 
     var projects = [];
@@ -437,6 +450,8 @@ StartPage.prototype = {
     for(var i = 0; i < projects.length; i++) {
       var projectId = projects[i].id;
       var projectName = projects[i].name;
+      var escapedProjectId = SafeHTML.escape(projectId);
+      var escapedProjectName = SafeHTML.escape(projectName);
 
       if(projectName !== '__autosave') {
         _this.projects[projectId] = projects[i];
@@ -461,14 +476,14 @@ StartPage.prototype = {
 
           // image square
           blockHTML += '<div class="start-tile-image project-open" ';
-          blockHTML += ' data-id="' + projectId + '" ';
-          blockHTML += ' data-name="' + projectName + '" ';
+          blockHTML += ' data-id="' + escapedProjectId + '" ';
+          blockHTML += ' data-name="' + escapedProjectName + '" ';
 
           if(githubOwner && githubRepository) {
-            blockHTML += ' data-owner="' + githubOwner + '" ';
-            blockHTML += ' data-repository="' + githubRepository + '" ';
+            blockHTML += ' data-owner="' + SafeHTML.escape(githubOwner) + '" ';
+            blockHTML += ' data-repository="' + SafeHTML.escape(githubRepository) + '" ';
           }
-          blockHTML += ' style="image-rendering: pixelated; background-image: url(\'' + projects[i].thumbnailData + '\')">';
+          blockHTML += ' style="image-rendering: pixelated">';
 
           if(githubOwner && githubRepository) {
             // github image
@@ -480,7 +495,7 @@ StartPage.prototype = {
           blockHTML += '</div>';
 
           // project name
-          blockHTML += '<div class="start-tile-label project-open" data-id="' + projectId + '" data-name="' + projectName + '">';
+          blockHTML += '<div class="start-tile-label project-open" data-id="' + escapedProjectId + '" data-name="' + escapedProjectName + '">';
           
           // github icon
           if(githubOwner && githubRepository) {
@@ -488,46 +503,50 @@ StartPage.prototype = {
             blockHTML += '<img style="filter: invert(80%); margin-right: 4px; width: 14px; height: 14px; " src="icons/GitHub-Mark-64px.png"/>';
           }
 
-          blockHTML += projectName;
+          blockHTML += escapedProjectName;
           blockHTML += '</div>';
 
           if(githubOwner && githubRepository) {
-            blockHTML += '<div class="start-tile-more repository-more" data-id="' + projectId + '" data-owner="' + githubOwner + '" data-repository="' + githubRepository + '"><img src="icons/material/baseline-more_vert-24px.svg" height="16px"/></div>';
+            blockHTML += '<div class="start-tile-more repository-more" data-id="' + escapedProjectId + '" data-owner="' + SafeHTML.escape(githubOwner) + '" data-repository="' + SafeHTML.escape(githubRepository) + '"><img src="icons/material/baseline-more_vert-24px.svg" height="16px"/></div>';
           } else {
-            blockHTML += '<div class="start-tile-more project-more" data-id="' + projectId + '" data-name="' + projectName + '"><img src="icons/material/baseline-more_vert-24px.svg" height="16px"/></div>';
+            blockHTML += '<div class="start-tile-more project-more" data-id="' + escapedProjectId + '" data-name="' + escapedProjectName + '"><img src="icons/material/baseline-more_vert-24px.svg" height="16px"/></div>';
           }
           blockHTML += '</div>';
         } else if(projects[i].type == 'github') {
           var owner = projects[i].owner;
           var repository = projects[i].repository;
+          var escapedOwner = SafeHTML.escape(owner);
+          var escapedRepository = SafeHTML.escape(repository);
           blockHTML += '<div class="start-tile">';
           blockHTML += '<div class="rippleJS"></div>';
-          blockHTML += '<div class="start-tile-image repository-open" title="' + repository + '" data-owner="' + owner + '" data-repository="' + repository + '" style="text-align: center; display: flex-box">';
+          blockHTML += '<div class="start-tile-image repository-open" title="' + escapedRepository + '" data-owner="' + escapedOwner + '" data-repository="' + escapedRepository + '" style="text-align: center; display: flex-box">';
 //          blockHTML += '<img style="filter: invert(60%)" width="40" src="icons/material/baseline-cloud_circle-24px.svg">';
           blockHTML += '<img style="filter: invert(60%); width: 32px; height: 32px; " src="icons/GitHub-Mark-64px.png"/>';
 
           //GitHub-Mark-32px.png
           blockHTML += '<div class="rippleJS"></div>';
           blockHTML += '</div>';
-          blockHTML += '<div class="start-tile-label repository-open" title="' + repository + '" data-owner="' + owner + '" data-repository="' + repository + '">' + repository + '</div>';
-          blockHTML += '<div class="start-tile-more repository-more" data-id="' + projectId + '" data-owner="' + owner + '" data-repository="' + repository + '"><img src="icons/material/baseline-more_vert-24px.svg" height="16px"/></div>';
+          blockHTML += '<div class="start-tile-label repository-open" title="' + escapedRepository + '" data-owner="' + escapedOwner + '" data-repository="' + escapedRepository + '">' + escapedRepository + '</div>';
+          blockHTML += '<div class="start-tile-more repository-more" data-id="' + escapedProjectId + '" data-owner="' + escapedOwner + '" data-repository="' + escapedRepository + '"><img src="icons/material/baseline-more_vert-24px.svg" height="16px"/></div>';
           blockHTML += '</div>';
         } else if(projects[i].type == 'gdrive') {
 //          var owner = projects[i].owner;
 //          var repository = projects[i].repository;
           var name = projects[i].name;
           var id = projects[i].id;
+          var escapedName = SafeHTML.escape(name);
+          var escapedId = SafeHTML.escape(id);
           blockHTML += '<div class="start-tile">';
           blockHTML += '<div class="rippleJS"></div>';
-          blockHTML += '<div class="start-tile-image gdrive-open" data-id="' + id + '" title="' + name + '" style="text-align: center; display: flex-box">';
+          blockHTML += '<div class="start-tile-image gdrive-open" data-id="' + escapedId + '" title="' + escapedName + '" style="text-align: center; display: flex-box">';
 //          blockHTML += '<img style="filter: invert(60%)" width="40" src="icons/material/baseline-cloud_circle-24px.svg">';
           blockHTML += '<img style="filter: invert(60%); width: 32px; height: 32px; " src="icons/GoogleDriveIconMonochromatic512.png"/>';
 
           //GitHub-Mark-32px.png
           blockHTML += '<div class="rippleJS"></div>';
           blockHTML += '</div>';
-          blockHTML += '<div class="start-tile-label gdrive-open" data-id="' + id + '" title="' + name + '">' + name + '</div>';
-          blockHTML += '<div class="start-tile-more gdrive-more"  data-id="' + id + '" title="' + name + '"><img src="icons/material/baseline-more_vert-24px.svg" height="16px"/></div>';
+          blockHTML += '<div class="start-tile-label gdrive-open" data-id="' + escapedId + '" title="' + escapedName + '">' + escapedName + '</div>';
+          blockHTML += '<div class="start-tile-more gdrive-more"  data-id="' + escapedId + '" title="' + escapedName + '"><img src="icons/material/baseline-more_vert-24px.svg" height="16px"/></div>';
           blockHTML += '</div>';
 
         }
@@ -696,7 +715,10 @@ StartPage.prototype = {
 
     g_app.fileManager.getAutosaveSummary(function(result) {
       if(result.success) {
-        $('#start-continue-last .start-tile-image').css('background-image', "url('" + result.thumbnailData + "')")
+        SafeHTML.setRasterBackgroundImage(
+          document.querySelector('#start-continue-last .start-tile-image'),
+          result.thumbnailData
+        );
 
         $('#start-continue-last').show();
 

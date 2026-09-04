@@ -443,7 +443,7 @@ SidEffectsChooser.prototype = {
     var filterID = 1;
     for(var i = 1; i < this.music.doc.data.filters.length; i++) {
       filterID = i;
-      filterHTML += '<option value="' + filterID + '">' + this.music.doc.data.filters[i].name + '</option>';
+      filterHTML += '<option value="' + filterID + '">' + SafeHTML.escape(this.music.doc.data.filters[i].name) + '</option>';
       filterID += this.music.doc.data.filters[i].filtertable.length;
     }
     filterHTML += '</select>';

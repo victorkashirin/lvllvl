@@ -494,12 +494,12 @@ DrawTools.prototype = {
       
       id = id.substring('drawTool_'.length);
       var label = _this.getToolLabel(id);
-      $('#currentTool').html(label);
+      $('#currentTool').text(label);
     });
 
     $('.drawTool').on('mouseleave', function() {
       var label = _this.getToolLabel(_this.tool);
-      $('#currentTool').html(label);
+      $('#currentTool').text(label);
     });
 
     $('#switchColors').on('click', function(event) {
@@ -1139,12 +1139,12 @@ DrawTools.prototype = {
     $('#drawToolMobileSide_' + tool).addClass('drawToolMobileSideSelected');
 
     $('#walk_drawTool_' + tool).addClass('drawToolSelected');
-    $('#currentTool').html(this.toolDisplayName);
+    $('#currentTool').text(this.toolDisplayName);
 
     $('.drawPopupTool').removeClass('drawPopupToolSelected');
     $('#drawPopupTool_' + tool).addClass('drawPopupToolSelected');
-    $('#currentPopupTool').html(this.toolDisplayName);
-    $('#toolSettingsCurrentTool').html(this.toolDisplayName);
+    $('#currentPopupTool').text(this.toolDisplayName);
+    $('#toolSettingsCurrentTool').text(this.toolDisplayName);
 
     $('.currentDrawTool').html(this.getToolIconHTML(this.tool));
 

@@ -74,7 +74,7 @@ var ProjectNavigator = function() {
 
   this.newDocRecordDialog = null;
 
-  this.treeMap = {};
+  this.treeMap = Object.create(null);
 
   this.settings = {};
 
@@ -185,24 +185,29 @@ ProjectNavigator.prototype = {
   updateModifiedList: function() {
     this.modifiedRecords = g_app.doc.getModifiedRecordsList();
 
-    var html = '';
-
     var modifiedCount = this.modifiedRecords.length;
 
     var heading = modifiedCount + ' Changed file';
     if(modifiedCount !== 1) {
       heading += 's';
     }  
-    $('#githubChangedHeading').html(heading);
+    $('#githubChangedHeading').text(heading);
 
-    for(var i = 0; i < this.modifiedRecords.length; i++) {
-      html += '<div class="githubChangedFile">';
-      html += '<img src="images/tree/file.png" style="filter: invert(0.65)"/>';
-      html += this.modifiedRecords[i].name;
-      html += '</div>';
+    var modifiedHolder = document.getElementById('githubModified');
+    if(!modifiedHolder) {
+      return;
     }
-
-    $('#githubModified').html(html);
+    modifiedHolder.replaceChildren();
+    for(var i = 0; i < this.modifiedRecords.length; i++) {
+      var row = document.createElement('div');
+      row.className = 'githubChangedFile';
+      var icon = document.createElement('img');
+      icon.src = 'images/tree/file.png';
+      icon.style.filter = 'invert(0.65)';
+      row.appendChild(icon);
+      row.appendChild(document.createTextNode(String(this.modifiedRecords[i].name)));
+      modifiedHolder.appendChild(row);
+    }
 
   },
 
@@ -227,7 +232,7 @@ ProjectNavigator.prototype = {
       var html = '<div style="display: flex; align-items: center;  height: 24px">';
 
       html += '<img style="filter: invert(80%); width: 14px; height: 14px; margin: 0 4px" src="icons/GitHub-Mark-64px.png">';
-      html += '<a href="' + repositoryUrl + '" target="_blank" style="cursor: pointer; color: #eeeeee; font-size: 11px">' + owner + '/' + repository + '</a>';
+      html += '<a href="' + SafeHTML.escape(repositoryUrl) + '" target="_blank" style="cursor: pointer; color: #eeeeee; font-size: 11px">' + SafeHTML.escape(owner) + '/' + SafeHTML.escape(repository) + '</a>';
       html += '</div>';
 
       $('#projectGithubDetails').html(html);
@@ -430,7 +435,7 @@ ProjectNavigator.prototype = {
 
 
   selectNodeWithId: function(id) {
-    if(this.treeMap.hasOwnProperty(id)) {
+    if(Object.prototype.hasOwnProperty.call(this.treeMap, id)) {
       var node = this.treeMap[id];
 
       // make sure the parents are expanded
@@ -952,7 +957,7 @@ ProjectNavigator.prototype = {
       var width = tileSet.data.width;
       var height = tileSet.data.height;
 
-      html += '<option value="' + tileSets[i].id + '">' + tileSets[i].name + '</option>';
+      html += '<option value="' + SafeHTML.escape(tileSets[i].id) + '">' + SafeHTML.escape(tileSets[i].name) + '</option>';
     }
 
     $('#newDocRecordGridTileSet').html(html);
@@ -968,7 +973,7 @@ ProjectNavigator.prototype = {
     for(var i = 0; i < colorPalettes.length; i++) {
       var colorPalette = colorPalettes[i];
 
-      html += '<option value="' + colorPalette.id + '">' + colorPalette.name + '</option>';
+      html += '<option value="' + SafeHTML.escape(colorPalette.id) + '">' + SafeHTML.escape(colorPalette.name) + '</option>';
     }
 
     $('#newDocRecordGridColorPalette').html(html);
@@ -998,7 +1003,7 @@ ProjectNavigator.prototype = {
         if(firstTileSetId === false) {
           firstTileSetId = tileSets[i].id;
         }
-        html += '<option value="' + tileSets[i].id + '">' + tileSets[i].name + '</option>';
+        html += '<option value="' + SafeHTML.escape(tileSets[i].id) + '">' + SafeHTML.escape(tileSets[i].name) + '</option>';
       }
     }
 
@@ -1016,7 +1021,7 @@ ProjectNavigator.prototype = {
     var colorPalettes = g_app.doc.dir('/color palettes');
     for(var i = 0; i < colorPalettes.length; i++) {
       var colorPalette = colorPalettes[i];
-      html += '<option value="' + colorPalette.id + '">' + colorPalette.name + '</option>';
+      html += '<option value="' + SafeHTML.escape(colorPalette.id) + '">' + SafeHTML.escape(colorPalette.name) + '</option>';
     }
 
     $('#newDocRecordSpriteColorPalette').html(html);
@@ -1243,7 +1248,7 @@ ProjectNavigator.prototype = {
       var file = files[i];
       var name = file.name;
       html += '<div>';
-      html += name;
+      html += SafeHTML.escape(name);
       html += '</div>';
     }
 
@@ -1786,7 +1791,7 @@ ProjectNavigator.prototype = {
 
     this.files = files;
     this.treeRoot.deleteChildren();
-    this.treeMap = {};
+    this.treeMap = Object.create(null);
 
     var doc = g_app.doc;
     var children = doc.dir('/');

@@ -294,7 +294,7 @@ CharacterSetChoosePresetMobile.prototype = {
       if(CharacterSetPresets.hasOwnProperty(category)) {
         var categoryName = CharacterSetPresets[category].category;
 
-        listHTML += '<optgroup label="' + categoryName + '">';
+        listHTML += '<optgroup label="' + SafeHTML.escape(categoryName) + '">';
 
         for(var i = 0; i < CharacterSetPresets[category].characterSets.length; i++) {
           var name = CharacterSetPresets[category].characterSets[i].name;
@@ -306,7 +306,7 @@ CharacterSetChoosePresetMobile.prototype = {
             listHTML += ' selected="selected" ';
           }
           listHTML += '>';
-          listHTML += name;
+          listHTML += SafeHTML.escape(name);
           listHTML += '</option>';
 
         }

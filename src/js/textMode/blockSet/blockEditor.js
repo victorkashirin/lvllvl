@@ -537,12 +537,12 @@ BlockEditor.prototype = {
       id = id.substring('blockEditTool_'.length);
       var label = _this.getToolLabel(id);
 
-      $('#currentBlockEditTool').html(label);
+      $('#currentBlockEditTool').text(label);
     });
 
     $('.blockEditTool').on('mouseleave', function() {
       var label = _this.getToolLabel(_this.currentTool);
-      $('#currentBlockEditTool').html(label);
+      $('#currentBlockEditTool').text(label);
     });
 
 
@@ -909,7 +909,7 @@ BlockEditor.prototype = {
     $('.blockEditTool').removeClass('blockEditToolSelected');
     $('#blockEditTool_' + tool).addClass('blockEditToolSelected');
     var label = this.getToolLabel(this.currentTool);
-    $('#currentBlockEditTool').html(label);
+    $('#currentBlockEditTool').text(label);
 
     var screenMode = this.editor.getScreenMode();
 

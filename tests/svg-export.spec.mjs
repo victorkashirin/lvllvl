@@ -36,7 +36,7 @@ test("a text-mode project exports parseable SVG geometry", async ({ page }) => {
     const exporter = new ExportSvg();
     exporter.init(editor);
     const svg = exporter.getSVGData();
-    const parsed = new DOMParser().parseFromString(svg, "image/svg+xml");
+    const parsed = new DOMParser().parseFromString(SafeHTML.createSVG(svg), "image/svg+xml");
 
     return {
       expectedWidth: layer.getGridWidth() * layer.getCellWidth(),
@@ -170,7 +170,7 @@ test("C64 monochrome SVG output matches the production renderer", async ({ page 
       exporter.init(editor);
       const svg = exporter.getSVGData();
       const exported = await renderSvg(svg, width, height);
-      const parsed = new DOMParser().parseFromString(svg, "image/svg+xml");
+      const parsed = new DOMParser().parseFromString(SafeHTML.createSVG(svg), "image/svg+xml");
       let mismatchedBytes = 0;
 
       for (let i = 0; i < rendered.length; i++) {

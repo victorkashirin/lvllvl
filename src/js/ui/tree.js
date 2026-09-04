@@ -313,7 +313,7 @@ UI.TreeNode = function(args) {
 //    html += '<span style="opacity: 0.9; filter:alpha(opacity=90);">';
     html += '<img width="18" height="16" style="width: 18px; height: 16px; margin: 0; padding: 0; border: 0" id="node' + this.id + 'icon" src="' + image + '"/>';
     html += '<span style="cursor: default; font-size: 12px; font-family: arial, tahoma, helvetica; position: absolute; top: 0px; padding: 2px; padding-top: 3px" >';
-    html += this.m_label.replace(/ /g, '&nbsp;');
+    html += SafeHTML.escape(this.m_label).replace(/ /g, '&nbsp;');
     html += '</span>';
 //    html += '</span>';
     return html;
@@ -324,24 +324,20 @@ UI.TreeNode = function(args) {
     var html = '';
     var treeID = this.m_tree.id + '-';
 
-    html += '<div id="' + treeID + 'n' + this.id + '" onmousedown="return false" onselectstart="return false">';
+    html += '<div id="' + treeID + 'n' + this.id + '" data-ui-no-select>';
 
     var height = 16;
     if(this.id == 0) {
       height = 2;
     }
     html += '<div id="' + treeID + 'node' + this.id + 'row" style="height: ' + height + 'px; padding: 2px 0 4px 0; position: relative" ';
-      html += ' class="ui-tree-row" onmouseover="uiTreeNodeMouseOverRow(\'' + this.m_tree.id + '\',' + this.id + ')" ';
-      html += '  onclick="uiTreeNodeMouseClick(\'' + this.m_tree.id + '\',' + this.id + ')" ';
-      html += ' ondblclick="uiTreeNodeMouseDblClick(\'' + this.m_tree.id + '\',' + this.id + ')" ';
-      html += ' oncontextmenu="return uiTreeNodeContextMenu(event, \'' + this.m_tree.id + '\',' + this.id + ')" '
-      html += ' onselectstart="return false">';
+      html += ' class="ui-tree-row" data-ui-tree-id="' + this.m_tree.id + '" data-ui-tree-node-id="' + this.id + '" data-ui-no-select>';
     html += this.getNodeHTML();
     html += '</div>';
     if(this.m_state == 1) {
-      html += '<div id="' + treeID + 'node' + this.id + 'children" onmousedown="return false" onselectstart="return false">';
+      html += '<div id="' + treeID + 'node' + this.id + 'children" data-ui-no-select>';
     } else {
-      html += '<div id="' + treeID + 'node' + this.id + 'children" style="display: none" onmousedown="return false" onselectstart="return false">';
+      html += '<div id="' + treeID + 'node' + this.id + 'children" style="display: none" data-ui-no-select>';
     }
 
     for(var i = 0; i < this.m_children.length; i++) {
@@ -383,16 +379,6 @@ UI.TreeNode = function(args) {
       var image = '';
 
       while(parent.m_parent != null) {
-        /*
-        if(parent.m_isLast) {
-          image = 'blank.gif';
-        } else {
-          image = 'line.gif';
-        }
-        image = this.m_tree.m_imagesDir + image;
-        html = '<img width="18" height="16" onmousedown="return false" onselectstart="return false" style="width: 18px; height: 16px; margin: 0; padding: 0; border: 0" src="' + image + '">' + html;        
-
-        */
         if(parent.m_type != 'folder') {
           html = '<div style="width: 10px; height: 16px; margin: 0; padding:0; border: 0; display: inline-block"></div>' + html;
         } else {
@@ -433,11 +419,11 @@ UI.TreeNode = function(args) {
         if(this.m_isLeaf) {
   //        html += '';
 //          html += '<a href="javascript: uiTreeToggleNode(\'' + this.m_tree.id + '\',' + this.id + ')">';
-          html += '<img class="ui-tree-toggle" width="8" height="8"  onmousedown="return false" onselectstart="return false" src="' + image + '" id="' + treeID + 'node' + this.id + 'toggle" style="margin: 0; padding: 2px 4px 2px 4px; border: 0; width: 8px; height: 8px" border="0"/>';
+          html += '<img class="ui-tree-toggle" width="8" height="8" data-ui-no-select src="' + image + '" id="' + treeID + 'node' + this.id + 'toggle" style="margin: 0; padding: 2px 4px 2px 4px; border: 0; width: 8px; height: 8px" border="0"/>';
 //          html += '</a>';
         } else {
 //          html += '<a href="javascript: uiTreeToggleNode(\'' + this.m_tree.id + '\',' + this.id + ')">';
-          html += '<img  class="ui-tree-toggle" width="8" height="8" onmousedown="return false" onselectstart="return false" src="' + image + '" id="' + treeID + 'node' + this.id + 'toggle" style="margin: 0; padding: 2px 4px 2px 4px; border: 0; width: 8px; height: 8px" border="0"/>';
+          html += '<img  class="ui-tree-toggle" width="8" height="8" data-ui-no-select src="' + image + '" id="' + treeID + 'node' + this.id + 'toggle" style="margin: 0; padding: 2px 4px 2px 4px; border: 0; width: 8px; height: 8px" border="0"/>';
 //          html += '</a>';
         }
         html += '</div>';
@@ -466,7 +452,7 @@ UI.TreeNode = function(args) {
 
       if(this.m_type !== 'folder') {
         html += '<div style="display: inline-block; width: 16px; height: 16px">';
-        html += '<img class="ui-tree-icon" height="14" style="height: 14px; margin: 0; padding: 0; border: 0" id="' + treeID + 'node' + this.id + 'icon" src="' + image + '"  onmouseover="uiTreeNodeMouseOver(\'' + this.m_tree.id + '\',' + this.id + ')" onmouseout="uiTreeNodeMouseOut(\'' + this.m_tree.id + '\',' + this.id + ')" onmousedown="return uiTreeNodeMouseDown(\'' + this.m_tree.id + '\','  + this.id + ')" onselectstart="return false"/>';
+        html += '<img class="ui-tree-icon" height="14" style="height: 14px; margin: 0; padding: 0; border: 0" id="' + treeID + 'node' + this.id + 'icon" src="' + image + '" data-ui-tree-drag-target data-ui-no-select/>';
         html += '</div>';
       }
 
@@ -482,19 +468,15 @@ UI.TreeNode = function(args) {
         label = this.m_tree.m_getNodeLabel(this, label);
       }
 
-      label = label.replace(/ /g, '&nbsp;');
-
       var customLabel = this.m_tree.trigger('getnodelabel', this, label);
       if(typeof(customLabel) != 'undefined') {
         label = customLabel;
       }
+      label = SafeHTML.escape(label).replace(/ /g, '&nbsp;');
 
       var padding = 3;
       html += '<div ';
-      if(this.m_type == 'folder') {
-//        html += ' ondblclick="uiTreeToggleNode(\'' + this.m_tree.id + '\',' + this.id + ')" ';
-      }
-      html += ' class="ui-tree-label" id="' + treeID + 'node' + this.id + 'label" style="white-space:nowrap; margin-left: 1px;border: 0px solid black; cursor: default; position: absolute; bottom: ' + padding + 'px; display: inline; font-size: 12px; font-family: arial, tahoma, helvetica;" onmouseover="uiTreeNodeMouseOver(\'' + this.m_tree.id + '\',' + this.id + ')" onmouseout="uiTreeNodeMouseOut(\'' + this.m_tree.id + '\',' + this.id + ')" onmousedown="return uiTreeNodeMouseDown(\'' + this.m_tree.id + '\','  + this.id + ')" onselectstart="return false">';
+      html += ' class="ui-tree-label" id="' + treeID + 'node' + this.id + 'label" style="white-space:nowrap; margin-left: 1px;border: 0px solid black; cursor: default; position: absolute; bottom: ' + padding + 'px; display: inline; font-size: 12px; font-family: arial, tahoma, helvetica;" data-ui-tree-drag-target data-ui-no-select>';
       html += label;
       html += '</div>';
       
@@ -532,111 +514,8 @@ UI.TreeNode = function(args) {
 //      $('#' + node.m_treeID + 'node' + node.id + 'children').html(html);
 
     var childrenElement = document.getElementById( this.m_treeID + 'node' + this.id + 'children');
-    childrenElement.innerHTML = html;
+    SafeHTML.setHTML(childrenElement, html);
   }
-  /*
-  this.reload = function() {
-    var query = this.m_query;
-    query["Path"] = this.m_attributes["__guid"];
-    
-    var node = this;
-    g_wtuiClient.FindNodes(query, function(data) {
-      eval(data);
-
-      if(typeof(wtNodeResults) != 'undefined') {
-        node.m_label = wtNodeResults[0].m_name;
-        node.m_type = wtNodeResults[0].m_type;
-        node.m_isLeaf = wtNodeResults[0].m_isLeaf;
-        node.m_attributes = wtNodeResults[0].m_attributes;
-        node.m_allRead = wtNodeResults[0].m_allRead;
-        node.m_lockedForModeration = wtNodeResults[0].__lockedForModeration;
-        var nodeHTML = node.getNodeHTML();
-        $('#' + node.m_tree.id + '-' + 'node' + node.id + 'row').html(nodeHTML);
-      }
-    });
-  }
-
-  this.reloadChildren = function() {
-    this.loadChildren();
-  }
-
-  this.loadChildren = function(args, callback, callbackArgs) {
-
-
-    this.m_children = new Array();
-//    $('#' + this.m_treeID + 'node' + this.id + 'children').empty();
-
-    var loadingIcon = this.m_tree.m_imagesDir + 'loading.gif';
-    var iconElement = document.getElementById(this.m_treeID + 'node' + this.id + 'icon');
-
-    if(iconElement) {
-      iconElement.src = loadingIcon;
-    }
-
-    var query = new Object();
-
-    if(this.id == 0) {
-      query["Path"] = this.m_tree.m_rootPath;
-    } else {
-      query["Path"] = this.m_attributes["__guid"] + "/*";
-    }
-
-    query["Node Type"] = '';
-
-       
-    var customQuery = this.m_tree.onLoadChildren(this); 
-    if(customQuery) {
-      query = customQuery;
-    }
-
-    var node = this;
-    g_wtuiClient.FindNodes(query, function(data) {
-      if(iconElement) {
-        iconElement.src = node.m_tree.m_imagesDir + node.m_icon;
-      }
-      eval(data);
-
-      if(typeof(wtNodeResults) != 'undefined' && wtNodeResults) {
-      for(var i = 0; i < wtNodeResults.length; i++) {
-        var childNode = node.addChild({ "label": wtNodeResults[i].m_name, "type": wtNodeResults[i].m_type, "isLeaf": wtNodeResults[i].m_isLeaf, "attributes": wtNodeResults[i].m_attributes, "key": wtNodeResults[i].m_attributes["__guid"], "allRead": wtNodeResults[i].m_allRead, "lockedForModeration": wtNodeResults[i].__lockedForModeration });
-        childNode.m_query = query;
-      }
-      }
-
-      html = '';
-      for(var i = 0; i < node.m_children.length; i++) {
-        html += node.m_children[i].getHTML();
-      }
-//      $('#' + node.m_treeID + 'node' + node.id + 'children').html(html);
-
-      var childrenElement = document.getElementById( node.m_treeID + 'node' + node.id + 'children');
-      childrenElement.innerHTML = html;
-
-      if(node.id == 0) {
-        node.m_tree.onLoad();
-      } 
-
-      $('#' + node.m_treeID + 'node' + node.id + 'row').html(node.getNodeHTML());
-      if(callback) {
-        callback(node.m_tree.id, node.id, callbackArgs);
-      }
-      node.m_tree.onChildrenLoaded(node, args);
-
-
-      if(node.id == 0) {
-        if(node.getChildCount() == 1) {
-          var child = node.getChild(0);
-          if(child && child.m_state == -1) {
-//            child.toggle();
-          }
-        }
-      }
-
-       
-    });
-
-  }
-*/
   this.setDropHighlight = function(highlight) {
     var nodeLabelElement = document.getElementById(this.m_treeID + 'node' + this.id + 'label');
     if(nodeLabelElement) {
@@ -756,8 +635,8 @@ UI.Tree = function(args) {
 
 
     this.m_selectedNodeID = -1;
-    this.m_nodes = new Object();
-    this.m_nodeKeys = new Object();
+    this.m_nodes = Object.create(null);
+    this.m_nodeKeys = Object.create(null);
 
 //  this.m_nodes[0] = new uiTreeNode(this, 0, -1, "root", '', -1, 0);
 
@@ -818,8 +697,8 @@ UI.Tree = function(args) {
     this.m_nodeIDs = 0;
 
     this.m_selectedNodeID = -1;
-    this.m_nodes = new Object();
-    this.m_nodeKeys = new Object();
+    this.m_nodes = Object.create(null);
+    this.m_nodeKeys = Object.create(null);
 
     this.m_rootPath = '/*';
     if(path && path != "") {
@@ -857,7 +736,7 @@ UI.Tree = function(args) {
   }
 
   this.getNodeFromKey = function(key) {
-    if(this.m_nodeKeys.hasOwnProperty(key)) {
+    if(Object.prototype.hasOwnProperty.call(this.m_nodeKeys, key)) {
       return this.m_nodeKeys[key];
     }
     return null;    
@@ -964,16 +843,7 @@ UI.Tree = function(args) {
 
   this.getHTML = function() {
     var html = '';
-
-    /*
-    if(this.m_isControl) {
-      html += '<div id="' + this.id + '" class="ui-tree" style="width: 300px; height: 300px; overflow-x: auto; overflow-y: auto;  padding: 5px; margin: 0px;"  onmousedown="return false" onselectstart="return false">';
-      html += '<input type="hidden" name="' + this.m_name + '" id="' + this.id + 'value"/>';
-      
-    } else {
-    }
-    */
-    html += '<div id="' + this.id + '" class="ui-tree" style="position: absolute; left: 0; right: 0; top: 0; bottom: 0; overflow-x: auto; overflow-y: auto; padding: 0px; margin: 0px; border: 0px solid black"  onmousedown="return false" onselectstart="return false">';
+    html += '<div id="' + this.id + '"' + UI.getMarkupEventAttribute() + ' class="ui-tree" style="position: absolute; left: 0; right: 0; top: 0; bottom: 0; overflow-x: auto; overflow-y: auto; padding: 0px; margin: 0px; border: 0px solid black" data-ui-no-select>';
     html += this.m_rootNode.getHTML();
     html += '</div>';
     

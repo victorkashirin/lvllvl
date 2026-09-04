@@ -282,7 +282,7 @@ SidFilters.prototype = {
       var color = "#" + ((1 << 24) + this.music.doc.data.filters[i].color).toString(16).slice(1);
       html += '<div style="margin-top: 2px; margin-right: 4px; display: inline-block; width: 12px; height: 12px; background-color: ' + color + '"></div>';
       html += '<span style="margin-bottom: 2px" id="filterName' + id + '">';
-      html += this.music.doc.data.filters[i].name;
+      html += SafeHTML.escape(this.music.doc.data.filters[i].name);
       html += '</span>';
       html += '</div>';
 

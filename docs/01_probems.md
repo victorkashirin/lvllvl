@@ -143,6 +143,14 @@ Firebase client configuration values in source are public identifiers, not secre
 
 ### P0.4 Unsafe HTML and dynamic code execution create a same-origin XSS risk
 
+**Status: Fixed on 2026-09-05.** Plain display values now use text or escaped
+output, while reviewed rich markup passes through one narrow DOMPurify and Trusted
+Types policy. Assembler expressions use a bounded parser, music scripts execute in
+an opaque capability sandbox, delegated UI actions require per-page capabilities,
+and adversarial source and browser tests enforce the restrictive CSP boundary.
+
+**Original finding (2026-09-03):**
+
 There are many calls to `.html(...)` and assignments to `innerHTML` using filenames, repository metadata, error messages, and other non-constant values.
 
 A concrete path exists in `src/js/file/github.js`: a user-supplied repository address is placed into an error-message HTML string after only slash removal, then assigned with `.html(message)`. Markup in an invalid address can therefore reach the DOM. Other sites insert repository names, response messages, project names, and filenames similarly.

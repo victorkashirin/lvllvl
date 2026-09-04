@@ -131,7 +131,7 @@ ColorPaletteChoosePreset.prototype = {
         UI.closeDialog();
       });
 
-      this.linkButton = UI.create('UI.Button', { "text": '<img src="icons/svg/glyphicons-basic-351-link.svg"> Create A Template Link', "color": "other" });
+      this.linkButton = UI.create('UI.Button', { "imageSrc": "icons/svg/glyphicons-basic-351-link.svg", "text": "Create A Template Link", "color": "other" });
       this.uiComponent.addButton(this.linkButton);
       this.linkButton.on('click', function(event) {
         _this.createTemplateLink();
@@ -420,7 +420,7 @@ ColorPaletteChoosePreset.prototype = {
 
           this.colorPalettes.push(id);
 
-          listHTML += '" value="' + id + '">' + name + '</div>';
+          listHTML += '" value="' + SafeHTML.escape(id) + '">' + SafeHTML.escape(name) + '</div>';
 
         }
       }
@@ -451,7 +451,7 @@ ColorPaletteChoosePreset.prototype = {
             listHTML += ' colorPaletteListEntrySelected ';
           }
           this.colorPalettes.push(id);
-          listHTML += '" value="' + id + '">' + name + '</div>';
+          listHTML += '" value="' + SafeHTML.escape(id) + '">' + SafeHTML.escape(name) + '</div>';
 
         }
       }
@@ -496,7 +496,7 @@ ColorPaletteChoosePreset.prototype = {
           paletteId = colorPalette.options[i].id;
           options += ' checked="checked" ';
         }
-        options += '> ' + colorPalette.options[i].name + '<span class="checkmark"/></label>&nbsp;';
+        options += '> ' + SafeHTML.escape(colorPalette.options[i].name) + '<span class="checkmark"/></label>&nbsp;';
       }
 
     }

@@ -891,7 +891,7 @@ ImportC64Formats.prototype = {
 
 
     var filename = file.name;
-    $('#importC64FormatsAttachedDisk').html(filename);
+    $('#importC64FormatsAttachedDisk').text(filename);
 
     this.importType = 'prg';
   },

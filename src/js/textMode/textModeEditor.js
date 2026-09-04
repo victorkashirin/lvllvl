@@ -1491,7 +1491,7 @@ TextModeEditor.prototype = {
       break;
       case 'block':
 //        this.colorPerMode = 'block';
-        $('#drawTools-cellColorHeading').html(styles.text.blockName);
+        $('#drawTools-cellColorHeading').text(styles.text.blockName);
       break;
     }
 

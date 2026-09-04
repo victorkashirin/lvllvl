@@ -8,8 +8,8 @@ export const browserPolicy = Object.freeze({
 });
 
 // The primary Chromium project runs the complete suite. The remaining projects
-// exercise the production boot contract without multiplying the slower feature
-// and persistence tests across every engine and device class.
+// exercise the production boot and security contracts without multiplying the
+// slower feature and persistence tests across every engine and device class.
 export const browserTestProjects = Object.freeze([
   {
     name: "chromium-desktop",

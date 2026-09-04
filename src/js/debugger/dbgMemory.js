@@ -141,7 +141,7 @@ DbgMemory.prototype = {
         this.labelMap[memoryMap[i].address] = memoryMap[i].label;
 
         html += '<option value="' + memoryMap[i].address + '">';
-        html += memoryMap[i].label;
+        html += SafeHTML.escape(memoryMap[i].label);
         html += '</option>';
       }
 
@@ -439,7 +439,7 @@ DbgMemory.prototype = {
     $('#' + this.prefix + 'DebuggerMemoryHoverValueBin').html(text);
 
     if(typeof this.labelMap[address] != 'undefined') {
-      $('#' + this.prefix + 'DebuggerMemoryHoverLabel').html(this.labelMap[address]);
+      $('#' + this.prefix + 'DebuggerMemoryHoverLabel').text(this.labelMap[address]);
     } else {
       $('#' + this.prefix + 'DebuggerMemoryHoverLabel').html('');
     }

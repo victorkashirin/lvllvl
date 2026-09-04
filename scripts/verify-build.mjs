@@ -15,11 +15,13 @@ import { verifyModuleBoundaries } from "./module-boundaries.mjs";
 import {
   buildDirectory,
   packageAssetFiles,
+  packageSourceMapsWithEmbeddedSources,
   runtimeAssetFiles,
   runtimeFeatureRequests,
   sourceDirectory,
   sourceMapPolicy,
 } from "./build-config.mjs";
+import { embedSourceMapSources } from "./source-map-assets.mjs";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const sourceRoot = path.join(projectRoot, sourceDirectory);
@@ -29,6 +31,7 @@ const thirdPartySbomFile = path.join(projectRoot, "docs/runtime-dependencies.spd
 const artifactGoldenFile = path.join(projectRoot, "tests/fixtures/build-artifacts.json");
 const packageJson = JSON.parse(await readFile(path.join(projectRoot, "package.json"), "utf8"));
 const version = packageJson.version;
+const embeddedPackageSourceMaps = new Set(packageSourceMapsWithEmbeddedSources);
 
 function sourceFile(relativePath) {
   const packageAsset = packageAssetFiles[relativePath];
@@ -579,9 +582,17 @@ for (const filename of runtimeAssetFiles) {
   if (!runtimeRequestFiles.has(filename)) {
     throw new Error(`Copied runtime asset is not assigned to a feature: ${filename}`);
   }
-  const source = await readFile(sourceFile(filename));
+  const source = embeddedPackageSourceMaps.has(filename)
+    ? Buffer.from(await embedSourceMapSources(sourceFile(filename)))
+    : await readFile(sourceFile(filename));
   const output = await readFile(path.join(buildRoot, filename));
   if (!source.equals(output)) throw new Error(`${filename} differs from its source`);
+}
+
+for (const filename of packageSourceMapsWithEmbeddedSources) {
+  if (!runtimeAssetFiles.includes(filename) || !packageAssetFiles[filename]) {
+    throw new Error(`${filename} must be a copied package runtime asset`);
+  }
 }
 
 for (const filename of runtimeRequestFiles) {

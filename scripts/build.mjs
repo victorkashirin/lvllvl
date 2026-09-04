@@ -26,16 +26,19 @@ import {
   assetDirectories,
   buildDirectory,
   packageAssetFiles,
+  packageSourceMapsWithEmbeddedSources,
   runtimeAssetFiles,
   sourceDirectory,
   sourceMapPolicy,
 } from "./build-config.mjs";
+import { embedSourceMapSources } from "./source-map-assets.mjs";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const sourceRoot = path.join(projectRoot, sourceDirectory);
 const publishedBuildRoot = path.join(projectRoot, buildDirectory);
 const thirdPartyNoticesFile = path.join(projectRoot, "THIRD_PARTY_NOTICES.md");
 const thirdPartySbomFile = path.join(projectRoot, "docs/runtime-dependencies.spdx.json");
+const embeddedPackageSourceMaps = new Set(packageSourceMapsWithEmbeddedSources);
 
 const outputDirectories = [
   "js/html",
@@ -334,7 +337,12 @@ async function copyRuntimeAssets() {
   for (const relativePath of runtimeAssetFiles) {
     const destination = path.join(buildRoot, relativePath);
     await mkdir(path.dirname(destination), { recursive: true });
-    await cp(await sourceFile(relativePath), destination, { force: true });
+    const source = await sourceFile(relativePath);
+    if (embeddedPackageSourceMaps.has(relativePath)) {
+      await writeFile(destination, await embedSourceMapSources(source));
+    } else {
+      await cp(source, destination, { force: true });
+    }
   }
 }
 

@@ -316,7 +316,11 @@ GDrive.prototype = {
     var xhr = new XMLHttpRequest();
 
     var signedIn = false;
-    if(typeof gapi != 'undefined' && typeof gapi.auth2 != 'undefiend') {
+    if(
+      typeof gapi != 'undefined' &&
+      typeof gapi.auth2 != 'undefined' &&
+      typeof gapi.auth2.getAuthInstance == 'function'
+    ) {
       signedIn = gapi.auth2.getAuthInstance().isSignedIn.get();
     }
 
@@ -340,18 +344,33 @@ GDrive.prototype = {
     xhr.responseType = 'document';
     */
     xhr.responseType = 'blob';//json';
-    xhr.onload = function(){
-        //base64ArrayBuffer from https://gist.github.com/jonleighton/958841
-//        var base64 = 'data:image/png;base64,' + base64ArrayBuffer(xhr.response);
-    
-        //do something with the base64 image here
-//        console.log(xhr.response);
-
-        if(typeof callback != 'undefined') {
-          callback(xhr.response);
-        }
-    
+    xhr.timeout = 60000;
+    var completed = false;
+    function complete(response, error) {
+      if(completed) {
+        return;
+      }
+      completed = true;
+      if(typeof callback != 'undefined') {
+        callback(response, error);
+      }
     }
+    xhr.onload = function(){
+      if(xhr.status >= 200 && xhr.status < 300) {
+        complete(xhr.response, null);
+      } else {
+        complete(null, new Error('Google Drive download failed with HTTP ' + xhr.status + '.'));
+      }
+    }
+    xhr.onerror = function() {
+      complete(null, new Error('Google Drive download failed.'));
+    };
+    xhr.onabort = function() {
+      complete(null, new Error('Google Drive download was cancelled.'));
+    };
+    xhr.ontimeout = function() {
+      complete(null, new Error('Google Drive download timed out.'));
+    };
     xhr.send();
   },
 
@@ -876,7 +895,12 @@ GDrive.prototype = {
 //    console.log(args);
 
     this.showProgress('open');
-    this.downloadFile(args.id, args.name, function(response) {
+    this.downloadFile(args.id, args.name, function(response, error) {
+      if(error || !response) {
+        _this.hideProgress();
+        alert(error ? error.message : 'Google Drive returned an empty project.');
+        return;
+      }
 //      console.log(response);
       g_app.doc = new Document();    
       g_app.doc.init(g_app);
@@ -902,4 +926,3 @@ GDrive.prototype = {
   }
 
 }
-

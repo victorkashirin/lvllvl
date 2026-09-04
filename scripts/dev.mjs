@@ -58,8 +58,8 @@ async function rebuild() {
       await build();
       const packageJsonContents = await readFile(packageJsonPath, "utf8");
       refreshDevelopmentAssetVersion(packageJsonContents);
-      // Vite resolves the symlinked build root when it starts. Restarting makes
-      // it serve the newly published version before clients reload.
+      // Restart Vite so its module graph and transformed HTML match the newly
+      // published build before clients reload.
       await server.restart();
     } catch (error) {
       console.error("Rebuild failed");
@@ -100,6 +100,12 @@ server = await createServer({
     // Scan only the primary entry so Vite does not mistake that relative module
     // URL for a package import while pre-bundling development dependencies.
     entries: ["index.html"],
+  },
+  resolve: {
+    // dist is an atomically replaced symlink. Keeping the logical root lets the
+    // restarted server follow the new target instead of retaining the deleted
+    // real path from the previous build.
+    preserveSymlinks: true,
   },
   root: buildRoot,
   server: {

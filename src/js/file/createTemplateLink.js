@@ -120,7 +120,7 @@ CreateTemplateLink.prototype = {
       if(CharacterSetPresets.hasOwnProperty(category)) {
         var categoryName = CharacterSetPresets[category].category;
 
-        listHTML += '<optgroup label="' + categoryName + '">';
+        listHTML += '<optgroup label="' + SafeHTML.escape(categoryName) + '">';
 
         for(var i = 0; i < CharacterSetPresets[category].characterSets.length; i++) {
           var name = CharacterSetPresets[category].characterSets[i].name;
@@ -132,7 +132,7 @@ CreateTemplateLink.prototype = {
             listHTML += ' selected="selected" ';
           }
           listHTML += '>';
-          listHTML += name;
+          listHTML += SafeHTML.escape(name);
           listHTML += '</option>';
 
           if(typeof CharacterSetPresets[category].characterSets[i].options != 'undefined') {
@@ -146,7 +146,7 @@ CreateTemplateLink.prototype = {
                 listHTML += ' selected="selected" ';
               }
               listHTML += '>&nbsp;&nbsp;&nbsp;&nbsp;';
-              listHTML += name;
+              listHTML += SafeHTML.escape(name);
               listHTML += '</option>';
     
             }
@@ -166,7 +166,7 @@ CreateTemplateLink.prototype = {
       if(ColorPalettePresets.hasOwnProperty(category)) {
         var categoryName = ColorPalettePresets[category].category;
 
-        listHTML += '<optgroup label="' + categoryName + '">';
+        listHTML += '<optgroup label="' + SafeHTML.escape(categoryName) + '">';
 
         for(var i = 0; i < ColorPalettePresets[category].colorPalettes.length; i++) {
           var name = ColorPalettePresets[category].colorPalettes[i].name;
@@ -177,7 +177,7 @@ CreateTemplateLink.prototype = {
           if(id == this.colorPaletteId) {
             listHTML += ' selected="selected" ';
           }
-          listHTML += '>' + name + '</option>';
+          listHTML += '>' + SafeHTML.escape(name) + '</option>';
 
         }
 

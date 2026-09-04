@@ -156,7 +156,7 @@ UI.MenuItem = function() {
   }
 
   this.setLabel = function(label) {
-    $('#' + this.id + ' .ui-menu-item-label').html(label);
+    $('#' + this.id + ' .ui-menu-item-label').text(label);
   }
 
   this.getElement = function() {
@@ -171,7 +171,7 @@ UI.MenuItem = function() {
     var html = '';
     if(this.type == 'separator') {
       element.setAttribute('class', 'ui-menu-item-separator');
-      html =  this.label;
+      html = SafeHTML.escape(this.label);
     } else {
       element.setAttribute('class', 'ui-menu-item');
       html += '<div style="display: inline-block; width: 14px" id="' + this.id + '-checkmark">';
@@ -179,17 +179,18 @@ UI.MenuItem = function() {
         html += '<div class="ui-menu-item-checkmark"></div>';;
       }
       html += '</div>';
-      html += '<div class="ui-menu-item-label ui-text" data-textid="' + this.label + '">' + this.label + '</div>';;
+      var escapedLabel = SafeHTML.escape(this.label);
+      html += '<div class="ui-menu-item-label ui-text" data-textid="' + escapedLabel + '">' + escapedLabel + '</div>';;
       var shortcutHtml = this.getShortcutHTML();
 
       html += '<div class="ui-menu-item-shortcut">';
       if(shortcutHtml != '') {
-        html += '&nbsp;&nbsp;&nbsp;&nbsp;' + shortcutHtml;
+        html += '&nbsp;&nbsp;&nbsp;&nbsp;' + SafeHTML.escape(shortcutHtml);
       }
       html += '</div>';
     }
 
-    element.innerHTML = html;
+    SafeHTML.setHTML(element, html);
 
     var menuItem = this;
     element.onclick = function(event) {
@@ -315,7 +316,7 @@ UI.Menu = function() {
     for(var i = 0; i < this.menuItems.length; i++) {
       switch(this.menuItems[i].type) {
         case "item":
-          html += '<div class="ui-menu-item" id="ui-menu-item-'  + this.menuItems[i].id + '">' + this.menuItems[i].label;
+          html += '<div class="ui-menu-item" id="ui-menu-item-'  + SafeHTML.escape(this.menuItems[i].id) + '">' + SafeHTML.escape(this.menuItems[i].label);
           if(this.menuItems[i].shortcut !== false) {
             var shortcutHtml = '';
             var shortcut = this.menuItems[i].shortcut;
@@ -344,12 +345,12 @@ UI.Menu = function() {
               }
               shortcutHtml += shortcut.key;             
             }
-            html += '&nbsp;&nbsp;' + shortcutHtml;
+            html += '&nbsp;&nbsp;' + SafeHTML.escape(shortcutHtml);
           }
           html += '</div>';
           break;
         case "separator":
-          html += '<div class="ui-menu-item-separator" id="' + this.menuItems[i].id + '">' + this.menuItems[i].label + '</div>';
+          html += '<div class="ui-menu-item-separator" id="' + SafeHTML.escape(this.menuItems[i].id) + '">' + SafeHTML.escape(this.menuItems[i].label) + '</div>';
           break;
       }
 
@@ -451,7 +452,7 @@ UI.MenuBar = function() {
       menuBarItemElement.setAttribute('class', classNames);
 
       menuBarItemElement.setAttribute('data-textid', menu.label);
-      menuBarItemElement.innerHTML = menu.label;
+      menuBarItemElement.textContent = menu.label;
       thisElement.append(menuBarItemElement);
 
       var menuBar = this;
@@ -514,7 +515,7 @@ UI.MenuBar = function() {
     html += '" id="' + this.id + '">';
 
     for(var i = 0; i < this.menus.length; i++) {
-      html += '<div class="ui-menubar-item" id="ui-menubar-item-' + this.menus[i].id + '">' + this.menus[i].label;
+      html += '<div class="ui-menubar-item" id="ui-menubar-item-' + SafeHTML.escape(this.menus[i].id) + '">' + SafeHTML.escape(this.menus[i].label);
       html += '</div>';
     }
     html += '</div>';

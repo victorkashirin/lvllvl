@@ -4,7 +4,7 @@ var Assembler = function() {
 
   this.pc = 0x1000;
 
-  this.labels = {};
+  this.labels = Object.create(null);
 
   this.lines = [];
   this.start = 0;
@@ -118,27 +118,6 @@ Assembler.prototype = {
         };
       }
 
-      /*
-      if(opcode == 'byte' || opcode == '!byte') {
-        this.bytesLine(param);
-        console.log(param);
-      } else if(this.opcodes.hasOwnProperty(opcode)) {
-
-        console.log(this.opcodes[opcode]);
-        console.log(param);
-        this.opcodeLine(this.opcodes[opcode], param);
-      } else {
-        // assume its a label
-        var label = parts[0];
-
-        if(this.pc == block.start && typeof block.label == 'undefined') {
-          block.label = label;
-        }
-
-        console.log(label);
-        this.addLabel(label, this.pc);
-      }
-      */
     }
 
     var bytes = [];
@@ -163,7 +142,7 @@ Assembler.prototype = {
       location = 0x801;
     }
     this.lines = [];
-    this.labels = {};
+    this.labels = Object.create(null);
     for(var i = 0; i < this.memory.length; i++ ) {
       this.memory[i] =0;
     }
@@ -212,76 +191,16 @@ Assembler.prototype = {
 
         } else if(line.indexOf('=') !== -1) {
           // set a label
-          var parts = line.split('=');
-          if(parts.length > 1) {
-            var label = parts[0].trim();
-            var param = parts[1].trim();
+          var assignmentPosition = line.indexOf('=');
+          if(assignmentPosition !== -1) {
+            var label = line.substring(0, assignmentPosition).trim();
+            var param = line.substring(assignmentPosition + 1).trim();
             if(param == '*') {
               this.addLabel(label, this.pc);
             } else {
-
-              var value = false;
-              
-              if (param.match(/^\$[0-9a-f]{1,2}$/i)) {
-                // value is a byte
-                value = parseInt(param.replace(/^\$/, ""), 16) & 0xff;
-
-                this.addLabel(label, value);
-              } else if (param.match(/^\$[0-9a-f]{3,4}$/i)) {
-                // value is a word
-                value = parseInt(param.replace(/^\$/, ""), 16) & 0xffff;
-                this.addLabel(label, value);
-              } else if(!isNaN(parseInt(param))) {
-                value = parseInt(param);
+              var value = this.parseParam(param);
+              if(value !== false) {
                 this.addLabel(label,value);
-              } else {
-                value = this.parseParam(param);
-                if(value !== false) {
-                  this.addLabel(label,value);
-                }
-
-/*
-                var action = false;
-                if(param[0] == '<') {
-                  action = 'lowerbyte';
-                  param = param.substr(1);
-                } else if(param[0] == '>') {
-                  action = 'upperbyte';
-                  param = param.substr(1);
-                }
-
-                var error = false;
-                var parts = param.split(/(?:\+|\-| )+/);
-                for(var i = 0; i < parts.length; i++) {
-                  var key = parts[i];
-                  if(this.labels.hasOwnProperty(key)) {
-                    param = param.replace(key, this.labels[key].value);
-                  } else if(isNaN(key)) {
-                    this.logError('unknown value: ' + param);
-                    error = true;
-                  }
-                }
-                console.log('new param = ' + param);
-console.log(parts);
-
-                if(!error) {
-                  value = eval(param);
-
-                  if(action == 'lowerbyte') {
-                    value = value & 0xff;
-                  } else if(action == 'upperbyte') {
-                    value = (value >> 8) & 0xff;
-                  }
-                  this.addLabel(label,value);
-                  console.log("result= " + value);
-                } else {
-
-//                console.log(this.labels);
-                  this.logError('unknown value: ' + param);
-                }
-*/
-
-
               }
             }
           }
@@ -329,45 +248,115 @@ console.log(parts);
   },
 
   parseParam: function(param) {
-
+    var originalParam = String(param == null ? '' : param);
+    if(originalParam.length > 4096) {
+      this.logError('invalid expression: expression is too long');
+      return false;
+    }
+    param = originalParam.trim();
     var action = false;
     if(param[0] == '<') {
       action = 'lowerbyte';
-      param = param.substr(1);
+      param = param.substr(1).trim();
     } else if(param[0] == '>') {
       action = 'upperbyte';
-      param = param.substr(1);
+      param = param.substr(1).trim();
     }
 
-    var error = false;
-    var parts = param.split(/(?:\+|\-| )+/);
-    for(var i = 0; i < parts.length; i++) {
-      var key = parts[i];
-      if(this.labels.hasOwnProperty(key)) {
-        param = param.replace(key, this.labels[key].value);
-      } else if(isNaN(key)) {
-        this.logError('unknown value: ' + param);
-        error = true;
+    if(param === '') {
+      this.logError('invalid expression: ' + originalParam);
+      return false;
+    }
+
+    var index = 0;
+    var value = 0;
+    var operation = 1;
+    var expectTerm = true;
+    var parsedTerms = 0;
+
+    while(index < param.length) {
+      while(index < param.length && /\s/.test(param[index])) {
+        index++;
       }
-    }
-
-    if(!error) {
-      value = eval(param);
-
-      if(action == 'lowerbyte') {
-        value = value & 0xff;
-      } else if(action == 'upperbyte') {
-        value = (value >> 8) & 0xff;
+      if(index >= param.length) {
+        break;
       }
 
-      return value;
-    } else {
+      if(expectTerm && (param[index] === '+' || param[index] === '-')) {
+        if(parsedTerms > 0) {
+          this.logError('invalid expression: ' + originalParam);
+          return false;
+        }
+        operation = param[index] === '-' ? -1 : 1;
+        index++;
+        while(index < param.length && /\s/.test(param[index])) {
+          index++;
+        }
+      } else if(!expectTerm) {
+        if(param[index] !== '+' && param[index] !== '-') {
+          this.logError('invalid expression: ' + originalParam);
+          return false;
+        }
+        operation = param[index] === '-' ? -1 : 1;
+        index++;
+        expectTerm = true;
+        continue;
+      }
 
-  //                console.log(this.labels);
-      this.logError('unknown value: ' + param);
+      var remaining = param.substr(index);
+      var match = remaining.match(/^\$[0-9a-f]+/i);
+      var term;
+      if(match) {
+        term = parseInt(match[0].substr(1), 16);
+      } else {
+        match = remaining.match(/^%[01]+/);
+        if(match) {
+          term = parseInt(match[0].substr(1), 2);
+        } else {
+          match = remaining.match(/^0x[0-9a-f]+/i) || remaining.match(/^\d+/);
+          if(match) {
+            term = parseInt(match[0], match[0].toLowerCase().indexOf('0x') === 0 ? 16 : 10);
+          } else {
+            match = remaining.match(/^[A-Za-z_.][A-Za-z0-9_.]*/);
+            if(
+              !match ||
+              !Object.prototype.hasOwnProperty.call(this.labels, match[0]) ||
+              typeof this.labels[match[0]].value !== 'number'
+            ) {
+              this.logError('unknown value: ' + originalParam);
+              return false;
+            }
+            term = this.labels[match[0]].value;
+          }
+        }
+      }
+
+      if(!Number.isSafeInteger(term)) {
+        this.logError('invalid expression: ' + originalParam);
+        return false;
+      }
+      value += operation * term;
+      if(!Number.isSafeInteger(value)) {
+        this.logError('invalid expression: ' + originalParam);
+        return false;
+      }
+      index += match[0].length;
+      expectTerm = false;
+      parsedTerms++;
     }
 
-    return false;
+    if(expectTerm || !Number.isSafeInteger(value)) {
+      this.logError('invalid expression: ' + originalParam);
+      return false;
+    }
+
+    if(action == 'lowerbyte') {
+      value = value & 0xff;
+    } else if(action == 'upperbyte') {
+      value = (value >> 8) & 0xff;
+    }
+
+    return value;
   },
 
 
@@ -395,7 +384,7 @@ console.log(parts);
 
   },
   addLabel: function(label, value) {
-    if(typeof this.labels[label] == 'undefined') {
+    if(!Object.prototype.hasOwnProperty.call(this.labels, label)) {
       this.labels[label] = {};
     }
     this.labels[label].value = value;
@@ -406,8 +395,8 @@ console.log(parts);
   processLabels: function() {
     for(var label in this.labels) {
 
-      var value = this.parseParam(label);
-      if(value === false) {//typeof this.labels[label].value == 'undefined') {
+      var resolvedValue = this.parseParam(label);
+      if(resolvedValue === false) {
         // error
         this.logError('undefined label: ' + label);
       } else {
@@ -419,10 +408,9 @@ console.log(parts);
 
 
               for(var i = 0; i < this.labels[label]['w'].length; i++) {
-//                var value = this.labels[label].value;
                 var location = this.labels[label][mode][i].location;
                 var offset = this.labels[label][mode][i].offset;
-                value += offset;
+                var value = resolvedValue + offset;
 
                 this.memory[location++] = value & 0xff; 
                 this.memory[location] = (value >> 8) & 0xff; 
@@ -431,10 +419,9 @@ console.log(parts);
             case 'r':
               // relative
               for(var i = 0; i < this.labels[label]['r'].length; i++) {
-//                var value = this.labels[label].value;
                 var location = this.labels[label][mode][i].location;
                 var offset = this.labels[label][mode][i].offset;
-                value += offset;
+                var value = resolvedValue + offset;
 
                 if(value < location) {
                   this.memory[location++] = 0xff - (location - value) + 1;
@@ -447,10 +434,9 @@ console.log(parts);
             // high byte
               // word
               for(var i = 0; i < this.labels[label]['h'].length; i++) {
-                //var value = this.labels[label].value;
                 var location = this.labels[label][mode][i].location;
                 var offset = this.labels[label][mode][i].offset;
-                value += offset;
+                var value = resolvedValue + offset;
 
                 this.memory[location] = (value >> 8) & 0xff; 
               }
@@ -461,10 +447,9 @@ console.log(parts);
             // word
               for(var i = 0; i < this.labels[label]['l'].length; i++) {
 
-                //var value = this.labels[label].value;
                 var location = this.labels[label][mode][i].location;
                 var offset = this.labels[label][mode][i].offset;
-                value += offset;
+                var value = resolvedValue + offset;
 
                 this.memory[location] = value & 0xff; 
               }
@@ -475,84 +460,8 @@ console.log(parts);
       }
     }
   },
-
-
-/*
-  processLabels: function() {
-    for(var label in this.labels) {
-      if(typeof this.labels[label].value == 'undefined') {
-        // error
-        this.logError('undefined label: ' + label);
-      } else {
-        for(var mode in this.labels[label]) {
-
-          switch(mode) {
-            case 'w':
-              // word
-
-
-              for(var i = 0; i < this.labels[label]['w'].length; i++) {
-                var value = this.labels[label].value;
-                var location = this.labels[label][mode][i].location;
-                var offset = this.labels[label][mode][i].offset;
-                value += offset;
-
-                this.memory[location++] = value & 0xff; 
-                this.memory[location] = (value >> 8) & 0xff; 
-              }
-            break;
-            case 'r':
-              // relative
-              for(var i = 0; i < this.labels[label]['r'].length; i++) {
-                var value = this.labels[label].value;
-                var location = this.labels[label][mode][i].location;
-                var offset = this.labels[label][mode][i].offset;
-                value += offset;
-
-                if(value < location) {
-                  this.memory[location++] = 0xff - (location - value) + 1;
-                } else {
-                  this.memory[location++] = value - location;
-                }
-              }
-            break;
-            case 'h':
-            // high byte
-              // word
-              for(var i = 0; i < this.labels[label]['h'].length; i++) {
-                var value = this.labels[label].value;
-                var location = this.labels[label][mode][i].location;
-                var offset = this.labels[label][mode][i].offset;
-                value += offset;
-
-                this.memory[location] = (value >> 8) & 0xff; 
-              }
-
-            break;
-            case 'l':
-            // low byte
-            // word
-              for(var i = 0; i < this.labels[label]['l'].length; i++) {
-
-                var value = this.labels[label].value;
-                var location = this.labels[label][mode][i].location;
-                var offset = this.labels[label][mode][i].offset;
-                value += offset;
-
-                this.memory[location] = value & 0xff; 
-              }
-
-            break;
-          }
-        }
-      }
-    }
-  },
-
-
-*/
   addLabelPlaceholder: function(label, location, type, offset) {
-    if(typeof this.labels[label] == 'undefined') {
+    if(!Object.prototype.hasOwnProperty.call(this.labels, label)) {
       this.labels[label] = {};
     }
 
@@ -586,14 +495,7 @@ console.log(parts);
   bytesLine: function(param) {
     var parts = param.split(',');
     for(var i = 0; i < parts.length; i++) {
-      var value = false;
-      if (parts[i].match(/^\$[0-9a-f]{1,2}$/i)) {
-        value = parseInt(parts[i].replace(/^\$/, ""), 16) & 0xff;
-      } else if(!isNaN(parseInt(parts[i]))) {
-        value = parseInt(parts[i]);
-      } else {
-        value = this.parseParam(parts[i]);
-      }
+      var value = this.parseParam(parts[i]);
 
       if(value === false || isNaN(value)) {
         this.logError('unrecognised byte: ' + parts[i]);
@@ -730,7 +632,7 @@ console.log(parts);
 
       if(canHaveLabels) {
         // zero page label
-        if(this.labels.hasOwnProperty(param) && this.labels[param].hasOwnProperty('value') && this.labels[param].value <= 0xff) {
+        if(Object.prototype.hasOwnProperty.call(this.labels, param) && this.labels[param].hasOwnProperty('value') && this.labels[param].value <= 0xff) {
           this.memory[this.pc++] = opcodes['zp'];
           this.memory[this.pc++] = this.labels[param].value;
           return true;        
@@ -757,7 +659,7 @@ console.log(parts);
         if (param.match(/^\w+,x$/i)) {   
           var label = param.replace(/,x$/i, "");
 
-          if(this.labels.hasOwnProperty(label) && this.labels[label].hasOwnProperty('value') && this.labels[label].value <= 0xff) {
+          if(Object.prototype.hasOwnProperty.call(this.labels, label) && this.labels[label].hasOwnProperty('value') && this.labels[label].value <= 0xff) {
             this.memory[this.pc++] = opcodes['zpx'];
             this.memory[this.pc++] = this.labels[label].value;
             returntrue ;        
@@ -789,7 +691,7 @@ console.log(parts);
         if (param.match(/^\w+,y$/i)) {   
           var label = param.replace(/,y$/i, "");
 
-          if(this.labels.hasOwnProperty(label) && this.labels[label].hasOwnProperty('value') && this.labels[label].value <= 0xff) {
+          if(Object.prototype.hasOwnProperty.call(this.labels, label) && this.labels[label].hasOwnProperty('value') && this.labels[label].value <= 0xff) {
             this.memory[this.pc++] = opcodes['zpy'];
             this.memory[this.pc++] = this.labels[label].value;
             return true;        
@@ -888,7 +790,7 @@ console.log(parts);
         if (param.match(/^\(\w+\,x\)$/i)) {
           var label = param.replace(/,x\)$/i, "");
           label = label.substring(1);
-          if(this.labels.hasOwnProperty(label) && this.labels[label].hasOwnProperty('value') && this.labels[label].value <= 0xff) {
+          if(Object.prototype.hasOwnProperty.call(this.labels, label) && this.labels[label].hasOwnProperty('value') && this.labels[label].value <= 0xff) {
             this.memory[this.pc++] = opcodes['indx'];
             this.memory[this.pc++] = this.labels[label].value;
             return true;        
@@ -916,7 +818,7 @@ console.log(parts);
           var label = param.replace(/\),y$/i, "");
           label = label.substring(1);
 
-          if(this.labels.hasOwnProperty(label) && this.labels[label].hasOwnProperty('value') && this.labels[label].value <= 0xff) {
+          if(Object.prototype.hasOwnProperty.call(this.labels, label) && this.labels[label].hasOwnProperty('value') && this.labels[label].value <= 0xff) {
             this.memory[this.pc++] = opcodes['indy'];
             this.memory[this.pc++] = this.labels[label].value;
             return true;        
@@ -1002,4 +904,3 @@ console.log(parts);
 
 
 }
-

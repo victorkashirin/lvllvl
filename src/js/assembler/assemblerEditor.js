@@ -180,11 +180,11 @@ AssemblerEditor.prototype = {
 
     /*
     var html = "";
-    html += '<a class="assemblerToolTab" data-type="mos6502OpcodesPanel" href="javascript: void(0)">6502/6510 Instruction Set</a>';
+    html += '<a class="assemblerToolTab" data-type="mos6502OpcodesPanel" href="#">6502/6510 Instruction Set</a>';
     html += '&nbsp; | &nbsp;';
-    html += '<a class="assemblerToolTab" data-type="c64MemoryMapPanel" href="javascript: void(0)">C64 Memory Map</a>';
+    html += '<a class="assemblerToolTab" data-type="c64MemoryMapPanel" href="#">C64 Memory Map</a>';
     html += '&nbsp; | &nbsp;';
-    html += '<a class="assemblerToolTab" data-type="calculatorPanel" href="javascript: void(0)">Calculator</a>';
+    html += '<a class="assemblerToolTab" data-type="calculatorPanel" href="#">Calculator</a>';
     */
 
 

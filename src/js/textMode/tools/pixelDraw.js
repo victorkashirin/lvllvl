@@ -33,7 +33,7 @@ PixelDraw.prototype = {
   show: function() {
     this.initC64MulticolorControl();
     var label = this.getToolLabel(this.toolType);
-    $('#pixelToolLabel').html(label);
+    $('#pixelToolLabel').text(label);
 
     if(!this.eventsSetup) {
       this.initEvents();
@@ -52,12 +52,12 @@ PixelDraw.prototype = {
       var id = $(this).attr('data-toolType');
       
       var label = _this.getToolLabel(id);
-      $('#pixelToolLabel').html(label);
+      $('#pixelToolLabel').text(label);
     });
 
     $('.pixelTool').on('mouseleave', function() {
       var label = _this.getToolLabel(_this.toolType);
-      $('#pixelToolLabel').html(label);
+      $('#pixelToolLabel').text(label);
     });
 
     $('.pixelTool').on('click', function(event) {

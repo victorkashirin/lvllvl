@@ -27,12 +27,12 @@ PixelDrawTools.prototype = {
       
       id = id.substring('drawTool_'.length);
       var label = _this.getToolLabel(id);
-      $('#currentTool').html(label);
+      $('#currentTool').text(label);
     });
 
     $('.pixelDrawTool').on('mouseleave', function() {
       var label = _this.getToolLabel(_this.tool);
-      $('#currentTool').html(label);
+      $('#currentTool').text(label);
     });
 
 
@@ -477,4 +477,3 @@ PixelDrawTools.prototype = {
   },  
 
 }
-

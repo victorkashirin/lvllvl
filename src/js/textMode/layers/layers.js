@@ -10,7 +10,7 @@ var Layers = function() {
 
   // layer refs used by undo/redo to identify the layers
   this.layerRefs = [];
-  this.layerObjects = {};
+  this.layerObjects = Object.create(null);
 
   this.nextLayerId = 0;
   this.scrollbar = null;
@@ -360,7 +360,7 @@ Layers.prototype = {
   load: function() {
 
     this.initMobileLayersDialog();
-    this.layerObjects = {};
+    this.layerObjects = Object.create(null);
     this.layerRefs = [];
     var doc = this.editor.doc;
 
@@ -769,11 +769,26 @@ Layers.prototype = {
 
 
   updateLayerLabel: function(layerId) {
-
-
     var layerObject = this.getLayerObject(layerId);
     if(layerObject) {
-      var label = '<div class="layerLabelName">' + layerObject.getLabel() + '</div>';
+      var labelElement = document.getElementById(layerId + 'label');
+      if(!labelElement) {
+        return;
+      }
+
+      labelElement.textContent = '';
+
+      var labelName = document.createElement('div');
+      labelName.className = 'layerLabelName';
+      labelName.textContent = layerObject.getLabel();
+      labelElement.appendChild(labelName);
+
+      var addProperty = function(value) {
+        var property = document.createElement('div');
+        property.className = 'layerLabelProperties';
+        property.textContent = value;
+        labelElement.appendChild(property);
+      };
 
       if(layerObject.getType() == 'grid') {
         var screenMode = layerObject.getScreenMode();
@@ -807,36 +822,38 @@ Layers.prototype = {
             screenMode = 'Vector Mode';
             break;
         }
-        label += '<div class="layerLabelProperties">' + screenMode + '</div>';
+        addProperty(screenMode);
 
         if(layerObject.getBlockModeEnabled()) {
-          label += '<div class="layerLabelProperties">Block Mode</div>';
+          addProperty('Block Mode');
         }
 
-        label += '<div class="layerLabelProperties">';
-        label += '<span style="color: #bbbbbb">Tile Flip</span> ';
-        if(layerObject.getHasTileFlip()) {
-          label += 'Yes';
-        } else {
-          label += 'No';
-        }
-        label += ',';
-        label += ' <span style="color: #bbbbbb">Tile Rotate</span> ';
-        if(layerObject.getHasTileRotate()) {
-          label += 'Yes';
-        } else {
-          label += 'No';
-        }
+        var tileProperties = document.createElement('div');
+        tileProperties.className = 'layerLabelProperties';
 
-        label += '</div>';
-//        label += '<div class="layerLabelProperties">Tile Rotate: Yes</div>';
+        var flipLabel = document.createElement('span');
+        flipLabel.style.color = '#bbbbbb';
+        flipLabel.textContent = 'Tile Flip';
+        tileProperties.appendChild(flipLabel);
+        tileProperties.appendChild(document.createTextNode(
+          ' ' + (layerObject.getHasTileFlip() ? 'Yes' : 'No') + ', '
+        ));
+
+        var rotateLabel = document.createElement('span');
+        rotateLabel.style.color = '#bbbbbb';
+        rotateLabel.textContent = 'Tile Rotate';
+        tileProperties.appendChild(rotateLabel);
+        tileProperties.appendChild(document.createTextNode(
+          ' ' + (layerObject.getHasTileRotate() ? 'Yes' : 'No')
+        ));
+
+        labelElement.appendChild(tileProperties);
 
       }
 
       if(layerObject.getType() == 'image') {
-        label += '<div class="layerLabelProperties">Image</div>';        
+        addProperty('Image');
       }
-      $('#' + layerId + 'label').html(label);
     }
   },
 
@@ -1017,22 +1034,23 @@ Layers.prototype = {
   getLayerHTML: function(layerId, label) {
     var previewWidth = 32;
     var previewHeight = 20;
+    var escapedLayerId = SafeHTML.escape(layerId);
 
     var layerHTML = '';
-    layerHTML += '<div class="textModeLayer" id="textModeLayer' + layerId + '" data-layer-id="' + layerId + '">';
+    layerHTML += '<div class="textModeLayer" id="textModeLayer' + escapedLayerId + '" data-layer-id="' + escapedLayerId + '">';
 
     layerHTML += '<div style="display: inline-block; width: 18px" >';
 
 
-    layerHTML += '<span class="textModeLayerVisible" data-layer-id="' + layerId + '" id="textModeLayerVisible' + layerId + '" style="cursor: pointer; padding: 1px">';
+    layerHTML += '<span class="textModeLayerVisible" data-layer-id="' + escapedLayerId + '" id="textModeLayerVisible' + escapedLayerId + '" style="cursor: pointer; padding: 1px">';
     layerHTML += '<img src="icons/svg/glyphicons-halflings-25-eye.svg" class="layerVisibleIcon" style="width: 16px; cursor: pointer"/>'
     layerHTML += '</span>';
 
     layerHTML += '</div>';
 
-    layerHTML += '<div class="textModeLayerDetails" id="textModeLayerDetails' + layerId + '"  data-layer-id="' + layerId + '">';
-    layerHTML += '<canvas id="layer' + layerId + 'preview" width="' + previewWidth + '" height="' + previewHeight + '" style="background-color: #333333; margin: 6px"></canvas>';
-    layerHTML += '<span style="display: inline-block; width: 200px; padding: 6px" data-layer-id="' + layerId + '" id="' + layerId + 'label" class="textModeLayerLabel" id="textModeLayerLabel' + layerId + '">' + label + '</span>';
+    layerHTML += '<div class="textModeLayerDetails" id="textModeLayerDetails' + escapedLayerId + '"  data-layer-id="' + escapedLayerId + '">';
+    layerHTML += '<canvas id="layer' + escapedLayerId + 'preview" width="' + previewWidth + '" height="' + previewHeight + '" style="background-color: #333333; margin: 6px"></canvas>';
+    layerHTML += '<span style="display: inline-block; width: 200px; padding: 6px" data-layer-id="' + escapedLayerId + '" id="' + escapedLayerId + 'label" class="textModeLayerLabel">' + SafeHTML.escape(label) + '</span>';
     layerHTML += '</div>';
 
     layerHTML += '</div>';
@@ -1053,7 +1071,7 @@ Layers.prototype = {
       var draggedCanvas = document.getElementById('layer' + this.dragLayer + 'preview');
       if(draggedCanvas) {
         var label = this.layers[index].label;
-        $('#dragLayerLabel').html(label);
+        $('#dragLayerLabel').text(label);
         dragContext.drawImage(draggedCanvas, 0, 0);;
       }
     }

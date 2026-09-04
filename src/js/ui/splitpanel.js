@@ -1055,19 +1055,12 @@ UI.SplitPanel = function(args) {
           style += ' display: none; ';
         }
         eastBarElement.setAttribute('style', style);
-        eastBarElement.setAttribute('onmousedown', 'return UI.SplitPanelResizeMouseDown(event, \'east\', \'' + this.id + '\')');
-        eastBarElement.setAttribute('onselectstart', 'return false');
-        eastBarElement.innerHTML = '<div class="ui-splitpanel-eastresize"><div class="ui-splitpanel-verticalresizehandle"></div></div>';
+        eastBarElement.setAttribute('data-ui-split-edge', 'east');
+        eastBarElement.setAttribute('data-ui-component-id', this.id);
+        eastBarElement.setAttribute('data-ui-no-select', '');
+        SafeHTML.setHTML(eastBarElement, '<div class="ui-splitpanel-eastresize"><div class="ui-splitpanel-verticalresizehandle"></div></div>');
         thisElement.appendChild(eastBarElement);
 
-        /*
-        html += '    <div id="' + this.id + 'eastbar" style="position: absolute; overflow-x: hidden; overflow-y: hidden; top: ' + top + 'px; right: ' + this.eastSize + 'px; bottom: ' + bottom + 'px; width: ' + this.eastBarSize + 'px; cursor: e-resize; cursor: col-resize" onmousedown="return UI.SplitPanelResizeMouseDown(\'east\', \'' + this.id + '\')" onselectstart="return false">';
-        html += '      <div class="ui-splitpanel-eastresize">';
-//        html += '            <div style="width: ' + this.eastBarSize + 'px; position: absolute; left: 0; right: 0; top: 0; bottom: 0"></div>';
-        html += '        <div class="ui-splitpanel-verticalresizehandle"></div> ';
-        html += '      </div>';
-        html += '    </div>';
-        */
       }
       this.resizePanel = 'south'
       this.resizeThePanel();
@@ -1146,19 +1139,12 @@ UI.SplitPanel = function(args) {
           style += ' display: none';
         }
         westBarElement.setAttribute('style', style);
-        westBarElement.setAttribute('onmousedown', 'return UI.SplitPanelResizeMouseDown(event, \'west\', \'' + this.id + '\')');
-        westBarElement.setAttribute('onselectstart', 'return false');
-        westBarElement.innerHTML = '<div class="ui-splitpanel-westresize"><div class="ui-splitpanel-verticalresizehandle"></div></div>';
+        westBarElement.setAttribute('data-ui-split-edge', 'west');
+        westBarElement.setAttribute('data-ui-component-id', this.id);
+        westBarElement.setAttribute('data-ui-no-select', '');
+        SafeHTML.setHTML(westBarElement, '<div class="ui-splitpanel-westresize"><div class="ui-splitpanel-verticalresizehandle"></div></div>');
         thisElement.appendChild(westBarElement);
 
-        /*
-        html += '    <div id="' + this.id + 'westbar"  style="position: absolute; overflow-x: hidden; overflow-y: hidden; left: ' + this.westSize + 'px; top: ' + top + 'px; bottom: ' + bottom + 'px; width: ' + this.westBarSize + 'px;  cursor: w-resize; cursor: col-resize; vertical-align: middle;" onmousedown="return UI.SplitPanelResizeMouseDown(\'west\', \'' + this.id + '\')" onselectstart="return false">';
-        html += '    <div class="ui-splitpanel-westresize">';
-  //        html += '            <div style="width: ' + this.westBarSize + 'px; position: absolute; left: 0; right: 0; top: 0; bottom: 0"></div>';
-        html += '      <div class="ui-splitpanel-verticalresizehandle"></div> ';
-        html += '    </div>';
-        html += '    </div>';
-        */
       }
 
       if(this.westHidden) {
@@ -1217,9 +1203,10 @@ UI.SplitPanel = function(args) {
         var northBarElement = document.createElement('div');
         northBarElement.setAttribute('id', this.id + 'northbar');
         northBarElement.setAttribute('style', 'position: absolute; overflow-x: ' + this.overflow + '; overflow-y: ' + this.overflow + '; left: 0; right: 0; top: ' + this.northSize + 'px; height: ' + this.northBarSize + 'px; cursor: n-resize; cursor: row-resize');
-        northBarElement.setAttribute('onmousedown', 'return UI.SplitPanelResizeMouseDown(event, \'north\', \'' + this.id + '\')');
-        northBarElement.setAttribute('onselectstart', 'return false');
-        northBarElement.innerHTML = '<div class="ui-splitpanel-northresize"><div class="ui-splitpanel-horizontalresizehandle"></div></div>';
+        northBarElement.setAttribute('data-ui-split-edge', 'north');
+        northBarElement.setAttribute('data-ui-component-id', this.id);
+        northBarElement.setAttribute('data-ui-no-select', '');
+        SafeHTML.setHTML(northBarElement, '<div class="ui-splitpanel-northresize"><div class="ui-splitpanel-horizontalresizehandle"></div></div>');
         thisElement.appendChild(northBarElement);
 
       }
@@ -1234,20 +1221,6 @@ UI.SplitPanel = function(args) {
       
     }
 
-    /*
-      html += '    <div id="' + this.id + 'north" style="position: absolute; overflow-x: hidden; overflow-y: hidden; left: 0; right: 0; top: 0; bottom: 0; height: ' + this.northSize + 'px"  >';
-      html += this.north.getHTML();
-      html += '    </div>';
-
-      // north resize bar
-
-      if(this.northBorder) {
-        html += '    <div id="' + this.id + 'northbar" style="position: absolute; overflow-x: hidden; overflow-y: hidden; left: 0; right: 0; top: ' + this.northSize + 'px; height: ' + this.northBarSize + 'px; cursor: n-resize; cursor: row-resize"  onmousedown="return UI.SplitPanelResizeMouseDown(\'north\', \'' + this.id + '\')" onselectstart="return false">';
-        html += '        <div class="ui-splitpanel-northresize">';
-        html += '            <div class="ui-splitpanel-horizontalresizehandle"></div> ';
-        html += '        </div>';
-        html += '    </div>';
-      }    */
   }
 
   this.addSouth = function(south, southSize, border, hidden) {
@@ -1302,9 +1275,10 @@ UI.SplitPanel = function(args) {
         }
 
         southBarElement.setAttribute('style', style);
-        southBarElement.setAttribute('onmousedown', 'return UI.SplitPanelResizeMouseDown(event, \'south\', \'' + this.id + '\')');
-        southBarElement.setAttribute('onselectstart', 'return false');
-        southBarElement.innerHTML = '<div class="ui-splitpanel-southresize"><div class="ui-splitpanel-horizontalresizehandle"></div></div>';
+        southBarElement.setAttribute('data-ui-split-edge', 'south');
+        southBarElement.setAttribute('data-ui-component-id', this.id);
+        southBarElement.setAttribute('data-ui-no-select', '');
+        SafeHTML.setHTML(southBarElement, '<div class="ui-splitpanel-southresize"><div class="ui-splitpanel-horizontalresizehandle"></div></div>');
         thisElement.appendChild(southBarElement);
 
       }
@@ -1364,13 +1338,14 @@ UI.SplitPanel = function(args) {
       }
       this.element = document.createElement('div');
       this.element.setAttribute('id', this.id);
+      this.element.setAttribute('data-ui-event-token', UI.markupEventToken);
       this.element.setAttribute('style', 'position: absolute; left: 0; right: 0; top: 0; bottom: 0; overflow-x: ' + this.overflow + '; overflow-y: ' + this.overflow );
     }
     return this.element;
   }
   this.getHTML = function() {
     var html = '';
-    html += '<div style="position: absolute; left: 0; right: 0; top: 0; bottom: 0; overflow-x: ' + this.overflow + '; overflow-y: ' + this.overflow + '" id="' + this.id + '"  >';
+    html += '<div style="position: absolute; left: 0; right: 0; top: 0; bottom: 0; overflow-x: ' + this.overflow + '; overflow-y: ' + this.overflow + '" id="' + this.id + '"' + UI.getMarkupEventAttribute() + '>';
 
     // north
 
@@ -1393,7 +1368,7 @@ UI.SplitPanel = function(args) {
         if(this.northHidden) {
           html += ' display: none; ';
         }
-        html += '"  onmousedown="return UI.SplitPanelResizeMouseDown(event, \'north\', \'' + this.id + '\')" onselectstart="return false">';
+        html += '" data-ui-split-edge="north" data-ui-component-id="' + this.id + '" data-ui-no-select>';
         html += '        <div class="ui-splitpanel-northresize">';
         html += '            <div class="ui-splitpanel-horizontalresizehandle"></div> ';
         html += '        </div>';
@@ -1420,7 +1395,7 @@ UI.SplitPanel = function(args) {
         if(this.southHidden || !this.centerVisible || this.southResizeHidden) {
           html += ' display: none;';
         }
-        html += '"  onmousedown="return UI.SplitPanelResizeMouseDown(event, \'south\', \'' + this.id + '\')" onselectstart="return false">';
+        html += '" data-ui-split-edge="south" data-ui-component-id="' + this.id + '" data-ui-no-select>';
         html += '        <div class="ui-splitpanel-southresize">';
         html += '            <div class="ui-splitpanel-horizontalresizehandle"></div> ';
 //      html += '            <div style="height: ' + this.southBarSize + 'px; position: absolute; left: 0; right: 0; top: 0; bottom: 0"></div>';
@@ -1450,7 +1425,7 @@ UI.SplitPanel = function(args) {
         if(this.eastHidden) {
           html += ' display: none ';
         }
-        html += ' " onmousedown="return UI.SplitPanelResizeMouseDown(event, \'east\', \'' + this.id + '\')" onselectstart="return false">';
+        html += ' " data-ui-split-edge="east" data-ui-component-id="' + this.id + '" data-ui-no-select>';
         html += '      <div class="ui-splitpanel-eastresize">';
 //        html += '            <div style="width: ' + this.eastBarSize + 'px; position: absolute; left: 0; right: 0; top: 0; bottom: 0"></div>';
         html += '        <div class="ui-splitpanel-verticalresizehandle"></div> ';
@@ -1485,7 +1460,7 @@ UI.SplitPanel = function(args) {
           html += ' display: none ';
         }
 
-        html += '" onmousedown="return UI.SplitPanelResizeMouseDown(event, \'west\', \'' + this.id + '\')" onselectstart="return false">';
+        html += '" data-ui-split-edge="west" data-ui-component-id="' + this.id + '" data-ui-no-select>';
         html += '    <div class="ui-splitpanel-westresize">';
 //        html += '            <div style="width: ' + this.westBarSize + 'px; position: absolute; left: 0; right: 0; top: 0; bottom: 0"></div>';
         html += '      <div class="ui-splitpanel-verticalresizehandle"></div> ';

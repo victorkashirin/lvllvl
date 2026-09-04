@@ -228,7 +228,7 @@ TileEditor.prototype = {
 
     $('#tileEditorControls .ui-button').on('mouseenter', function(event) {
       var label = $(this).attr('data-label');
-      $('#tileEditorControlLabel').html(label);
+      $('#tileEditorControlLabel').text(label);
     });
 
     $('#tileEditorMultiColor').on('click', function(event) {

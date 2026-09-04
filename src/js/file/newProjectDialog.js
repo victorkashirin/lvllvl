@@ -97,14 +97,14 @@ NewProjectDialog.prototype = {
       if(_this.mode == 'indexed') {
         _this.colorPalette = args.colorPalette;
         _this.colorPaletteCreated = true;
-        $('#newProjectColorPalette').html(description.name + ' Palette');
+        $('#newProjectColorPalette').text(description.name + ' Palette');
         this.colorPaletteName = description.name;
       }
 
       if(description) {
         var width = description.width;
         var height = description.height;
-        $('#newProjectTileSet').html(description.name);
+        $('#newProjectTileSet').text(description.name);
         this.tileSetName = description.name;
       }
 
@@ -132,7 +132,7 @@ NewProjectDialog.prototype = {
       }
 
       if(description) {
-        $('#newProjectColorPalette').html(description.name);
+        $('#newProjectColorPalette').text(description.name);
         this.colorPaletteName = description.name;
       }
 

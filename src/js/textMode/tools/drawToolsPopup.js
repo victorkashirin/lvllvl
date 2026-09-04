@@ -184,12 +184,12 @@ DrawToolsPopup.prototype = {
       id = id.substring('drawPopupTool_'.length);
 
       var label = _this.editor.tools.drawTools.getToolLabel(id);
-      $('#currentPopupTool').html(label);
+      $('#currentPopupTool').text(label);
     });
 
     $('.drawPopupTool').on('mouseleave', function() {
       var label = _this.editor.tools.drawTools.getToolLabel(_this.editor.tools.drawTools.tool);
-      $('#currentPopupTool').html(label);
+      $('#currentPopupTool').text(label);
     });
 */
 

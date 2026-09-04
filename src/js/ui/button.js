@@ -19,7 +19,9 @@ UI.Button = function(args) {
    * @param id {String} (optional) The id of the button
    * @param class {String} (optional) The css class to give the button
    * @param style {String} (optional) The style to give the button
-   * @param icon {String} (optional) the URL of an icon to use in the button
+   * @param icon {String} (optional) The icon-font name to use in the button
+   * @param imageSrc {String} (optional) The URL of an image to show before the text
+   * @param imageAlt {String} (optional) Alternative text for the image
    * @param onclick {Function} (optional) The javascript function to call when the button is clicked
    */
 
@@ -46,6 +48,16 @@ UI.Button = function(args) {
       this.icon = args.icon;
     }
 
+    this.imageSrc = null;
+    if(args.imageSrc) {
+      this.imageSrc = args.imageSrc;
+    }
+
+    this.imageAlt = '';
+    if(args.imageAlt) {
+      this.imageAlt = args.imageAlt;
+    }
+
     this.colour = '';
     if(args.colour) {
       this.colour = args.colour;
@@ -67,9 +79,10 @@ UI.Button = function(args) {
   }
 
   this.getElement = function() {
-    var button = this;
     this.element = document.createElement('div');
     this.element.setAttribute('id', this.id);
+    this.element.setAttribute('data-ui-event-token', UI.markupEventToken);
+    this.element.setAttribute('data-ui-button-id', this.id);
     if(this.enabled) {
       var cssClass = 'ui-button';
       if(this.colour != '') {
@@ -85,21 +98,28 @@ UI.Button = function(args) {
 //    rippleElement.setAttribute('class', 'rippleJS');
 //    this.element.appendChild(rippleElement);
 
-    this.element.onclick = function(event) {
-      UI.ButtonClick(button.id);
-    }
-
-    this.element.innerHTML = this.getInnerHTML();
+    SafeHTML.setHTML(this.element, this.getInnerHTML());
 
     return this.element;
   }
 
-  this.getInnerHTML = function() {
+  this.getContentHTML = function() {
     var html = '';
     if(this.icon) {
-      html += '<i class="button-icon icon-' + this.icon + '"></i>&nbsp;'; 
+      html += '<i class="button-icon icon-' + SafeHTML.escape(this.icon) + '"></i>&nbsp;';
     }
-    html += this.args.text;
+    if(this.imageSrc) {
+      html += '<img src="' + SafeHTML.escape(this.imageSrc) + '" alt="' + SafeHTML.escape(this.imageAlt) + '">';
+      if(this.args.text) {
+        html += ' ';
+      }
+    }
+    html += SafeHTML.escape(this.args.text);
+    return html;
+  }
+
+  this.getInnerHTML = function() {
+    var html = this.getContentHTML();
 
     html += '<div class="rippleJS"></div>';
     return html;
@@ -111,7 +131,8 @@ UI.Button = function(args) {
     
 //    html += '<button type="button" id="' + this.id + '" ';
     html += '<div id="' + this.id + '" ';
-    html += ' onclick="UI.ButtonClick(\'' + this.id + '\')" ';
+    html += UI.getMarkupEventAttribute();
+    html += ' data-ui-button-id="' + this.id + '" ';
     if(this.cssclass) {
       html += ' class="' + this.cssclass + '" ';
     } else {
@@ -130,53 +151,13 @@ UI.Button = function(args) {
     }
     html += '>';
 
-    if(this.icon) {
-      html += '<i class="button-icon icon-' + this.icon + '"></i>&nbsp;'; 
-    }
-//    html += '<span id="' + this.style + 'text">' + this.args.text + '</span>';
-    html += this.args.text;
+    html += this.getContentHTML();
 
     html += '<div class="rippleJS"></div>';
     html += '</div>';
 
     return html;
 
-/*
-    html = '<a id="' + this.id + '"   ';
-    html += ' onclick="UI.ButtonClick(\'' + this.id +  '\')" ';
-    if(this.cssclass) {
-      html += ' class="' + this.cssclass + '" ';
-    } else {
-      if(this.enabled) {
-        html += ' class="ui-button" ';
-      } else {
-        html += ' class="ui-button-disabled" ';
-      }
-    }
-
-    if(this.style) {
-      html += ' style="' + this.style + '" ';
-    }
-
-    html += ' onmousedown="return false" ';
-    html += '>';
-
-
-    html += '<span ';
-
-    html += ' onmousedown="return false" onselectstart="return false" ';
-
-    html += ' id="' + this.id + 'text">';
-
-    html += this.args.text;
-    if(this.icon != '') {
-      html += '<img src="' + this.icon + '"/>';
-    }
-    html += '</span>';
-    html += '</a>';
-
-    return html;
-*/
   }
 
   /**
@@ -229,7 +210,10 @@ UI.Button = function(args) {
    */
   this.setText = function(text) {
     this.args.text = text;
-    $('#' + this.id + 'text').html(text);
+    var element = document.getElementById(this.id);
+    if(element) {
+      SafeHTML.setHTML(element, this.getInnerHTML());
+    }
   }
 
   this.getText = function() {

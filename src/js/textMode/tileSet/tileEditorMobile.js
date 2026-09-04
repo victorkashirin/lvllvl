@@ -280,7 +280,7 @@ TileEditorMobile.prototype = {
 
     $('#tileEditorMobileControls .ui-button').on('mouseenter', function(event) {
       var label = $(this).attr('data-label');
-      $('#tileEditorMobileControlLabel').html(label);
+      $('#tileEditorMobileControlLabel').text(label);
     });
 
     $('#tileEditorMobileMultiColor').on('click', function(event) {

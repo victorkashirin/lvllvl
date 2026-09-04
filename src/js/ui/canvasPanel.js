@@ -18,7 +18,7 @@ UI.CanvasPanel = function() {
     this.element.setAttribute('style', 'position: absolute; top: 0; bottom: 0; left: 0; right: 0');
     this.element.setAttribute('class', 'ui-canvas-panel ui-mouseevents');
     
-    this.element.innerHTML = '<canvas style="" id="' + this.id + '-canvas"></canvas>';
+    SafeHTML.setHTML(this.element, '<canvas style="" id="' + this.id + '-canvas"></canvas>');
 
     return this.element;
 

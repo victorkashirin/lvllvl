@@ -240,7 +240,7 @@ EditSidFilter.prototype = {
       }
 
     }
-    $('#filterName' + this.filterId).html(filter.name);
+    $('#filterName' + this.filterId).text(filter.name);
 
 
   },

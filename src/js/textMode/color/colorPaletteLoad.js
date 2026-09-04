@@ -336,7 +336,7 @@ ColorPaletteLoad.prototype = {
 
     var filename = file.name;
     this.name = filename;
-    $('#colorPaletteFileChooseName').html(filename);
+    $('#colorPaletteFileChooseName').text(filename);
     var extension = filename.split('.').pop().toLowerCase();
     this.loadMap = false;
 
@@ -467,7 +467,7 @@ ColorPaletteLoad.prototype = {
 
 
   errorMessage: function(message) {
-    $('#colorPaletteLoadError').html(message);
+    $('#colorPaletteLoadError').text(message);
     if(message != '') {
       $('#colorPaletteLoadError').show();
     } else {

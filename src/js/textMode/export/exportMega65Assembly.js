@@ -69,7 +69,7 @@ ExportMega65Assembly.prototype = {
         }
       });
 
-      this.displayButton = UI.create('UI.Button', { "text": '<img src="icons/svg/glyphicons-basic-614-copy.svg"/> Copy To Clipboard', "color": "primary" });
+      this.displayButton = UI.create('UI.Button', { "imageSrc": "icons/svg/glyphicons-basic-614-copy.svg", "text": "Copy To Clipboard", "color": "primary" });
       this.uiComponent.addButton(this.displayButton);
       this.displayButton.on('click', function(event) {
         //UI.closeDialog();

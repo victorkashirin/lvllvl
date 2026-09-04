@@ -3086,7 +3086,7 @@ ImportImage.prototype = {
       $('#importImageVideoControls').show();
 
       if(typeof file.name != 'undefined') { 
-        $('#importImageChooseFileName').html(file.name);
+        $('#importImageChooseFileName').text(file.name);
       } else {
         $('#importImageChooseFileName').html('');
       }
@@ -3226,7 +3226,7 @@ ImportImage.prototype = {
     }
 
     if(typeof file.name != 'undefined') { 
-      $('#importImageChooseFileName').html(file.name);
+      $('#importImageChooseFileName').text(file.name);
     } else {
       $('#importImageChooseFileName').html('');
     }
@@ -3486,7 +3486,7 @@ ImportImage.prototype = {
       var element = document.createElement('div');
       element.setAttribute('id', 'importImageProgress');
       element.setAttribute('style', 'display: none; z-index: 1000; color: white; text-align: center; padding: 4px; position: absolute; background-color: #111111; top: 32px; left: 2px; width: 120px; height: 110px; border: 1px solid #cccccc');
-      element.innerHTML = html;
+      SafeHTML.setHTML(element, html);
 
       document.body.append(element);
       //</div>

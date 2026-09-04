@@ -436,7 +436,7 @@ C64DebuggerCompact.prototype = {
     
     var filename = file.name;
 
-    $('#c64DebuggerAttachedDisk').html(filename);
+    $('#c64DebuggerAttachedDisk').text(filename);
 
   },
 

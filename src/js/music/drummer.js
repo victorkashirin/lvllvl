@@ -710,7 +710,7 @@ Drummer.prototype = {
           if(mappedTo == i) {
             controlsHTML += ' selected="selected" ';
           }
-          controlsHTML += '>' + this.music.doc.data.instruments[i].name + '</option>';
+          controlsHTML += '>' + SafeHTML.escape(this.music.doc.data.instruments[i].name) + '</option>';
 
         }
         controlsHTML += '</select>';

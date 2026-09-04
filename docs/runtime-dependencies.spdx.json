@@ -3,7 +3,7 @@
   "dataLicense": "CC0-1.0",
   "SPDXID": "SPDXRef-DOCUMENT",
   "name": "lvllvl-runtime-0.497.2",
-  "documentNamespace": "https://github.com/jaammees/lvllvl/sbom/0.497.2/b071091734321c6d1f80639e6438ec6d7a06de00a6a6ce24cdc707cf9bcf8bf9",
+  "documentNamespace": "https://github.com/jaammees/lvllvl/sbom/0.497.2/0dfbba80e1b69a9af6172fbe88a73065662b7acf2fd0d1dfd2b4714152b0ad12",
   "creationInfo": {
     "created": "2026-09-04T00:00:00Z",
     "creators": [
@@ -183,6 +183,30 @@
       ]
     },
     {
+      "SPDXID": "SPDXRef-Package-dompurify",
+      "name": "DOMPurify",
+      "versionInfo": "3.4.14",
+      "downloadLocation": "https://registry.npmjs.org/dompurify/-/dompurify-3.4.14.tgz",
+      "filesAnalyzed": false,
+      "licenseConcluded": "MPL-2.0 OR Apache-2.0",
+      "licenseDeclared": "MPL-2.0 OR Apache-2.0",
+      "copyrightText": "NOASSERTION",
+      "comment": "Sanitizes rich HTML before it reaches application DOM sinks. Delivery: npm: dompurify. Modification status: unmodified. Audit identity: pkg:npm/dompurify@3.4.14. Reachable entry points: lib/dompurify/purify.min.js, lib/dompurify/purify.min.js.map.",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "af1debe7d48694237e19c6066b58d736ecc03091d3fdb7fa172ee3d84b7c26d6"
+        }
+      ],
+      "externalRefs": [
+        {
+          "referenceCategory": "PACKAGE-MANAGER",
+          "referenceType": "purl",
+          "referenceLocator": "pkg:npm/dompurify@3.4.14"
+        }
+      ]
+    },
+    {
       "SPDXID": "SPDXRef-Package-gif-js",
       "name": "gif.js",
       "versionInfo": "0.1.6",
@@ -339,7 +363,7 @@
       "checksums": [
         {
           "algorithm": "SHA256",
-          "checksumValue": "ba4cda876c4120ff7f8aadf8e13985be9f881550b44357b3303d596714455553"
+          "checksumValue": "46d6c91511e7590bde2f1dfd8ab9d5704912f885f8881703d31df02ad3140979"
         }
       ]
     },
@@ -1417,6 +1441,11 @@
       "spdxElementId": "SPDXRef-DOCUMENT",
       "relationshipType": "DESCRIBES",
       "relatedSpdxElement": "SPDXRef-Package-download-js"
+    },
+    {
+      "spdxElementId": "SPDXRef-DOCUMENT",
+      "relationshipType": "DESCRIBES",
+      "relatedSpdxElement": "SPDXRef-Package-dompurify"
     },
     {
       "spdxElementId": "SPDXRef-DOCUMENT",

@@ -544,7 +544,7 @@ test("repository opening reports a requested local-save failure", async ({ page 
   const result = await page.evaluate(async () => {
     let refreshCount = 0;
     window.UI = { closeDialog() {} };
-    window.$ = () => ({ html() {}, hide() {}, show() {} });
+    window.$ = () => ({ html() {}, hide() {}, show() {}, text() {} });
     g_app.projectNavigator.refreshTree = () => { refreshCount += 1; };
     g_app.fileManager.getUniqueProjectName = (name, callback) => {
       callback({ success: true, name });
@@ -586,7 +586,7 @@ test("repository creation stops when local metadata persistence fails", async ({
 
   const result = await page.evaluate(() => {
     let pushed = false;
-    window.$ = () => ({ html() {}, hide() {}, show() {} });
+    window.$ = () => ({ html() {}, hide() {}, show() {}, text() {} });
     g_app.fileManager.saveProjectRepositoryDetails = (args, callback) => {
       callback({ success: false, error: new Error("Injected metadata failure") });
     };

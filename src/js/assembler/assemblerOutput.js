@@ -134,7 +134,7 @@ AssemblerOutput.prototype = {
       if(isError) {
         outputHTML += '<div class="assemblerOutputErrorIcon" ><img src="icons/svg/glyphicons-basic-599-menu-close.svg"></div>';
       }
-      outputHTML += this.lines[i].text;
+      outputHTML += SafeHTML.escape(this.lines[i].text);
       outputHTML += '</div>';
     }
     var _this = this;

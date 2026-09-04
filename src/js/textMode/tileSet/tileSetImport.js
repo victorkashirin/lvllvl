@@ -366,7 +366,7 @@ TileSetImport.prototype = {
 
     this.tilename = file.name;
 
-    $('#loadTileSetFileName').html(filename);
+    $('#loadTileSetFileName').text(filename);
 
     this.label = filename;
     if(dotPos !== -1) {

@@ -399,7 +399,7 @@ Scripting.prototype = {
     var lineHTML = '';
 
 
-    lineHTML += '<div class="scriptingOutputLine" id="scriptingOutputLine' + this.currentOutputLineId + '" data-id="' + this.currentOutputLineId + '" data-type="' + type + '"';
+    lineHTML += '<div class="scriptingOutputLine" id="scriptingOutputLine' + this.currentOutputLineId + '" data-id="' + this.currentOutputLineId + '" data-type="' + SafeHTML.escape(type) + '"';
     if(lineNumber !== false) {
       lineHTML += ' data-line="' + lineNumber + '"';
     }  
@@ -412,7 +412,7 @@ Scripting.prototype = {
     if(lineNumber !== false) {
       lineHTML += lineNumber + ': ';
     }
-    lineHTML += message;
+    lineHTML += SafeHTML.escape(message);
     lineHTML += '</div>';
 
 

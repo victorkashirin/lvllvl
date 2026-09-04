@@ -528,7 +528,7 @@ ImportC64SpriteFormats.prototype = {
 
 
     var filename = file.name;
-    $('#importC64SpriteFormatsAttachedDisk').html(filename);
+    $('#importC64SpriteFormatsAttachedDisk').text(filename);
 
     this.importType = 'prg';
   },

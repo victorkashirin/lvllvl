@@ -103,7 +103,7 @@ TileSetChoosePreset.prototype = {
       });
 
 
-      this.linkButton = UI.create('UI.Button', { "text": '<img src="icons/svg/glyphicons-basic-351-link.svg"> Create A Template Link', "color": "other" });
+      this.linkButton = UI.create('UI.Button', { "imageSrc": "icons/svg/glyphicons-basic-351-link.svg", "text": "Create A Template Link", "color": "other" });
       this.uiComponent.addButton(this.linkButton);
       this.linkButton.on('click', function(event) {
         _this.createTemplateLink();
@@ -289,7 +289,7 @@ TileSetChoosePreset.prototype = {
           if(id == 'modular-shapes') {
             listHTML += ' characterSetListEntrySelected ';
           }
-          listHTML += '" value="' + id + '">' + name + '</div>';
+          listHTML += '" value="' + SafeHTML.escape(id) + '">' + SafeHTML.escape(name) + '</div>';
         }
       }
     }
@@ -329,7 +329,7 @@ TileSetChoosePreset.prototype = {
               if(id == '8px') {
                 listHTML += ' characterSetListEntrySelected ';
               }
-              listHTML += '" value="' + id + '">' + name + '</div>';
+              listHTML += '" value="' + SafeHTML.escape(id) + '">' + SafeHTML.escape(name) + '</div>';
             }
           }
         }
@@ -364,7 +364,7 @@ TileSetChoosePreset.prototype = {
             if(id == 'petscii') {
               listHTML += ' characterSetListEntrySelected ';
             }
-            listHTML += '" value="' + id + '">' + name + '</div>';
+            listHTML += '" value="' + SafeHTML.escape(id) + '">' + SafeHTML.escape(name) + '</div>';
           }
         }
       }
@@ -482,7 +482,7 @@ TileSetChoosePreset.prototype = {
           options += ' checked="checked" ';
         }
         options += '/> ';
-        options += this.previewCharset.options[i].name;
+        options += SafeHTML.escape(this.previewCharset.options[i].name);
 
         if(typeof this.previewCharset.options[i].author != 'undefined') {
           options += ' by ' + this.previewCharset.options[i].author;

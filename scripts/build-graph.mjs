@@ -89,6 +89,7 @@ export const buildGraph = {
     minify: true,
     sourceMap: true,
     inputs: [
+      "js/security/jqueryHtmlPolicy.js",
       "js/utils/cssScrollbarSupport.js",
       "js/ui/ui.js",
       "js/ui/number.js",
@@ -435,6 +436,8 @@ export const moduleGraph = {
 };
 
 export const copiedScripts = {
+  "js/htmlPolicy.js": "js/security/htmlPolicy.js",
+  "js/startup.js": "js/startup.js",
   "js/storageManager.js": "js/utils/storageManager.js",
   "js/githubApi.js": "js/file/githubApi.js",
   "js/githubClient.js": "js/file/githubClient.js",

@@ -2588,7 +2588,7 @@ C64Debugger.prototype = {
       _this.prgName = file.name;
 
       if(_this.type != 'compact') {
-        $('#c64DebuggerCurrentPRG' + _this.type).html(_this.prgName);
+        $('#c64DebuggerCurrentPRG' + _this.type).text(_this.prgName);
       }
       var inject = _this.prgLoadMethod != 'loadrun';
       if(_this.crtData != null) {
@@ -2617,7 +2617,7 @@ C64Debugger.prototype = {
     this.d64Name = filename;
 
     if(this.type != 'compact') {     
-      $('#' + this.prefix + 'AttachedDisk').html(filename);
+      $('#' + this.prefix + 'AttachedDisk').text(filename);
       $('#' + this.prefix + 'DriveInfo').show();
     }
 
@@ -2681,7 +2681,7 @@ C64Debugger.prototype = {
     var filename = file.name;
 
     if(this.type != 'compact') {     
-      $('#' + this.prefix + 'AttachedDisk').html(filename);
+      $('#' + this.prefix + 'AttachedDisk').text(filename);
 //      $('#' + this.c64CanvasId + 'C64Info').show();
       $('#' + this.prefix + 'DriveInfo').show();
     }
@@ -3210,7 +3210,7 @@ C64Debugger.prototype = {
 
     $('#' + this.c64CanvasId + 'Overlay').show();
     $('#' + this.c64CanvasId + 'OverlayElements').show();
-    $('#' + this.c64CanvasId + 'OverlayTitle').html(filename);
+    $('#' + this.c64CanvasId + 'OverlayTitle').text(filename);
 
     var overlayInfo = '';// 'controls: arrow keys + z';
 

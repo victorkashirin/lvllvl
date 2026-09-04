@@ -107,15 +107,15 @@ MobileMenu.prototype = {
       }
       html += '>';
 
-      html += '<a href="javascript: void(0)"  class="mobile-menu-item" data-id="' + menuItems[i].id + '">';
+      html += '<a href="#" class="mobile-menu-item" data-id="' + SafeHTML.escape(menuItems[i].id) + '">';
       html += '<div class="rippleJS-manual"></div>';
       html += '<div class="mobile-menu-icon" >';
       if(menuItems[i].icon) {
         html += menuItems[i].icon;
       }
       html += '</div>';
-      html += '<span class="ui-text" data-textid="' + menuItems[i].label + '" id="mobile-menu-item-' + menuItems[i].id + '">';
-      html += TextStore.get(menuItems[i].label);
+      html += '<span class="ui-text" data-textid="' + SafeHTML.escape(menuItems[i].label) + '" id="mobile-menu-item-' + SafeHTML.escape(menuItems[i].id) + '">';
+      html += SafeHTML.escape(TextStore.get(menuItems[i].label));
       html += '</span>';
       
       html += '</a>';
@@ -169,6 +169,7 @@ MobileMenu.prototype = {
       g_app.displayUserDetails();
 
       $('.mobile-menu-item').on('click', function(e) {
+        e.preventDefault();
         var id = $(this).attr('data-id');
         _this.hideMenu(id);
       });
@@ -302,7 +303,7 @@ MobileMenu.prototype = {
   },
 
   setMenuItemText: function(id, text) {
-    $('#mobile-menu-item-' + id).html(text);
+    $('#mobile-menu-item-' + id).text(text);
   },
 
   setMenuPosition: function(position) {
@@ -527,4 +528,3 @@ MobileMenu.prototype = {
 
   }
 }
-

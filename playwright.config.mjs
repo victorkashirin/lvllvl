@@ -35,7 +35,9 @@ export default defineConfig({
     metadata: {
       deviceClass: project.deviceClass,
     },
-    testMatch: project.runFullSuite ? undefined : /browser-support\.spec\.mjs/,
+    testMatch: project.runFullSuite
+      ? undefined
+      : /(?:browser-support|security)\.spec\.mjs/,
     use: {
       ...devices[project.device],
       browserName: project.browserName,

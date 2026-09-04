@@ -159,7 +159,7 @@ ChooseColorsDialog.prototype = {
     var dialogHeight = colorDisplayHeight + 78 + 6;//this.canvas.height + 52;
 
     if(this.message !== false) {
-      $('#chooseColorsMessage').html(this.message);
+      $('#chooseColorsMessage').text(this.message);
       $('#chooseColorsMessage').show();
       dialogHeight += 20;
     } else {

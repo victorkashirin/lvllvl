@@ -102,7 +102,7 @@ DbgDisassembly.prototype = {
         if(label) {
           this.disassemblyInfo[address].label = label;
           html += '<option value="' + address + '">';
-          html += label;
+          html += SafeHTML.escape(label);
           html += '</option>';
         }
 

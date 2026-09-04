@@ -170,6 +170,24 @@
       }
     },
     {
+      "id": "dompurify",
+      "name": "DOMPurify",
+      "version": "3.4.14",
+      "purpose": "Sanitizes rich HTML before it reaches application DOM sinks.",
+      "source": "https://github.com/cure53/DOMPurify",
+      "license": "MPL-2.0 OR Apache-2.0",
+      "purl": "pkg:npm/dompurify@3.4.14",
+      "modificationStatus": "unmodified",
+      "paths": [
+        "lib/dompurify/purify.min.js",
+        "lib/dompurify/purify.min.js.map"
+      ],
+      "package": {
+        "name": "dompurify",
+        "version": "3.4.14"
+      }
+    },
+    {
       "id": "gif-js",
       "name": "gif.js",
       "version": "0.1.6",
@@ -275,9 +293,9 @@
       "retention": {
         "category": "modified-source",
         "revision": "5e1b2776104b5b9d0f5518471273669109c9a731",
-        "reproductionCommand": "git show 5e1b2776104b5b9d0f5518471273669109c9a731:src/lib/jsinterpreter/acorn_interpreter.js > src/lib/jsinterpreter/acorn_interpreter.js",
+        "reproductionCommand": "git show 5e1b2776104b5b9d0f5518471273669109c9a731:src/lib/jsinterpreter/acorn_interpreter.js > src/lib/jsinterpreter/acorn_interpreter.js && git apply docs/patches/js-interpreter-csp.patch",
         "toolchain": "Git object extraction; inherited compiler bundle is already built",
-        "patches": [],
+        "patches": ["docs/patches/js-interpreter-csp.patch"],
         "owner": "lvllvl maintainers",
         "reviewedAt": "2026-09-04",
         "reviewBy": "2027-09-04",

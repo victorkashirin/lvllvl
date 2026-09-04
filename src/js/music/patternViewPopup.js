@@ -47,11 +47,11 @@ PatternViewPopup.prototype = {
       html += '<div class="ui-menu-item patternViewPopupInstrument"  data-value="' + instrumentId + '">';
       //html += '<div style="display: inline-block; width: 14px"></div>';
       html += '<div style="margin-top: 2px; margin-right: 4px; display: inline-block; width: 12px; height: 12px; background-color: ' + color + '"></div>';
-      html += instrument.name;
+      html += SafeHTML.escape(instrument.name);
       html += '</div>';
 
       html += '<div class="ui-menu-item patternViewPopupEditInstrument"  data-value="' + instrumentId + '">';
-      html += 'Edit ' + instrument.name;
+      html += 'Edit ' + SafeHTML.escape(instrument.name);
       html += '</div>';
 
     }
@@ -66,7 +66,7 @@ PatternViewPopup.prototype = {
       html += '<div class="ui-menu-item patternViewPopupInstrument"  data-value="' + instrumentId + '">';
       //html += '<div style="display: inline-block; width: 14px"></div>';
       html += '<div style="margin-top: 2px; margin-right: 4px; display: inline-block; width: 12px; height: 12px; background-color: ' + color + '"></div>';
-      html += instrument.name;
+      html += SafeHTML.escape(instrument.name);
       html += '</div>';
 
     }

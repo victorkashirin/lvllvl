@@ -323,7 +323,7 @@ PatternView2.prototype = {
     this.drawPattern();
 
 
-    $('#patternLabel').html(patternName);    
+    $('#patternLabel').text(patternName);
   },  
 
   setPatternSize: function(columns, rows) {

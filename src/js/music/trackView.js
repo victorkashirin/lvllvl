@@ -515,7 +515,7 @@ TrackView.prototype = {
     var options = '';
     for(var i = 0; i < this.music.doc.data.patterns.length; i++) {
       options += '<option value="' + i + '">';
-      options += this.music.doc.data.patterns[i].name;
+      options += SafeHTML.escape(this.music.doc.data.patterns[i].name);
       options += '</option>'
 
     }
@@ -618,7 +618,7 @@ TrackView.prototype = {
 //      if(this.music.patterns[i].name != 'BLANK') {
       if(this.music.doc.data.patterns[i].name.indexOf('BLANK') !== 0) {  
         options += '<option value="' + i + '">';
-        options += this.music.doc.data.patterns[i].name;
+        options += SafeHTML.escape(this.music.doc.data.patterns[i].name);
         options += '</option>'
       }
 

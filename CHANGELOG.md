@@ -4,12 +4,35 @@
 
 ### Added
 
+- Add a centralized sanitized-HTML policy, Trusted Types enforcement, strict
+  repository-address validation, and an opaque capability sandbox for music
+  scripts.
 - Add independent Fit-to-width modes for the bottom and side tile palettes,
   dynamically resizing tiles with their panels while retaining precise manual
   percentage entry and 50% zoom controls.
 
+### Changed
+
+- Replace raw button-markup inputs with explicit image and text properties,
+  reuse music-script wrappers within command batches, and remove obsolete UI
+  implementations that contained legacy dynamic code and inline handlers.
+
 ### Fixed
 
+- Restore saved-project thumbnails on the landing page, preserve formatted layer
+  metadata without exposing HTML source, and publish DOMPurify's source map with
+  its package sources embedded so development tools emit no missing-source warnings.
+- Remove application-origin dynamic code execution, replace assembler expression
+  evaluation with a bounded parser, and enforce a restrictive production CSP.
+- Route label assignments and byte directives through the complete bounded
+  assembler grammar, rejecting trailing syntax instead of accepting a numeric
+  prefix, keep repeated label-placeholder offsets independent, and avoid
+  duplicate sanitization at Trusted Types sinks.
+- Authenticate delegated shared-UI actions, use prototype-safe maps for imported
+  identifiers, reject protocol-relative sanitized URLs, and bound queued music
+  scripts so forged markup and stalled sandboxes cannot retain privileged work.
+- Keep the development server available after atomic rebuild publication by
+  following the stable `dist` symlink across Vite restarts.
 - Keep layer thumbnails contained vertically within their layer rows and visible
   at extreme canvas ratios without repeatedly resetting their drawing contexts.
 - Preserve fractional tile-palette scales such as 25%, 50%, and 150% instead of

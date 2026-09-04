@@ -3073,7 +3073,7 @@ EditC64Instrument.prototype = {
     }
 
 
-    $('#instrumentName' + id).html($('#instrumentName').val());
+    $('#instrumentName' + id).text($('#instrumentName').val());
   },
 
   editInstrumentPlay: function(octave, note) {

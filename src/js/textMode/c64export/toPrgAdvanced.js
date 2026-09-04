@@ -303,7 +303,7 @@ ToPRGAdv.prototype = {
           html += ' selected="selected" ';
         }
 
-        html += '>' + this.editor.tileSets[j].name + '</option>';
+        html += '>' + SafeHTML.escape(this.editor.tileSets[j].name) + '</option>';
       }
       html += '</select>';
       html += '</span>';
@@ -448,7 +448,7 @@ ToPRGAdv.prototype = {
         }
 
         html += '>';
-        html += g_app.music.instruments.instruments[j].name;
+        html += SafeHTML.escape(g_app.music.instruments.instruments[j].name);
         html += '</option>';
       }
       html += '</select>';
@@ -533,7 +533,7 @@ ToPRGAdv.prototype = {
           html += ' selected="selected" ';
         }
 
-        html += '>' + this.editor.tileSets[j].name + '</option>';
+        html += '>' + SafeHTML.escape(this.editor.tileSets[j].name) + '</option>';
       }
       html += '</select>';
       html += '</span>';

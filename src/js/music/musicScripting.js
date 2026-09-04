@@ -1,3 +1,18 @@
+var MUSIC_SCRIPTING_SANDBOX_CHANNEL = 'lvllvl-music-scripting-v1';
+var MUSIC_SCRIPTING_MAX_SOURCE_LENGTH = 262144;
+var MUSIC_SCRIPTING_MAX_PENDING_REQUESTS = 4;
+var MUSIC_SCRIPTING_REQUEST_TIMEOUT = 5000;
+var MUSIC_SCRIPTING_MAX_COMMANDS = 2000;
+var MUSIC_SCRIPTING_MAX_TABLE_CELLS = 65536;
+var MUSIC_SCRIPTING_EFFECT_NAMES = Object.freeze({
+  ne: 0, l: 17, pu: 1, pd: 2, pn: 3, v: 4,
+  ad: 5, sr: 6, fon: 10, frc: 11, fc: 12, ft: 14, t: 15
+});
+var MUSIC_SCRIPTING_EFFECT_NUMBERS = Object.freeze({
+  0: true, 1: true, 2: true, 3: true, 4: true, 5: true,
+  6: true, 10: true, 11: true, 12: true, 14: true, 15: true, 17: true
+});
+
 var MusicScripting = function() {
   this.music = null;
   this.scriptEditor = null;
@@ -5,6 +20,12 @@ var MusicScripting = function() {
   this.currentTab = 0;
   this.tabs = [
   ];
+
+  this.sandboxFrame = null;
+  this.sandboxReady = false;
+  this.sandboxQueue = [];
+  this.sandboxRequests = Object.create(null);
+  this.nextSandboxRequestId = 1;
 
 }
 
@@ -262,7 +283,7 @@ MusicScripting.prototype = {
     if(enabled !== false) {
       enabled = true;
     }
-    $('#channel1').prop('checked', enabled);
+    $('#channel' + channel).prop('checked', enabled);
     this.music.trackView.setChannels();
   },
 
@@ -289,26 +310,26 @@ MusicScripting.prototype = {
   selectPattern: function(name) {
     for(var i = 0; i < this.music.patterns.length; i++) {
       if(this.music.patterns[i].name.toLowerCase() == name.toLowerCase()) {
-
-        // find the pattern within the tracks
-        var tracks = this.music.tracks;
-
-        for(var j = 0; j < tracks.length; j++) {
-          for(var k = 0; k < tracks[j].length; k++) {
-            if(tracks[j][k] == i) {
-              this.music.trackView.selectPattern(j, k);
-            }
-          }
-        }
-
-
-        var pattern = new PatternScripting();
-        pattern.init(this.music, i);
-        return pattern;
+        return this.selectPatternById(i);
       }
     }
 
     throw new ScriptingException('pattern not found ' + name);
+  },
+
+  selectPatternById: function(patternId) {
+    var tracks = this.music.tracks;
+    for(var trackIndex = 0; trackIndex < tracks.length; trackIndex++) {
+      for(var patternIndex = 0; patternIndex < tracks[trackIndex].length; patternIndex++) {
+        if(tracks[trackIndex][patternIndex] == patternId) {
+          this.music.trackView.selectPattern(trackIndex, patternIndex);
+        }
+      }
+    }
+
+    var pattern = new PatternScripting();
+    pattern.init(this.music, patternId);
+    return pattern;
   },
 
   getInstrument: function(instrumentName) {
@@ -343,6 +364,394 @@ MusicScripting.prototype = {
     $('#musicScriptOutput').val(errors);
   },
 
+  getSandboxState: function() {
+    var patterns = [];
+    for(var i = 0; i < this.music.patterns.length; i++) {
+      patterns.push({
+        name: String(this.music.patterns[i].name).slice(0, 100),
+        length: this.music.patterns[i].getLength()
+      });
+    }
+
+    var instruments = [];
+    for(var j = 0; j < this.music.instruments.instruments.length; j++) {
+      instruments.push({ name: String(this.music.instruments.instruments[j].name).slice(0, 100) });
+    }
+
+    var filters = [];
+    if(this.music.filters && this.music.filters.filters) {
+      for(var k = 0; k < this.music.filters.filters.length; k++) {
+        filters.push({ name: String(this.music.filters.filters[k].name).slice(0, 100) });
+      }
+    }
+
+    return {
+      currentPatternId: this.music.patternView.patternID,
+      channelCount: this.music.tracks.length,
+      patterns: patterns,
+      instruments: instruments,
+      filters: filters
+    };
+  },
+
+  ensureSandbox: function() {
+    if(this.sandboxFrame) {
+      return;
+    }
+
+    var musicScripting = this;
+    this.sandboxFrame = document.createElement('iframe');
+    this.sandboxFrame.setAttribute('sandbox', 'allow-scripts');
+    this.sandboxFrame.setAttribute('aria-hidden', 'true');
+    this.sandboxFrame.style.display = 'none';
+    this.sandboxFrame.src = 'music-scripting-sandbox.html?v={v}';
+
+    window.addEventListener('message', function(event) {
+      if(event.source !== musicScripting.sandboxFrame.contentWindow) {
+        return;
+      }
+      var data = event.data || {};
+      if(data.channel !== MUSIC_SCRIPTING_SANDBOX_CHANNEL) {
+        return;
+      }
+      if(data.type === 'ready') {
+        musicScripting.sandboxReady = true;
+        while(musicScripting.sandboxQueue.length > 0) {
+          var queuedMessage = musicScripting.sandboxQueue.shift();
+          if(Object.prototype.hasOwnProperty.call(musicScripting.sandboxRequests, queuedMessage.id)) {
+            musicScripting.sandboxFrame.contentWindow.postMessage(queuedMessage, '*');
+          }
+        }
+        return;
+      }
+      if(data.type !== 'result' || !Object.prototype.hasOwnProperty.call(musicScripting.sandboxRequests, data.id)) {
+        return;
+      }
+      var request = musicScripting.sandboxRequests[data.id];
+      delete musicScripting.sandboxRequests[data.id];
+      clearTimeout(request.timeout);
+      request.callback(data);
+    });
+
+    document.body.appendChild(this.sandboxFrame);
+  },
+
+  runInSandbox: function(content, callback) {
+    if(typeof content !== 'string' || content.length > MUSIC_SCRIPTING_MAX_SOURCE_LENGTH) {
+      callback({ success: false, error: 'Music scripts must be smaller than 256 KiB.' });
+      return;
+    }
+    if(Object.keys(this.sandboxRequests).length >= MUSIC_SCRIPTING_MAX_PENDING_REQUESTS) {
+      callback({ success: false, error: 'Too many music scripts are already running.' });
+      return;
+    }
+    this.ensureSandbox();
+    var id = this.nextSandboxRequestId++;
+    var musicScripting = this;
+    var message = {
+      channel: MUSIC_SCRIPTING_SANDBOX_CHANNEL,
+      type: 'execute',
+      id: id,
+      content: content,
+      state: this.getSandboxState()
+    };
+    this.sandboxRequests[id] = {
+      callback: callback,
+      timeout: setTimeout(function() {
+        if(!Object.prototype.hasOwnProperty.call(musicScripting.sandboxRequests, id)) {
+          return;
+        }
+        delete musicScripting.sandboxRequests[id];
+        for(var queueIndex = musicScripting.sandboxQueue.length - 1; queueIndex >= 0; queueIndex--) {
+          if(musicScripting.sandboxQueue[queueIndex].id === id) {
+            musicScripting.sandboxQueue.splice(queueIndex, 1);
+          }
+        }
+        callback({ success: false, error: 'The music scripting sandbox did not respond.' });
+      }, MUSIC_SCRIPTING_REQUEST_TIMEOUT)
+    };
+
+    if(this.sandboxReady) {
+      this.sandboxFrame.contentWindow.postMessage(message, '*');
+    } else {
+      this.sandboxQueue.push(message);
+    }
+  },
+
+  validateSandboxCommands: function(commands) {
+    if(!Array.isArray(commands) || commands.length > MUSIC_SCRIPTING_MAX_COMMANDS) {
+      throw new Error('The sandbox returned an invalid command list.');
+    }
+
+    var music = this.music;
+
+    function integer(value, minimum, maximum, name) {
+      if(!Number.isSafeInteger(value) || value < minimum || value > maximum) {
+        throw new Error(name + ' is outside the allowed range.');
+      }
+      return value;
+    }
+
+    function patternId(value) {
+      return integer(value, 0, music.patterns.length - 1, 'Pattern');
+    }
+
+    function instrumentId(value) {
+      return integer(value, 0, music.instruments.instruments.length - 1, 'Instrument');
+    }
+
+    function position(value, id) {
+      return integer(value, 0, music.patterns[id].getLength() - 1, 'Pattern position');
+    }
+
+    function shortString(value, name) {
+      if(typeof value !== 'string' || value.length === 0 || value.length > 100) {
+        throw new Error(name + ' is invalid.');
+      }
+      return value;
+    }
+
+    function namedId(value, items, name) {
+      if(Number.isSafeInteger(value)) {
+        return integer(value, 0, items.length - 1, name);
+      }
+      var normalized = shortString(value, name).toLowerCase();
+      for(var itemIndex = 0; itemIndex < items.length; itemIndex++) {
+        if(String(items[itemIndex].name).toLowerCase() === normalized) {
+          return itemIndex;
+        }
+      }
+      throw new Error(name + ' was not found.');
+    }
+
+    function pitchNumber(value, name) {
+      if(Number.isSafeInteger(value)) {
+        return integer(value, 0, 95, name);
+      }
+      var normalized = shortString(value, name).toLowerCase().trim();
+      var match = normalized.match(/^([a-g])(#?)(-?\d+)$/);
+      if(!match) {
+        throw new Error(name + ' is invalid.');
+      }
+      var notes = { c: 0, d: 2, e: 4, f: 5, g: 7, a: 8, b: 10 };
+      var valueAsNumber = notes[match[1]] + (match[2] ? 1 : 0) + parseInt(match[3], 10) * 12;
+      return integer(valueAsNumber, 0, 95, name);
+    }
+
+    var tableCellCount = 0;
+    function table(value) {
+      if(!Array.isArray(value) || value.length > 256) {
+        throw new Error('Instrument table is invalid.');
+      }
+      var copy = [];
+      for(var rowIndex = 0; rowIndex < value.length; rowIndex++) {
+        var row = value[rowIndex];
+        if(!Array.isArray(row) || row.length > 16) {
+          throw new Error('Instrument table row is invalid.');
+        }
+        tableCellCount += row.length;
+        if(tableCellCount > MUSIC_SCRIPTING_MAX_TABLE_CELLS) {
+          throw new Error('Music script instrument tables are too large.');
+        }
+        var rowCopy = [];
+        for(var columnIndex = 0; columnIndex < row.length; columnIndex++) {
+          rowCopy.push(integer(row[columnIndex], -65535, 65535, 'Instrument table value'));
+        }
+        copy.push(rowCopy);
+      }
+      return copy;
+    }
+
+    var validated = [];
+    for(var i = 0; i < commands.length; i++) {
+      var command = commands[i];
+      if(!command || Object.getPrototypeOf(command) !== Object.prototype || typeof command.type !== 'string') {
+        throw new Error('The sandbox returned an invalid command.');
+      }
+      var id;
+      switch(command.type) {
+        case 'setChannelEnabled':
+          if(typeof command.enabled !== 'undefined' && typeof command.enabled !== 'boolean') {
+            throw new Error('Channel enabled state is invalid.');
+          }
+          validated.push({
+            type: command.type,
+            channel: integer(command.channel, 1, music.tracks.length, 'Channel'),
+            enabled: typeof command.enabled === 'undefined' ? true : command.enabled
+          });
+        break;
+        case 'clearPattern':
+          validated.push({ type: command.type, patternId: patternId(command.patternId) });
+        break;
+        case 'addNote':
+          id = patternId(command.patternId);
+          validated.push({
+            type: command.type,
+            patternId: id,
+            position: position(command.position, id),
+            instrument: namedId(command.instrument, music.instruments.instruments, 'Instrument'),
+            pitch: pitchNumber(command.pitch, 'Pitch'),
+            duration: integer(command.duration, 1, 256, 'Note duration')
+          });
+        break;
+        case 'eraseNote':
+        case 'removeEffect':
+          id = patternId(command.patternId);
+          validated.push({ type: command.type, patternId: id, position: position(command.position, id) });
+        break;
+        case 'addEffect':
+          id = patternId(command.patternId);
+          var effect = command.effect;
+          var normalizedEffect = typeof effect === 'string' ? effect.toLowerCase() : '';
+          if(Object.prototype.hasOwnProperty.call(MUSIC_SCRIPTING_EFFECT_NAMES, normalizedEffect)) {
+            effect = MUSIC_SCRIPTING_EFFECT_NAMES[normalizedEffect];
+          } else if(
+            !Number.isSafeInteger(effect) ||
+            !Object.prototype.hasOwnProperty.call(MUSIC_SCRIPTING_EFFECT_NUMBERS, effect)
+          ) {
+            throw new Error('Effect is invalid.');
+          }
+          var effectParam = typeof command.effectParam === 'undefined' ? 0 : command.effectParam;
+          var effectParam2 = typeof command.effectParam2 === 'undefined' ? 0 : command.effectParam2;
+          if(effect === 3) {
+            effectParam = integer(effectParam, 0, 65535, 'Effect parameter');
+            effectParam2 = pitchNumber(effectParam2, 'Effect pitch');
+          } else if(effect === 10) {
+            if(typeof command.effectParam === 'undefined') {
+              throw new Error('Filter effect requires a filter.');
+            }
+            effectParam = namedId(effectParam, music.filters.filters, 'Filter');
+            effectParam2 = integer(effectParam2, 0, 65535, 'Effect parameter');
+          } else if(effect === 5 || effect === 6 || effect === 11) {
+            effectParam = integer(effectParam, 0, 15, 'Effect parameter');
+            effectParam2 = integer(effectParam2, 0, 15, 'Effect parameter');
+          } else {
+            effectParam = integer(effectParam, 0, 65535, 'Effect parameter');
+            effectParam2 = integer(effectParam2, 0, 65535, 'Effect parameter');
+          }
+          validated.push({
+            type: command.type,
+            patternId: id,
+            position: position(command.position, id),
+            effect: effect,
+            effectParam: effectParam,
+            effectParam2: effectParam2
+          });
+        break;
+        case 'selectPattern':
+          validated.push({ type: command.type, patternId: patternId(command.patternId) });
+        break;
+        case 'setADSR':
+          instrumentId(command.instrumentId);
+          if(!Array.isArray(command.values) || command.values.length !== 4) {
+            throw new Error('ADSR values are invalid.');
+          }
+          validated.push({
+            type: command.type,
+            instrumentId: command.instrumentId,
+            values: command.values.map(function(value) {
+              return integer(value, 0, 15, 'ADSR value');
+            })
+          });
+        break;
+        case 'setWavetable':
+        case 'setPulsetable':
+        case 'setFiltertable':
+          validated.push({
+            type: command.type,
+            instrumentId: instrumentId(command.instrumentId),
+            table: table(command.table)
+          });
+        break;
+        case 'playInstrument':
+          validated.push({
+            type: command.type,
+            instrumentId: instrumentId(command.instrumentId),
+            pitch: typeof command.pitch === 'undefined' ? 48 : integer(command.pitch, 0, 95, 'Pitch'),
+            duration: typeof command.duration === 'undefined' ? 4 : integer(command.duration, 1, 256, 'Duration')
+          });
+        break;
+        default:
+          throw new Error('The sandbox requested an unsupported command.');
+      }
+    }
+    return validated;
+  },
+
+  applySandboxCommands: function(commands) {
+    var patterns = Object.create(null);
+    var instruments = Object.create(null);
+    var music = this.music;
+
+    function getPattern(patternId) {
+      if(!Object.prototype.hasOwnProperty.call(patterns, patternId)) {
+        patterns[patternId] = new PatternScripting();
+        patterns[patternId].init(music, patternId);
+      }
+      return patterns[patternId];
+    }
+
+    function getInstrument(instrumentId) {
+      if(!Object.prototype.hasOwnProperty.call(instruments, instrumentId)) {
+        instruments[instrumentId] = new InstrumentScripting();
+        instruments[instrumentId].init(music, instrumentId);
+      }
+      return instruments[instrumentId];
+    }
+
+    for(var i = 0; i < commands.length; i++) {
+      var command = commands[i];
+      var pattern;
+      var instrument;
+      switch(command.type) {
+        case 'setChannelEnabled':
+          this.setChannelEnabled(command.channel, command.enabled);
+        break;
+        case 'clearPattern':
+          pattern = getPattern(command.patternId);
+          pattern.clear();
+        break;
+        case 'addNote':
+          pattern = getPattern(command.patternId);
+          pattern.addNote(command.position, command.instrument, command.pitch, command.duration);
+        break;
+        case 'eraseNote':
+          pattern = getPattern(command.patternId);
+          pattern.eraseNote(command.position);
+        break;
+        case 'addEffect':
+          pattern = getPattern(command.patternId);
+          pattern.addEffect(command.position, command.effect, command.effectParam, command.effectParam2);
+        break;
+        case 'removeEffect':
+          pattern = getPattern(command.patternId);
+          pattern.removeEffect(command.position);
+        break;
+        case 'selectPattern':
+          this.selectPatternById(command.patternId);
+        break;
+        case 'setADSR':
+        case 'setWavetable':
+        case 'setPulsetable':
+        case 'setFiltertable':
+        case 'playInstrument':
+          instrument = getInstrument(command.instrumentId);
+          if(command.type === 'setADSR') {
+            instrument.setADSR.apply(instrument, command.values);
+          } else if(command.type === 'setWavetable') {
+            instrument.setWavetable(command.table);
+          } else if(command.type === 'setPulsetable') {
+            instrument.setPulsetable(command.table);
+          } else if(command.type === 'setFiltertable') {
+            instrument.setFiltertable(command.table);
+          } else {
+            instrument.play(command.pitch, command.duration);
+          }
+        break;
+      }
+    }
+  },
+
   execute: function() {
 
     var content = this.scriptEditor.getDoc().getValue();
@@ -361,33 +770,29 @@ MusicScripting.prototype = {
     }
 
     if(content != '') {
+      var musicScripting = this;
+      this.runInSandbox(content, function(result) {
+        if(!result.success) {
+          musicScripting.logError(result.error || 'Music script execution failed.');
+          if(result.stack) {
+            musicScripting.logError(result.stack);
+          }
+          return;
+        }
 
- // execute script in private context
-//    (new Function( "with(this) { " + scr + "}")).call(mask);      
-// http://stackoverflow.com/questions/26482268/securing-javascript-eval-function?noredirect=1&lq=1
-
-/*
-    try {
-        if (!sanitize || json.isJSON()) return eval('(' + json + ')');
-    } catch (e) { }
-    throw new SyntaxError('Badly formed JSON string: ' + this.inspect());
-}
-*/
-
-      console.log('eval code');
-      try {
-        var Music = this;
-        eval(content);
-      } catch (e) {
-        this.logError(e.message);
-        this.logError(e.stack);
-      }
-
-      this.music.patternView.drawPattern();  
-      this.music.patternView.music.updatePattern(this.music.patternView.patternID, this.music.patternView.channel);
-
-      this.logError('Execution Finished.')
-
+        try {
+          var commands = musicScripting.validateSandboxCommands(result.commands);
+          musicScripting.applySandboxCommands(commands);
+          musicScripting.music.patternView.drawPattern();
+          musicScripting.music.patternView.music.updatePattern(
+            musicScripting.music.patternView.patternID,
+            musicScripting.music.patternView.channel
+          );
+          musicScripting.logError('Execution Finished.');
+        } catch(error) {
+          musicScripting.logError(error.message || String(error));
+        }
+      });
     }
   }
 }

@@ -363,17 +363,45 @@ Editor.prototype = {
   },
 
   displayUserDetails: function() {
-    var userIcon = '<img src="icons/svg/glyphicons-halflings-1-user.svg" height="16" style="filter: invert(65%)">';
+    function createUserIcon() {
+      var icon = document.createElement('img');
+      icon.src = 'icons/svg/glyphicons-halflings-1-user.svg';
+      icon.height = 16;
+      icon.style.filter = 'invert(65%)';
+      return icon;
+    }
+
+    function setUserLine(id, text) {
+      var target = document.getElementById(id);
+      if(!target) {
+        return false;
+      }
+      target.replaceChildren(createUserIcon(), document.createTextNode(' ' + text));
+      return true;
+    }
+
     if(this.githubClient.isLoggedIn()) {
       var username = this.githubClient.getLoginName();
-      $('#start-username').html(userIcon + '&nbsp;' + username);
-      $('#start-user-info').html(userIcon + ' Signed in as ' + username);
+      setUserLine('start-username', username);
+      setUserLine('start-user-info', 'Signed in as ' + username);
 
-      var userHTML = '<div style="text-align: right; margin-right: 10px">';
-      userHTML += userIcon + '&nbsp;' + username;
-      userHTML += ' (<a href="#" style="color: white; cursor: pointer" id="menuSignOut">Sign Out</a>)';
-      userHTML += '</div>';
-      $('#menuUserInfo').html(userHTML);
+      var menuUserInfo = document.getElementById('menuUserInfo');
+      if(menuUserInfo) {
+        var menuDetails = document.createElement('div');
+        menuDetails.style.textAlign = 'right';
+        menuDetails.style.marginRight = '10px';
+        var menuSignOut = document.createElement('a');
+        menuSignOut.href = '#';
+        menuSignOut.id = 'menuSignOut';
+        menuSignOut.style.color = 'white';
+        menuSignOut.style.cursor = 'pointer';
+        menuSignOut.textContent = 'Sign Out';
+        menuDetails.appendChild(createUserIcon());
+        menuDetails.appendChild(document.createTextNode(' ' + username + ' ('));
+        menuDetails.appendChild(menuSignOut);
+        menuDetails.appendChild(document.createTextNode(')'));
+        menuUserInfo.replaceChildren(menuDetails);
+      }
 
       var _this = this;
       $('#menuSignOut').on('click', function(e) {
@@ -382,16 +410,32 @@ Editor.prototype = {
       });
 
 
-      var userHTML = '';
-      
-      //userHTML += '<div style="line-height: 20px">lvllvl</div>';
-      userHTML += '<div style="padding: 10px; margin-bottom: 20px; background-color: #222222; position: relative">';
-      userHTML += '<div style="font-size: 20px; display: inline-block; width: 200px; line-height: 36px; overflow: hidden">' + userIcon + '&nbsp;' + username + '</div>';
-      //userHTML += '<div>';
-      userHTML += '<div class="ui-button" id="mobileMenuSignOut" style="position: absolute; right: 10px; top: 10px">Sign Out</div>';
-      //userHTML += '</div>';
-      userHTML += '</div>';
-      $('#mobileMenuUserInfo').html(userHTML);
+      var mobileUserInfo = document.getElementById('mobileMenuUserInfo');
+      if(mobileUserInfo) {
+        var mobileDetails = document.createElement('div');
+        mobileDetails.style.padding = '10px';
+        mobileDetails.style.marginBottom = '20px';
+        mobileDetails.style.backgroundColor = '#222222';
+        mobileDetails.style.position = 'relative';
+        var mobileName = document.createElement('div');
+        mobileName.style.fontSize = '20px';
+        mobileName.style.display = 'inline-block';
+        mobileName.style.width = '200px';
+        mobileName.style.lineHeight = '36px';
+        mobileName.style.overflow = 'hidden';
+        mobileName.appendChild(createUserIcon());
+        mobileName.appendChild(document.createTextNode(' ' + username));
+        var mobileSignOut = document.createElement('div');
+        mobileSignOut.className = 'ui-button';
+        mobileSignOut.id = 'mobileMenuSignOut';
+        mobileSignOut.style.position = 'absolute';
+        mobileSignOut.style.right = '10px';
+        mobileSignOut.style.top = '10px';
+        mobileSignOut.textContent = 'Sign Out';
+        mobileDetails.appendChild(mobileName);
+        mobileDetails.appendChild(mobileSignOut);
+        mobileUserInfo.replaceChildren(mobileDetails);
+      }
 
       $('#mobileMenuSignOut').on('click', function(e) {
         e.preventDefault();
@@ -400,7 +444,7 @@ Editor.prototype = {
     } else {
 
       $('#start-username').html('');
-      $('#start-user-info').html(userIcon + ' You are not signed in');
+      setUserLine('start-user-info', 'You are not signed in');
 
       var userHTML = '<div style="text-align: right; margin-right: 10px; margin-top: 4px">';
       //userHTML += 'You are not signed in.<br/>';
@@ -1169,7 +1213,7 @@ main split panel north is menu
       restoreElement.setAttribute('id', 'mobileRestoreButton');
       restoreElement.setAttribute('style', 'position: absolute; top: 8px; left: 8px; width: 20px; height: 20px; z-index: 1000');
       document.body.appendChild(restoreElement);
-      restoreElement.innerHTML = '<i class="halflings halflings-chevron-left"></i>';
+      SafeHTML.setHTML(restoreElement, '<i class="halflings halflings-chevron-left"></i>');
       restoreElement.addEventListener('click', function() {
         g_app.mobileRestoreInterface();
       }); 
@@ -1800,6 +1844,7 @@ main split panel north is menu
       _this.mainPanel.showOnly('startPage');
 
       _this.textModeEditor.loadPreferences();
+      _this.displayUserDetails();
 
 
     });

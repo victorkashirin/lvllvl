@@ -3,12 +3,12 @@
   "releaseVersion": "0.497.2",
   "artifacts": {
     "index.html": {
-      "bytes": 2172,
-      "sha256": "936ec997aca3ad325b6182e756884dd952c44f9493a66ae1609c4d3bbc8c55bf"
+      "bytes": 2810,
+      "sha256": "b316d08f1096d3d9f95b2b0e761297f507576014e22ae6c35ea4fb34f22df009"
     },
     "c64/index.html": {
-      "bytes": 2189,
-      "sha256": "36c7e1e964458257b761151adeffcf770020008c504c697bc958f01bba9fabb5"
+      "bytes": 2827,
+      "sha256": "39ce83509eb7e3a074cb57a48177d02e32dd1e9f00537babb5a3ee2ba724f3e2"
     },
     "css/style.css": {
       "bytes": 136310,
@@ -19,20 +19,20 @@
       "sha256": "11f0fa487be8d7fb7fa9208e51fb41547d6639609b75cb129fef4bd4fb85bafa"
     },
     "js/libs.js": {
-      "bytes": 4444125,
-      "sha256": "ca4f92965a83356d5fce71afba633ee571612eefb2343cc8ae4fa3d8507563ec"
+      "bytes": 4443719,
+      "sha256": "ac957b093fa9a1fec77c5dd5143cdd61e37e4a07334018420edb8f000f3dfe80"
     },
     "js/libs.js.map": {
-      "bytes": 10136003,
-      "sha256": "391ca4ab08150fc3a3d992b0c17e7cba145afa65f6f76e7ec61fe4b0e4061daf"
+      "bytes": 10134611,
+      "sha256": "f6e20ce93d4c5e5a0fe109bd3a07dc51e482ba8700c4ef7468bbc0839d2872b8"
     },
     "js/main.js": {
-      "bytes": 3287157,
-      "sha256": "80c7a9022dd77d6c93e756e89e3d0f74b803e44809bddb3fd6fd2ff04d66ceb4"
+      "bytes": 3306610,
+      "sha256": "5307a43969cf8737e62177c80af7fe188c8074522849dc65e855c0d41d639a68"
     },
     "js/main.js.map": {
-      "bytes": 10482697,
-      "sha256": "95f23b979e638c4a445d5c1f3cc12ac7d69be5a207f7eb71350b9d74b8833712"
+      "bytes": 10530466,
+      "sha256": "870689c6ae12e77d9149b95a994870ac7db2292e0612c88ae2a48366f3353d7b"
     },
     "js/bootstrap.mjs": {
       "bytes": 897,
@@ -47,16 +47,16 @@
       "sha256": "e7c9a210c3237f5293959fa33568d99205d1b183c9e1cc7c10de2aab6d6dd976"
     },
     "js/features/image-import.js": {
-      "bytes": 145321,
-      "sha256": "7c573e83558315d26e99ef887514bf0f0b24a2e43fbe4a565f05fc778cbacb24"
+      "bytes": 145329,
+      "sha256": "2ada1b70194e433533e2500dafe67324055756c0adeb6cd61728d3ce0a3daf24"
     },
     "js/features/image-import.js.map": {
-      "bytes": 543272,
-      "sha256": "bcc852d18dcab78488f541c9a7f0a35b2ecf5130d645f82f8d397f0d8dbd8806"
+      "bytes": 543296,
+      "sha256": "31f5ff73265af60fea868ffa942125689b8ae619f96b6b7b364d84642636ec2c"
     },
     "js/html/htmlcache.js": {
-      "bytes": 376284,
-      "sha256": "28e31da40809d8ef8cfcfa3f261fecfe0413e2253dc8a47887799bd70a4c14c5"
+      "bytes": 376266,
+      "sha256": "2bfbddec6c0636ab6a7f7f8647af0c0d329cfc0cee7da4df3ea42608d727882d"
     }
   }
 }

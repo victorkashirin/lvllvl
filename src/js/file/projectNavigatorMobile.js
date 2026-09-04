@@ -6,7 +6,7 @@ var ProjectNavigatorMobile = function() {
 
   this.newDocRecordDialog = null;
 
-  this.treeMap = {};
+  this.treeMap = Object.create(null);
 
   this.settings = {};
 
@@ -117,7 +117,7 @@ ProjectNavigatorMobile.prototype = {
         if(firstTileSetId === false) {
           firstTileSetId = tileSets[i].id;
         }
-        html += '<option value="' + tileSets[i].id + '">' + tileSets[i].name + '</option>';
+        html += '<option value="' + SafeHTML.escape(tileSets[i].id) + '">' + SafeHTML.escape(tileSets[i].name) + '</option>';
       }
     }
 
@@ -135,7 +135,7 @@ ProjectNavigatorMobile.prototype = {
     var colorPalettes = g_app.doc.dir('/color palettes');
     for(var i = 0; i < colorPalettes.length; i++) {
       var colorPalette = colorPalettes[i];
-      html += '<option value="' + colorPalette.id + '">' + colorPalette.name + '</option>';
+      html += '<option value="' + SafeHTML.escape(colorPalette.id) + '">' + SafeHTML.escape(colorPalette.name) + '</option>';
     }
 
     $('#newDocRecordMobileColorPalette').html(html);
@@ -498,9 +498,7 @@ ProjectNavigatorMobile.prototype = {
 
   },
 
-  getDocListHTML: function(parentFile, prefix) {
-    var html = '';
-
+  appendDocList: function(parentFile, prefix, container) {
     var filenamePrefix = '';
     if(typeof prefix != 'undefined') {
       filenamePrefix = prefix;
@@ -515,10 +513,10 @@ ProjectNavigatorMobile.prototype = {
     for(var i = 0; i < docs.length; i++) {
       if(docs[i].type !== 'folder') {
         var path = parentPath + '/' + docs[i].name;
-        console.log(parentPath);
-        html += '<div class="projectNavigatorMobileDoc';
+        var row = document.createElement('div');
+        row.className = 'projectNavigatorMobileDoc';
         if(this.selectedId === docs[i].id) {
-          html += ' projectNavigatorMobileDocSelected';
+          row.classList.add('projectNavigatorMobileDocSelected');
         }
         var iconType = docs[i].type;
         if(iconType == 'graphic') {
@@ -529,28 +527,37 @@ ProjectNavigatorMobile.prototype = {
             iconType = 'sprite';
           }
         }
-        html += '" data-path="' + path + '" data-parent="' + parentPath + '" data-id="' + docs[i].id + '" id="mobileDoc-' + docs[i].id + '">';
-        html += '<img class="projectNavigatorMobileDocIcon" src="' + Icons.get(iconType) + '" />';
-        html += '<span class="projectNavigatorMobileFilename">' + filenamePrefix + docs[i].name + '</span>';
-        html += '</div>';
+        row.dataset.path = path;
+        row.dataset.parent = parentPath;
+        row.dataset.id = docs[i].id;
+        row.id = 'mobileDoc-' + docs[i].id;
 
-        
+        var icon = document.createElement('img');
+        icon.className = 'projectNavigatorMobileDocIcon';
+        icon.src = Icons.get(iconType);
+        row.appendChild(icon);
+
+        var filename = document.createElement('span');
+        filename.className = 'projectNavigatorMobileFilename';
+        filename.textContent = filenamePrefix + docs[i].name;
+        row.appendChild(filename);
+        container.appendChild(row);
       }
 
       if(docs[i].type == 'folder' && docs[i].name == 'inc') {
-        html += this.getDocListHTML(docs[i], 'inc/');
+        this.appendDocList(docs[i], 'inc/', container);
       }
     }
-
-    return html;
   },
 
   updateProjectList: function() {
-    var html = '';
-
-
     var doc = g_app.doc;
     var files = doc.dir('/');
+    var projectList = document.getElementById('projectDocListMobile');
+    if(!projectList) {
+      return;
+    }
+    projectList.replaceChildren();
 
 //    this.selectedId = false;
 
@@ -580,55 +587,50 @@ ProjectNavigatorMobile.prototype = {
                   || filename == 'build'
                   || filename == '3d scenes')) {
 
-              html += '<div class="projectNavigatorMobileSection">';
+              var section = document.createElement('div');
+              section.className = 'projectNavigatorMobileSection';
 
-              html += '<div class="projectNavigatorMobileFolder">';
-//              html += '<img src="icons/svg/glyphicons-basic-336-folder.svg" style="filter: invert(80%)" height="30"/>';
-              html += filename;
-              if(filename == 'screens') {
-                html += '<div class="ui-button mobileAddRecordButton" data-type="screen" id="mobileProjectAddScreenButton">';
-                html += '<div class="rippleJS"></div>';
-                html += '<i class="halflings halflings-plus"></i> New Screen...';
-                html += '</div>';              
+              var folder = document.createElement('div');
+              folder.className = 'projectNavigatorMobileFolder';
+              folder.appendChild(document.createTextNode(filename));
+              section.appendChild(folder);
+
+              var buttonDetails = {
+                screens: ['screen', 'mobileProjectAddScreenButton', 'New Screen...'],
+                sprites: ['sprite', 'mobileProjectAddSpriteButton', 'New Sprite...'],
+                asm: ['asm', 'mobileProjectAddASMButton', 'New ASM...'],
+                '3d scenes': ['3d scene', 'mobileProjectAdd3dSceneButton', 'New 3d Scene...']
+              };
+              var details = buttonDetails[filename];
+              if(details) {
+                var addButton = document.createElement('div');
+                addButton.className = 'ui-button mobileAddRecordButton';
+                addButton.dataset.type = details[0];
+                addButton.id = details[1];
+                var ripple = document.createElement('div');
+                ripple.className = 'rippleJS';
+                addButton.appendChild(ripple);
+                var plus = document.createElement('i');
+                plus.className = 'halflings halflings-plus';
+                addButton.appendChild(plus);
+                addButton.appendChild(document.createTextNode(' ' + details[2]));
+                folder.appendChild(addButton);
               }
 
-              if(filename == 'sprites') {
-                html += '<div class="ui-button mobileAddRecordButton"  data-type="sprite" id="mobileProjectAddSpriteButton">';
-                html += '<div class="rippleJS"></div>';
-                html += '<i class="halflings halflings-plus"></i> New Sprite...</div>';              
+              var previousChildCount = section.childElementCount;
+              this.appendDocList(files[i], undefined, section);
+              if(section.childElementCount === previousChildCount) {
+                var empty = document.createElement('div');
+                empty.className = 'projectNavigatorMobileEmptyDocList';
+                section.appendChild(empty);
               }
-
-              if(filename == 'asm') {
-                html += '<div class="ui-button mobileAddRecordButton"  data-type="asm"  id="mobileProjectAddSpriteButton">';
-                html += '<div class="rippleJS"></div>';
-                html += '<i class="halflings halflings-plus"></i> New ASM...</div>';              
-              }
-
-              if(filename == '3d scenes') {
-                html += '<div class="ui-button mobileAddRecordButton"  data-type="3d scene"  id="mobileProjectAdd3dSceneButton">';
-                html += '<div class="rippleJS"></div>';
-                html += '<i class="halflings halflings-plus"></i> New 3d Scene...</div>';              
-              }
-
-//              console.log(filename);
-
-              html += '</div>';
-
-              var docListHTML = this.getDocListHTML(files[i]);
-              if(docListHTML == '') {
-                docListHTML += '<div class="projectNavigatorMobileEmptyDocList"></div>';
-              }
-
-              html += docListHTML;
-
-
-              html += '</div>';
+              projectList.appendChild(section);
             }
           } 
 
           /*else {
             html += '<div class="projectNavigatorMobileDoc">';
-            html += filename;
+            html += SafeHTML.escape(filename);
             html += '</div>';
           }
           */
@@ -640,10 +642,6 @@ ProjectNavigatorMobile.prototype = {
         }
       }
     }
-
-
-    $('#projectDocListMobile').html(html);
-
     var _this = this;
     $('.projectNavigatorMobileDoc').on('click', function() {
       var id = $(this).attr('data-id');
@@ -787,4 +785,3 @@ ProjectNavigatorMobile.prototype = {
 //    this.selectCurrent();
   }
 }
-

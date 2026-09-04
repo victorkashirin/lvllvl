@@ -25,6 +25,9 @@ export const assetDirectories = [
 // exact npm packages. Each migration can move one library without forcing the
 // legacy application to adopt modules at the same time.
 export const packageAssetFiles = {
+  "lib/dompurify/purify.min.js": "node_modules/dompurify/dist/purify.min.js",
+  "lib/dompurify/purify.min.js.map":
+    "node_modules/dompurify/dist/purify.min.js.map",
   "lib/ace/src/ace.js": "node_modules/ace-builds/src/ace.js",
   "lib/ace/src/ext-language_tools.js":
     "node_modules/ace-builds/src/ext-language_tools.js",
@@ -141,10 +144,22 @@ export const packageAssetFiles = {
   "lib/tween/tween.min.js": "node_modules/tween.js/src/Tween.js",
 };
 
+// Some published package maps omit sourcesContent and reference files that are
+// not otherwise part of the application build. Embed those package sources so
+// browsers and development servers can consume the maps without filesystem
+// warnings.
+export const packageSourceMapsWithEmbeddedSources = [
+  "lib/dompurify/purify.min.js.map",
+];
+
 // Files requested after the initial page load must be listed here. Unlike the
 // scripts and styles referenced by src/index.html, these files are not included
 // in a generated bundle and therefore need to be copied verbatim.
 export const runtimeAssetFiles = [
+  "music-scripting-sandbox.html",
+  "js/musicScriptingSandbox.js",
+  "lib/dompurify/purify.min.js",
+  "lib/dompurify/purify.min.js.map",
   "lib/ace/src/theme-chrome.js",
   "lib/ace/src/theme-tomorrow_night.js",
   "lib/ace/src/worker-javascript.js",
@@ -207,5 +222,11 @@ export const runtimeFeatureRequests = {
     "lib/codemirror/codemirror.js",
     "lib/codemirror/mode/javascript/javascript.js",
     "lib/jshint/jshint.js",
+    "music-scripting-sandbox.html",
+    "js/musicScriptingSandbox.js",
+  ],
+  securityPolicy: [
+    "lib/dompurify/purify.min.js",
+    "lib/dompurify/purify.min.js.map",
   ],
 };

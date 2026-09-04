@@ -379,7 +379,7 @@ ColorPaletteEdit.prototype = {
     $('#' + this.prefix + ' .colorPaletteTool').removeClass('colorPaletteToolSelected');
     $('#' + this.prefix + 'Tool_' + tool).addClass('colorPaletteToolSelected');
     var label = this.getToolLabel(this.currentTool);
-    $('#' + this.prefix + 'CurrentTool').html(label);
+    $('#' + this.prefix + 'CurrentTool').text(label);
 
     if(tool == 'select' || tool == 'move') {
       this.colorPaletteDisplay.setDrawHighlightInMarquee(false);
@@ -557,12 +557,12 @@ ColorPaletteEdit.prototype = {
       id = id.substring(pos + 1);
       var label = _this.getToolLabel(id);
 
-      $('#' + _this.prefix + 'CurrentTool').html(label);
+      $('#' + _this.prefix + 'CurrentTool').text(label);
     });
 
     $('.colorPaletteTool').on('mouseleave', function() {
       var label = _this.getToolLabel(_this.currentTool);
-      $('#' + _this.prefix + 'CurrentTool').html(label);
+      $('#' + _this.prefix + 'CurrentTool').text(label);
     });
 
     $('#' + this.prefix + 'ShowGrid').on('click', function() {
@@ -1551,7 +1551,7 @@ ColorPaletteEdit.prototype = {
 
 
     if(typeof file.name != 'undefined') { 
-      $('#' + this.prefix + 'ImageChooseFileName').html(file.name);
+      $('#' + this.prefix + 'ImageChooseFileName').text(file.name);
     } else {
       $('#' + this.prefix + 'ImageChooseFileName').html('');
     }    

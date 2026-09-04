@@ -36,6 +36,18 @@ UI.windows = [];
 UI.readyFunctions = [];
 UI.ids = {};
 
+UI.markupEventToken = (function() {
+  var values = new Uint32Array(4);
+  window.crypto.getRandomValues(values);
+  return Array.prototype.map.call(values, function(value) {
+    return value.toString(16).padStart(8, '0');
+  }).join('');
+})();
+
+UI.getMarkupEventAttribute = function() {
+  return ' data-ui-event-token="' + UI.markupEventToken + '"';
+}
+
 UI.isMobile = false;
 
 UI.statsEnabled = false;
@@ -1191,6 +1203,241 @@ UI.initEvents = function() {
 
 }
 
+UI.initDelegatedMarkupEvents = function() {
+  if(UI.delegatedMarkupEventsInitialized) {
+    return;
+  }
+  UI.delegatedMarkupEventsInitialized = true;
+
+  function closest(event, selector) {
+    var target = event.target;
+    return target && target.nodeType === 1 && target.closest ? target.closest(selector) : null;
+  }
+
+  function component(id, type) {
+    if(
+      typeof id !== 'string' ||
+      !Object.prototype.hasOwnProperty.call(UI.components, id) ||
+      !UI.components[id] ||
+      UI.components[id].ui_type !== type
+    ) {
+      return null;
+    }
+    return UI.components[id];
+  }
+
+  function dialogComponent(id) {
+    return component(id, 'UI.Dialog') || component(id, 'UI.MobilePanel');
+  }
+
+  function hasCapability(target, expectedComponent) {
+    if(!target || !expectedComponent) {
+      return false;
+    }
+    var root = target.closest('[data-ui-event-token]');
+    return Boolean(
+      root &&
+      root.id === expectedComponent.id &&
+      root.getAttribute('data-ui-event-token') === UI.markupEventToken
+    );
+  }
+
+  function treeRow(target) {
+    if(!target) {
+      return null;
+    }
+    var treeId = target.getAttribute('data-ui-tree-id');
+    var nodeId = parseInt(target.getAttribute('data-ui-tree-node-id'), 10);
+    if(
+      !hasCapability(target, component(treeId, 'UI.Tree')) ||
+      !Number.isSafeInteger(nodeId) ||
+      target !== document.getElementById(treeId + '-node' + nodeId + 'row')
+    ) {
+      return null;
+    }
+    return { element: target, nodeId: nodeId, treeId: treeId };
+  }
+
+  document.addEventListener('click', function(event) {
+    var target = closest(event, '[data-ui-dialog-close]');
+    var id = target && target.getAttribute('data-ui-dialog-close');
+    if(
+      target &&
+      hasCapability(target, dialogComponent(id)) &&
+      target === document.getElementById(id + 'titlebarclose')
+    ) {
+      UI.DialogClose(id);
+      return;
+    }
+
+    target = closest(event, '[data-ui-mobile-close]');
+    id = target && target.getAttribute('data-ui-mobile-close');
+    if(
+      target &&
+      hasCapability(target, component(id, 'UI.MobilePanel')) &&
+      target === document.getElementById(id + 'mobileclose')
+    ) {
+      UI.MobilePanelClose(id);
+      return;
+    }
+
+    target = closest(event, '[data-ui-tab-close]');
+    var panelId = target && target.getAttribute('data-ui-tab-panel-id');
+    var tabId = target && parseInt(target.getAttribute('data-ui-tab-close'), 10);
+    var tabElement = target && target.closest('[data-ui-tab-id]');
+    if(
+      target &&
+      hasCapability(target, component(panelId, 'UI.TabPanel')) &&
+      Number.isSafeInteger(tabId) &&
+      target.classList.contains('ui-tab-close') &&
+      tabElement === document.getElementById(panelId + 'tab-' + tabId)
+    ) {
+      event.stopPropagation();
+      UI.TabPanelCloseTab(panelId, tabId);
+      return;
+    }
+
+    target = closest(event, '[data-ui-tab-id]');
+    panelId = target && target.getAttribute('data-ui-tab-panel-id');
+    tabId = target && parseInt(target.getAttribute('data-ui-tab-id'), 10);
+    if(
+      target &&
+      hasCapability(target, component(panelId, 'UI.TabPanel')) &&
+      Number.isSafeInteger(tabId) &&
+      target === document.getElementById(panelId + 'tab-' + tabId)
+    ) {
+      UI.TabPanelSetTab(panelId, tabId);
+      return;
+    }
+
+    target = closest(event, '[data-ui-button-id]');
+    id = target && target.getAttribute('data-ui-button-id');
+    if(
+      target &&
+      hasCapability(target, component(id, 'UI.Button')) &&
+      target === document.getElementById(id)
+    ) {
+      UI.ButtonClick(id);
+      return;
+    }
+
+    target = closest(event, '[data-ui-tree-node-id]');
+    var row = treeRow(target);
+    if(row) {
+      uiTreeNodeMouseClick(row.treeId, row.nodeId);
+    }
+  });
+
+  document.addEventListener('dblclick', function(event) {
+    var target = closest(event, '[data-ui-tab-id]');
+    var panelId = target && target.getAttribute('data-ui-tab-panel-id');
+    var tabId = target && parseInt(target.getAttribute('data-ui-tab-id'), 10);
+    if(
+      target &&
+      hasCapability(target, component(panelId, 'UI.TabPanel')) &&
+      Number.isSafeInteger(tabId) &&
+      target === document.getElementById(panelId + 'tab-' + tabId)
+    ) {
+      UI.TabPanelDblClickTab(panelId, tabId);
+      return;
+    }
+
+    target = closest(event, '[data-ui-tree-node-id]');
+    var row = treeRow(target);
+    if(row) {
+      uiTreeNodeMouseDblClick(row.treeId, row.nodeId);
+    }
+  });
+
+  document.addEventListener('contextmenu', function(event) {
+    var target = closest(event, '[data-ui-tree-node-id]');
+    var row = treeRow(target);
+    if(row) {
+      event.preventDefault();
+      uiTreeNodeContextMenu(event, row.treeId, row.nodeId);
+    }
+  });
+
+  document.addEventListener('mousedown', function(event) {
+    var target = closest(event, '[data-ui-dialog-edge]');
+    var id = target && target.getAttribute('data-ui-component-id');
+    var edge = target && target.getAttribute('data-ui-dialog-edge');
+    if(
+      target &&
+      hasCapability(target, dialogComponent(id)) &&
+      /^(?:north|northeast|east|southeast|south|southwest|west|northwest)resize$/.test(edge) &&
+      target === document.getElementById(id + edge)
+    ) {
+      event.preventDefault();
+      UI.DialogResizeMouseDown(event, edge, id);
+      return;
+    }
+
+    target = closest(event, '[data-ui-dialog-title]');
+    id = target && target.getAttribute('data-ui-dialog-title');
+    if(
+      target &&
+      hasCapability(target, dialogComponent(id)) &&
+      target === document.getElementById(id + 'titleheading')
+    ) {
+      event.preventDefault();
+      UI.DialogTitleMouseDown(event, id);
+      return;
+    }
+
+    target = closest(event, '[data-ui-split-edge]');
+    id = target && target.getAttribute('data-ui-component-id');
+    edge = target && target.getAttribute('data-ui-split-edge');
+    if(
+      target &&
+      hasCapability(target, component(id, 'UI.SplitPanel')) &&
+      /^(?:north|east|south|west)$/.test(edge) &&
+      target === document.getElementById(id + edge + 'bar')
+    ) {
+      event.preventDefault();
+      UI.SplitPanelResizeMouseDown(event, edge, id);
+      return;
+    }
+
+    target = closest(event, '[data-ui-tree-drag-target]');
+    if(target) {
+      var row = target.closest('[data-ui-tree-node-id]');
+      var rowData = treeRow(row);
+      if(rowData) {
+        event.preventDefault();
+        uiTreeNodeMouseDown(rowData.treeId, rowData.nodeId);
+      }
+    }
+  });
+
+  document.addEventListener('mouseover', function(event) {
+    var row = closest(event, '[data-ui-tree-node-id]');
+    var rowData = treeRow(row);
+    if(rowData) {
+      uiTreeNodeMouseOverRow(rowData.treeId, rowData.nodeId);
+    }
+    var target = closest(event, '[data-ui-tree-drag-target]');
+    if(target && rowData) {
+      uiTreeNodeMouseOver(rowData.treeId, rowData.nodeId);
+    }
+  });
+
+  document.addEventListener('mouseout', function(event) {
+    var target = closest(event, '[data-ui-tree-drag-target]');
+    var row = target && target.closest('[data-ui-tree-node-id]');
+    var rowData = treeRow(row);
+    if(rowData) {
+      uiTreeNodeMouseOut(rowData.treeId, rowData.nodeId);
+    }
+  });
+
+  document.addEventListener('selectstart', function(event) {
+    if(closest(event, '[data-ui-no-select]')) {
+      event.preventDefault();
+    }
+  });
+}
+
 $(document).ready(function() {
 
   UI.ready = true;
@@ -1204,6 +1451,7 @@ $(document).ready(function() {
   $('body').html(html);
   UI.init3d();
   UI.initEvents();
+  UI.initDelegatedMarkupEvents();
 
 
   if(UI.primaryComponent != null) {
@@ -1374,4 +1622,3 @@ function clearInputFile(f){
     });
   });
 })([Element.prototype, Document.prototype, DocumentFragment.prototype]);
-

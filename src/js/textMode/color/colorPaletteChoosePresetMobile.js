@@ -306,7 +306,7 @@ ColorPaletteChoosePresetMobile.prototype = {
       if(ColorPalettePresets.hasOwnProperty(category)) {
         var categoryName = ColorPalettePresets[category].category;
 
-        listHTML += '<optgroup label="' + categoryName + '">';
+        listHTML += '<optgroup label="' + SafeHTML.escape(categoryName) + '">';
 
         for(var i = 0; i < ColorPalettePresets[category].colorPalettes.length; i++) {
           var name = ColorPalettePresets[category].colorPalettes[i].name;
@@ -317,7 +317,7 @@ ColorPaletteChoosePresetMobile.prototype = {
           if(id == 'c64_colodore') {
             listHTML += ' selected="selected" ';
           }
-          listHTML += '>' + name + '</option>';
+          listHTML += '>' + SafeHTML.escape(name) + '</option>';
 
         }
 
@@ -779,7 +779,7 @@ ColorPaletteChoosePresetMobile.prototype = {
     var colorPalette = this.getColorPaletteDescription(preset);
     this.previewColorPalette = colorPalette;
 
-    $('#chooseColorPaletteMobileHeading').html(this.previewColorPalette.name);
+    $('#chooseColorPaletteMobileHeading').text(this.previewColorPalette.name);
     var info = '';
     $('#chooseColorPaletteMobileInfo').html(info);
 
@@ -799,7 +799,7 @@ ColorPaletteChoosePresetMobile.prototype = {
     if(typeof optionsList != 'undefined') {
       for(var i = 0; i < optionsList.length; i++) {
         options += '<label class="choose-container">';
-        options += optionsList[i].name;
+        options += SafeHTML.escape(optionsList[i].name);
         options += '<input type="radio" name="' + optionName + '" value="' + optionsList[i].id + '" ';
         if(i == 0) {
           paletteId = colorPalette.options[i].id;

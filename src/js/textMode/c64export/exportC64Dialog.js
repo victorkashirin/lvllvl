@@ -126,11 +126,11 @@ ExportC64Dialog.prototype = {
     for(var i = 0; i < musicDir.length; i++) {
       var value = '/music/' + name;
       var name = musicDir[i].name;
-      musicHTML += '<option value="/music/' + name + '"';
+      musicHTML += '<option value="/music/' + SafeHTML.escape(name) + '"';
       if( (!selectedMusic && i == 0) || value == selectedMusic) {
         musicHTML += ' selected="selected" ';
       }
-      musicHTML += '>' + musicDir[i].name + '</option>';
+      musicHTML += '>' + SafeHTML.escape(musicDir[i].name) + '</option>';
 
     }
     musicHTML += '<option value="sid">Use A SID File</option>';    

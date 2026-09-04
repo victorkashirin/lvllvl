@@ -929,7 +929,7 @@ LayerPropertiesDialog.prototype = {
       if(description) {
         var width = description.width;
         var height = description.height;
-        $('#layerDialogNewTileSet').html(description.name);
+        $('#layerDialogNewTileSet').text(description.name);
       } else {
         $('#layerDialogNewTileSet').html(args.presetId);
 
@@ -962,7 +962,7 @@ LayerPropertiesDialog.prototype = {
       _this.colorPaletteName = description.name;
 
       if(description) {
-        $('#layerDialogNewColorPalette').html(description.name);
+        $('#layerDialogNewColorPalette').text(description.name);
       }
 
 //      _this.choosePreset(presetId, args);

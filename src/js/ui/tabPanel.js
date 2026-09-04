@@ -70,15 +70,15 @@ UI.TabPanel = function(args) {
       html += ' style="display: none" ';
     }
 
-    html += ' onclick="UI.TabPanelSetTab(\'' + this.id + '\', ' + tab.tabId + ')" ondblclick="UI.TabPanelDblClickTab(\'' + this.id + '\', ' + tab.tabId + ')" onmousedown="return false" onselectstart="return false" ';
+    html += ' data-ui-tab-panel-id="' + this.id + '" data-ui-tab-id="' + tab.tabId + '" data-ui-no-select ';
     html += '>';
 
     html += '<div class="ui-tab-label">';
-    html += this.components[tabIndex].tab.title;
+    html += SafeHTML.escape(this.components[tabIndex].tab.title);
     html += '</div>';
 
     if(this.canCloseTabs) {
-      html += '<div class="ui-tab-close" onclick="UI.TabPanelCloseTab(\'' + this.id + '\', ' + tab.tabId + ')">';    
+      html += '<div class="ui-tab-close" data-ui-tab-close="' + tab.tabId + '" data-ui-tab-panel-id="' + this.id + '">';
       html += '<img src="icons/svg/glyphicons-basic-599-menu-close.svg"/>';    
       html += '</div>';
     }
@@ -155,8 +155,9 @@ UI.TabPanel = function(args) {
     if(this.element == null) {
       this.element = document.createElement('div');
       this.element.setAttribute("id", this.id);
+      this.element.setAttribute('data-ui-event-token', UI.markupEventToken);
       this.element.setAttribute("class", "ui-tab-panel");
-      this.element.innerHTML = this.getInnerHTML();
+      SafeHTML.setHTML(this.element, this.getInnerHTML());
 
       var tabpanel = this;
       UI.on('ready', function() {
@@ -187,7 +188,7 @@ UI.TabPanel = function(args) {
   this.getHTML = function() {
     var html = '';
 
-    html += '<div class="ui-tab-panel" id="' + this.id + '">';
+    html += '<div class="ui-tab-panel" id="' + this.id + '"' + UI.getMarkupEventAttribute() + '>';
  
     html += this.getInnerHTML();
     html += '</div>';
@@ -205,7 +206,7 @@ UI.TabPanel = function(args) {
 
   this.setTabLabel = function(tabIndex, label) {
     var id = this.id + 'tab-' + this.components[tabIndex].tabId;
-    $('#' + id + ' .ui-tab-label').html(label);
+    $('#' + id + ' .ui-tab-label').text(label);
   }
 
   this.getTabData = function(tabIndex) {
@@ -495,4 +496,3 @@ UI.TabPanelDblClickTab = function(id, tabId) {
 
 
 UI.registerComponentType("UI.TabPanel", UI.TabPanel);
-

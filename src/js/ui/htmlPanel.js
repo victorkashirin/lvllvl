@@ -33,7 +33,11 @@ UI.HTMLPanel = function() {
 
 //    this.html = response;
 
-    $('#' + _this.id).html(response);
+    var panelElement = document.getElementById(_this.id);
+    if(!panelElement) {
+      return;
+    }
+    SafeHTML.setTemplateHTML(panelElement, response);
 
     if(typeof UI.number != 'undefined') {
       UI.number.initControls('#' + _this.id + ' .number');
@@ -83,7 +87,7 @@ UI.HTMLPanel = function() {
     }
     
     if(typeof this.html != 'undefined' && this.html !== '') {
-      element.innerHTML = this.html;
+      SafeHTML.setHTML(element, this.html);
     }
 
     return element;

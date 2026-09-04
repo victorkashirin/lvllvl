@@ -114,7 +114,7 @@ CA65Assembler.prototype = {
           _this.displayResult();
 
         } else {
-          $('#buildOutputPanel').html(_this.stdout);
+          $('#buildOutputPanel').text(_this.stdout);
           try {
             _this.output = ca65['FS'].readFile('output.o', { encoding: 'binary' });   
 

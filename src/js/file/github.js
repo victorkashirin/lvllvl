@@ -1,3 +1,68 @@
+function parseGitHubRepositoryAddress(address) {
+  var input = String(address == null ? '' : address).trim();
+  if(input === '' || /[?#]/.test(input)) {
+    return null;
+  }
+
+  var owner;
+  var repository;
+  var sshMatch = input.match(/^git@github\.com:([^/]+)\/([^/]+)$/i);
+  var sshUrlMatch = input.match(/^ssh:\/\/git@github\.com\/([^/]+)\/([^/]+)$/i);
+  if(sshMatch || sshUrlMatch) {
+    owner = (sshMatch || sshUrlMatch)[1];
+    repository = (sshMatch || sshUrlMatch)[2];
+  } else if(/^(?:https?:\/\/)?github\.com\//i.test(input)) {
+    var urlInput = /^https?:\/\//i.test(input) ? input : 'https://' + input;
+    var url;
+    try {
+      url = new URL(urlInput);
+    } catch(error) {
+      return null;
+    }
+    if(
+      url.hostname.toLowerCase() !== 'github.com' ||
+      url.port !== '' ||
+      url.username !== '' ||
+      url.password !== '' ||
+      (url.protocol !== 'https:' && url.protocol !== 'http:')
+    ) {
+      return null;
+    }
+    var pathParts = url.pathname.split('/').filter(function(part) {
+      return part !== '';
+    });
+    if(pathParts.length !== 2) {
+      return null;
+    }
+    owner = pathParts[0];
+    repository = pathParts[1];
+  } else {
+    var shorthandMatch = input.match(/^([^/]+)\/([^/]+)$/);
+    if(!shorthandMatch) {
+      return null;
+    }
+    owner = shorthandMatch[1];
+    repository = shorthandMatch[2];
+  }
+
+  repository = repository.replace(/\.git$/i, '');
+  var ownerIsValid =
+    owner.length <= 39 &&
+    /^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?$/.test(owner) &&
+    owner.indexOf('--') === -1;
+  var repositoryIsValid =
+    repository.length > 0 &&
+    repository.length <= 100 &&
+    /^[A-Za-z0-9._-]+$/.test(repository) &&
+    repository !== '.' &&
+    repository !== '..';
+
+  if(!ownerIsValid || !repositoryIsValid) {
+    return null;
+  }
+  return { owner: owner, repository: repository };
+}
+
 var GitHubUI = function() {
   this.uiComponent = null;
   this.githubClient = null;
@@ -26,6 +91,37 @@ var GitHubUI = function() {
 GitHubUI.prototype = {
   init: function(githubClient) {
     this.githubClient = githubClient;
+  },
+
+  showLoadRepositoryError: function(message, showLoginHint) {
+    var targets = ['loadFromGithubRepositoryAlert', 'loadingRepositoryAlert'];
+    for(var i = 0; i < targets.length; i++) {
+      var target = document.getElementById(targets[i]);
+      if(!target) {
+        continue;
+      }
+      target.replaceChildren();
+      var alert = document.createElement('div');
+      alert.className = 'alert';
+      var icon = document.createElement('img');
+      icon.src = 'icons/svg/glyphicons-basic-638-triangle-alert.svg';
+      icon.height = 16;
+      icon.style.verticalAlign = 'top';
+      var details = document.createElement('div');
+      details.style.display = 'inline-block';
+      details.style.width = 'calc(100% - 40px)';
+      var strong = document.createElement('strong');
+      strong.textContent = message;
+      details.appendChild(strong);
+      if(showLoginHint) {
+        var hint = document.createElement('div');
+        hint.textContent = 'You may need to log in to access this repository.';
+        details.appendChild(hint);
+      }
+      alert.appendChild(icon);
+      alert.appendChild(details);
+      target.appendChild(alert);
+    }
   },
 
   // entry point when saving
@@ -110,7 +206,7 @@ GitHubUI.prototype = {
         });
       });
     }
-    $('#pullDialogProgress').html('');
+    $('#pullDialogProgress').text('');
 
     UI.showDialog("githubPullDialog");    
   },
@@ -124,13 +220,12 @@ GitHubUI.prototype = {
       listFilesOnly: true
     }
 
-    $('#pullDialogProgress').html('Checking for updated files in repository....');
+    $('#pullDialogProgress').text('Checking for updated files in repository....');
 
-    var pullProgress = '';
     args.progress = function(data) {
-      var message = data.message;
-      pullProgress += '<div>' + message + '</div>';
-      $('#pullDialogProgress').html(pullProgress);
+      var line = document.createElement('div');
+      line.textContent = data.message;
+      document.getElementById('pullDialogProgress').appendChild(line);
     }
 
     var _this = this;
@@ -150,15 +245,16 @@ GitHubUI.prototype = {
           message += 's';
         }
 
-        $('#pullDialogProgress').html(message);
+        $('#pullDialogProgress').text(message);
 
-
-        var html = '';
+        var updatedFiles = document.getElementById('pullDialogUpdatedFiles');
+        updatedFiles.replaceChildren();
         for(var i = 0; i < filesToPull.length; i++) {
-          html += '<div class="">' + filesToPull[i] + '</div>';
+          var file = document.createElement('div');
+          file.textContent = filesToPull[i];
+          updatedFiles.appendChild(file);
         }
 
-        $('#pullDialogUpdatedFiles').html(html);
         $('#pullDialogUpdatedFiles').show();
         $('#githubPullUpdatedHolder').show();
         _this.pullFinishedCallback = callback;
@@ -203,7 +299,7 @@ GitHubUI.prototype = {
       var message = data.message;
       var progress = data.progress;
 //      pullProgress += '<div>' + message + '</div>';
-      $('#pullDialogProgress').html(message);
+      $('#pullDialogProgress').text(message);
       _this.pullProgressBar.setProgress(data.progress);
     }
       
@@ -277,7 +373,8 @@ GitHubUI.prototype = {
       }
     });
 
-    $('#githubRepositoryCommitOnlyChange').on('click', function() {
+    $('#githubRepositoryCommitOnlyChange').on('click', function(event) {
+      event.preventDefault();
       _this.setCommitOnly(false);
     });
 
@@ -358,7 +455,7 @@ GitHubUI.prototype = {
       var repositoryDetails = this.owner + '/' + this.repository;
 
       
-      $('#githubRepositoryCommitOnlyDetails').html(repositoryDetails);
+      $('#githubRepositoryCommitOnlyDetails').text(repositoryDetails);
 
       if($('#repositoryCommitMessage').val() == this.initialCommitMessage) {
         $('#repositoryCommitMessage').val('A Commit');
@@ -389,7 +486,7 @@ GitHubUI.prototype = {
         for(var j = 0; j < children.length; j++) {
           if(children[j].type !== 'folder' && children[j].type !== 'hiddenfile') {
             var path = files[i].name + '/' + children[j].name;
-            optionsHTML += '<option value="' + path + '"';
+            optionsHTML += '<option value="' + SafeHTML.escape(path) + '"';
             
             if(!foundSelected) {
               if(children[j].type == 'graphic') {
@@ -397,11 +494,11 @@ GitHubUI.prototype = {
                 foundSelected = true;
               }
             }
-            optionsHTML += '>' + children[j].name + '</option>';
+            optionsHTML += '>' + SafeHTML.escape(children[j].name) + '</option>';
           }
         }
         if(optionsHTML != '') {
-          html += '<optgroup label="' + files[i].name + '">';
+          html += '<optgroup label="' + SafeHTML.escape(files[i].name) + '">';
           html += optionsHTML;
           html += '</optgroup>';
         }
@@ -611,7 +708,7 @@ GitHubUI.prototype = {
 
   */
   loadRepository: function(args) {
-    var address = args.address;
+    var address = parseGitHubRepositoryAddress(args.address);
     var view = false;
     if(typeof args.view !== 'undefined') {
       view = args.view;
@@ -623,42 +720,17 @@ GitHubUI.prototype = {
     }
 
 
-    var pos = address.indexOf('github.com');
-    if(pos != -1) {
-      address = address.substr(pos + 11);
+    if(!address) {
+      this.showLoadRepositoryError(
+        'Enter a GitHub repository as owner/name or a complete github.com URL.',
+        false
+      );
+      return false;
     }
 
-    if(address.length == 0) {
-      return;
-    }
-
-    if(address[0] == '/') {
-      address = address.substr(1);
-    }
-
-    var pos = address.indexOf('.git');
-    if(pos !== -1) {
-      address = address.substr(0, pos);
-    }
-    var pos = address.indexOf('/');
-
-    if(pos == -1) {
-      return;
-    }
-
-
-
-    var owner = address.substr(0, pos);
-    var repositoryName = address.substr(pos + 1);
-
-
-    var pos = repositoryName.indexOf('/');
-    if(pos != -1) {
-      repositoryName = repositoryName.substr(0, pos);
-    }
-
-    owner = owner.replace(/\//g, '');
-    repositoryName = repositoryName.replace(/\//g, '');
+    var owner = address.owner;
+    var repositoryName = address.repository;
+    var _this = this;
 
     this.openRepository({ owner: owner, repository: repositoryName, requireLogin: false, view: view }, function(response) {
       if(response.success) {
@@ -668,20 +740,12 @@ GitHubUI.prototype = {
           callback();
         }
       } else {
-        var message = "<div class=\"alert\">";
         var fullname = owner + '/' + repositoryName;
-        message += '<img src="icons/svg/glyphicons-basic-638-triangle-alert.svg" height="16" style="vertical-align: top"/>'
-        message += "<div style=\"display: inline-block; width: calc(100% - 40px)\"><strong>Could not open repository '" + fullname + "'</strong>";
-        message += "<div>You may need to login to access this repository</div>";
-        message += "</div>";
-        message += "</div>";
-
-        $('#loadFromGithubRepositoryAlert').html(message);
-        $('#loadingRepositoryAlert').html(message);
+        _this.showLoadRepositoryError("Could not open repository '" + fullname + "'.", true);
 
       }
     });
-          
+    return true;
   },
  
 
@@ -811,6 +875,14 @@ GitHubUI.prototype = {
     args.owner = $('#repositoryOwner').val().trim();
     args.repository = $('#repositoryName').val().trim().replace(/ /g, "-");
 
+    var parsedRepository = parseGitHubRepositoryAddress(args.owner + '/' + args.repository);
+    if(!parsedRepository) {
+      alert('Enter a valid GitHub owner and repository name.');
+      return;
+    }
+    args.owner = parsedRepository.owner;
+    args.repository = parsedRepository.repository;
+
 
     // hide inputs.
 
@@ -820,7 +892,7 @@ GitHubUI.prototype = {
     $('#githubRepositoryCommitOnly').hide();
     $('#githubRepositoryForm').hide();
     $('#githubRepositoryCommitOnly').hide();
-    $('#githubRepositoryMessage').html("Commit to repository: '" + fullname + "'...");
+    $('#githubRepositoryMessage').text("Commit to repository: '" + fullname + "'...");
     $('#githubRepositoryMessage').show();
     $('#githubRepositoryProgress').show();
     $('#githubRepositoryError').hide();
@@ -885,12 +957,7 @@ GitHubUI.prototype = {
             // repository not found..
             var fullname = args.owner + '/' + args.repository;
 
-            var message = "<div class=\"alert\">";
-            message += '<img src="icons/svg/glyphicons-basic-638-triangle-alert.svg" height="16" style="vertical-align: top"/>'
-            message += "<div style=\"display: inline-block; width: calc(100% - 40px)\"><strong>Repository not found '" + fullname + "'</strong></div>";
-            message += "</div>";
-
-            $('#githubRepositoryMessage').html(message);
+            $('#githubRepositoryMessage').text("Repository not found '" + fullname + "'.");
             $('#githubRepositoryMessage').show();
 
             if(_this.commitOnly) {
@@ -976,7 +1043,7 @@ GitHubUI.prototype = {
 
     $('#githubRepositoryForm').hide();
     $('#githubRepositoryCommitOnly').hide();
-    $('#githubRepositoryMessage').html("Creating repository: '" + fullname + "'...");
+    $('#githubRepositoryMessage').text("Creating repository: '" + fullname + "'...");
     $('#githubRepositoryMessage').show();
     $('#githubRepositoryProgress').show();
 
@@ -999,11 +1066,9 @@ GitHubUI.prototype = {
         var statusText = response.statusText;
 
         if(status == 500) {
-          var message = "<div class=\"alert\">";
-          message += '<img src="icons/svg/glyphicons-basic-638-triangle-alert.svg" height="16" style="vertical-align: top"/>'
-          message += "<div style=\"display: inline-block; width: calc(100% - 40px)\"><strong>Could not create repository '" + fullname + "', does it already exist?</strong></div>";
-          message += "</div>";
-          $('#githubRepositoryMessage').html(message);
+          $('#githubRepositoryMessage').text(
+            "Could not create repository '" + fullname + "'. Does it already exist?"
+          );
           if(_this.commitOnly) {
             $('#githubRepositoryCommitOnly').show();
           } else {
@@ -1105,7 +1170,7 @@ GitHubUI.prototype = {
 
     $('#githubRepositoryForm').hide();
     $('#githubRepositoryCommitOnly').hide();
-    $('#githubRepositoryMessage').html("Commit to repository: '" + fullname + "'...");
+    $('#githubRepositoryMessage').text("Commit to repository: '" + fullname + "'...");
     $('#githubRepositoryMessage').show();
     $('#githubRepositoryProgress').show();
     $('#githubRepositoryError').hide();
@@ -1126,11 +1191,14 @@ GitHubUI.prototype = {
 
         console.log("ERROR" + response.message);
 
-        var errorHTML = '<div>';
-        errorHTML += '<p>Sorry an error was encountered:</p>'
-        errorHTML += '<p>' + response.message + '</p>';
-        errorHTML += '</div>';
-        $('#githubRepositoryError').html(errorHTML);
+        var errorElement = document.getElementById('githubRepositoryError');
+        errorElement.replaceChildren();
+        var errorHeading = document.createElement('p');
+        errorHeading.textContent = 'Sorry, an error was encountered:';
+        var errorDetails = document.createElement('p');
+        errorDetails.textContent = response.message;
+        errorElement.appendChild(errorHeading);
+        errorElement.appendChild(errorDetails);
         $('#githubRepositoryError').show();
 
         _this.repoCloseButton.setEnabled(true);
@@ -1204,6 +1272,22 @@ GitHubUI.prototype = {
 
     var owner = args.owner;
     var repository = args.repository;
+    var parsedRepository = parseGitHubRepositoryAddress(owner + '/' + repository);
+    if(!parsedRepository) {
+      var invalidResult = {
+        success: false,
+        error: new Error('Invalid GitHub repository identifier.')
+      };
+      this.showLoadRepositoryError(invalidResult.error.message, false);
+      if(typeof callback != 'undefined') {
+        callback(invalidResult);
+      }
+      return false;
+    }
+    owner = parsedRepository.owner;
+    repository = parsedRepository.repository;
+    args.owner = owner;
+    args.repository = repository;
     var view = false;
     var createLocalProject = true;
 
@@ -1219,17 +1303,19 @@ GitHubUI.prototype = {
     this.showLoadingDialog();
 
     this.loadProgressBar.setProgress(0);
-    $('#loadingRepositoryDialogHeading').html("Loading " + repository + "...");
-    $('#loadingRepositoryDialogProgress').html("Loading file list...");
+    $('#loadingRepositoryDialogHeading').text("Loading " + repository + "...");
+    $('#loadingRepositoryDialogProgress').text("Loading file list...");
     args.progress = function(data) {
-      $('#loadingRepositoryDialogProgress').html(data.message);
+      $('#loadingRepositoryDialogProgress').text(data.message);
       _this.loadProgressBar.setProgress(data.progress);
     }
     this.githubClient.load(args, function(response) {
 
       if(response.success === false) {
         // dont close the dialog so theres a chance to show the error..
-        callback(response);
+        if(typeof callback != 'undefined') {
+          callback(response);
+        }
 
       } else {
 
@@ -1307,7 +1393,7 @@ GitHubUI.prototype = {
       }
 
     });
-
+    return true;
   },
 
   getCurrentRepository: function() {

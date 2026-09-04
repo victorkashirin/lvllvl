@@ -59,7 +59,7 @@ UI.ProgressBar = function(args) {
       UI.ButtonClick(button.id);
     }
 
-    this.element.innerHTML = this.getInnerHTML();
+    SafeHTML.setHTML(this.element, this.getInnerHTML());
 
     return this.element;
   }

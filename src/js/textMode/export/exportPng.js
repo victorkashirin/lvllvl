@@ -110,14 +110,14 @@ ExportPng.prototype = {
         _this.resizePreview();
       });
 
-      this.okButton = UI.create('UI.Button', { "text": '<img src="icons/svg/glyphicons-basic-199-save.svg"> Download', "color": "primary" });
+      this.okButton = UI.create('UI.Button', { "imageSrc": "icons/svg/glyphicons-basic-199-save.svg", "text": "Download", "color": "primary" });
       this.uiComponent.addButton(this.okButton);
       this.okButton.on('click', function(event) {
         _this.exportPng();
         UI.closeDialog();
       });
 
-      this.copyButton = UI.create('UI.Button', { "text": '<img src="icons/svg/glyphicons-basic-614-copy.svg"> Copy To Clipboard', "color": "primary" });
+      this.copyButton = UI.create('UI.Button', { "imageSrc": "icons/svg/glyphicons-basic-614-copy.svg", "text": "Copy To Clipboard", "color": "primary" });
       this.uiComponent.addButton(this.copyButton);
       this.copyButton.on('click', function(event) {
         _this.copyToClipboard();

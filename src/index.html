@@ -4,6 +4,7 @@
     <meta name="google" content="notranslate">
     <meta name="viewport" content="user-scalable=no, width=device-width, initial-scale=1, maximum-scale=1">
     <meta charset="utf-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://www.gstatic.com https://apis.google.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://api.github.com https://github.com https://*.googleapis.com https://*.firebaseio.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com https://drive.google.com https://drive.usercontent.google.com https://lospec.com; frame-src 'self' https://accounts.google.com https://content.googleapis.com https://*.firebaseapp.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self' https://github.com; require-trusted-types-for 'script'; trusted-types default lvllvl-html lvllvl-template lvllvl-svg dompurify gapi#gapi;">
 
     <title>lvllvl</title>
     <meta name="description" content="Draw pictures using text characters">
@@ -12,6 +13,9 @@
     <link rel="manifest" href="manifest.json">
     <link rel="icon" type="image/png" sizes="32x32" href="images/logo32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="images/logo16.png">
+
+    <script src="lib/dompurify/purify.min.js?v={v}"></script>
+    <script src="js/htmlPolicy.js?v={v}"></script>
 
     <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-auth-compat.js"></script>
@@ -34,19 +38,7 @@
     <script src="js/ca65Assembler.js?v={v}"></script>
     <script src="c64/c64/c64.js?v={v}"></script>
     <script src="js/c64/c64.js?v={v}"></script>
-
-    <script>
-      if (UI.isMobile.any()) {
-        var link = document.createElement("link");
-        link.setAttribute("rel", "stylesheet");
-        link.setAttribute("href", "css/ui-mobile.css?v={v}");
-        document.getElementsByTagName("head")[0].appendChild(link);
-
-        $(function() {
-          $("body").addClass("mobileMode");
-        });
-      }
-    </script>
+    <script src="js/startup.js?v={v}"></script>
 
     <script type="module" src="js/bootstrap.mjs?v={v}"></script>
   </head>
