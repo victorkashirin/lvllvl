@@ -1,4 +1,5 @@
-import { access, readFile, readdir } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { access, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { gzipSync } from "node:zlib";
@@ -8,6 +9,7 @@ import { parse, tokenizer } from "acorn";
 import browserslist from "browserslist";
 
 import { browserPolicy } from "./browser-policy.mjs";
+import { buildGraph, copiedScripts } from "./build-graph.mjs";
 
 import {
   buildDirectory,
@@ -15,7 +17,7 @@ import {
   runtimeAssetFiles,
   runtimeFeatureRequests,
   sourceDirectory,
-  version,
+  sourceMapPolicy,
 } from "./build-config.mjs";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -23,6 +25,9 @@ const sourceRoot = path.join(projectRoot, sourceDirectory);
 const buildRoot = path.join(projectRoot, buildDirectory);
 const thirdPartyNoticesFile = path.join(projectRoot, "THIRD_PARTY_NOTICES.md");
 const thirdPartySbomFile = path.join(projectRoot, "docs/runtime-dependencies.spdx.json");
+const artifactGoldenFile = path.join(projectRoot, "tests/fixtures/build-artifacts.json");
+const packageJson = JSON.parse(await readFile(path.join(projectRoot, "package.json"), "utf8"));
+const version = packageJson.version;
 
 function sourceFile(relativePath) {
   const packageAsset = packageAssetFiles[relativePath];
@@ -38,7 +43,9 @@ const coreFiles = [
   "runtime-dependencies.spdx.json",
   "css/style.css",
   "js/main.js",
+  "js/main.js.map",
   "js/libs.js",
+  "js/libs.js.map",
   "js/html/htmlcache.js",
   "js/storageManager.js",
   "js/githubApi.js",
@@ -147,9 +154,6 @@ function localScriptReferences(html) {
 }
 
 async function verifyBrowserPolicy() {
-  const packageJson = JSON.parse(
-    await readFile(path.join(projectRoot, "package.json"), "utf8"),
-  );
   const queries = packageJson.browserslist;
   if (
     !Array.isArray(queries) ||
@@ -217,18 +221,177 @@ async function verifyPerformanceBudgets(indexHtml) {
 }
 
 async function verifyStyleBundle() {
-  const sourceIndex = await readFile(path.join(sourceRoot, "index.html"), "utf8");
-  const stylesheetFiles = localStylesheetReferences(sourceIndex);
-  const chunks = [];
-
-  for (const filename of stylesheetFiles) {
-    chunks.push(await readFile(sourceFile(filename), "utf8"));
-  }
-
+  const graph = buildGraph["css/style.css"];
+  const chunks = await Promise.all(
+    graph.inputs.map((filename) => readFile(sourceFile(filename), "utf8")),
+  );
   const expected = `${chunks.join("\n\n")}\n\n`;
   const actual = await readFile(path.join(buildRoot, "css/style.css"), "utf8");
   if (actual !== expected) {
-    throw new Error("css/style.css does not contain every local source stylesheet in order");
+    throw new Error("css/style.css differs from its declared source graph");
+  }
+}
+
+async function verifyBuildGraph() {
+  const outputs = Object.keys(buildGraph);
+  if (
+    !outputs.includes("css/style.css") ||
+    !outputs.includes("js/libs.js") ||
+    !outputs.includes("js/main.js")
+  ) {
+    throw new Error(
+      "The build graph must declare the production style, library, and application bundles",
+    );
+  }
+
+  const copiedSources = new Set(Object.values(copiedScripts));
+  for (const [output, graph] of Object.entries(buildGraph)) {
+    if (!Array.isArray(graph.inputs) || graph.inputs.length === 0) {
+      throw new Error(`${output} has no declared inputs`);
+    }
+    if (new Set(graph.inputs).size !== graph.inputs.length) {
+      throw new Error(`${output} contains duplicate inputs`);
+    }
+
+    for (const filename of graph.inputs) {
+      await access(sourceFile(filename));
+      if (copiedSources.has(filename)) {
+        throw new Error(`${filename} is both bundled and copied as a standalone script`);
+      }
+    }
+
+    await access(path.join(buildRoot, output));
+  }
+
+  for (const [output, source] of Object.entries(copiedScripts)) {
+    const sourceContent = await readFile(path.join(sourceRoot, source), "utf8");
+    const expected = `${sourceContent.split("{v}").join(version)}\n`;
+    const actual = await readFile(path.join(buildRoot, output), "utf8");
+    if (actual !== expected) throw new Error(`${output} differs from its declared source`);
+  }
+}
+
+async function verifySourceEntry() {
+  const sourceIndex = await readFile(path.join(sourceRoot, "index.html"), "utf8");
+  const expectedIndex = `${sourceIndex.split("{v}").join(version)}\n`;
+  const outputIndex = await readFile(path.join(buildRoot, "index.html"), "utf8");
+  if (outputIndex !== expectedIndex) {
+    throw new Error("dist/index.html does not come directly from the sole production entry point");
+  }
+
+  try {
+    await access(path.join(sourceRoot, "indexTemplate.html"));
+    throw new Error("src/indexTemplate.html must not exist as a second production entry point");
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+  }
+}
+
+async function verifySourceMaps() {
+  if (!sourceMapPolicy.publish) {
+    throw new Error("Production source maps must be published");
+  }
+
+  for (const [output, graph] of Object.entries(buildGraph)) {
+    if (graph.kind !== "javascript" || !graph.sourceMap) continue;
+
+    const outputName = path.posix.basename(output);
+    const mapFilename = `${output}.map`;
+    const bundle = await readFile(path.join(buildRoot, output), "utf8");
+    if (!bundle.includes(`//# sourceMappingURL=${path.posix.basename(mapFilename)}`)) {
+      throw new Error(`${output} does not reference its release source map`);
+    }
+
+    const sourceMap = JSON.parse(await readFile(path.join(buildRoot, mapFilename), "utf8"));
+    if (sourceMap.file !== outputName) {
+      throw new Error(`${mapFilename} names the wrong output`);
+    }
+    if (JSON.stringify(sourceMap.sources) !== JSON.stringify(graph.inputs)) {
+      throw new Error(`${mapFilename} does not cover its declared source graph in order`);
+    }
+    if (typeof sourceMap.mappings !== "string" || !/[A-Za-z0-9+/]/.test(sourceMap.mappings)) {
+      throw new Error(`${mapFilename} contains no usable source mappings`);
+    }
+
+    if (sourceMapPolicy.includeSources) {
+      if (
+        !Array.isArray(sourceMap.sourcesContent) ||
+        sourceMap.sourcesContent.length !== graph.inputs.length
+      ) {
+        throw new Error(`${mapFilename} does not embed every declared source`);
+      }
+
+      for (const [index, filename] of graph.inputs.entries()) {
+        const source = await readFile(sourceFile(filename), "utf8");
+        if (sourceMap.sourcesContent[index] !== source.split("{v}").join(version)) {
+          throw new Error(`${mapFilename} embeds stale content for ${filename}`);
+        }
+      }
+    }
+  }
+}
+
+async function verifyC64Metadata() {
+  const c64Index = await readFile(path.join(buildRoot, "c64/index.html"), "utf8");
+  const requiredContent = [
+    "<title>C64</title>",
+    "Commodore 64 Emulator in a Web Browser",
+    'content="images/c64.png"',
+    'href="images/c64logo32.png"',
+    'href="images/c64logo16.png"',
+  ];
+
+  for (const content of requiredContent) {
+    if (!c64Index.includes(content)) {
+      throw new Error(`c64/index.html is missing branded metadata: ${content}`);
+    }
+  }
+
+  for (const staleReference of [
+    "images/logo-large.png",
+    "images/logo32.png",
+    "images/logo16.png",
+  ]) {
+    if (c64Index.includes(staleReference)) {
+      throw new Error(`c64/index.html retains lvllvl metadata: ${staleReference}`);
+    }
+  }
+}
+
+async function verifyArtifactGolden() {
+  const filenames = [
+    "index.html",
+    "c64/index.html",
+    "css/style.css",
+    "js/libs.js",
+    "js/libs.js.map",
+    "js/main.js",
+    "js/main.js.map",
+    "js/html/htmlcache.js",
+  ];
+  const artifacts = {};
+
+  for (const filename of filenames) {
+    const content = await readFile(path.join(buildRoot, filename));
+    artifacts[filename] = {
+      bytes: content.byteLength,
+      sha256: createHash("sha256").update(content).digest("hex"),
+    };
+  }
+
+  const golden = `${JSON.stringify({ schemaVersion: 1, releaseVersion: version, artifacts }, null, 2)}\n`;
+  if (process.argv.includes("--update-golden")) {
+    await mkdir(path.dirname(artifactGoldenFile), { recursive: true });
+    await writeFile(artifactGoldenFile, golden);
+    return;
+  }
+
+  const expected = await readFile(artifactGoldenFile, "utf8");
+  if (golden !== expected) {
+    throw new Error(
+      "Build artifacts differ from tests/fixtures/build-artifacts.json; inspect the output " +
+        "and run npm run artifacts:update for an intentional change",
+    );
   }
 }
 
@@ -369,6 +532,15 @@ for (const filename of requiredFiles) {
   await verifyOutputReference(filename, "", "build manifest");
 }
 
+if (typeof version !== "string" || version.trim() === "") {
+  throw new Error("package.json must contain the sole release version");
+}
+
+await verifyBuildGraph();
+await verifySourceEntry();
+await verifySourceMaps();
+await verifyC64Metadata();
+
 const sourceNotices = await readFile(thirdPartyNoticesFile);
 const builtNotices = await readFile(path.join(buildRoot, "THIRD_PARTY_NOTICES.md"));
 if (!sourceNotices.equals(builtNotices)) {
@@ -491,6 +663,8 @@ for (const [relativePath, consumers] of discoveredAssetRequests) {
     await verifyOutputReference(relativePath, "", [...consumers].join(", "));
   }
 }
+
+await verifyArtifactGolden();
 
 console.log(
   `Verified ${requiredFiles.size} outputs, ${discoveredRuntimeRequests.size} runtime requests, ` +

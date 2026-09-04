@@ -13,14 +13,18 @@ The development server performs an initial build, serves `dist/` at
 For a production build and verification:
 
 ```sh
-npm run build
 npx playwright install chromium firefox webkit
 npm test
 ```
 
-`npm run build` removes and recreates `dist/`. The source files live in `src/`, and the
-build configuration is in `scripts/build-config.mjs`. `npm test` verifies the static
-dependency closure and runs production-browser smoke tests against the built files.
+`npm test` builds into a versioned sibling directory, atomically switches the `dist/`
+version pointer only after the build succeeds, verifies the declared source graph and
+golden artifacts, and runs production-browser tests. The sole production HTML entry
+point is `src/index.html`; Rollup consumes the ordered legacy-script graph in
+`scripts/build-graph.mjs`, while copied and runtime assets are declared in
+`scripts/build-config.mjs`. Release source maps are published beside both JavaScript
+bundles and include the original sources. After an intentional bundle change, inspect
+the generated output and run `npm run artifacts:update` to accept its new hashes.
 
 ## Browser support
 

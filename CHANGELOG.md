@@ -2,6 +2,31 @@
 
 ## Unreleased
 
+## 0.496.6 - 2026-09-04
+
+### Changed
+
+- Replace the drifting source/template build inputs with one production HTML
+  entry point and a declarative, ordered legacy-script graph consumed by Rollup;
+  derive the release version exclusively from `package.json` and publish
+  embedded-source release maps beside both JavaScript bundles.
+- Split source, build-artifact, and browser verification into explicit test
+  commands and add reviewed SHA-256 golden records for the principal generated
+  artifacts.
+
+### Fixed
+
+- Remove raw textual constant, identifier, and property rewriting from the
+  production build so JavaScript names are changed only by parser-aware Terser
+  mangling.
+- Publish complete builds through an atomic `dist` version-pointer switch so
+  failed builds leave the last good artifact continuously available.
+- Generate C64-specific social and icon metadata from the shared HTML entry
+  point and protect the nested C64 entry with artifact golden tests.
+- Prevent the development server from rebuilding indefinitely when macOS emits
+  unchanged `package.json` events after the atomic `dist` pointer is updated,
+  and restart Vite after real rebuilds so it follows the newly published target.
+
 ## 0.496.5 - 2026-09-04
 
 ### Changed

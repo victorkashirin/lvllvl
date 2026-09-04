@@ -1,4 +1,5 @@
 - Performance optimisation
+- Memory leaks tracking
 - SVG export from text mode / petscii
 - fix animation panel (compare to deployed version 489)
 - custom keyboard shortcuts
@@ -6,3 +7,4 @@
 - shift + swipe to move around
 - filter/search tilesets and palettes
 - favorites in tilesets and palettes
+- update dependencies

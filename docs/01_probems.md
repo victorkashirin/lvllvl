@@ -2,27 +2,35 @@
 
 Review date: 2026-09-03
 
+Last status update: 2026-09-04
+
 ## Behavior
 
 Once one item is fixed, mark it as such.
 
 ## Executive summary
 
-The Node migration successfully replaces the old build entry point, but it modernizes the build host rather than the application architecture. The browser application is still a large, global-script codebase assembled by custom text transforms, with almost no behavioral test coverage.
+At the time of the review, the Node migration had replaced the old build entry
+point but had modernized the build host rather than the application architecture.
+The browser application remains a large, global-script codebase, but the custom
+text transforms, drifting production entry points, and lack of behavioral and
+build coverage identified here have since been addressed.
 
 The first modernization milestone should protect user data and credentials and make releases trustworthy. In particular:
 
-1. The production build omits files that are loaded dynamically at runtime, while the build verifier still passes.
-2. IndexedDB/localForage write failures are ignored in important save paths, so the UI can report success after data was not persisted.
+1. **Fixed:** the production build omitted files loaded dynamically at runtime while the build verifier still passed.
+2. **Fixed:** IndexedDB/localForage write failures were ignored in important save paths, so the UI could report success after data was not persisted.
 3. A broad GitHub OAuth token is stored in Firestore and reused by the browser client.
-4. User- and server-controlled strings are inserted as HTML in many places, including a directly reproducible repository-address path.
-5. There is no first-party behavioral test suite or pull-request CI gate to make a large refactor safe.
+4. User- and server-controlled strings are inserted as HTML, while music scripting
+   and assembler expressions use main-origin dynamic code execution.
+5. **Fixed:** there was no first-party behavioral test suite or pull-request CI gate to make a large refactor safe.
 
 These are higher priority than converting files to classes, TypeScript, or ES modules. Those structural changes should follow a small but meaningful regression suite.
 
-## Review scope and evidence
+## Baseline review scope and evidence
 
-This was a static repository review plus a clean production build and the checks currently defined by the project.
+The following evidence records the original 2026-09-03 baseline: a static
+repository review, a clean production build, and the checks defined at that time.
 
 - `npm run check` passed, but it only syntax-checks the three build scripts.
 - `npm run build` passed and generated 541 files, approximately 19 MB.
@@ -48,7 +56,9 @@ scripting, Ace themes/workers, ACME, Exomizer, and C64 runtime requests are
 checked as a dependency closure, and the Exomizer URL now matches its deployed
 source path.
 
-The build treats HTML as a partial dependency manifest, concatenates selected scripts, then copies an explicit asset allowlist. Runtime-created URLs are outside that model.
+**Original finding (2026-09-03):** The build treated HTML as a partial dependency
+manifest, concatenated selected scripts, then copied an explicit asset allowlist.
+Runtime-created URLs were outside that model.
 
 Confirmed examples after a successful build:
 
@@ -58,7 +68,9 @@ Confirmed examples after a successful build:
 - `src/js/assembler/assemblerEditor.js` requests `lib/exomizer/exomizerWorker.js`, but the source worker is located at `src/c64/exomizer/exomizerWorker.js`.
 - Ace is configured with a dynamic base path, while the build copies only two theme files. Any required modes, workers, or themes need to be represented explicitly.
 
-The current verifier in `scripts/verify-build.mjs` checks only a small fixed set of files, placeholders, WASM equality, and cached HTML counts. It therefore passes even when feature-specific resources will return 404.
+The verifier at review time checked only a small fixed set of files, placeholders,
+WASM equality, and cached HTML counts. It therefore passed even when
+feature-specific resources would return 404.
 
 **Impact:** GIF export, CA65 assembly, music scripting, and other lazy-loaded features can fail only after deployment. A green build is not evidence that the artifact is complete.
 
@@ -129,13 +141,30 @@ Firebase client configuration values in source are public identifiers, not secre
 
 **Exit criteria:** no long-lived GitHub token is persisted as ordinary user data, access is least-privilege, and backend authorization policy has automated tests.
 
-### P0.4 Unsafe HTML insertion creates a same-origin XSS risk
+### P0.4 Unsafe HTML and dynamic code execution create a same-origin XSS risk
 
 There are many calls to `.html(...)` and assignments to `innerHTML` using filenames, repository metadata, error messages, and other non-constant values.
 
 A concrete path exists in `src/js/file/github.js`: a user-supplied repository address is placed into an error-message HTML string after only slash removal, then assigned with `.html(message)`. Markup in an invalid address can therefore reach the DOM. Other sites insert repository names, response messages, project names, and filenames similarly.
 
 This risk compounds the credential issue because GitHub and Google Drive integrations run in the same origin.
+
+Two direct `eval` boundaries add to the same-origin execution risk and prevent a
+strict Content Security Policy:
+
+- `src/js/music/musicScripting.js` executes editor content with `eval(content)`.
+  This is intentional scripting functionality, but it runs with the page's full
+  lexical context and origin privileges. A shared or imported music script can
+  therefore access application state, browser storage, and provider credentials.
+- `src/js/assembler/assembler.js` uses `eval(param)` for label and arithmetic
+  expressions. Its surrounding validation narrows expected input, but a dedicated
+  expression parser would provide a smaller and auditable grammar without dynamic
+  code execution.
+
+Rollup reports both calls during every build because direct `eval` also obstructs
+static analysis and can make identifier transformation unsafe. Replacing them with
+`new Function` would silence that specific warning without removing the execution
+or CSP risk.
 
 **Recommended change:**
 
@@ -144,13 +173,31 @@ This risk compounds the credential issue because GitHub and Google Drive integra
 - Where rich HTML is genuinely required, use a single reviewed sanitizer with a narrow allowlist.
 - Validate repository identifiers against their real grammar rather than deleting selected characters.
 - Add adversarial tests for names and remote error strings containing HTML, SVG, event attributes, and malformed markup.
-- After removing inline/eval blockers, enforce a Content Security Policy and Trusted Types.
+- Replace assembler `eval` with a parser that accepts only the required numeric,
+  label, unary-byte, addition, and subtraction expressions.
+- Run intentional music scripting in a sandboxed Worker or iframe behind an
+  explicit capability API; treat imported script content as untrusted.
+- After removing inline and main-origin dynamic-code blockers, enforce a Content
+  Security Policy and Trusted Types.
 
-**Exit criteria:** untrusted values have no raw HTML sink, security regression tests cover the shared UI helpers, and a restrictive CSP is enforced.
+**Exit criteria:** untrusted values have no raw HTML sink, no direct `eval` runs in
+the application origin, intentional scripting is isolated behind a tested capability
+boundary, security regression tests cover the shared UI helpers, and a restrictive
+CSP is enforced.
 
 ### P0.5 There is no behavioral safety net or PR quality gate
 
-The repository has no first-party application tests. The only discovered JavaScript test file is vendored with CodeMirror. The `test` command verifies selected output files, and `check` only parses build scripts. The GitHub workflow deploys on pushes to `main` but does not validate pull requests.
+**Status: Fixed on 2026-09-04.** Pull requests now run a reproducible clean build,
+source-level failure tests, dependency and artifact verification, and production
+browser tests before deployment can proceed. The suite covers application startup,
+offline providers, persistence failures and recovery, runtime dependencies, workers,
+assemblers, and C64 initialization across the declared browser and device matrix.
+The `test:source`, `test:build`, and `test:e2e` commands keep those layers explicit.
+
+**Original finding (2026-09-03):** The repository had no first-party application
+tests. The only discovered JavaScript test file was vendored with CodeMirror. The
+`test` command verified selected output files, and `check` only parsed build scripts.
+The GitHub workflow deployed on pushes to `main` but did not validate pull requests.
 
 **Impact:** a migration can preserve syntax and artifact names while breaking document behavior, rendering, persistence, export, emulation, or authentication. Failures are found after merge or deployment.
 
@@ -190,9 +237,27 @@ control and auditability, but it does not yet remove every active vendored libra
 
 ### P1.2 The custom build is fragile and has two drifting entry points
 
-`scripts/build.mjs` uses regular expressions to scrape exact `script` and stylesheet attribute forms from `src/index.html`, but publishes `src/indexTemplate.html`. Those files already disagree: the manifest page references Firebase 9.6.6 while the production template loads Firebase 7.6.0.
+**Status: Fixed on 2026-09-04.** Production now has one HTML entry point and an
+explicit ordered graph for the legacy JavaScript, CSS, copied scripts, workers,
+WASM, and assets. Rollup consumes the legacy-script graph before Terser performs
+parser-aware identifier mangling, without textual constant, identifier, or
+property substitution. The release version comes only from `package.json`.
+Builds complete in versioned sibling directories and publish through an atomic
+`dist` pointer switch, so a failed build leaves the last good artifact available.
+Release source maps ship beside both JavaScript bundles with embedded sources,
+while static checks validate the graph, entry point, maps, C64 metadata, and
+reviewed golden hashes before the cross-browser behavior suite runs.
 
-The build also performs global string replacement for selected constants and variable names. Textual replacement is not JavaScript-aware and can modify property names, longer identifiers, or string data. This makes ordinary refactoring risky. Version data is duplicated as `0.496.0` in `package.json` and `0.496` in `scripts/build-config.mjs`.
+**Original finding (2026-09-03):** `scripts/build.mjs` used regular expressions to
+scrape exact `script` and stylesheet attribute forms from `src/index.html`, but
+published `src/indexTemplate.html`. Those files already disagreed: the manifest
+page referenced Firebase 9.6.6 while the production template loaded Firebase 7.6.0.
+
+The build also performed global string replacement for selected constants and
+variable names. Textual replacement was not JavaScript-aware and could modify
+property names, longer identifiers, or string data. This made ordinary refactoring
+risky. Version data was duplicated as `0.496.0` in `package.json` and `0.496` in
+`scripts/build-config.mjs`.
 
 **Recommended change:**
 
@@ -221,7 +286,7 @@ The repository also embeds many third-party libraries, fonts, character data, em
 
 `src/index.html` references hundreds of scripts in a manually significant order. First-party code does not define an ES module graph, and shared mutable globals are pervasive; `g_app` alone is referenced throughout the application. Several individual files exceed 4,000 lines.
 
-The production build eagerly concatenates approximately 7.7 MB of JavaScript before considering feature usage. Heavy editors, exporters, assemblers, emulators, and integrations are paid for up front or loaded through ad hoc paths.
+The production build eagerly bundles approximately 7.7 MB of JavaScript before considering feature usage. Heavy editors, exporters, assemblers, emulators, and integrations are paid for up front or loaded through ad hoc paths.
 
 **Recommended change:** avoid a big-bang rewrite. After the safety tests exist, introduce explicit interfaces around these seams first:
 
@@ -295,7 +360,9 @@ no exemption remains solely because a version was never investigated.
 - Add static analysis incrementally: formatting, lint rules that prevent new globals and unsafe HTML sinks, and type checking at module boundaries. Avoid formatting the whole legacy tree in the same changes that alter behavior.
 
 ## P2.2: improve operations
-- Add release diagnostics: source mapping, build metadata, actionable client-side error reporting, and checks that the deployed version matches the package version.
+- Complete release diagnostics beyond the existing source maps: add build metadata,
+  actionable client-side error reporting, and checks that the deployed version
+  matches the package version.
 - Expand the README with architecture, data-storage behavior, browser support, backend setup, and troubleshooting.
 - Add `CONTRIBUTING.md` and `SECURITY.md`, including a private vulnerability-reporting route and the validation commands contributors should run.
 - Remove dead code and unused vendor files only after reachability and browser tests exist.

@@ -42,7 +42,7 @@ jobs:
       - name: Install supported browser engines
         run: npx playwright install --with-deps chromium firefox webkit
       - name: Build and test
-        run: npm run build && npm test
+        run: npm test
       - name: Audit production dependencies
         run: npm run audit:dependencies
       - name: Setup Pages

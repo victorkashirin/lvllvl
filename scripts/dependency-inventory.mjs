@@ -10,6 +10,7 @@ import {
   runtimeAssetFiles,
   sourceDirectory,
 } from "./build-config.mjs";
+import { buildGraph } from "./build-graph.mjs";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const sourceRoot = path.join(projectRoot, sourceDirectory);
@@ -399,10 +400,11 @@ async function buildInventory() {
   const inventory = JSON.parse(await readFile(inventoryFile, "utf8"));
   const packageJson = JSON.parse(await readFile(path.join(projectRoot, "package.json"), "utf8"));
   const packageLock = JSON.parse(await readFile(path.join(projectRoot, "package-lock.json"), "utf8"));
-  const sourceIndex = await readFile(path.join(sourceRoot, "index.html"), "utf8");
-  const productionIndex = await readFile(path.join(sourceRoot, "indexTemplate.html"), "utf8");
+  const productionIndex = await readFile(path.join(sourceRoot, "index.html"), "utf8");
   const localEntryPoints = new Set([
-    ...referencesFromHtml(sourceIndex).filter((reference) => reference.startsWith("lib/")),
+    ...Object.values(buildGraph)
+      .flatMap((entry) => entry.inputs)
+      .filter((reference) => reference.startsWith("lib/")),
     ...runtimeAssetFiles.filter((reference) => reference.startsWith("lib/")),
   ]);
   const externalEntryPoints = new Set(

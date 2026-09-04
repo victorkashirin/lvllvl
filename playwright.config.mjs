@@ -4,6 +4,7 @@ import { browserTestProjects } from "./scripts/browser-policy.mjs";
 
 export default defineConfig({
   testDir: "./tests",
+  testMatch: /.*\.spec\.mjs/,
   fullyParallel: false,
   workers: 1,
   timeout: 60_000,

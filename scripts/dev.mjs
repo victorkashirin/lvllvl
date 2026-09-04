@@ -1,4 +1,5 @@
 import { watch } from "node:fs";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -9,8 +10,13 @@ import { build } from "./build.mjs";
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const sourceRoot = path.join(projectRoot, "src");
 const buildRoot = path.join(projectRoot, "dist");
-const buildUtilsRoot = path.join(projectRoot, "buildUtils");
 const scriptsRoot = path.join(projectRoot, "scripts");
+const packageJsonPath = path.join(projectRoot, "package.json");
+const devPort = Number(process.env.LVLLVL_DEV_PORT ?? 5173);
+
+if (!Number.isInteger(devPort) || devPort < 0 || devPort > 65_535) {
+  throw new Error("LVLLVL_DEV_PORT must be an integer between 0 and 65535");
+}
 
 let rebuildTimer;
 let rebuildInProgress = false;
@@ -29,7 +35,9 @@ async function rebuild() {
     rebuildQueued = false;
     try {
       await build();
-      server.ws.send({ type: "full-reload" });
+      // Vite resolves the symlinked build root when it starts. Restarting makes
+      // it serve the newly published version before clients reload.
+      await server.restart();
     } catch (error) {
       console.error("Rebuild failed");
       console.error(error);
@@ -44,14 +52,18 @@ function queueRebuild() {
 }
 
 await build();
+let packageJsonContents = await readFile(packageJsonPath, "utf8");
 
 server = await createServer({
   appType: "spa",
   configFile: false,
   root: buildRoot,
   server: {
+    fs: {
+      allow: [projectRoot],
+    },
     host: "127.0.0.1",
-    port: 5173,
+    port: devPort,
     watch: {
       ignored: ["**/*"],
     },
@@ -60,13 +72,25 @@ server = await createServer({
 
 inputWatchers.push(watch(sourceRoot, { recursive: true }, queueRebuild));
 inputWatchers.push(
-  watch(buildUtilsRoot, (_event, filename) => {
-    if (filename === "constants.js") queueRebuild();
+  watch(projectRoot, (_event, filename) => {
+    if (filename?.toString() !== path.basename(packageJsonPath)) return;
+
+    void readFile(packageJsonPath, "utf8")
+      .then((contents) => {
+        // macOS can report a package.json event when a sibling entry such as the
+        // dist symlink changes. Rebuild only when the package contents changed.
+        if (contents === packageJsonContents) return;
+        packageJsonContents = contents;
+        queueRebuild();
+      })
+      .catch((error) => console.error(`Could not read package.json: ${error.message}`));
   }),
 );
 inputWatchers.push(
   watch(scriptsRoot, (_event, filename) => {
-    if (filename === "build-config.mjs") queueRebuild();
+    if (filename === "build-config.mjs" || filename === "build-graph.mjs") {
+      queueRebuild();
+    }
   }),
 );
 

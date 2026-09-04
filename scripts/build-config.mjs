@@ -1,51 +1,12 @@
 export const sourceDirectory = "src";
 export const buildDirectory = "dist";
-export const version = "0.496.5";
 
-export const mainBundleExcludes = [
-  "js/c64/wasm/c64.js",
-  "js/nes/wasm/nes.js",
-  "js/nes/nes.js",
-  "js/c64/c64.js",
-  "acmeAssembler",
-  "ca65Assembler",
-  "storageManager.js",
-  "githubApi.js",
-  "githubClient.js",
-];
-
-export const variableReplacements = [
-  "vibDelay",
-  "vibSpeed",
-  "vibDepth",
-  "commandData",
-  "newCommand",
-  "wavetablePosition",
-  "pulsetablePosition",
-  "speedLeft",
-  "speedRight",
-  "newCommandData",
-  "newSpeedLeft",
-  "newSpeedRight",
-  "filtertablePosition",
-  "filterType",
-  "filterCutoff",
-  "filterControl",
-  "masterFader",
-  "funktable",
-  "freqtbllo",
-  "freqtblhi",
-  "lastnote",
-  "vibTime",
-  "sidMemory",
-  "waveTime",
-  "pulseTime",
-  "trackPosition",
-  "newCommandData2",
-  "instrumentDuration",
-  "hardRestartADSR",
-  "SIDAddr",
-];
+// Release source maps ship beside the production bundle. They include the
+// original first-party sources so deployed stack traces remain actionable.
+export const sourceMapPolicy = {
+  includeSources: true,
+  publish: true,
+};
 
 export const assetDirectories = [
   "palettes",

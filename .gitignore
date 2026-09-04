@@ -1,6 +1,8 @@
 .DS_Store
 node_modules/
-/dist/
+/dist
+/.dist-build-*/
+/dist.next-*
 /blob-report/
 /playwright-report/
 /test-results/

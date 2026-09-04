@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "releaseVersion": "0.496.6",
+  "artifacts": {
+    "index.html": {
+      "bytes": 2183,
+      "sha256": "24d8b09564ebd98494564594960628e248f2c025af876a7862fc44411625d986"
+    },
+    "c64/index.html": {
+      "bytes": 2200,
+      "sha256": "51508e893bffa536b118737e0d17d8281c3f2531c1366458174d5031bba2c54e"
+    },
+    "css/style.css": {
+      "bytes": 135310,
+      "sha256": "36f22c68f9452dc5fb321fbe3e0fd70ea294b48714e4540ded1dfa1959f80b1e"
+    },
+    "js/libs.js": {
+      "bytes": 4444125,
+      "sha256": "ca4f92965a83356d5fce71afba633ee571612eefb2343cc8ae4fa3d8507563ec"
+    },
+    "js/libs.js.map": {
+      "bytes": 10136003,
+      "sha256": "391ca4ab08150fc3a3d992b0c17e7cba145afa65f6f76e7ec61fe4b0e4061daf"
+    },
+    "js/main.js": {
+      "bytes": 3450547,
+      "sha256": "0e9b489b5e828efe11ebc264f5b73ef6b80a1d247acd585b8a147964e646e183"
+    },
+    "js/main.js.map": {
+      "bytes": 11089245,
+      "sha256": "efa01dc0cfea46d8ec146341d0a9dd40f8238c43aef9b1d89cb5a1e687f62ff7"
+    },
+    "js/html/htmlcache.js": {
+      "bytes": 375803,
+      "sha256": "ea4f803effee1c776af54da2aa4184955ad8100870eef2cf6c6ec067b5b56a33"
+    }
+  }
+}
