@@ -5,6 +5,8 @@ import { fileURLToPath } from "node:url";
 import { minify as minifyHtml } from "html-minifier-terser";
 import { minify as minifyJavaScript } from "terser";
 
+import { browserPolicy } from "./browser-policy.mjs";
+
 import {
   assetDirectories,
   buildDirectory,
@@ -192,9 +194,8 @@ async function buildMainBundle(indexHtml) {
 
   const result = await minifyJavaScript(source, {
     compress: false,
-    ecma: 5,
+    ecma: browserPolicy.javascriptEcmaVersion,
     mangle: true,
-    safari10: true,
     format: {
       ascii_only: true,
       comments: false,

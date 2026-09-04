@@ -1,9 +1,13 @@
 import { access, readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { gzipSync } from "node:zlib";
 import vm from "node:vm";
 
-import { tokenizer } from "acorn";
+import { parse, tokenizer } from "acorn";
+import browserslist from "browserslist";
+
+import { browserPolicy } from "./browser-policy.mjs";
 
 import {
   buildDirectory,
@@ -109,15 +113,107 @@ function stripJavaScriptComments(source) {
   return uncommented;
 }
 
+function htmlAttribute(tag, name) {
+  return tag.match(new RegExp(`\\b${name}\\s*=\\s*(["'])(.*?)\\1`, "i"))?.[2] ?? null;
+}
+
 function localStylesheetReferences(html) {
   const references = [];
-  const pattern = /<link\b[^>]*\brel=["']stylesheet["'][^>]*\bhref=["']([^"']+)["'][^>]*>/gi;
+  const pattern = /<link\b[^>]*>/gi;
 
   for (const match of html.matchAll(pattern)) {
-    const reference = match[1].split(/[?#]/, 1)[0];
-    if (!/^(?:[a-z]+:|\/\/|\/)/i.test(reference)) references.push(reference);
+    const rel = htmlAttribute(match[0], "rel");
+    const href = htmlAttribute(match[0], "href");
+    if (!href || !rel?.toLowerCase().split(/\s+/).includes("stylesheet")) continue;
+
+    const reference = requestPath(href);
+    if (reference) references.push(reference);
   }
   return references;
+}
+
+function localScriptReferences(html) {
+  const references = [];
+  const pattern = /<script\b[^>]*>/gi;
+
+  for (const match of html.matchAll(pattern)) {
+    const source = htmlAttribute(match[0], "src");
+    if (!source) continue;
+
+    const reference = requestPath(source);
+    if (reference) references.push(reference);
+  }
+  return references;
+}
+
+async function verifyBrowserPolicy() {
+  const packageJson = JSON.parse(
+    await readFile(path.join(projectRoot, "package.json"), "utf8"),
+  );
+  const queries = packageJson.browserslist;
+  if (
+    !Array.isArray(queries) ||
+    queries.length === 0 ||
+    queries.some((query) => typeof query !== "string" || query.trim() === "")
+  ) {
+    throw new Error("package.json must define a non-empty Browserslist support policy");
+  }
+
+  const targets = browserslist(queries, { path: projectRoot });
+  if (targets.length === 0) throw new Error("The Browserslist support policy is empty");
+
+  const javascriptFiles = (await listCacheFiles(buildRoot)).filter((filename) =>
+    filename.endsWith(".js"),
+  );
+  for (const filename of javascriptFiles) {
+    const source = await readFile(filename, "utf8");
+    try {
+      parse(source, {
+        allowHashBang: true,
+        ecmaVersion: browserPolicy.javascriptEcmaVersion,
+        sourceType: "script",
+      });
+    } catch (error) {
+      const relativePath = path.relative(buildRoot, filename);
+      throw new Error(
+        `${relativePath} exceeds the ECMA ${browserPolicy.javascriptEcmaVersion} output target: ${error.message}`,
+      );
+    }
+  }
+
+  return { javascriptFiles: javascriptFiles.length, targets: targets.length };
+}
+
+async function verifyPerformanceBudgets(indexHtml) {
+  const initialFiles = [
+    ...new Set([
+      ...localStylesheetReferences(indexHtml),
+      ...localScriptReferences(indexHtml),
+      ...runtimeFeatureRequests.mobileStyles,
+    ]),
+  ];
+  let rawBytes = 0;
+  let gzipBytes = 0;
+
+  for (const filename of initialFiles) {
+    const content = await readFile(path.join(buildRoot, filename));
+    rawBytes += content.byteLength;
+    gzipBytes += gzipSync(content, { level: 9 }).byteLength;
+  }
+
+  const budgets = browserPolicy.performanceBudgets;
+  if (rawBytes > budgets.initialPayloadRawBytes) {
+    throw new Error(
+      `Initial first-party payload is ${rawBytes} raw bytes; budget is ${budgets.initialPayloadRawBytes}`,
+    );
+  }
+  if (gzipBytes > budgets.initialPayloadGzipBytes) {
+    throw new Error(
+      `Initial first-party payload is ${gzipBytes} gzip bytes; budget is ${budgets.initialPayloadGzipBytes}`,
+    );
+  }
+
+  return { files: initialFiles.length, gzipBytes, rawBytes };
 }
 
 async function verifyStyleBundle() {
@@ -313,6 +409,8 @@ if (!c64Runtime.includes(`c64.wasm?v=${version}`)) {
 }
 
 const indexHtml = await readFile(path.join(buildRoot, "index.html"), "utf8");
+const browserVerification = await verifyBrowserPolicy();
+const performanceVerification = await verifyPerformanceBudgets(indexHtml);
 const ca65Scripts = [
   "lib/ca65/ca65.js",
   "lib/ca65/ld65.js",
@@ -396,5 +494,8 @@ for (const [relativePath, consumers] of discoveredAssetRequests) {
 
 console.log(
   `Verified ${requiredFiles.size} outputs, ${discoveredRuntimeRequests.size} runtime requests, ` +
-    `${discoveredAssetRequests.size} asset requests, and ${sourceHtmlFiles.length} cached HTML files`,
+    `${discoveredAssetRequests.size} asset requests, and ${sourceHtmlFiles.length} cached HTML files; ` +
+    `${browserVerification.javascriptFiles} scripts target ECMA ${browserPolicy.javascriptEcmaVersion} ` +
+    `for ${browserVerification.targets} browser releases; ${performanceVerification.files} initial files ` +
+    `use ${performanceVerification.rawBytes} raw/${performanceVerification.gzipBytes} gzip bytes`,
 );

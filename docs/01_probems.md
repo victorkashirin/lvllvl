@@ -236,6 +236,15 @@ Convert one bounded feature at a time to ES modules, keep adapters for legacy gl
 
 ### P1.5 “Modern Node” does not define the browser target
 
+**Status: Fixed on 2026-09-04.** The supported current stable Chrome, Edge,
+Firefox, Safari, iOS Safari, and Chrome for Android families are now encoded in
+Browserslist and documented with desktop, phone, and tablet device classes. All
+emitted JavaScript is checked against the ECMA 2020 ceiling, and CI boots the
+production application across Chromium, Firefox, and WebKit desktop and touch
+profiles, including the minimum 360 by 640 phone viewport and provider-offline
+startup. Release checks enforce 9.25 MB raw/2.10 MB gzip initial first-party
+payload limits and a five-second start-page budget.
+
 The build requires Node 20.19 or later, while Terser is configured to emit ECMA5. This leaves the server-side build runtime modern but the browser support contract implicit.
 
 **Recommended change:** document the browsers and device classes the project supports, encode that policy in tooling, test it in CI, and only then retire obsolete syntax transforms and polyfills. Add bundle and startup performance budgets appropriate to those targets.

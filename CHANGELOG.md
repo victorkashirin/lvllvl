@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+## 0.496.5 - 2026-09-04
+
+### Changed
+
+- Define the supported desktop, phone, and tablet browser matrix in Browserslist,
+  emit and verify ECMA 2020 JavaScript, exercise production startup across
+  Chromium, Firefox, and WebKit CI profiles, and enforce initial-payload and
+  start-page performance budgets.
+
+### Fixed
+
+- Make browser-policy verification fail when its explicit Browserslist contract
+  is missing, exercise the 360 by 640 minimum phone viewport and genuine provider
+  outages, and run browser tests before the independent production audit gate.
+
 ## 0.496.4 - 2026-09-04
 
 ### Fixed

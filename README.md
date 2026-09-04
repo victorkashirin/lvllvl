@@ -14,13 +14,20 @@ For a production build and verification:
 
 ```sh
 npm run build
-npx playwright install chromium
+npx playwright install chromium firefox webkit
 npm test
 ```
 
 `npm run build` removes and recreates `dist/`. The source files live in `src/`, and the
 build configuration is in `scripts/build-config.mjs`. `npm test` verifies the static
 dependency closure and runs production-browser smoke tests against the built files.
+
+## Browser support
+
+The supported browser release lines, desktop/phone/tablet device classes, CI
+coverage, JavaScript syntax ceiling, and startup and bundle budgets are defined in
+[`docs/browser-support.md`](docs/browser-support.md). Run `npm run browsers` to see
+the exact browser versions currently resolved by the machine-readable policy.
 
 ## Runtime dependencies
 

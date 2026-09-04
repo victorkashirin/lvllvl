@@ -1,6 +1,6 @@
 export const sourceDirectory = "src";
 export const buildDirectory = "dist";
-export const version = "0.496.4";
+export const version = "0.496.5";
 
 export const mainBundleExcludes = [
   "js/c64/wasm/c64.js",

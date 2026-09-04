@@ -1,4 +1,6 @@
-import { defineConfig } from "@playwright/test";
+import { defineConfig, devices } from "@playwright/test";
+
+import { browserTestProjects } from "./scripts/browser-policy.mjs";
 
 export default defineConfig({
   testDir: "./tests",
@@ -9,6 +11,18 @@ export default defineConfig({
     timeout: 10_000,
   },
   reporter: process.env.CI ? "line" : "list",
+  projects: browserTestProjects.map((project) => ({
+    name: project.name,
+    metadata: {
+      deviceClass: project.deviceClass,
+    },
+    testMatch: project.runFullSuite ? undefined : /browser-support\.spec\.mjs/,
+    use: {
+      ...devices[project.device],
+      browserName: project.browserName,
+      ...(project.viewport ? { viewport: project.viewport } : {}),
+    },
+  })),
   use: {
     baseURL: "http://127.0.0.1:4173",
     headless: true,
