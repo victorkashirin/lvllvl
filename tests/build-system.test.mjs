@@ -18,7 +18,7 @@ import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 import { buildGraph } from "../scripts/build-graph.mjs";
-import { publishDirectory } from "../scripts/build.mjs";
+import { assertCaseExactPath, publishDirectory } from "../scripts/build.mjs";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const require = createRequire(import.meta.url);
@@ -138,6 +138,18 @@ test("reachable code retains local bindings after unreachable cleanup", async ()
     undefinedBindings,
     [],
     `Reachable statements lost local bindings:\n${undefinedBindings.join("\n")}`,
+  );
+});
+
+test("build input paths are validated with exact filesystem casing", async (context) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "lvllvl-case-test-"));
+  context.after(() => rm(root, { force: true, recursive: true }));
+  await writeFile(path.join(root, "Exact.js"), "");
+
+  assert.equal(await assertCaseExactPath(root, "Exact.js"), path.join(root, "Exact.js"));
+  await assert.rejects(
+    assertCaseExactPath(root, "exact.js"),
+    /uses "exact\.js" but the filesystem entry is "Exact\.js"/,
   );
 });
 

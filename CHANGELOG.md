@@ -8,6 +8,10 @@
   work from repository subpaths such as `example.com/lvllvl/`.
 - Skip Playwright's incompatible bundled WebKit revision on macOS 14 while
   retaining WebKit coverage on supported CI hosts.
+- Override JSHint's vulnerable Lodash and Minimatch transitive dependencies with
+  patched compatible releases so the production security audit can pass.
+- Correct the SID export build input's filename casing and validate every build
+  input case-exactly so macOS catches errors that would otherwise fail Linux CI.
 
 ## 0.496.8 - 2026-09-04
 

@@ -3,7 +3,7 @@
   "dataLicense": "CC0-1.0",
   "SPDXID": "SPDXRef-DOCUMENT",
   "name": "lvllvl-runtime-0.496.8",
-  "documentNamespace": "https://github.com/jaammees/lvllvl/sbom/0.496.8/818636225690696135248b2e73431bfb28577434e1249b42c89bf0b9d57de0a4",
+  "documentNamespace": "https://github.com/jaammees/lvllvl/sbom/0.496.8/b071091734321c6d1f80639e6438ec6d7a06de00a6a6ce24cdc707cf9bcf8bf9",
   "creationInfo": {
     "created": "2026-09-04T00:00:00Z",
     "creators": [
@@ -909,20 +909,20 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-npm-minimatch-3.0.8",
+      "SPDXID": "SPDXRef-Package-npm-minimatch-3.1.5",
       "name": "minimatch",
-      "versionInfo": "3.0.8",
-      "downloadLocation": "https://registry.npmjs.org/minimatch/-/minimatch-3.0.8.tgz",
+      "versionInfo": "3.1.5",
+      "downloadLocation": "https://registry.npmjs.org/minimatch/-/minimatch-3.1.5.tgz",
       "filesAnalyzed": false,
       "licenseConcluded": "ISC",
       "licenseDeclared": "ISC",
       "copyrightText": "NOASSERTION",
-      "comment": "Bundled transitive dependency of a package-managed browser asset. Delivery: bundled in jshint. Modification status: unmodified. Audit identity: pkg:npm/minimatch@3.0.8. Reachable entry points: lib/jshint/jshint.js.",
+      "comment": "Bundled transitive dependency of a package-managed browser asset. Delivery: bundled in jshint. Modification status: unmodified. Audit identity: pkg:npm/minimatch@3.1.5. Reachable entry points: lib/jshint/jshint.js.",
       "externalRefs": [
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:npm/minimatch@3.0.8"
+          "referenceLocator": "pkg:npm/minimatch@3.1.5"
         }
       ]
     },
@@ -1269,20 +1269,20 @@
       ]
     },
     {
-      "SPDXID": "SPDXRef-Package-npm-lodash-4.17.23",
+      "SPDXID": "SPDXRef-Package-npm-lodash-4.18.1",
       "name": "lodash",
-      "versionInfo": "4.17.23",
-      "downloadLocation": "https://registry.npmjs.org/lodash/-/lodash-4.17.23.tgz",
+      "versionInfo": "4.18.1",
+      "downloadLocation": "https://registry.npmjs.org/lodash/-/lodash-4.18.1.tgz",
       "filesAnalyzed": false,
       "licenseConcluded": "MIT",
       "licenseDeclared": "MIT",
       "copyrightText": "NOASSERTION",
-      "comment": "Bundled transitive dependency of a package-managed browser asset. Delivery: bundled in jshint. Modification status: unmodified. Audit identity: pkg:npm/lodash@4.17.23. Reachable entry points: lib/jshint/jshint.js.",
+      "comment": "Bundled transitive dependency of a package-managed browser asset. Delivery: bundled in jshint. Modification status: unmodified. Audit identity: pkg:npm/lodash@4.18.1. Reachable entry points: lib/jshint/jshint.js.",
       "externalRefs": [
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:npm/lodash@4.17.23"
+          "referenceLocator": "pkg:npm/lodash@4.18.1"
         }
       ]
     },
@@ -1606,10 +1606,10 @@
     {
       "spdxElementId": "SPDXRef-Package-npm-glob-7.2.3",
       "relationshipType": "DEPENDS_ON",
-      "relatedSpdxElement": "SPDXRef-Package-npm-minimatch-3.0.8"
+      "relatedSpdxElement": "SPDXRef-Package-npm-minimatch-3.1.5"
     },
     {
-      "spdxElementId": "SPDXRef-Package-npm-minimatch-3.0.8",
+      "spdxElementId": "SPDXRef-Package-npm-minimatch-3.1.5",
       "relationshipType": "DEPENDS_ON",
       "relatedSpdxElement": "SPDXRef-Package-npm-brace-expansion-1.1.18"
     },
@@ -1746,12 +1746,12 @@
     {
       "spdxElementId": "SPDXRef-Package-jshint",
       "relationshipType": "DEPENDS_ON",
-      "relatedSpdxElement": "SPDXRef-Package-npm-lodash-4.17.23"
+      "relatedSpdxElement": "SPDXRef-Package-npm-lodash-4.18.1"
     },
     {
       "spdxElementId": "SPDXRef-Package-jshint",
       "relationshipType": "DEPENDS_ON",
-      "relatedSpdxElement": "SPDXRef-Package-npm-minimatch-3.0.8"
+      "relatedSpdxElement": "SPDXRef-Package-npm-minimatch-3.1.5"
     },
     {
       "spdxElementId": "SPDXRef-Package-jshint",
@@ -1866,7 +1866,7 @@
     {
       "spdxElementId": "SPDXRef-Package-jshint",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-npm-minimatch-3.0.8"
+      "relatedSpdxElement": "SPDXRef-Package-npm-minimatch-3.1.5"
     },
     {
       "spdxElementId": "SPDXRef-Package-jshint",
@@ -1966,7 +1966,7 @@
     {
       "spdxElementId": "SPDXRef-Package-jshint",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-Package-npm-lodash-4.17.23"
+      "relatedSpdxElement": "SPDXRef-Package-npm-lodash-4.18.1"
     },
     {
       "spdxElementId": "SPDXRef-Package-jshint",

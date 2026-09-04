@@ -353,7 +353,7 @@ export const buildGraph = {
       "js/music/sid/songData.js",
       "js/music/sid/sidFile.js",
       "js/music/sid/export/exportGoatTracker.js",
-      "js/music/sid/export/exportSID.js",
+      "js/music/sid/export/exportSid.js",
       "js/music/sid/export/exportPRG.js",
       "js/codeEditor/codeEditor.js",
       "js/codeEditor/textEditor.js",

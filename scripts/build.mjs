@@ -48,11 +48,42 @@ const outputDirectories = [
 let buildRoot = publishedBuildRoot;
 let version;
 
-function sourceFile(relativePath) {
+async function assertCaseExactPath(baseDirectory, relativePath) {
+  const normalized = path.normalize(relativePath);
+  if (
+    path.isAbsolute(relativePath) ||
+    normalized === ".." ||
+    normalized.startsWith(`..${path.sep}`)
+  ) {
+    throw new Error(`Build input path escapes its source root: ${relativePath}`);
+  }
+
+  let directory = baseDirectory;
+  for (const segment of normalized.split(path.sep)) {
+    const entries = await readdir(directory);
+    if (!entries.includes(segment)) {
+      const caseInsensitiveMatch = entries.find(
+        (entry) => entry.toLowerCase() === segment.toLowerCase(),
+      );
+      if (caseInsensitiveMatch) {
+        throw new Error(
+          `Build input path uses "${segment}" but the filesystem entry is ` +
+            `"${caseInsensitiveMatch}": ${relativePath}`,
+        );
+      }
+      throw new Error(`Build input path does not exist: ${relativePath}`);
+    }
+    directory = path.join(directory, segment);
+  }
+
+  return directory;
+}
+
+async function sourceFile(relativePath) {
   const packageAsset = packageAssetFiles[relativePath];
   return packageAsset
-    ? path.join(projectRoot, packageAsset)
-    : path.join(sourceRoot, relativePath);
+    ? assertCaseExactPath(projectRoot, packageAsset)
+    : assertCaseExactPath(sourceRoot, relativePath);
 }
 
 function renderVersion(content) {
@@ -70,7 +101,7 @@ async function concatenateFiles(relativePaths) {
   const chunks = [];
 
   for (const relativePath of relativePaths) {
-    chunks.push(await readFile(sourceFile(relativePath), "utf8"));
+    chunks.push(await readFile(await sourceFile(relativePath), "utf8"));
   }
 
   return `${chunks.join("\n\n")}\n\n`;
@@ -123,7 +154,7 @@ async function buildHtmlCache() {
 async function bundleLegacyJavaScript(output, graph) {
   const sourceBundle = new MagicStringBundle({ separator: "\n\n" });
   for (const relativePath of graph.inputs) {
-    const content = renderVersion(await readFile(sourceFile(relativePath), "utf8"));
+    const content = renderVersion(await readFile(await sourceFile(relativePath), "utf8"));
     sourceBundle.addSource({
       content: new MagicString(content, { filename: relativePath }),
       filename: relativePath,
@@ -303,7 +334,7 @@ async function copyRuntimeAssets() {
   for (const relativePath of runtimeAssetFiles) {
     const destination = path.join(buildRoot, relativePath);
     await mkdir(path.dirname(destination), { recursive: true });
-    await cp(sourceFile(relativePath), destination, { force: true });
+    await cp(await sourceFile(relativePath), destination, { force: true });
   }
 }
 
@@ -436,4 +467,4 @@ async function build() {
 const isDirectRun = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (isDirectRun) await build();
 
-export { build, publishDirectory };
+export { assertCaseExactPath, build, publishDirectory };
