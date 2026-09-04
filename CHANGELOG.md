@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Fixed
+
+- Keep tile-palette selection outlines aligned with non-square tiles.
+
 ## 0.497.2 - 2026-09-04
 
 ### Fixed

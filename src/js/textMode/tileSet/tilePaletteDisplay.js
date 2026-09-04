@@ -1439,7 +1439,7 @@ TilePaletteDisplay.prototype = {
     this.context.beginPath();
     this.context.lineWidth = 2;
     var tileWidth = tileSet.getTileWidth();// (tileSet.getTileWidth() * this.tilePaletteScale + 1) * this.canvasScale;
-    var tileHeight = tileSet.getTileWidth(); //(tileSet.getTileHeight() * this.tilePaletteScale + 1) * this.canvasScale; 
+    var tileHeight = tileSet.getTileHeight(); //(tileSet.getTileHeight() * this.tilePaletteScale + 1) * this.canvasScale;
     var cellWidth = ( (tileSet.getTileWidth() + 5) * this.tilePaletteScale + 1) * this.canvasScale;
     var cellHeight = ( (tileSet.getTileHeight() + 5) * this.tilePaletteScale + 1) * this.canvasScale;
     if(this.selectedGridCells.length == 0) {
