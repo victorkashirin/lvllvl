@@ -17,6 +17,9 @@ var TilePalette = function() {
   this.blockStacking = 'horizontal';
   this.tileMaterials = null;
 
+  this.fitToWidth = false;
+  this.fitPreferenceLoaded = false;
+
   // the tile info is being displayed for
   this.tileInfoTile = false;
 }
@@ -99,7 +102,7 @@ TilePalette.prototype = {
     if(this.prefix == 'side') {
       html += '<div style="position: absolute; left: 2px; right: 0px; top: 44px; bottom: 56px; overflow: hidden" id="' + this.prefix + 'tilePaletteHolder">';
     } else {
-      html += '<div style="position: absolute; left: 2px; right: 0px; top: 44px; bottom: 28px; overflow: hidden" id="' + this.prefix + 'tilePaletteHolder">';
+      html += '<div style="position: absolute; left: 2px; right: 0px; top: 44px; bottom: 56px; overflow: hidden" id="' + this.prefix + 'tilePaletteHolder">';
     }
     html += '<canvas id="' + this.prefix + 'charPaletteCanvas" style="position: absolute; top: 0; bottom: 0; left: 0; right: 0;" ></canvas>';
     html += '</div>';
@@ -113,10 +116,11 @@ TilePalette.prototype = {
       html += this.tileMaterials.getHTML();
       html += '</div>';
 
-      html += '<div style=" position: absolute; left: 0px; right: 0px; bottom: 0px; height: 56px; background-color: #222222; padding: 0px; display: flex; flex-direction: column;">';
-      html += '<div style="white-space: nowrap; height: 28px; display: flex; align-items: center">';
+      html += '<div class="tile-palette-controls" style=" position: absolute; left: 0px; right: 0px; bottom: 0px; height: 56px; background-color: #222222; padding: 0px; display: flex; flex-direction: column;">';
+      html += '<div class="tile-palette-control-row" id="' + this.prefix + 'tilePaletteControlsPrimary" tabindex="0" aria-label="Tile palette display controls">';
     } else {
-      html += '<div style="white-space: nowrap; position: absolute; left: 0px; right: 0px; bottom: 0px; height: 28px; background-color: #222222; padding: 0px; display: flex; align-items: center">';
+      html += '<div class="tile-palette-controls" style="position: absolute; left: 0px; right: 0px; bottom: 0px; height: 56px; background-color: #222222; padding: 0px; display: flex; flex-direction: column">';
+      html += '<div class="tile-palette-control-row" id="' + this.prefix + 'tilePaletteControlsPrimary" tabindex="0" aria-label="Tile palette display controls">';
     }
 
     // side top row
@@ -132,15 +136,14 @@ TilePalette.prototype = {
 
     //html += '<label class="gridinfo-label" for="tilePaletteScale" style="margin-left: 20px">Scale</label>&nbsp;';
 
-    html += '<div style="display: flex">';
-    html += '<div class="ui-button tilePaletteScale-dec">-</div>';
-    html += '<select id="' + this.prefix + 'tilePaletteScale">';
-    html += '<option value="1">100%</option>';
-    html += '<option value="2" selected="selected">200%</option>';
-    html += '<option value="3">300%</option>';
-    html += '<option value="4">400%</option>';
-    html += '</select>';
-    html += '<div class="ui-button tilePaletteScale-inc">+</div>';
+    html += '<div style="display: flex; align-items: center">';
+    html += '<button type="button" class="ui-button" id="' + this.prefix + 'tilePaletteFitWidth" aria-pressed="false" title="Fit tile palette to panel width" style="box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; height: 20px">Fit</button>';
+    html += '<button type="button" class="ui-button" id="' + this.prefix + 'tilePaletteScaleDec" aria-label="Decrease tile palette scale" title="Decrease scale by at least 50%" style="border-radius: 4px 0 0 4px; margin-right: 0">-</button>';
+    html += '<span class="tile-palette-scale-value" id="' + this.prefix + 'tilePaletteScaleValue">';
+    html += '<input type="text" inputmode="decimal" id="' + this.prefix + 'tilePaletteScale" value="200" aria-label="Tile palette scale percentage" style="border-radius: 0; box-sizing: border-box; color: inherit; height: 20px; margin: 0; padding-right: 14px; text-align: right; width: 60px">';
+    html += '<span id="' + this.prefix + 'tilePaletteScalePercent" aria-hidden="true" style="position: absolute; right: 4px; top: 0; line-height: 20px; pointer-events: none">%</span>';
+    html += '</span>';
+    html += '<button type="button" class="ui-button" id="' + this.prefix + 'tilePaletteScaleInc" aria-label="Increase tile palette scale" title="Increase scale by at least 50%" style="border-radius: 0 4px 4px 0; margin-right: 0">+</button>';
     html += '</div>';
 
     html += '<span style="margin-left: 20px">';
@@ -155,15 +158,9 @@ TilePalette.prototype = {
     html += '</span>';
     // -----------
 
+    html += '</div>';
+    html += '<div class="tile-palette-control-row" id="' + this.prefix + 'tilePaletteControlsSecondary" tabindex="0" aria-label="Tile set controls">';
 
-
-    if(this.prefix == 'side') {
-      html += '</div>';
-      html += '<div style="white-space: nowrap; height: 28px; display: flex; align-items: center">';
-    }
-
-
-    // side bottom row
 
     html += '<span style="margin-right: 0px">';
     html += '<label class="gridinfo-label" for="tilePaletteTileSize">Size</label>';
@@ -185,10 +182,9 @@ TilePalette.prototype = {
 
     html += '<div class="ui-button" style="margin-left: 6px" id="' + this.prefix + 'sortTilePalette">Rearrange...</div>';
 
-    if(this.prefix == 'side') {
-      html += '</div>';
+    html += '</div>';
 
-    } else {
+    if(this.prefix != 'side') {
 
       /*
       html += '<span style="margin-left: 20px;">';
@@ -197,9 +193,6 @@ TilePalette.prototype = {
       html += '</span>';
       */
     }
-
-    
-
 
     html += '</div>';
 
@@ -318,6 +311,8 @@ TilePalette.prototype = {
       $('#' + this.prefix + 'tilePaletteHolder').css('bottom', '56px');
     }
 
+    this.resize();
+
   },
   
 
@@ -373,49 +368,32 @@ TilePalette.prototype = {
     });
 
     $('#' + this.prefix + 'tilePaletteScale').on('change', function(event) {
-      var value = parseFloat($(this).val());
-      if(!isNaN(value)) {
-        _this.setScale(value);
+      if(_this.fitToWidth) {
+        return;
+      }
+
+      var percentage = parseFloat($(this).val());
+      if(!isNaN(percentage)) {
+        _this.setScale(percentage / 100);
+      } else {
+        _this.updateScaleControl();
       }
     });
 
-    $('.tilePaletteScale-dec').on('click', function() {
-      var value = $('#' + _this.prefix + 'tilePaletteScale').val();
-      var element = $('#' + _this.prefix + 'tilePaletteScale').get(0);
-      var options = element.options;
-      var prev = false;
-      for(var i = 0; i < options.length; i++) {
-        if(options[i].value == value) {
-          break;
-        }
-        prev = options[i].value;
-      }
-      if(prev !== false) {
-        _this.setScale(prev);
-      }
-      /*
-      var options = $(this)[0].optio;
-      console.log(options);
-      console.log(this.options);
-      */
-      
+    $('#' + this.prefix + 'tilePaletteFitWidth').on('click', function() {
+      _this.setFitToWidth(!_this.fitToWidth);
     });
 
-    $('.tilePaletteScale-inc').on('click', function() {
-      var value = $('#' + _this.prefix + 'tilePaletteScale').val();
-      var element = $('#' + _this.prefix + 'tilePaletteScale').get(0);
-      var options = element.options;
-      var next = false;
-      for(var i = 0; i < options.length; i++) {
-        if(options[i].value == value && i < options.length - 1) {
-          next = options[i + 1].value;          
-        }
+    $('#' + this.prefix + 'tilePaletteScaleDec').on('click', function() {
+      if(!_this.fitToWidth) {
+        _this.setScale(_this.tilePaletteDisplay.getScale() - _this.tilePaletteDisplay.getScaleControlStep());
       }
-      if(next !== false) {
-        _this.setScale(next);
+    });
+
+    $('#' + this.prefix + 'tilePaletteScaleInc').on('click', function() {
+      if(!_this.fitToWidth) {
+        _this.setScale(_this.tilePaletteDisplay.getScale() + _this.tilePaletteDisplay.getScaleControlStep());
       }
-
-
     });
 
 
@@ -461,6 +439,8 @@ TilePalette.prototype = {
       _this.editor.currentTile.flipV2d();
     });
 
+    this.updateFitToWidthControls();
+    this.updateScaleControl();
 
   },
 
@@ -513,6 +493,7 @@ TilePalette.prototype = {
       this.tilePaletteDisplay.setCharPaletteMap(this.tileSortMap, 'custom');
 
       this.tilePaletteDisplay.draw({ redrawTiles: true });
+      this.updateFitToWidthScale();
 
     } else {
       var tileSet = this.editor.tileSetManager.getCurrentTileSet();
@@ -535,6 +516,7 @@ TilePalette.prototype = {
 
       this.tilePaletteDisplay.setMode('grid');
       this.tilePaletteDisplay.draw({ redrawTiles: true });      
+      this.updateFitToWidthScale();
     }
   },
 
@@ -577,7 +559,9 @@ TilePalette.prototype = {
       g_app.setPref(prefName, margin);
 
       this.tilePaletteDisplay.setTileMargin(margin);
-      this.tilePaletteDisplay.draw({ redrawTiles: true });
+      if(!this.updateFitToWidthScale()) {
+        this.tilePaletteDisplay.draw({ redrawTiles: true });
+      }
       $('#' + this.prefix + 'tilePaletteTileMargin').html(margin);
     }
 
@@ -593,6 +577,7 @@ TilePalette.prototype = {
       tileSet.setTileCount(tileCount);
     }
     this.tilePaletteDisplay.draw({ redrawTiles: true });
+    this.updateFitToWidthScale();
     this.updateTileCountHTML();
 
 
@@ -608,6 +593,7 @@ TilePalette.prototype = {
 
   setCharPaletteMapType: function(type) {
     this.tilePaletteDisplay.setCharPaletteMapType(type);
+    this.updateFitToWidthScale();
 
     $('#charPaletteSortOrder').val(type);      
     $('#sidecharPaletteSortOrder').val(type);
@@ -618,11 +604,9 @@ TilePalette.prototype = {
     return this.tilePaletteDisplay.charPaletteMapType;
   },
 
-  setScale: function(scale) {
-
+  getScalePreferenceName: function() {
     var tileWidth = 8;
     var tileHeight = 8;
-
     var tileSet = this.editor.tileSetManager.getCurrentTileSet();
 
     if(tileSet != null) {
@@ -630,34 +614,141 @@ TilePalette.prototype = {
       tileHeight = tileSet.getTileHeight();
     }
 
-    var prefName = "tilepalette.scale_" + tileWidth + 'x' + tileHeight;
+    return "tilepalette.scale_" + tileWidth + 'x' + tileHeight;
+  },
 
-    var newScale = 2;
+  getFitToWidthPreferenceName: function() {
+    var panelName = this.prefix == 'side' ? 'side' : 'bottom';
+    return 'tilepalette.fitToWidth.' + panelName;
+  },
 
-    if(typeof scale != 'undefined') {
+  loadFitToWidthPreference: function() {
+    if(this.fitPreferenceLoaded) {
+      return;
+    }
+
+    var fitPreference = g_app.getPref(this.getFitToWidthPreferenceName());
+    if(fitPreference == 'yes' || fitPreference == 'no') {
+      this.fitToWidth = fitPreference == 'yes';
+    } else {
+      this.fitToWidth = true;
+      g_app.setPref(this.getFitToWidthPreferenceName(), 'yes');
+    }
+
+    this.fitPreferenceLoaded = true;
+    this.updateFitToWidthControls();
+  },
+
+  updateScaleControl: function() {
+    var percentage = parseFloat((this.tilePaletteDisplay.getScale() * 100).toFixed(4));
+    $('#' + this.prefix + 'tilePaletteScale').val(percentage);
+  },
+
+  updateFitToWidthControls: function() {
+    var fitButton = $('#' + this.prefix + 'tilePaletteFitWidth');
+    var scaleControl = $('#' + this.prefix + 'tilePaletteScale');
+    var scaleValue = $('#' + this.prefix + 'tilePaletteScaleValue');
+    var decreaseButton = $('#' + this.prefix + 'tilePaletteScaleDec');
+    var increaseButton = $('#' + this.prefix + 'tilePaletteScaleInc');
+
+    fitButton.attr('aria-pressed', this.fitToWidth ? 'true' : 'false');
+    fitButton.toggleClass('ui-button-primary', this.fitToWidth);
+    scaleControl.prop('disabled', this.fitToWidth);
+    scaleValue.toggleClass('tile-palette-scale-value-disabled', this.fitToWidth);
+    decreaseButton.prop('disabled', this.fitToWidth);
+    increaseButton.prop('disabled', this.fitToWidth);
+    decreaseButton.toggleClass('ui-button-disabled', this.fitToWidth);
+    increaseButton.toggleClass('ui-button-disabled', this.fitToWidth);
+  },
+
+  setFitToWidth: function(fitToWidth) {
+    if(!this.fitPreferenceLoaded) {
+      this.loadFitToWidthPreference();
+    }
+
+    this.fitToWidth = fitToWidth === true;
+    g_app.setPref(this.getFitToWidthPreferenceName(), this.fitToWidth ? 'yes' : 'no');
+    this.updateFitToWidthControls();
+
+    if(this.fitToWidth) {
+      if(!this.updateFitToWidthScale()) {
+        this.tilePaletteDisplay.draw();
+      }
+    } else {
+      // Leaving Fit freezes its current computed percentage as the new manual
+      // scale, so the palette does not jump back to an unrelated old value.
+      this.setScale(this.tilePaletteDisplay.getScale());
+    }
+  },
+
+  updateFitToWidthScale: function() {
+    if(!this.fitToWidth || !this.tilePaletteDisplay || this.width <= 0 || this.height <= 0) {
+      return false;
+    }
+
+    var scale = this.tilePaletteDisplay.getScaleToFitWidth(this.width, this.height);
+    if(scale === false) {
+      return false;
+    }
+
+    var scaleChanged = Math.abs(scale - this.tilePaletteDisplay.getScale()) > 0.0000001;
+    this.tilePaletteDisplay.setScale(scale);
+    this.updateScaleControl();
+
+    if(scaleChanged) {
+      this.tilePaletteDisplay.draw({ redrawTiles: true });
+    }
+
+    return scaleChanged;
+  },
+
+  setScale: function(scale, savePreference) {
+    var prefName = this.getScalePreferenceName();
+    var savedScale = g_app.getPref(prefName);
+    var tileSet = this.editor.tileSetManager.getCurrentTileSet();
+    var defaultScale = 2;
+    if(tileSet && (tileSet.getTileWidth() > 32 || tileSet.getTileHeight() > 32)) {
+      defaultScale = 0.5;
+    }
+    var newScale = defaultScale;
+    var hasExplicitScale = typeof scale != 'undefined';
+
+    this.loadFitToWidthPreference();
+
+    if(hasExplicitScale) {
       newScale = scale;
     } else {
       // dont think it should get to here if, mobile, but just in case.
       if(!UI.isMobile.any()) {
-        newScale = g_app.getPref(prefName);
+        newScale = savedScale;
         if(typeof newScale == 'undefined' || newScale == null) {          
-          newScale = 2;
+          newScale = defaultScale;
         }
       }
     }
 
 
-    newScale = parseInt(newScale, 10);
-
-    if(isNaN(newScale) || newScale > 100) {
-      newScale = 2;
+    newScale = parseFloat(newScale);
+    if(isNaN(newScale)) {
+      newScale = defaultScale;
     }
-    
-    g_app.setPref(prefName, newScale);
+    if(newScale < 0.25) {
+      newScale = 0.25;
+    }
+    var maximumScale = this.tilePaletteDisplay.getMaximumScale();
+    if(newScale > maximumScale) {
+      newScale = maximumScale;
+    }
+
+    newScale = this.tilePaletteDisplay.quantizeScale(newScale);
+
+    if(hasExplicitScale && savePreference !== false) {
+      g_app.setPref(prefName, newScale);
+    }
 
     this.tilePaletteDisplay.setScale(newScale);
     this.tilePaletteDisplay.draw({ redrawTiles: true });
-    $('#' + this.prefix + 'tilePaletteScale').val(newScale);
+    this.updateScaleControl();
 
   },
 
@@ -684,7 +775,9 @@ TilePalette.prototype = {
         this.canvas.height = this.height * UI.devicePixelRatio;
       }
     }
-    this.tilePaletteDisplay.draw();
+    if(!this.updateFitToWidthScale()) {
+      this.tilePaletteDisplay.draw();
+    }
   },
 
   initCharPalette: function() {
@@ -778,60 +871,11 @@ TilePalette.prototype = {
       }
 
     } else {
-/*
-    html += '<option value="1">100%</option>';
-    html += '<option value="2" selected="selected">200%</option>';
-    html += '<option value="3">300%</option>';
-    html += '<option value="4">400%</option>';
-*/
       if(g_app.isMobile()) {
         this.editor.tilePaletteMobile.draw();
       } else {
-        if(typeof args != 'undefined' && typeof args.redrawTiles != 'undefined' && args.redrawTiles) {
-          if(tileSet.getTileHeight() > 32) {
-            var scaleHtml = '';
-            var tilePaletteScale = $('#' + this.prefix + 'tilePaletteScale').val();
-
-            scaleHtml += '<option value="0.25" ';
-            if(tilePaletteScale == 0.25) {
-              scaleHtml += ' selected="selected"';
-            }
-            scaleHtml += '>25%</option>';
-
-            scaleHtml += '<option value="0.5" ';
-            if(tilePaletteScale == 0.5) {
-              scaleHtml += ' selected="selected"';
-            }
-            scaleHtml += '>50%</option>';
-
-            scaleHtml += '<option value="1" ';
-            if(tilePaletteScale == 1) {
-              scaleHtml += ' selected="selected"';
-            }
-            scaleHtml += '>100%</option>';
-
-            $('#' + this.prefix + 'tilePaletteScale').html(scaleHtml);
-            if(tilePaletteScale > 1) {
-              this.tilePaletteDisplay.setScale(0.5);
-              $('#' + this.prefix + 'tilePaletteScale').val(0.5)
-            }
-        
-          } else {
-            var scaleHtml = '';
-            var tilePaletteScale = $('#' + this.prefix + 'tilePaletteScale').val();
-            scaleHtml += '<option value="0.5">50%</option>';
-            for(var i = 1; i <= 4; i++) {
-              scaleHtml += '<option value="' + i + '" ';
-              if(i == tilePaletteScale) {
-                scaleHtml += ' selected="selected" ';
-              }
-              scaleHtml += '>';
-              scaleHtml += i + '00%</option>';
-            }
-            $('#' + this.prefix + 'tilePaletteScale').html(scaleHtml);
-          }
-        }
         this.tilePaletteDisplay.draw(args);
+        this.updateFitToWidthScale();
       }
     }
   },

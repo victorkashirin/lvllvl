@@ -3301,6 +3301,13 @@ TileSet.prototype = {
       scale = args['scale'];
     }
 
+    // Keep raster loop bounds in sync with tile-palette geometry. Without the
+    // tolerance, a mathematically integral size such as 27 * (7 / 3) can be
+    // represented just above 63 and draw an unintended 64th pixel.
+    var scaleEpsilon = 0.0000001;
+    var scaledCharWidth = Math.max(1, Math.ceil(charWidth * scale - scaleEpsilon));
+    var scaledCharHeight = Math.max(1, Math.ceil(charHeight * scale - scaleEpsilon));
+
     var padding = 0;
     if(typeof args['padding'] != 'undefined') {
       padding = args['padding'];
@@ -3317,8 +3324,8 @@ TileSet.prototype = {
     */
 
     if(highlight) {
-      for(var j = -1; j < charHeight * scale + padding * 2 + 1; j++) {
-        for(var i = -1; i < charWidth * scale + padding * 2 + 1; i++) {
+      for(var j = -1; j < scaledCharHeight + padding * 2 + 1; j++) {
+        for(var i = -1; i < scaledCharWidth + padding * 2 + 1; i++) {
           var dstPos = ((x) + i + x * padding 
               + ((y) + j + y * padding) * imageData.width) * 4;
           if(dstPos > 0 && (dstPos + 3) < imageData.data.length) {
@@ -3332,8 +3339,8 @@ TileSet.prototype = {
     }
 
     if(select) {
-      for(var j = -1; j < charHeight * scale + padding * 2 + 1; j++) {
-        for(var i = -1; i < charWidth * scale + padding * 2 + 1; i++) {
+      for(var j = -1; j < scaledCharHeight + padding * 2 + 1; j++) {
+        for(var i = -1; i < scaledCharWidth + padding * 2 + 1; i++) {
           var dstPos = ((x) + i + x * padding 
               + ((y) + j + y * padding) * imageData.width) * 4;
           if(dstPos > 0 && (dstPos + 3) < imageData.data.length) {
@@ -3365,8 +3372,8 @@ TileSet.prototype = {
 
 
       if(imageData != null) {
-        for(var j = 0; j < charHeight * scale; j++) {
-          for(var i = 0; i < charWidth * scale; i++) {
+        for(var j = 0; j < scaledCharHeight; j++) {
+          for(var i = 0; i < scaledCharWidth; i++) {
             var dstPos = ((x) + i + (x + 1) * padding 
                 + ((y) + j + (y + 1) * padding) * imageData.width) * 4;
             imageData.data[dstPos] = colorR; 
@@ -3543,8 +3550,8 @@ TileSet.prototype = {
         }
 
         
-        for(var j = 0; j < charHeight * scale; j++) {
-          for(var i = 0; i < charWidth * scale; i++) {
+        for(var j = 0; j < scaledCharHeight; j++) {
+          for(var i = 0; i < scaledCharWidth; i++) {
             var colorIndex = 0;
             var srcX = Math.floor(i / scale);
             var srcY = Math.floor(j / scale);
@@ -3649,48 +3656,31 @@ TileSet.prototype = {
                 } 
               } else if(screenMode == TextModeEditor.Mode.C64MULTICOLOR) {
                 var value = 0;
+                var multicolorSrcX = srcX - (srcX % 2);
+                var multicolorSrcPos = multicolorSrcX + srcY * charWidth;
 
                 // upper bit
-                if(colorIndex > 0) {
+                if(tileData[multicolorSrcPos] > 0) {
                   value += 2;
                 }
 
-
-  //              srcPos += 4;
-                // TODO: need to fix this
-
                 // lower bit
-                colorIndex = tileData[srcPos + 1];
-                if(colorIndex > 0) {
+                if(tileData[multicolorSrcPos + 1] > 0) {
                   value += 1;
                 }
                 var color = colors[value];
 
-                for(var k = 0; k < scale; k++) {
-                  if(value === 0 && backgroundIsTransparent) {
-                    imageData.data[dstPos + 3] = 0;
-                    i++;
-                    imageData.data[dstPos + 7] = 0;
-                    i++;
-                  } else {
-                    imageData.data[dstPos] = color.r * 255; 
-                    imageData.data[dstPos + 1] = color.g * 255;
-                    imageData.data[dstPos + 2] = color.b * 255;
-                    imageData.data[dstPos + 3] = 255;
-
-                    i++;
-                    imageData.data[dstPos + 4] = color.r * 255; 
-                    imageData.data[dstPos + 5] = color.g * 255;
-                    imageData.data[dstPos + 6] = color.b * 255;
-                    imageData.data[dstPos + 7] = 255;
-
-                    i++;
-                  }
-                  dstPos += 8;
+                // Sample the two-bit source pair for each destination pixel.
+                // This preserves integer scaling and also supports fractional
+                // palette scales without writing into the tile margin.
+                if(value === 0 && backgroundIsTransparent) {
+                  imageData.data[dstPos + 3] = 0;
+                } else {
+                  imageData.data[dstPos] = color.r * 255;
+                  imageData.data[dstPos + 1] = color.g * 255;
+                  imageData.data[dstPos + 2] = color.b * 255;
+                  imageData.data[dstPos + 3] = 255;
                 }
-                i--;
-
-  //              i += scale;
 
 
               }

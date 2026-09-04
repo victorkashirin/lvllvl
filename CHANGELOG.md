@@ -2,8 +2,29 @@
 
 ## Unreleased
 
+### Added
+
+- Add independent Fit-to-width modes for the bottom and side tile palettes,
+  dynamically resizing tiles with their panels while retaining precise manual
+  percentage entry and 50% zoom controls.
+
 ### Fixed
 
+- Preserve fractional tile-palette scales such as 25%, 50%, and 150% instead of
+  truncating them to integer scale factors.
+- Snap tile-palette scaling to pixel-aligned steps so spacing remains even across
+  every row and column.
+- Keep tile spacing stable and Fit within the panel for large, coprime, and
+  sub-25% tile scales.
+- Render C64 multicolor tiles correctly at fractional palette scales.
+- Enable Fit by default when no explicit Fit preference has been saved, cap
+  manual scaling at 1000%, and allow Fit to use the full panel width independently.
+- Keep both tile-palette control rows accessible when the side panel is narrow.
+- Keep the Fit label vertically centered and display the percent suffix inside
+  the tile-palette scale field using the same color as its number, with the
+  minus and plus buttons flush against the field and the original surrounding
+  control spacing preserved without an extra pixel after the plus button.
+- Dim the scale value and percent suffix while Fit is enabled.
 - Keep tile-palette selection outlines aligned with non-square tiles.
 
 ## 0.497.2 - 2026-09-04

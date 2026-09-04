@@ -446,6 +446,188 @@ TilePaletteDisplay.prototype = {
     return this.tilePaletteScale;
   },
 
+  getContentDimensions: function(scale) {
+    var tileSet = this.editor.tileSetManager.getCurrentTileSet();
+    if(!tileSet || !this.columns || !this.columnWidth || !this.columnHeight) {
+      return false;
+    }
+
+    if(typeof scale == 'undefined') {
+      scale = this.tilePaletteScale;
+    }
+
+    var scaledTileDimensions = this.getScaledTileDimensions(scale);
+    var columnPixelWidth = this.columnWidth * (scaledTileDimensions.width + this.charMargin);
+    var columnPixelHeight = this.columnHeight * (scaledTileDimensions.height + this.charMargin);
+    var width = 10;
+    var height = 10;
+
+    if(this.blockStacking == 'horizontal') {
+      width = 1 + this.columns * (columnPixelWidth + this.charPaletteBlockSpacing);
+      height = 1 + columnPixelHeight;
+    }
+
+    if(this.blockStacking == 'vertical') {
+      width = 1 + columnPixelWidth;
+      height = 1 + this.columns * (columnPixelHeight + this.charPaletteBlockSpacing);
+    }
+
+    return {
+      width: Math.ceil(width),
+      height: Math.ceil(height)
+    };
+  },
+
+  getScaleDivisor: function() {
+    var tileSet = this.editor.tileSetManager.getCurrentTileSet();
+    if(!tileSet) {
+      return 1;
+    }
+
+    var tileWidth = Math.max(1, Math.round(tileSet.getTileWidth()));
+    var tileHeight = Math.max(1, Math.round(tileSet.getTileHeight()));
+    while(tileHeight !== 0) {
+      var remainder = tileWidth % tileHeight;
+      tileWidth = tileHeight;
+      tileHeight = remainder;
+    }
+
+    return tileWidth;
+  },
+
+  getScaleStep: function() {
+    return 1 / this.getScaleDivisor();
+  },
+
+  getMaximumScale: function() {
+    // Manual scaling is capped to prevent an accidentally typed value from
+    // allocating an unsafe offscreen canvas. Fit uses the panel width instead.
+    return 10;
+  },
+
+  getScaledTileDimensions: function(scale) {
+    var tileSet = this.editor.tileSetManager.getCurrentTileSet();
+    if(!tileSet) {
+      return false;
+    }
+
+    if(typeof scale == 'undefined') {
+      scale = this.tilePaletteScale;
+    }
+
+    // drawCharacter uses the same tolerance when converting the mathematical
+    // size to pixels. This avoids an extra pixel from values such as
+    // 27 * (7 / 3) being represented as 63.00000000000001.
+    var epsilon = 0.0000001;
+    return {
+      width: Math.max(1, Math.ceil(tileSet.getTileWidth() * scale - epsilon)),
+      height: Math.max(1, Math.ceil(tileSet.getTileHeight() * scale - epsilon))
+    };
+  },
+
+  getTilePosition: function(x, y, column, scale) {
+    var dimensions = this.getScaledTileDimensions(scale);
+    if(!dimensions) {
+      return false;
+    }
+
+    if(this.blockStacking == 'vertical') {
+      return {
+        x: 1 + x * (dimensions.width + this.charMargin),
+        y: 1 + this.charPaletteBlockSpacing * column
+          + (y + column * this.columnHeight) * (dimensions.height + this.charMargin)
+      };
+    }
+
+    return {
+      x: 1 + this.charPaletteBlockSpacing * column
+        + (x + column * this.columnWidth) * (dimensions.width + this.charMargin),
+      y: 1 + y * (dimensions.height + this.charMargin)
+    };
+  },
+
+  getScaleControlStep: function() {
+    var divisor = this.getScaleDivisor();
+    return Math.ceil(0.5 * divisor) / divisor;
+  },
+
+  quantizeScale: function(scale, rounding) {
+    var divisor = this.getScaleDivisor();
+    var stepCount = scale * divisor;
+    if(rounding == 'down') {
+      stepCount = Math.floor(stepCount + 0.0000001);
+    } else {
+      stepCount = Math.round(stepCount);
+    }
+
+    // A common divisor makes both mathematical tile dimensions integral. The
+    // raster-size tolerance removes any remaining floating-point roundoff.
+    return Math.max(1, stepCount) / divisor;
+  },
+
+  getScaleToFitWidth: function(availableWidth, availableHeight) {
+    var tileSet = this.editor.tileSetManager.getCurrentTileSet();
+    if(!tileSet || !this.columns || !this.columnWidth || !this.columnHeight || availableWidth <= 0) {
+      return false;
+    }
+
+    var _this = this;
+    var tileWidth = tileSet.getTileWidth();
+    var calculateScale = function(width) {
+      var fixedWidth = 1;
+      var tilesAcross = _this.columnWidth;
+
+      if(_this.blockStacking == 'horizontal') {
+        fixedWidth += _this.columns * (_this.columnWidth * _this.charMargin + _this.charPaletteBlockSpacing);
+        tilesAcross *= _this.columns;
+      } else {
+        fixedWidth += _this.columnWidth * _this.charMargin;
+      }
+
+      var availableTileWidth = width - fixedWidth;
+      if(tilesAcross <= 0 || availableTileWidth < tilesAcross) {
+        return false;
+      }
+
+      // Choose a whole destination-pixel width per tile. It is the largest
+      // scale whose actual rendered cells fit, even when the corresponding
+      // height is fractional or the scale is below 25%.
+      var tilePixelWidth = Math.floor(availableTileWidth / tilesAcross);
+      return tilePixelWidth / tileWidth;
+    };
+
+    var clampAndQuantize = function(scale) {
+      if(scale === false || scale <= 0) {
+        return false;
+      }
+
+      var quantizedScale = _this.quantizeScale(scale, 'down');
+      if(quantizedScale <= scale + 0.0000001) {
+        return quantizedScale;
+      }
+
+      // No common width/height pixel-aligned step fits. Integer cell origins
+      // still keep spacing stable, so use the width-safe fallback.
+      return scale;
+    };
+
+    var scale = calculateScale(availableWidth);
+    if(scale === false) {
+      return false;
+    }
+    scale = clampAndQuantize(scale);
+
+    var dimensions = this.getContentDimensions(scale);
+    if(dimensions && availableHeight > 0 && dimensions.height > availableHeight) {
+      var scrollbarScale = clampAndQuantize(calculateScale(availableWidth - styles.ui.scrollbarWidth));
+      if(scrollbarScale !== false) {
+        scale = scrollbarScale;
+      }
+    }
+
+    return scale;
+  },
+
   setMode: function(mode) {
     this.mode = mode;
   },
@@ -560,28 +742,9 @@ TilePaletteDisplay.prototype = {
   checkCanvasSize: function() {
     
 
-    var tileSet = this.editor.tileSetManager.getCurrentTileSet();
-    var tileWidth = tileSet.getTileWidth();
-    var tileHeight = tileSet.getTileHeight();
-
-    // width and height of a column of tiles.
-    var columnPixelWidth = this.columnWidth * (tileWidth) * this.tilePaletteScale + this.columnWidth * this.charMargin;
-    var columnPixelHeight = this.columnHeight * (tileHeight) * this.tilePaletteScale + this.columnHeight * this.charMargin;
-
-
-    var canvasWidth = 10;
-    var canvasHeight = 10;
-
-    // how the columns are stacked.
-    if(this.blockStacking == 'horizontal') {
-      canvasWidth = 1 + this.columns * (columnPixelWidth + this.charPaletteBlockSpacing);
-      canvasHeight = 1 + this.columnHeight * (tileHeight + this.charMargin) * this.tilePaletteScale;
-    }
-
-    if(this.blockStacking == 'vertical') {
-      canvasWidth = 1 + (columnPixelWidth);
-      canvasHeight = 1 + this.columns * (columnPixelHeight + this.charPaletteBlockSpacing);
-    }
+    var dimensions = this.getContentDimensions(this.tilePaletteScale);
+    var canvasWidth = dimensions.width;
+    var canvasHeight = dimensions.height;
 
     var scaledCanvasWidth = canvasWidth * this.canvasScale;
     var scaledCanvasHeight = canvasHeight * this.canvasScale;
@@ -907,14 +1070,19 @@ TilePaletteDisplay.prototype = {
 
 
     this.singleTileScale = 1;
+    var singleTileWidth = tileWidth;
+    var singleTileHeight = tileHeight;
     if(tileSet.getType() == 'vector') {
       this.singleTileScale = this.tilePaletteScale;
+      var singleTileDimensions = this.getScaledTileDimensions(this.singleTileScale);
+      singleTileWidth = singleTileDimensions.width;
+      singleTileHeight = singleTileDimensions.height;
     }
-    if(this.singleTileCanvas.width != tileWidth * this.singleTileScale || this.singleTileCanvas.height != tileHeight * this.singleTileScale || this.singleTileContext == null) {
-      this.singleTileCanvas.width = tileWidth * this.singleTileScale;
-      this.singleTileCanvas.height = tileHeight * this.singleTileScale;
+    if(this.singleTileCanvas.width != singleTileWidth || this.singleTileCanvas.height != singleTileHeight || this.singleTileContext == null) {
+      this.singleTileCanvas.width = singleTileWidth;
+      this.singleTileCanvas.height = singleTileHeight;
       this.singleTileContext = this.singleTileCanvas.getContext('2d');
-      this.singleTileImageData = this.singleTileContext.getImageData(0, 0, tileWidth * this.singleTileScale, tileHeight * this.singleTileScale);
+      this.singleTileImageData = this.singleTileContext.getImageData(0, 0, singleTileWidth, singleTileHeight);
     }
 
 
@@ -969,8 +1137,9 @@ TilePaletteDisplay.prototype = {
     }
 
     // tile dimensions used for the tile coordinates map
-    var drawTileWidth = Math.ceil(tileWidth * this.tilePaletteScale);
-    var drawTileHeight = Math.ceil(tileHeight * this.tilePaletteScale);
+    var scaledTileDimensions = this.getScaledTileDimensions(this.tilePaletteScale);
+    var drawTileWidth = scaledTileDimensions.width;
+    var drawTileHeight = scaledTileDimensions.height;
 
 
     var tilesPerPage = this.columnWidth * this.columnHeight;
@@ -1043,23 +1212,9 @@ TilePaletteDisplay.prototype = {
             }
           }
 
-          var drawAtX = 0;
-          var drawAtY = 0;
-          if(this.blockStacking == 'horizontal') {
-            drawAtX = 1 + this.charPaletteBlockSpacing * column + this.charMargin * (x + column * this.columnWidth)
-                      + (x + column * this.columnWidth) * (tileWidth) * this.tilePaletteScale;
-            drawAtY = 1 + this.charMargin * y + y * tileHeight  * this.tilePaletteScale;
-
-          }
-
-          if(this.blockStacking == 'vertical') {
-           drawAtX = 1 + x * this.charMargin + x * tileWidth * this.tilePaletteScale;          
-           drawAtY = 1 + this.charPaletteBlockSpacing * column + this.charMargin * (y  + column * this.columnHeight)
-                       + (y + column * this.columnHeight) * (tileHeight) * this.tilePaletteScale;
-         }
-
-         drawAtX = Math.ceil(drawAtX);
-         drawAtY = Math.ceil(drawAtY);
+          var tilePosition = this.getTilePosition(x, y, column, this.tilePaletteScale);
+          var drawAtX = tilePosition.x;
+          var drawAtY = tilePosition.y;
 
          if(ch !== false && ch >= 0) {
             this.tileLocations[ch].push({
@@ -1411,8 +1566,9 @@ TilePaletteDisplay.prototype = {
     this.context.beginPath();
     this.context.lineWidth = 2;
 
-    var charWidth = (tileSet.getTileWidth() * this.tilePaletteScale + 1) * this.canvasScale;
-    var charHeight = (tileSet.getTileHeight() * this.tilePaletteScale + 1) * this.canvasScale; 
+    var scaledTileDimensions = this.getScaledTileDimensions(this.tilePaletteScale);
+    var charWidth = (scaledTileDimensions.width + 1) * this.canvasScale;
+    var charHeight = (scaledTileDimensions.height + 1) * this.canvasScale;
 
 
     if( this.highlightGridX !== false && this.highlightGridY !== false) {
@@ -1438,18 +1594,16 @@ TilePaletteDisplay.prototype = {
 
     this.context.beginPath();
     this.context.lineWidth = 2;
-    var tileWidth = tileSet.getTileWidth();// (tileSet.getTileWidth() * this.tilePaletteScale + 1) * this.canvasScale;
-    var tileHeight = tileSet.getTileHeight(); //(tileSet.getTileHeight() * this.tilePaletteScale + 1) * this.canvasScale;
-    var cellWidth = ( (tileSet.getTileWidth() + 5) * this.tilePaletteScale + 1) * this.canvasScale;
-    var cellHeight = ( (tileSet.getTileHeight() + 5) * this.tilePaletteScale + 1) * this.canvasScale;
+    var tileWidth = scaledTileDimensions.width;
+    var tileHeight = scaledTileDimensions.height;
     if(this.selectedGridCells.length == 0) {
       for(var i = 0; i < selectedChars.length; i++) {
         if(typeof selectedChars[i] != 'undefined') {
           this.context.rect(
             (selectedChars[i].x - this.scrollX * UI.devicePixelRatio - 1),//  * UI.devicePixelRatio,
             (selectedChars[i].y - this.scrollY * UI.devicePixelRatio - 1),//  * UI.devicePixelRatio, 
-            tileWidth * this.tilePaletteScale  * UI.devicePixelRatio, 
-            tileHeight * this.tilePaletteScale  * UI.devicePixelRatio);
+            tileWidth * UI.devicePixelRatio,
+            tileHeight * UI.devicePixelRatio);
         }
       }
     } else {
@@ -1461,31 +1615,12 @@ TilePaletteDisplay.prototype = {
         var rectX = 0;
         var rectY = 0;
       
-        var columnOffset = 0;
-        var columnVOffset = 0;
 //        if(gridCellY >= this.columnHeight) {
-          if(this.blockStacking == 'horizontal') {
-            var column = Math.floor(gridCellY / this.columnHeight);
-            gridCellY = gridCellY % this.columnHeight;
-
-            rectX = 1 + this.charPaletteBlockSpacing * column + this.charMargin * (gridCellX + column * this.columnWidth)
-                      + (gridCellX + column * this.columnWidth) * (tileWidth) * this.tilePaletteScale;
-            rectY = 1 + this.charMargin * gridCellY + gridCellY * tileHeight  * this.tilePaletteScale;
-
-//            var columnPixelWidth = this.charPaletteBlockSpacing * UI.devicePixelRatio + this.columnWidth * (cellWidth);// + this.columnWidth * this.charMargin;
-//            columnOffset = column * columnPixelWidth;
-          } 
-
-          if(this.blockStacking == 'vertical') {
-            var column = Math.floor(gridCellY / this.columnHeight);
-            gridCellY = gridCellY % this.columnHeight;
-
-
-            rectX = 1 + gridCellX * this.charMargin + gridCellX * tileWidth * this.tilePaletteScale;          
-            rectY = 1 + this.charPaletteBlockSpacing * column + this.charMargin * (gridCellY  + column * this.columnHeight)
-                        + (gridCellY + column * this.columnHeight) * (tileHeight) * this.tilePaletteScale;
-
-          }
+          var column = Math.floor(gridCellY / this.columnHeight);
+          gridCellY = gridCellY % this.columnHeight;
+          var tilePosition = this.getTilePosition(gridCellX, gridCellY, column, this.tilePaletteScale);
+          rectX = tilePosition.x;
+          rectY = tilePosition.y;
   //      }
   
 
@@ -1493,8 +1628,8 @@ TilePaletteDisplay.prototype = {
         this.context.rect(
           rectX * UI.devicePixelRatio - this.scrollX * UI.devicePixelRatio , 
           rectY * UI.devicePixelRatio - this.scrollY * UI.devicePixelRatio , 
-          tileWidth * this.tilePaletteScale * UI.devicePixelRatio, 
-          tileHeight * this.tilePaletteScale * UI.devicePixelRatio);
+          tileWidth * UI.devicePixelRatio,
+          tileHeight * UI.devicePixelRatio);
       }
     }
 
@@ -1508,14 +1643,12 @@ TilePaletteDisplay.prototype = {
 
 
       if(this.sortDragTile) {
-        var tileWidth = tileSet.getTileWidth();
-        var tileHeight = tileSet.getTileHeight();
-        var destTileWidth = tileWidth * this.tilePaletteScale * UI.devicePixelRatio;
-        var destTileHeight = tileHeight * this.tilePaletteScale * UI.devicePixelRatio;
+        var destTileWidth = scaledTileDimensions.width * UI.devicePixelRatio;
+        var destTileHeight = scaledTileDimensions.height * UI.devicePixelRatio;
         var destTileX = (this.sortDragTileX - this.mouseDownOnGridPosition.offsetX) * UI.devicePixelRatio;
         var destTileY = (this.sortDragTileY - this.mouseDownOnGridPosition.offsetY) * UI.devicePixelRatio;
   
-        this.context.drawImage(this.singleTileCanvas, 0, 0, tileWidth * this.singleTileScale, tileHeight * this.singleTileScale, 
+        this.context.drawImage(this.singleTileCanvas, 0, 0, this.singleTileCanvas.width, this.singleTileCanvas.height,
           destTileX, destTileY, destTileWidth, destTileHeight);
       }
     }

@@ -235,7 +235,9 @@ TextModeEditor.prototype.buildEastPanel = function() {
   }
 
   this.textModeEditorPanel.addEast(eastInfoPanel, eastPanelSize, true, eastInfoPanelHidden);
-  this.textModeEditorPanel.setMinSize('east', 10);
+  // Keep enough room for a one-pixel-per-tile Fit layout. The control rows stay
+  // horizontally scrollable when their full contents do not fit.
+  this.textModeEditorPanel.setMinSize('east', 100);
   this.textModeEditorPanel.on('resizeeast', function(size) {
     var type = 'textmode';
     if(g_app.textModeEditor.graphic.type == 'sprite') {
