@@ -120,6 +120,9 @@ TextModeEditor.prototype.setLayoutType = function(mode) {
     */
     this.setTilePalettePanelVisible('bottom', tilePaletteVisible);
 
+    var animationPanelVisible = g_app.getPref("textmode.animationPanelVisible") != "no";
+    this.setAnimationPanelVisible(animationPanelVisible);
+
     if(layersPanelVisible) {
       if(colorPaletteVisible && sideTilePaletteVisible) {
         
@@ -179,6 +182,9 @@ TextModeEditor.prototype.setLayoutType = function(mode) {
 
     var tilePaletteVisible = true; //g_app.getPref("sprite.tilePaletteVisible") != "no";
     this.setTilePalettePanelVisible('bottom', tilePaletteVisible);
+
+    var animationPanelVisible = g_app.getPref("sprite.animationPanelVisible") != "no";
+    this.setAnimationPanelVisible(animationPanelVisible);
 
 
 
@@ -500,15 +506,14 @@ TextModeEditor.prototype.buildInterface =  function(parentPanel) {
 
   // default is visible
   var tilePaletteVisible = g_app.getPref("textmode.tilePaletteVisible") != "no";
+  var animationPanelVisible = g_app.getPref("textmode.animationPanelVisible") != "no";
+  this.animationPanelVisible = animationPanelVisible;
   
   var bottomToolsPanelHeight = 210;
   if(!tilePaletteVisible) {
-    bottomToolsPanelHeight = 0;// 26;
-    var framesVisible = true;
-
-    if(framesVisible) {
-      bottomToolsPanelHeight += 60;
-    }
+    bottomToolsPanelHeight = animationPanelVisible ? 60 : 0;
+  } else if(!animationPanelVisible) {
+    bottomToolsPanelHeight -= 60;
   }
 
 
@@ -579,7 +584,7 @@ TextModeEditor.prototype.buildInterface =  function(parentPanel) {
 
   // desktop frames panel..
   var framesPanel = UI.create("UI.Panel", { "id": "framesPanel"});
-  textModeSplitPanel.addSouth(framesPanel, 60, false);
+  textModeSplitPanel.addSouth(framesPanel, 60, false, !animationPanelVisible);
 
   this.build2dInterface(gridHolder);
   this.build3dInterface(gridHolder);
@@ -860,6 +865,26 @@ TextModeEditor.prototype.getTilePalettePanelVisible = function(type) {
 }
 
 
+// ANIMATION PANEL VISIBLE
+TextModeEditor.prototype.setAnimationPanelVisible = function(visible) {
+  this.animationPanelVisible = visible;
+  UI('textEditorDesktopTools').setPanelVisible('south', visible, 60);
+
+  var type = 'textmode';
+  if(g_app.textModeEditor.graphic.type == 'sprite') {
+    type = 'sprite';
+  }
+
+  g_app.setPref(type + ".animationPanelVisible", visible ? "yes": "no");
+  UI('view-animationpanel').setChecked(visible);
+  this.updateBottomPanel();
+}
+
+TextModeEditor.prototype.getAnimationPanelVisible = function() {
+  return this.animationPanelVisible;
+}
+
+
 
 
 TextModeEditor.prototype.updateBottomPanel = function() {
@@ -884,18 +909,15 @@ TextModeEditor.prototype.updateBottomPanel = function() {
 
 
 
-  // 26 is height of current tool controls
-  var bottomPanelHeight = 280;
+  // The palette and animation areas are independently visible, but share the
+  // same outer south panel.
+  var bottomPanelHeight = oneVisible ? 220 : 0;
+  if(this.getAnimationPanelVisible()) {
+    bottomPanelHeight += 60;
+  }
 //  g_app.setPref(type + ".tilePaletteVisible", oneVisible ? "yes": "no");
 
   if(!oneVisible) {
-    bottomPanelHeight = 0;//26;
-    var framesVisible = true;
-
-    if(framesVisible) {
-      bottomPanelHeight += 60;
-    }
-
     UI('textEditorContent').setResizeVisible('south', false);
   } else {
     UI('textEditorContent').setResizeVisible('south', true);
@@ -1073,4 +1095,3 @@ TextModeEditor.prototype.setDeviceType = function(deviceType) {
 
   }
 }
-

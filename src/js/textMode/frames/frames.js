@@ -166,6 +166,11 @@ Frames.prototype = {
     var _this = this;
 
 
+    $('#animationPanelCloseButton').on('click', function() {
+      _this.editor.setAnimationPanelVisible(false);
+    });
+
+
     $('#showGhostFrame').on('click', function() { 
      _this.setShowPrevFrame($('#showGhostFrame').is(':checked'));
     });

@@ -1597,6 +1597,7 @@ main split panel north is menu
       menu.addSeparator({  });
       menu.addItem({ "label": "Tile Palette Panel Bottom", "id": "view-tilepalettepanelbottom" });
       menu.addItem({ "label": "Meta Tile Palette Panel Bottom", "id": "view-metatilepalettepanelbottom" });
+      menu.addItem({ "label": "Animation Panel", "id": "view-animationpanel" });
 
       menu.addSeparator({  });
       menu.addItem({ "label": "Perf Stats", "id": "view-perfstats" });
@@ -2681,6 +2682,10 @@ main split panel north is menu
         break;
       case 'view-metatilepalettepanelbottom':
         this.textModeEditor.setBottomBlockPanelVisible(!this.textModeEditor.getBottomBlockPanelVisible());
+        break;
+
+      case 'view-animationpanel':
+        this.textModeEditor.setAnimationPanelVisible(!this.textModeEditor.getAnimationPanelVisible());
         break;
   
       case 'c64-view-perfstats':

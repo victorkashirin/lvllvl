@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 0.496.10 - 2026-09-04
+
+### Added
+
+- Add a close control and a persistent Interface menu toggle for the bottom
+  animation panel, reclaiming its workspace when hidden.
+
 ## 0.496.9 - 2026-09-04
 
 ### Fixed
