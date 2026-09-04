@@ -10,6 +10,13 @@ var GridView2d = function() {
 
   this.backBufferCanvas = null;
   this.backBufferContext = null;
+  this.backBufferNeedsRedraw = true;
+  this.gridNeedsRedraw = true;
+  this.baseCanvas = null;
+  this.baseContext = null;
+  this.overlayCanvas = null;
+  this.overlayContext = null;
+  this.overlayNeedsRedraw = true;
   //this.previousFrameCanvas = null;
 
   // checkerboard pattern
@@ -1750,7 +1757,7 @@ GridView2d.prototype = {
 
 
     if(g_newSystem) {
-      this.draw();
+      this.editor.grid.grid2d.redrawUpdatedCells(layer);
     } else {
       this.editor.grid.update();
     }
@@ -1764,6 +1771,7 @@ GridView2d.prototype = {
 
     this.mousePageX = event.pageX;
     this.mousePageY = event.pageY;
+    this.setOverlayNeedsRedraw();
 
 
     if(!UI.isMobile.any()) {
@@ -2182,6 +2190,8 @@ GridView2d.prototype = {
       }
     }
     this.scale = scale;
+    this.backBufferNeedsRedraw = true;
+    this.gridNeedsRedraw = true;
 
 
     var settings = g_app.doc.getDocRecord('/settings');
@@ -2212,12 +2222,14 @@ GridView2d.prototype = {
     }
     this.camera.position.x = x;
     this.camera.position.y = y;
+    this.backBufferNeedsRedraw = true;
+    this.gridNeedsRedraw = true;
 
     if(this.editor.graphic.getOnlyViewBoundsDrawn() ) {
       this.findViewBounds();
       this.editor.graphic.redraw();
     }
-    
+
   },
 
   getCameraPosition: function() {
@@ -2247,7 +2259,8 @@ GridView2d.prototype = {
     this.editor.grid.grid2d.setCursorEnabled(false);
   },
 
-  drawMirrorH: function(x, y, width, height) {
+  drawMirrorH: function(x, y, width, height, context) {
+    context = context || this.context;
 
     var gridWidth = 0;
     var gridHeight = 0;
@@ -2288,16 +2301,16 @@ GridView2d.prototype = {
       gridYStart += offset * gridCellHeight;
     }
 
-    this.context.beginPath();
+    context.beginPath();
 
     var xPosition = x + tileSet.charWidth * scale * mirrorHX;
  
-    this.context.moveTo(xPosition, gridYStart);
-    this.context.lineTo(xPosition, gridYEnd);
+    context.moveTo(xPosition, gridYStart);
+    context.lineTo(xPosition, gridYEnd);
 
-    this.context.lineWidth = 1;//styles.textMode.gridView2dGridLineWidth;
-    this.context.strokeStyle = styles.textMode.gridView2dGridLine;
-    this.context.stroke();
+    context.lineWidth = 1;//styles.textMode.gridView2dGridLineWidth;
+    context.strokeStyle = styles.textMode.gridView2dGridLine;
+    context.stroke();
 
     // draw resize controls
     this.mirrorHControlX = xPosition- this.mirrorHControlSize / 2 ;
@@ -2308,8 +2321,8 @@ GridView2d.prototype = {
     }
 
 
-    this.context.fillStyle = '#dddddd';
-    this.context.fillRect(this.mirrorHControlX , this.mirrorHControl1Y, this.mirrorHControlSize, this.mirrorHControlSize); 
+    context.fillStyle = '#dddddd';
+    context.fillRect(this.mirrorHControlX , this.mirrorHControl1Y, this.mirrorHControlSize, this.mirrorHControlSize);
 
     this.mirrorHControl2Y = gridYEnd;
     if(this.mirrorHControl2Y < 0) {
@@ -2321,14 +2334,15 @@ GridView2d.prototype = {
     }
 
 
-    this.context.fillStyle = '#dddddd';
-    this.context.fillRect(this.mirrorHControlX, this.mirrorHControl2Y , this.mirrorHControlSize, this.mirrorHControlSize); 
+    context.fillStyle = '#dddddd';
+    context.fillRect(this.mirrorHControlX, this.mirrorHControl2Y , this.mirrorHControlSize, this.mirrorHControlSize);
 
 
 
   },
 
-  drawMirrorV: function(x, y, width, height) {
+  drawMirrorV: function(x, y, width, height, context) {
+    context = context || this.context;
     var scale = this.displayScale;
     var gridWidth = 0;
     var gridHeight = 0;
@@ -2367,17 +2381,17 @@ GridView2d.prototype = {
       gridYStart += offset * gridCellHeight;
     }
 
-    this.context.beginPath();
+    context.beginPath();
 
     var yPosition = y + tileSet.charHeight * scale * mirrorVY;
 
-    this.context.moveTo(x, yPosition);
-    this.context.lineTo(gridXEnd, yPosition);
+    context.moveTo(x, yPosition);
+    context.lineTo(gridXEnd, yPosition);
 
-    this.context.lineWidth = 1;//styles.textMode.gridView2dGridLineWidth;
-    this.context.strokeStyle = styles.textMode.gridView2dGridLine;
+    context.lineWidth = 1;//styles.textMode.gridView2dGridLineWidth;
+    context.strokeStyle = styles.textMode.gridView2dGridLine;
 
-    this.context.stroke();
+    context.stroke();
 
 
 
@@ -2390,8 +2404,8 @@ GridView2d.prototype = {
     this.mirrorVControlY = yPosition - this.mirrorVControlSize / 2;
 
 
-    this.context.fillStyle = '#dddddd';
-    this.context.fillRect(this.mirrorVControl1X , this.mirrorVControlY, this.mirrorVControlSize, this.mirrorVControlSize); 
+    context.fillStyle = '#dddddd';
+    context.fillRect(this.mirrorVControl1X , this.mirrorVControlY, this.mirrorVControlSize, this.mirrorVControlSize);
 
     this.mirrorVControl2X = gridXEnd;
     if(this.mirrorVControl2X < 0) {
@@ -2403,17 +2417,18 @@ GridView2d.prototype = {
     }
 
 
-    this.context.fillStyle = '#dddddd';
-    this.context.fillRect(this.mirrorVControl2X, this.mirrorVControlY , this.mirrorVControlSize, this.mirrorVControlSize); 
+    context.fillStyle = '#dddddd';
+    context.fillRect(this.mirrorVControl2X, this.mirrorVControlY , this.mirrorVControlSize, this.mirrorVControlSize);
 
 
 
 
   },
 
-  drawGrid: function(x, y, width, height) {
+  drawGrid: function(x, y, width, height, context) {
 
     var scale = this.displayScale;
+    context = context || this.context;
 
     // draw grid
 //    if(this.editor.grid.xyGrid.visible) {
@@ -2462,74 +2477,78 @@ GridView2d.prototype = {
       // pixel grid
       if(scale > 6) {
 
+        // A path survives stroke(), so start fresh before every grid redraw.
+        // Otherwise Firefox re-strokes the previous tile grid in the pixel-grid style.
+        context.beginPath();
+
         if(this.editor.graphic.getType() == 'sprite' && this.editor.getScreenMode() == TextModeEditor.Mode.C64MULTICOLOR) {
           for(var gridX = gridXStart; gridX < gridXEnd; gridX += scale * 2) {
             var xPosition = gridX;
 
-            this.context.moveTo(xPosition, gridYStart);
-            this.context.lineTo(xPosition, gridYEnd);
+            context.moveTo(xPosition, gridYStart);
+            context.lineTo(xPosition, gridYEnd);
           }
 
         } else {
           for(var gridX = gridXStart; gridX < gridXEnd; gridX += scale) {
             var xPosition = gridX;
 
-            this.context.moveTo(xPosition, gridYStart);
-            this.context.lineTo(xPosition, gridYEnd);
+            context.moveTo(xPosition, gridYStart);
+            context.lineTo(xPosition, gridYEnd);
           }
         }
 
         for(var gridY = gridYStart; gridY < gridYEnd; gridY += scale) {
           var yPosition = gridY;
 
-          this.context.moveTo(x, yPosition);
-          this.context.lineTo(gridXEnd, yPosition);
+          context.moveTo(x, yPosition);
+          context.lineTo(gridXEnd, yPosition);
         }
 
-        this.context.strokeStyle = styles.textMode.gridView2dPixelGridLine;
-        this.context.lineWidth = styles.textMode.gridView2dPixelGridLineWidth;
+        context.strokeStyle = styles.textMode.gridView2dPixelGridLine;
+        context.lineWidth = styles.textMode.gridView2dPixelGridLineWidth;
 
         if(this.editor.getEditorMode() == 'pixel') {
-          this.context.strokeStyle = '#999999';//styles.textMode.gridView2dPixelGridLine;
-          this.context.lineWidth = 0.4;//styles.textMode.gridView2dPixelGridLineWidth;
+          context.strokeStyle = '#999999';//styles.textMode.gridView2dPixelGridLine;
+          context.lineWidth = 0.4;//styles.textMode.gridView2dPixelGridLineWidth;
         }
 
-        this.context.stroke();
+        context.stroke();
       }
 
       // tile grid
-      this.context.beginPath();
+      context.beginPath();
 
       for(var gridX = gridXStart; gridX < gridXEnd; gridX += cellWidth * scale) {
         var xPosition = gridX;
 
-        this.context.moveTo(xPosition, gridYStart);
-        this.context.lineTo(xPosition, gridYEnd);
+        context.moveTo(xPosition, gridYStart);
+        context.lineTo(xPosition, gridYEnd);
       }
 
       for(var gridY = gridYStart; gridY < gridYEnd; gridY += cellHeight * scale) {
         var yPosition = gridY;
 
-        this.context.moveTo(x, yPosition);
-        this.context.lineTo(gridXEnd, yPosition);
+        context.moveTo(x, yPosition);
+        context.lineTo(gridXEnd, yPosition);
       }
 
-      this.context.strokeStyle = styles.textMode.gridView2dGridLine;
+      context.strokeStyle = styles.textMode.gridView2dGridLine;
 
-      this.context.lineWidth = styles.textMode.gridView2dGridLineWidth;
+      context.lineWidth = styles.textMode.gridView2dGridLineWidth;
 
       if(this.editor.getEditorMode() == 'pixel') {
-        this.context.strokeStyle = '#888888';//styles.textMode.gridView2dPixelGridLine;
-        this.context.lineWidth = 0.6;//styles.textMode.gridView2dPixelGridLineWidth;
+        context.strokeStyle = '#888888';//styles.textMode.gridView2dPixelGridLine;
+        context.lineWidth = 0.6;//styles.textMode.gridView2dPixelGridLineWidth;
 //        this.context.lineWidth = styles.textMode.gridView2dGridBlockLineWidth * 1;
       }
     
 
-      this.context.stroke();
+      context.stroke();
 
 
       if(blockModeEnabled) {
-        this.context.setLineDash([]);
+        context.setLineDash([]);
 
         // draw block divisions
         this.blockSet = this.editor.blockSetManager.getCurrentBlockSet();        
@@ -2557,32 +2576,33 @@ GridView2d.prototype = {
         }
 
 
-        this.context.beginPath();
+        context.beginPath();
 
         for(var gridX = gridXStart; gridX < gridXEnd; gridX += cellWidth * scale * blockWidth) {
           var xPosition = gridX;
 
-          this.context.moveTo(xPosition, gridYStart);
-          this.context.lineTo(xPosition, gridYEnd);
+          context.moveTo(xPosition, gridYStart);
+          context.lineTo(xPosition, gridYEnd);
         }
 
         for(var gridY = gridYStart; gridY < gridYEnd; gridY += cellHeight * scale * blockHeight) {
           var yPosition = gridY;
 
-          this.context.moveTo(x, yPosition);
-          this.context.lineTo(gridXEnd, yPosition);
+          context.moveTo(x, yPosition);
+          context.lineTo(gridXEnd, yPosition);
         }
 
-        this.context.strokeStyle = styles.textMode.gridView2dGridBlockLine;
-        this.context.lineWidth = styles.textMode.gridView2dGridBlockLineWidth * 1;
-        this.context.stroke();
+        context.strokeStyle = styles.textMode.gridView2dGridBlockLine;
+        context.lineWidth = styles.textMode.gridView2dGridBlockLineWidth * 1;
+        context.stroke();
       }
 //      this.context.globalCompositeOperation = 'source-over';
 
     }
   },
 
-  drawPixelSelect: function() {
+  drawPixelSelect: function(context) {
+    context = context || this.context;
     var scale = this.displayScale;
 
     var layer = this.editor.layers.getSelectedLayerObject();
@@ -2608,7 +2628,7 @@ GridView2d.prototype = {
     var selection = pixelSelect.getSelection();
 
     // draw selection
-    this.context.beginPath();
+    context.beginPath();
     var minX = (selection.minX  + selectionOffsetX);
     var maxX = (selection.maxX + selectionOffsetX);
 
@@ -2618,21 +2638,21 @@ GridView2d.prototype = {
     var minY = (selection.minY + selectionOffsetY);
     var maxY = (selection.maxY + selectionOffsetY);
 
-    this.context.moveTo(x + minX * scale, 
+    context.moveTo(x + minX * scale,
       y + minY * scale);
-    this.context.lineTo(x + maxX * scale, 
+    context.lineTo(x + maxX * scale,
       y + minY * scale);
-    this.context.lineTo(x + maxX * scale, 
+    context.lineTo(x + maxX * scale,
       y + maxY * scale);
-    this.context.lineTo(x + minX * scale, 
+    context.lineTo(x + minX * scale,
       y + maxY * scale);
-    this.context.lineTo(x + minX * scale, 
+    context.lineTo(x + minX * scale,
       y + minY * scale);
 
-    this.context.setLineDash([]);
-    this.context.strokeStyle = styles.textMode.gridView2dSelectLineDark;
-    this.context.lineWidth = 1;
-    this.context.stroke();
+    context.setLineDash([]);
+    context.strokeStyle = styles.textMode.gridView2dSelectLineDark;
+    context.lineWidth = 1;
+    context.stroke();
 
     if(time - this.lastSelectAnimate > 260) {
       this.lastSelectAnimate = time;
@@ -2645,15 +2665,15 @@ GridView2d.prototype = {
     }
 
     if(this.lastDashOffset == 0) {
-      this.context.setLineDash([5, 5]);
+      context.setLineDash([5, 5]);
     } else {
-      this.context.setLineDash([0,5,5,0]);
+      context.setLineDash([0,5,5,0]);
     }
 
-    this.context.strokeStyle = styles.textMode.gridView2dSelectLineLight;
-    this.context.lineWidth = 1;
-    this.context.stroke();
-    this.context.setLineDash([]); 
+    context.strokeStyle = styles.textMode.gridView2dSelectLineLight;
+    context.lineWidth = 1;
+    context.stroke();
+    context.setLineDash([]);
 
     // draw the dimensions
     var infoWidth = 120;
@@ -2664,9 +2684,9 @@ GridView2d.prototype = {
     var selectionWidth = maxX - minX;
     var selectionHeight = maxY - minY;
 
-    this.context.globalAlpha = 0.8;
-    this.context.fillStyle =  '#111111';
-    this.context.fillRect(infoXPos, infoYPos,
+    context.globalAlpha = 0.8;
+    context.fillStyle =  '#111111';
+    context.fillRect(infoXPos, infoYPos,
       infoWidth, infoHeight);
 
     infoXPos = infoXPos + 4;
@@ -2675,16 +2695,20 @@ GridView2d.prototype = {
     info += minX + ',' + minY;
     info += '   wh: ';
     info += selectionWidth + ', ' + selectionHeight;
-    this.context.font = "10px Verdana";
-    this.context.fillStyle = "#cccccc";
-    this.context.fillText(info, infoXPos, infoYPos);
+    context.font = "10px Verdana";
+    context.fillStyle = "#cccccc";
+    context.fillText(info, infoXPos, infoYPos);
 
-    this.context.globalAlpha = 1;
+    context.globalAlpha = 1;
 
   },
 
-  drawCellInfo: function(x, y, cellWidth, cellHeight) {
+  drawCellInfo: function(x, y, cellWidth, cellHeight, context) {
+    context = context || this.context;
     var gridInfo = this.editor.gridInfo;
+    if(typeof gridInfo.tileIndex == 'undefined') {
+      return;
+    }
 
     // draw the dimensions
     var infoWidth = 120;
@@ -2693,9 +2717,9 @@ GridView2d.prototype = {
     var infoYPos = y + cellHeight;// - infoHeight;// + minY * this.scale - infoHeight;
 
 
-    this.context.globalAlpha = 0.8;
-    this.context.fillStyle =  '#111111';
-    this.context.fillRect(infoXPos, infoYPos,
+    context.globalAlpha = 0.8;
+    context.fillStyle =  '#111111';
+    context.fillRect(infoXPos, infoYPos,
       infoWidth, infoHeight);
 
 
@@ -2704,27 +2728,25 @@ GridView2d.prototype = {
     infoYPos = infoYPos + 12;//infoHeight - 4;
     var info = 'XY:';
     info += gridInfo.x + ',' + gridInfo.y;
-    if(typeof gridInfo.tileIndex == 'undefined') {
-      return;
-    }
     info += ' Tile:' + gridInfo.tileIndex + '(0x' + ("00" + gridInfo.tileIndex.toString(16)).substr(-2) + ')';
-    this.context.font = "10px Verdana";
-    this.context.fillStyle = "#cccccc";
-    this.context.fillText(info, infoXPos, infoYPos);
+    context.font = "10px Verdana";
+    context.fillStyle = "#cccccc";
+    context.fillText(info, infoXPos, infoYPos);
 
     info = 'FG:' + gridInfo.fc + '(0x' + ("00" + gridInfo.fc.toString(16)).substr(-2) + ')';
     if(gridInfo.bc != -1) {
       info += ' BG:' + gridInfo.bc + '(0x' + ("00" + gridInfo.bc.toString(16)).substr(-2) + ')';
     }
-    this.context.font = "10px Verdana";
-    this.context.fillStyle = "#cccccc";
-    this.context.fillText(info, infoXPos, infoYPos + 14);
+    context.font = "10px Verdana";
+    context.fillStyle = "#cccccc";
+    context.fillText(info, infoXPos, infoYPos + 14);
 
-    this.context.globalAlpha = 1;
+    context.globalAlpha = 1;
 
   },
 
-  drawPixelPasteMove: function() {
+  drawPixelPasteMove: function(context) {
+    context = context || this.context;
     var scale = this.displayScale;
 
     var layer = this.editor.layers.getSelectedLayerObject();
@@ -2733,7 +2755,7 @@ GridView2d.prototype = {
     }
 
     var pixelSelect = this.editor.tools.drawTools.pixelSelect;
-    
+
     var layerWidth = layer.getWidth();
     var layerHeight = layer.getHeight();
 
@@ -2746,29 +2768,29 @@ GridView2d.prototype = {
 
 
 
-    // draw boundary around paste 
-    this.context.beginPath();
+    // draw boundary around paste
+    context.beginPath();
     var minX = pixelSelect.pasteOffsetX;
     var maxX = pixelSelect.pasteOffsetX + pixelSelect.getPasteWidth();
 
     var minY = (pixelSelect.pasteOffsetY);
     var maxY = (pixelSelect.pasteOffsetY + pixelSelect.getPasteHeight());
 
-    this.context.moveTo(x + minX * scale, 
+    context.moveTo(x + minX * scale,
       y + minY * scale);
-    this.context.lineTo(x + maxX * scale, 
+    context.lineTo(x + maxX * scale,
       y + minY * scale);
-    this.context.lineTo(x + maxX * scale, 
+    context.lineTo(x + maxX * scale,
       y + maxY * scale);
-    this.context.lineTo(x + minX * scale, 
+    context.lineTo(x + minX * scale,
       y + maxY * scale);
-    this.context.lineTo(x + minX * scale, 
+    context.lineTo(x + minX * scale,
       y + minY * scale);
 
-    this.context.setLineDash([]);
-    this.context.strokeStyle = styles.textMode.gridView2dSelectLineDark;
-    this.context.lineWidth = 1;
-    this.context.stroke();
+    context.setLineDash([]);
+    context.strokeStyle = styles.textMode.gridView2dSelectLineDark;
+    context.lineWidth = 1;
+    context.stroke();
 
     if(time - this.lastSelectAnimate > 260) {
       this.lastSelectAnimate = time;
@@ -2781,19 +2803,20 @@ GridView2d.prototype = {
     }
 
     if(this.lastDashOffset == 0) {
-      this.context.setLineDash([5, 5]);
+      context.setLineDash([5, 5]);
     } else {
-      this.context.setLineDash([0,5,5,0]);
+      context.setLineDash([0,5,5,0]);
     }
 
-    this.context.strokeStyle = styles.textMode.gridView2dSelectLineLight;
-    this.context.lineWidth = 1;
-    this.context.stroke();
-    this.context.setLineDash([]); 
+    context.strokeStyle = styles.textMode.gridView2dSelectLineLight;
+    context.lineWidth = 1;
+    context.stroke();
+    context.setLineDash([]);
   },
 
 
-  drawSelect: function() {
+  drawSelect: function(context) {
+    context = context || this.context;
 
     var scale = this.displayScale;
 
@@ -2820,7 +2843,7 @@ GridView2d.prototype = {
     var selection = this.editor.tools.drawTools.select.getSelection();
 
     // draw selection
-    this.context.beginPath();
+    context.beginPath();
     var minX = (selection.minX  + selectionOffsetX) * cellWidth;
     var maxX = (selection.maxX + selectionOffsetX)  * cellWidth;
 
@@ -2828,21 +2851,21 @@ GridView2d.prototype = {
     var maxY = (selection.maxY + selectionOffsetY)  * cellHeight;
 
 
-    this.context.moveTo(x + minX * scale, 
+    context.moveTo(x + minX * scale,
       y + minY * scale);
-    this.context.lineTo(x + maxX * scale, 
+    context.lineTo(x + maxX * scale,
       y + minY * scale);
-    this.context.lineTo(x + maxX * scale, 
+    context.lineTo(x + maxX * scale,
       y + maxY * scale);
-    this.context.lineTo(x + minX * scale, 
+    context.lineTo(x + minX * scale,
       y + maxY * scale);
-    this.context.lineTo(x + minX * scale, 
+    context.lineTo(x + minX * scale,
       y + minY * scale);
 
-    this.context.setLineDash([]);
-    this.context.strokeStyle = styles.textMode.gridView2dSelectLineDark;
-    this.context.lineWidth = 1;
-    this.context.stroke();
+    context.setLineDash([]);
+    context.strokeStyle = styles.textMode.gridView2dSelectLineDark;
+    context.lineWidth = 1;
+    context.stroke();
 
     if(time - this.lastSelectAnimate > 260) {
       this.lastSelectAnimate = time;
@@ -2855,15 +2878,15 @@ GridView2d.prototype = {
     }
 
     if(this.lastDashOffset == 0) {
-      this.context.setLineDash([5, 5]);
+      context.setLineDash([5, 5]);
     } else {
-      this.context.setLineDash([0,5,5,0]);
+      context.setLineDash([0,5,5,0]);
     }
 
-    this.context.strokeStyle = styles.textMode.gridView2dSelectLineLight;
-    this.context.lineWidth = 1;
-    this.context.stroke();
-    this.context.setLineDash([]); 
+    context.strokeStyle = styles.textMode.gridView2dSelectLineLight;
+    context.lineWidth = 1;
+    context.stroke();
+    context.setLineDash([]);
 
 
     // draw the dimensions
@@ -2882,9 +2905,9 @@ GridView2d.prototype = {
     var selectionWidth = maxX - minXInfo;
     var selectionHeight = maxYInfo - minY;
 
-    this.context.globalAlpha = 0.8;
-    this.context.fillStyle =  '#111111';
-    this.context.fillRect(infoXPos, infoYPos,
+    context.globalAlpha = 0.8;
+    context.fillStyle =  '#111111';
+    context.fillRect(infoXPos, infoYPos,
       infoWidth, infoHeight);
 
     infoXPos = infoXPos + 4;
@@ -2892,42 +2915,43 @@ GridView2d.prototype = {
     var info = '';
 
     info += 'xy: ' + minX + ',' + maxX;
-    this.context.font = "10px Verdana";
-    this.context.fillStyle = "#cccccc";
-    this.context.fillText(info, infoXPos, infoYPos);
+    context.font = "10px Verdana";
+    context.fillStyle = "#cccccc";
+    context.fillText(info, infoXPos, infoYPos);
 
     info = 'wh: ' + selectionWidth + ', ' + selectionHeight;
-    this.context.fillText(info, infoXPos + 60, infoYPos);
+    context.fillText(info, infoXPos + 60, infoYPos);
 
 
     if(this.editor.tools.drawTools.select.isInPasteMove()) {
       // draw paste instructions
       infoWidth = 30;
-      
+
       var instructions = 'Drag to place';
       infoWidth = 76;
       infoXPos = x + minX * scale;
       infoYPos = y + maxY * scale;
 
-      this.context.globalAlpha = 0.8;
-      this.context.fillStyle =  '#111111';
-      this.context.fillRect(infoXPos, infoYPos,
+      context.globalAlpha = 0.8;
+      context.fillStyle =  '#111111';
+      context.fillRect(infoXPos, infoYPos,
         infoWidth, infoHeight);
 
       infoXPos = infoXPos + 4;
       infoYPos = infoYPos + infoHeight - 4;
     
-      this.context.font = "10px Verdana";
-      this.context.fillStyle = "#cccccc";      
-      this.context.fillText(instructions, infoXPos, infoYPos);      
+      context.font = "10px Verdana";
+      context.fillStyle = "#cccccc";
+      context.fillText(instructions, infoXPos, infoYPos);
     }
 
-    this.context.globalAlpha = 1;
+    context.globalAlpha = 1;
 
   },
 
 
-  drawZoom: function() {
+  drawZoom: function(context) {
+    context = context || this.context;
 
     var scale = this.displayScale;
 
@@ -2971,7 +2995,7 @@ GridView2d.prototype = {
 //    if(zoomMaxY )
 
     // draw selection
-    this.context.beginPath();
+    context.beginPath();
     var minX = (zoomMinX) * tileSet.charWidth;
     var maxX = (zoomMaxX)  * tileSet.charWidth;
 
@@ -2981,21 +3005,21 @@ GridView2d.prototype = {
     var minY = (zoomMinY)  * tileSet.charHeight;
     var maxY = (zoomMaxY)  * tileSet.charHeight;
 
-    this.context.moveTo(x + minX * scale, 
+    context.moveTo(x + minX * scale,
       y + minY * scale);
-    this.context.lineTo(x + maxX * scale, 
+    context.lineTo(x + maxX * scale,
       y + minY * scale);
-    this.context.lineTo(x + maxX * scale, 
+    context.lineTo(x + maxX * scale,
       y + maxY * scale);
-    this.context.lineTo(x + minX * scale, 
+    context.lineTo(x + minX * scale,
       y + maxY * scale);
-    this.context.lineTo(x + minX * scale, 
+    context.lineTo(x + minX * scale,
       y + minY * scale);
 
-    this.context.setLineDash([]);
-    this.context.strokeStyle = styles.textMode.gridView2dSelectLineDark;
-    this.context.lineWidth = 1;
-    this.context.stroke();
+    context.setLineDash([]);
+    context.strokeStyle = styles.textMode.gridView2dSelectLineDark;
+    context.lineWidth = 1;
+    context.stroke();
 
     if(time - this.lastSelectAnimate > 260) {
       this.lastSelectAnimate = time;
@@ -3008,16 +3032,16 @@ GridView2d.prototype = {
     }
 
     if(this.lastDashOffset == 0) {
-      this.context.setLineDash([5, 5]);
+      context.setLineDash([5, 5]);
     } else {
-      this.context.setLineDash([0,5,5,0]);
+      context.setLineDash([0,5,5,0]);
 
     }
 
-    this.context.strokeStyle = styles.textMode.gridView2dSelectLineLight;
-    this.context.lineWidth = 1;
-    this.context.stroke();
-    this.context.setLineDash([]); 
+    context.strokeStyle = styles.textMode.gridView2dSelectLineLight;
+    context.lineWidth = 1;
+    context.stroke();
+    context.setLineDash([]);
   },
 
 
@@ -3106,6 +3130,20 @@ GridView2d.prototype = {
 
   },
 
+  setOverlayNeedsRedraw: function() {
+    this.overlayNeedsRedraw = true;
+  },
+
+  setBackBufferNeedsRedraw: function() {
+    this.backBufferNeedsRedraw = true;
+    this.overlayNeedsRedraw = true;
+  },
+
+  setGridNeedsRedraw: function() {
+    this.gridNeedsRedraw = true;
+    this.overlayNeedsRedraw = true;
+  },
+
   setupPreviousFrame: function() {
 
     if(this.editor.graphic.getFrameCount() == 1) {
@@ -3139,6 +3177,9 @@ GridView2d.prototype = {
     this.height = height;
     this.left = left;
     this.top = top;
+    this.backBufferNeedsRedraw = true;
+    this.gridNeedsRedraw = true;
+    this.overlayNeedsRedraw = true;
   
     this.canvas = this.uiComponent.getCanvas();
 
@@ -3150,6 +3191,27 @@ GridView2d.prototype = {
     this.context.mozImageSmoothingEnabled = false;
     this.context.msImageSmoothingEnabled = false;
     this.context.oImageSmoothingEnabled = false;
+
+    if(this.overlayCanvas == null) {
+      this.overlayCanvas = document.createElement('canvas');
+      this.overlayCanvas.id = this.canvas.id + '-overlay';
+      this.overlayCanvas.style.position = 'absolute';
+      this.overlayCanvas.style.left = '0';
+      this.overlayCanvas.style.top = '0';
+      this.overlayCanvas.style.pointerEvents = 'none';
+      this.canvas.parentNode.appendChild(this.overlayCanvas);
+    }
+
+    this.overlayCanvas.style.width = this.canvas.style.width;
+    this.overlayCanvas.style.height = this.canvas.style.height;
+    if(this.overlayContext == null
+      || this.overlayCanvas.width != this.canvas.width
+      || this.overlayCanvas.height != this.canvas.height) {
+      this.overlayCanvas.width = this.canvas.width;
+      this.overlayCanvas.height = this.canvas.height;
+      this.overlayContext = UI.getContextNoSmoothing(this.overlayCanvas);
+      this.overlayContext.scale(this.uiComponent.getScale(), this.uiComponent.getScale());
+    }
 
     // does the grid need redrawing?
     if(this.editor.graphic.getOnlyViewBoundsDrawn() ) {
@@ -3221,6 +3283,7 @@ GridView2d.prototype = {
 
   setCursorBoxVisible: function(visible) {
     this.cursorBoxVisible = visible;
+    this.setOverlayNeedsRedraw();
   },
 
   drawCursorBox: function(context, x, y, width, height, scale) {
@@ -3256,7 +3319,7 @@ GridView2d.prototype = {
 
   },
 
-  // new system calls draw cursor from graphic.js for non vector cursors
+  // Keep cursor previews out of the cached artwork canvas.
   drawCursor: function(args) {
 
 
@@ -3417,7 +3480,13 @@ GridView2d.prototype = {
           context.globalAlpha = 1;
 
           if(tool == 'eyedropper') {
-            this.drawCellInfo(offsetX, offsetY,  cursorWidth * scale, cursorHeight * scale);
+            this.drawCellInfo(
+              offsetX,
+              offsetY,
+              cursorWidth * scale,
+              cursorHeight * scale,
+              context
+            );
           }
 
         break;
@@ -3556,6 +3625,10 @@ GridView2d.prototype = {
   draw: function(args) {
     var graphic = this.editor.graphic;
     var scale = this.displayScale;
+    var redrawLayers = this.backBufferNeedsRedraw;
+    if(typeof args == 'undefined' || args.redrawLayers !== false) {
+      redrawLayers = true;
+    }
 
 
     // width of the graphic in pixels
@@ -3647,12 +3720,71 @@ GridView2d.prototype = {
       this.backBufferCanvas.width = this.width;
       this.backBufferCanvas.height = this.height;
       this.backBufferContext = UI.getContextNoSmoothing(this.backBufferCanvas);
+      redrawLayers = true;
     }
 
+    var baseCanvasResized = false;
+    if(this.baseCanvas == null) {
+      this.baseCanvas = document.createElement('canvas');
+    }
 
-    // clear everything
-    this.backBufferContext.fillStyle = 'black';
-    this.backBufferContext.fillRect(dstX, dstY, dstWidth, dstHeight);
+    if(this.baseContext == null
+      || this.baseCanvas.width != this.canvas.width
+      || this.baseCanvas.height != this.canvas.height) {
+      this.baseCanvas.width = this.canvas.width;
+      this.baseCanvas.height = this.canvas.height;
+      this.baseContext = UI.getContextNoSmoothing(this.baseCanvas);
+      baseCanvasResized = true;
+    }
+
+    var dirtyArtworkBounds = false;
+    if(redrawLayers) {
+      if(typeof args != 'undefined'
+        && typeof args.dirtyCells != 'undefined'
+        && !this.editor.tools.drawTools.pixelSelect.isActive()) {
+        var selectedLayerObject = this.editor.layers.getSelectedLayerObject();
+        if(selectedLayerObject && selectedLayerObject.getType() == 'grid') {
+          var tileSet = selectedLayerObject.getTileSet();
+          var tileWidth = tileSet.getTileWidth();
+          var tileHeight = tileSet.getTileHeight();
+          var dirtyCells = args.dirtyCells;
+          var dirtySrcX = Math.max(srcX, dirtyCells.minX * tileWidth);
+          var dirtySrcY = Math.max(srcY, dirtyCells.minY * tileHeight);
+          var dirtySrcRight = Math.min(srcX + srcWidth, dirtyCells.maxX * tileWidth);
+          var dirtySrcBottom = Math.min(srcY + srcHeight, dirtyCells.maxY * tileHeight);
+
+          if(dirtySrcX < dirtySrcRight && dirtySrcY < dirtySrcBottom) {
+            var dirtyDstX = dstX + (dirtySrcX - srcX) * scale;
+            var dirtyDstY = dstY + (dirtySrcY - srcY) * scale;
+            var dirtyDstRight = dstX + (dirtySrcRight - srcX) * scale;
+            var dirtyDstBottom = dstY + (dirtySrcBottom - srcY) * scale;
+            dirtyArtworkBounds = {
+              x: Math.floor(dirtyDstX),
+              y: Math.floor(dirtyDstY),
+              width: Math.ceil(dirtyDstRight) - Math.floor(dirtyDstX),
+              height: Math.ceil(dirtyDstBottom) - Math.floor(dirtyDstY)
+            };
+          }
+        }
+      }
+
+      this.backBufferContext.save();
+      if(dirtyArtworkBounds) {
+        this.backBufferContext.beginPath();
+        this.backBufferContext.rect(
+          dirtyArtworkBounds.x,
+          dirtyArtworkBounds.y,
+          dirtyArtworkBounds.width,
+          dirtyArtworkBounds.height
+        );
+        this.backBufferContext.clip();
+      }
+      this.backBufferContext.globalAlpha = 1;
+      this.backBufferContext.globalCompositeOperation = 'source-over';
+
+      // clear everything
+      this.backBufferContext.fillStyle = 'black';
+      this.backBufferContext.fillRect(dstX, dstY, dstWidth, dstHeight);
 
 
 
@@ -3731,34 +3863,149 @@ GridView2d.prototype = {
     }
     */
 
-    this.editor.graphic.drawFrame({
-      canvas: this.backBufferCanvas,
-      context: this.backBufferContext,
-      
-      frame: frame,
-      srcX: srcX,
-      srcY: srcY,
-      srcWidth: srcWidth,
-      srcHeight: srcHeight,
-      dstX: dstX,
-      dstY: dstY,
-      drawAtX: x,
-      drawAtY: y,
-      scale: scale,
-      dstWidth: dstWidth,
-      dstHeight: dstHeight,
-      allCells: allCells,
-      drawBackground: drawBackground,
-      drawPreviousFrame: drawPreviousFrame,
-//      previousFrameCanvas: previousFrameCanvas,
-      animatedTilesOnly: animatedTilesOnly,
-      shapes: shapes
+      this.editor.graphic.drawFrame({
+        canvas: this.backBufferCanvas,
+        context: this.backBufferContext,
+        frame: frame,
+        srcX: srcX,
+        srcY: srcY,
+        srcWidth: srcWidth,
+        srcHeight: srcHeight,
+        dstX: dstX,
+        dstY: dstY,
+        drawAtX: x,
+        drawAtY: y,
+        scale: scale,
+        dstWidth: dstWidth,
+        dstHeight: dstHeight,
+        allCells: allCells,
+        drawBackground: drawBackground,
+        drawPreviousFrame: drawPreviousFrame,
+//        previousFrameCanvas: previousFrameCanvas,
+        animatedTilesOnly: animatedTilesOnly,
+        shapes: shapes
+      });
+      this.backBufferContext.restore();
+      this.backBufferNeedsRedraw = false;
+    }
 
-    });
+    var frontContext = this.context;
+    var canvasScale = this.uiComponent.getScale();
+    var redrawComposite = redrawLayers || this.gridNeedsRedraw || baseCanvasResized;
+    var redrawFullComposite = baseCanvasResized
+      || this.gridNeedsRedraw
+      || !dirtyArtworkBounds;
 
+    // Keep one opaque, flattened artwork-and-grid canvas. A pencil update replaces
+    // the edited cell with opaque artwork, redraws the clipped grid into that base,
+    // and then presents the cell in one write. This avoids both translucent grid
+    // accumulation and a second full-size grid backing store.
+    if(redrawComposite) {
+      var compositeBounds = false;
+      this.baseContext.save();
+      this.baseContext.setTransform(1, 0, 0, 1, 0, 0);
+      if(!redrawFullComposite) {
+        var compositeX = Math.floor(dirtyArtworkBounds.x * canvasScale);
+        var compositeY = Math.floor(dirtyArtworkBounds.y * canvasScale);
+        var compositeRight = Math.ceil(
+          (dirtyArtworkBounds.x + dirtyArtworkBounds.width) * canvasScale
+        );
+        var compositeBottom = Math.ceil(
+          (dirtyArtworkBounds.y + dirtyArtworkBounds.height) * canvasScale
+        );
+        compositeBounds = {
+          x: compositeX,
+          y: compositeY,
+          width: compositeRight - compositeX,
+          height: compositeBottom - compositeY
+        };
+        this.baseContext.beginPath();
+        this.baseContext.rect(
+          compositeBounds.x,
+          compositeBounds.y,
+          compositeBounds.width,
+          compositeBounds.height
+        );
+        this.baseContext.clip();
+      }
 
+      this.baseContext.setTransform(
+        canvasScale,
+        0,
+        0,
+        canvasScale,
+        0,
+        0
+      );
+      this.baseContext.globalAlpha = 1;
+      this.baseContext.globalCompositeOperation = 'source-over';
+      this.baseContext.drawImage(this.backBufferCanvas, 0, 0);
+      this.baseContext.setLineDash([]);
+      this.drawGrid(x, y, graphicWidth, graphicHeight, this.baseContext);
+      this.baseContext.restore();
+      this.gridNeedsRedraw = false;
 
-    this.context.drawImage(this.backBufferCanvas, 0, 0);
+      frontContext.save();
+      frontContext.setTransform(1, 0, 0, 1, 0, 0);
+      frontContext.globalAlpha = 1;
+      frontContext.globalCompositeOperation = 'source-over';
+      if(compositeBounds) {
+        frontContext.drawImage(
+          this.baseCanvas,
+          compositeBounds.x,
+          compositeBounds.y,
+          compositeBounds.width,
+          compositeBounds.height,
+          compositeBounds.x,
+          compositeBounds.y,
+          compositeBounds.width,
+          compositeBounds.height
+        );
+      } else {
+        frontContext.drawImage(this.baseCanvas, 0, 0);
+      }
+      frontContext.restore();
+    }
+
+    // Transient cursors, selections, guides, and scrollbars live on a separate
+    // transparent DOM canvas. Clearing them cannot expose or resample the base.
+    this.overlayContext.save();
+    this.overlayContext.setTransform(1, 0, 0, 1, 0, 0);
+    this.overlayContext.clearRect(0, 0, this.overlayCanvas.width, this.overlayCanvas.height);
+    this.overlayContext.restore();
+    this.overlayContext.setTransform(
+      canvasScale,
+      0,
+      0,
+      canvasScale,
+      0,
+      0
+    );
+    this.overlayContext.globalAlpha = 1;
+    this.overlayContext.globalCompositeOperation = 'source-over';
+    this.overlayContext.setLineDash([]);
+
+    if(!UI.isMobile.any()) {
+      var selectedLayer = this.editor.layers.getSelectedLayer();
+      var selectedLayerObject = this.editor.layers.getSelectedLayerObject();
+      var drawCursor = selectedLayer
+        && selectedLayer.visible
+        && selectedLayerObject
+        && selectedLayerObject.getType() == 'grid';
+
+      if(this.editor.tools.drawTools.shapes.getCurrentShape() !== false) {
+        drawCursor = false;
+      }
+
+      if(drawCursor) {
+        this.drawCursor({
+          context: this.overlayContext,
+          offsetX: x,
+          offsetY: y,
+          scale: scale
+        });
+      }
+    }
 
 
 
@@ -3777,49 +4024,48 @@ GridView2d.prototype = {
     }
     */
 
-    this.drawGrid(x, y, graphicWidth, graphicHeight);
-
-
     var drawTools = this.editor.tools.drawTools;
     if(drawTools.select.isActive()) {
-      this.drawSelect();
+      this.drawSelect(this.overlayContext);
     }
 
     if(drawTools.pixelSelect.isActive()) {
-      this.drawPixelSelect();
+      this.drawPixelSelect(this.overlayContext);
     }
 
     if(drawTools.pixelSelect.isInPasteMove()) {
-      this.drawPixelPasteMove();
+      this.drawPixelPasteMove(this.overlayContext);
     }
 
-    this.drawZoom();
+    this.drawZoom(this.overlayContext);
 
     if(drawTools.mirrorH) {
-      this.drawMirrorH(x, y, graphicWidth, graphicHeight);
+      this.drawMirrorH(x, y, graphicWidth, graphicHeight, this.overlayContext);
     }
 
     if(drawTools.mirrorV) {
-      this.drawMirrorV(x, y, graphicWidth, graphicHeight);
+      this.drawMirrorV(x, y, graphicWidth, graphicHeight, this.overlayContext);
     }
 
     // draw the scroll bars
     this.calculateScroll();
 
 
-    this.context.fillStyle = styles.ui.scrollbarHolder;
+    this.overlayContext.fillStyle = styles.ui.scrollbarHolder;
 
 
     // horizontal scroll
-    this.context.fillRect(0, this.height - this.hScrollBarHeight, this.viewWidth, this.hScrollBarHeight);
-    this.context.fillStyle = styles.ui.scrollbar;
-    this.context.fillRect(this.hScrollBarPosition, this.height - this.hScrollBarHeight + 1, this.hScrollBarPositionWidth, this.hScrollBarHeight - 2);
+    this.overlayContext.fillRect(0, this.height - this.hScrollBarHeight, this.viewWidth, this.hScrollBarHeight);
+    this.overlayContext.fillStyle = styles.ui.scrollbar;
+    this.overlayContext.fillRect(this.hScrollBarPosition, this.height - this.hScrollBarHeight + 1, this.hScrollBarPositionWidth, this.hScrollBarHeight - 2);
 
     // vertical scroll
-    this.context.fillStyle = styles.ui.scrollbarHolder; 
-    this.context.fillRect(this.width - this.vScrollBarWidth, 0, this.vScrollBarWidth, this.viewHeight);
-    this.context.fillStyle = styles.ui.scrollbar;
-    this.context.fillRect(this.width - this.vScrollBarWidth + 1, this.vScrollBarPosition , this.vScrollBarWidth - 2, this.vScrollBarPositionHeight);
+    this.overlayContext.fillStyle = styles.ui.scrollbarHolder;
+    this.overlayContext.fillRect(this.width - this.vScrollBarWidth, 0, this.vScrollBarWidth, this.viewHeight);
+    this.overlayContext.fillStyle = styles.ui.scrollbar;
+    this.overlayContext.fillRect(this.width - this.vScrollBarWidth + 1, this.vScrollBarPosition , this.vScrollBarWidth - 2, this.vScrollBarPositionHeight);
+
+    this.overlayNeedsRedraw = false;
       
   },
 
@@ -3836,6 +4082,14 @@ GridView2d.prototype = {
     if(drawTools.tool == 'type') {
       // blink the cursor
       this.typingCursor();
+    }
+
+    if(drawTools.select.isActive()
+      || drawTools.pixelSelect.isActive()
+      || this.zoomMouseDown) {
+      if(getTimestamp() - this.lastSelectAnimate > 260) {
+        this.overlayNeedsRedraw = true;
+      }
     }
 
     var tileSet = this.editor.tileSetManager.getCurrentTileSet();
@@ -3863,7 +4117,9 @@ GridView2d.prototype = {
 
 
     if(g_newSystem) {
-      this.draw();
+      if(this.backBufferNeedsRedraw || this.overlayNeedsRedraw) {
+        this.draw({ redrawLayers: false });
+      }
       return;
     }
 

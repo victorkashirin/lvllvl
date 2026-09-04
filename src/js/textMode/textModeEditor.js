@@ -1193,7 +1193,11 @@ TextModeEditor.prototype = {
       this.grid3d.setGridVisible(visible);
     } else {
       this.gridVisible = visible;
-      UI('edit-showgrid').setChecked(visible);      
+      UI('edit-showgrid').setChecked(visible);
+      if(this.gridView2d) {
+        this.gridView2d.setGridNeedsRedraw();
+        this.gridView2d.render();
+      }
     }
   },
 
@@ -1707,6 +1711,11 @@ TextModeEditor.prototype = {
 
     UI('pixelToolsMobileSidePanel').setVisible((this.deviceType == 'mobile') & (this.editorMode == 'pixel'));
     UI('pixelToolsDesktopPanel').setVisible((this.deviceType == 'desktop') & (this.editorMode == 'pixel'));
+
+    if(this.gridView2d) {
+      this.gridView2d.setGridNeedsRedraw();
+      this.gridView2d.render();
+    }
 
   },
 

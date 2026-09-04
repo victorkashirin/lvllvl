@@ -62,6 +62,9 @@ Grid2d.prototype = {
       return;
     }
     this.cursor.isOn = enabled;
+    if(this.editor.gridView2d) {
+      this.editor.gridView2d.setOverlayNeedsRedraw();
+    }
   },
 
   getCursorPosition: function() {
@@ -112,6 +115,9 @@ Grid2d.prototype = {
 
     this.cursor.position.x = x;
     this.cursor.position.y = y;
+    if(this.editor.gridView2d) {
+      this.editor.gridView2d.setOverlayNeedsRedraw();
+    }
   },
 
   eyedropperCursorCell: function() {
@@ -243,6 +249,24 @@ Grid2d.prototype = {
         layer.setCell(cellData);
       }
 
+    }
+  },
+
+  redrawUpdatedCells: function(layer) {
+    var updatedCellRanges = layer.updatedCellRanges;
+
+    if(updatedCellRanges.minX < updatedCellRanges.maxX
+      && updatedCellRanges.minY < updatedCellRanges.maxY) {
+      this.editor.graphic.redraw({
+        dirtyCells: {
+          minX: updatedCellRanges.minX,
+          minY: updatedCellRanges.minY,
+          maxX: updatedCellRanges.maxX,
+          maxY: updatedCellRanges.maxY
+        }
+      });
+    } else {
+      this.editor.gridView2d.render();
     }
   },
 
@@ -424,7 +448,7 @@ Grid2d.prototype = {
         // updating a cell in a block, so need to redraw everything..
         this.editor.graphic.invalidateAllCells();
       }      
-      this.editor.graphic.redraw();
+      this.redrawUpdatedCells(layer);
     }
 
   },
@@ -432,14 +456,23 @@ Grid2d.prototype = {
 
   setCursorColor: function(color) {
     this.cursor.color = color;
+    if(this.editor.gridView2d) {
+      this.editor.gridView2d.setOverlayNeedsRedraw();
+    }
   },
 
   setCursorBGColor: function(color) {
     this.cursor.bgColor = color;
+    if(this.editor.gridView2d) {
+      this.editor.gridView2d.setOverlayNeedsRedraw();
+    }
   },
 
   setCursorCharacter: function(character) {
     this.cursor.character = character;
+    if(this.editor.gridView2d) {
+      this.editor.gridView2d.setOverlayNeedsRedraw();
+    }
   },
 
   moveCursor: function(dx, dy) {
@@ -477,6 +510,9 @@ Grid2d.prototype = {
       this.cursor.character = character;
       this.cursor.color = color;
       this.cursor.bgColor = bgColor;
+      if(this.editor.gridView2d) {
+        this.editor.gridView2d.setOverlayNeedsRedraw();
+      }
 
     } else {
       var oldX = this.cursor.position.x;
@@ -535,6 +571,10 @@ Grid2d.prototype = {
       }
       this.update(currentFrame, x, y);
 */      
+    }
+
+    if(this.editor.gridView2d) {
+      this.editor.gridView2d.setOverlayNeedsRedraw();
     }
 
 

@@ -1594,6 +1594,10 @@ currentTileSplitPanel
 
   // draw current characters into the cursor canvas
   drawCursor: function(args) {
+    if(this.type == '2d' && this.editor.gridView2d) {
+      this.editor.gridView2d.setOverlayNeedsRedraw();
+    }
+
     if(this.type != '2d') {
 //      return;
     }

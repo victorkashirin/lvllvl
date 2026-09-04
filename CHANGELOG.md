@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## 0.497.2 - 2026-09-04
+
+### Fixed
+
+- Keep Firefox's 2D editor rendering stable by confining pencil updates to edited
+  cells, flattening artwork and grid pixels into one opaque cached base without a
+  second full-size grid buffer, and painting cursor and marquee graphics on a
+  separate transparent overlay.
+
 ## 0.497.1 - 2026-09-04
 
 ### Fixed

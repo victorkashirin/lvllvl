@@ -89,6 +89,10 @@ Select.prototype = {
     return this.inPasteMove;
   },
 
+  isMovingSelectionContents: function() {
+    return this.selectionOffsetX != 0 || this.selectionOffsetY != 0;
+  },
+
 
   getEnabled: function() {
     return this.selectionEnabled;
@@ -524,6 +528,10 @@ Select.prototype = {
     if(!enabled) {
       this.selection.visible = false;
     }
+
+    if(this.editor.gridView2d) {
+      this.editor.gridView2d.setOverlayNeedsRedraw();
+    }
   },
 
   recordSelectionChangeHistory: function() {
@@ -651,8 +659,7 @@ Select.prototype = {
 
 
     if(g_newSystem) {
-      this.editor.graphic.invalidateAllCells();
-      this.editor.gridView2d.render();      
+      this.editor.gridView2d.render();
     }
   },
 
@@ -807,7 +814,7 @@ Select.prototype = {
 //      
 
       if(g_newSystem) {
-        this.editor.gridView2d.render();
+        this.editor.graphic.redraw({ allCells: true });
       } else {
         this.editor.graphic.redraw();       
       }
@@ -845,8 +852,7 @@ Select.prototype = {
       
       this.setSelection({ from: newSelectionMin, to: newSelectionMax, saveInHistory: false});
 
-      this.editor.graphic.invalidateAllCells();
-      this.editor.graphic.redraw({ allCells: true }); 
+      this.editor.gridView2d.render();
 
     } else if(this.inDragSelectedCharacters) {
 
@@ -883,7 +889,7 @@ Select.prototype = {
       if(g_newSystem) {
         // dont really need to invalidate all, just prev select area and current
         this.editor.graphic.invalidateAllCells();
-        this.editor.gridView2d.render();      
+        this.editor.graphic.redraw({ allCells: true });
       } else {
         this.editor.graphic.redraw(); 
       }
@@ -1067,8 +1073,7 @@ Select.prototype = {
         // save the history..
         this.marqueeSelectToMouse(gridView, event, true);
       }
-      this.editor.graphic.invalidateAllCells();
-      this.editor.graphic.redraw({ allCells: true });
+      this.editor.gridView2d.render();
 
     }
 

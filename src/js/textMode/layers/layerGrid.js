@@ -3812,7 +3812,10 @@ LayerGrid.prototype = {
 
     var blankCharacter = this.blankTileId;
     var screenMode = this.getMode();
-    var dontDrawSelected = this.isCurrentLayer() && this.editor.tools.drawTools.select.isActive() && !this.editor.tools.drawTools.select.isInPasteMove();
+    var dontDrawSelected = this.isCurrentLayer()
+      && this.editor.tools.drawTools.select.isActive()
+      && this.editor.tools.drawTools.select.isMovingSelectionContents()
+      && !this.editor.tools.drawTools.select.isInPasteMove();
 
     // loop over the area to be drawn..
     for(var y = fromY; y < toY; y++) {

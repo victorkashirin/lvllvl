@@ -1187,17 +1187,6 @@ Graphic.prototype = {
             };
 
 
-            if(!graphicOnly && !allCells) {
-              // redraw the last cursor position
-              drawArgs.shapes = false;
-              drawArgs.eraseCursor = true;
-              drawArgs.cursor = false;
-              drawArgs.dragPaste = false;
-              drawArgs.eraseDragPaste = false;
-              drawArgs.allCells = false;
-              layerObject.drawVector(drawArgs);
-            }
-
             // draw the layer
             drawArgs.allCells = allCells;
             drawArgs.eraseCursor = false;
@@ -1247,68 +1236,6 @@ Graphic.prototype = {
             }
 
             if(!graphicOnly && layerObject.isCurrentLayer()) {
-              // dont want to draw the cursor if drawing a shape
-              if(this.editor.gridView2d.getCursorVisible() && !shapes && !UI.isMobile.any()) {
-                /*
-                // erase the old cursor
-                drawArgs.shapes = false;
-                drawArgs.eraseCursor = true;
-                drawArgs.cursor = false;
-                drawArgs.dragPaste = false;
-                drawArgs.eraseDragPaste = false;
-                drawArgs.allCells = false;
-                layerObject.drawVector(drawArgs);
-                */
-
-                // draw the cursor
-                drawArgs.shapes = false;
-                drawArgs.eraseCursor = false;
-                drawArgs.cursor = true;
-                drawArgs.dragPaste = false;
-                drawArgs.eraseDragPaste = false;
-                drawArgs.allCells = false;
-                layerObject.drawVector(drawArgs);                
-              }
-
-              if(this.editor.tools.drawTools.tool == 'type') {
-                if(this.editor.gridView2d.typingCursorBlink) {
-                  // draw the cursor
-                  drawArgs.shapes = false;
-                  drawArgs.eraseCursor = false;
-                  drawArgs.cursor = false;
-                  drawArgs.typingCursor = true;
-                  drawArgs.dragPaste = false;
-                  drawArgs.eraseDragPaste = false;
-                  drawArgs.allCells = false;
-                  layerObject.drawVector(drawArgs);                
-                } else {
-                  drawArgs.shapes = false;
-                  drawArgs.eraseCursor = false;
-                  drawArgs.cursor = false;
-                  drawArgs.typingCursor = false;
-                  drawArgs.eraseTypingCursor = true;
-                  drawArgs.dragPaste = false;
-                  drawArgs.eraseDragPaste = false;
-                  drawArgs.allCells = false;
-                  layerObject.drawVector(drawArgs);                
-                }
-
-              } else {
-                drawArgs.shapes = false;
-                drawArgs.eraseCursor = false;
-                drawArgs.cursor = false;
-                drawArgs.typingCursor = false;
-                drawArgs.eraseTypingCursor = true;
-                drawArgs.dragPaste = false;
-                drawArgs.eraseDragPaste = false;
-                drawArgs.allCells = false;
-                layerObject.drawVector(drawArgs);                    
-              }
-
-              drawArgs.typingCursor = false;  
-              drawArgs.eraseTypingCursor = false;              
-
-              
               if(this.editor.tools.drawTools.select.isInPasteMove()) {
                 // draw the paste move
 
@@ -1500,35 +1427,12 @@ Graphic.prototype = {
               );
               */
             } else {
-
               // only draw visible part of canvas
               context.drawImage(layerCanvas,
                 srcX, srcY, srcWidth, srcHeight,
                 dstX, dstY, srcWidth * scale, srcHeight * scale
 //                dstX, dstY, dstWidth, dstHeight
               );
-
-              
-              // draw the cursor
-              if(!UI.isMobile.any()) {
-                var drawCursor = layerObject.isCurrentLayer();
-                if(this.editor.tools.drawTools.shapes.getCurrentShape() !== false) {
-                  drawCursor = false;
-                } 
-    
-                if(drawCursor) {
-                  this.editor.gridView2d.drawCursor({ 
-                    context: context, 
-                    offsetX: originX, 
-                    offsetY: originY, 
-                    scale: scale 
-                  });
-                }
-
-
-              }
-              
-
             }
 
 
@@ -1646,7 +1550,7 @@ Graphic.prototype = {
 
           // if select is active, selection isn't drawn in the grid, need to draw it here
           // dont want to draw it if in paste move
-          if(drawTools.select.isActive()) {
+          if(drawTools.select.isActive() && drawTools.select.isMovingSelectionContents()) {
 
             if(!drawTools.select.isInPasteMove()) {
               // not really shapes canvas, its the selection canvas

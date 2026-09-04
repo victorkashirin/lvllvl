@@ -1196,7 +1196,11 @@ DrawTools.prototype = {
     if(g_app.mode == '3d') {
       this.editor.gridView3d.toolChanged();
     }
-    //    this.editor.graphic.redraw({ allCells: true});    
+
+    if(g_newSystem && this.editor.gridView2d) {
+      // Tool changes can remove a cached shape preview as well as change the cursor.
+      this.editor.gridView2d.setBackBufferNeedsRedraw();
+    }
 
   },
 
@@ -1204,16 +1208,25 @@ DrawTools.prototype = {
   toggleDrawCharacter: function() {
     this.drawCharacter = !$('#drawChangesCharacter').is(':checked');
     $('#drawChangesCharacter').prop('checked', this.drawCharacter);
+    if(g_newSystem && this.editor.gridView2d) {
+      this.editor.gridView2d.setOverlayNeedsRedraw();
+    }
   },
 
   toggleDrawFGColor: function() {
     this.drawColor = !$('#drawChangesColor').is(':checked');
     $('#drawChangesColor').prop('checked', this.drawColor);
+    if(g_newSystem && this.editor.gridView2d) {
+      this.editor.gridView2d.setOverlayNeedsRedraw();
+    }
   },
 
   toggleDrawBGColor: function() {
     this.drawBgColor = !$('#drawChangesBGColor').is(':checked');
     $('#drawChangesBGColor').prop('checked', this.drawBgColor);
+    if(g_newSystem && this.editor.gridView2d) {
+      this.editor.gridView2d.setOverlayNeedsRedraw();
+    }
   },
 
   setDrawMode: function() {
@@ -1248,6 +1261,10 @@ DrawTools.prototype = {
       this.editor.grid.setCursorCharacter(this.editor.currentTile.character, 0, 0, 0, this.editor.currentTile.color);
     }
 */
+
+    if(g_newSystem && this.editor.gridView2d) {
+      this.editor.gridView2d.setOverlayNeedsRedraw();
+    }
 
   },
 
