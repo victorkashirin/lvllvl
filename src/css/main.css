@@ -93,6 +93,12 @@ table {
   margin: 0 0 6px 0;
 
 }
+
+input[type=checkbox] {
+  margin-block: 0;
+  vertical-align: middle;
+}
+
 .checkboxGroup, .radioGroup {  
   display: inline-block;
 }
@@ -1282,10 +1288,23 @@ table {
   margin-right: 4px;
 }
 
+.gridinfo-panel .gridinfo-label {
+  vertical-align: middle;
+}
+
 .gridinfo-value {
+  align-items: center;
   color: #cccccc;
-  display: inline-block;
+  display: inline-flex;
   font-weight: 500;
+  vertical-align: middle;
+}
+
+.gridinfo-color-swatch {
+  flex: none;
+  height: 12px;
+  margin-right: 3px;
+  width: 12px;
 }
 
 
@@ -1345,4 +1364,3 @@ table {
 
 
 /*** new forms ****/
-

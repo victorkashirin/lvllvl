@@ -1,18 +1,18 @@
 {
   "schemaVersion": 1,
-  "releaseVersion": "0.497.0",
+  "releaseVersion": "0.497.1",
   "artifacts": {
     "index.html": {
       "bytes": 2172,
-      "sha256": "2f2947b86d929022d76c1a84ef435ffda71124942d180b2f0cfbb07a45f4cfa0"
+      "sha256": "8d384ce003356213a24b8a74fa5bf4d116423b9acd9eb7087fd735151f6db0a5"
     },
     "c64/index.html": {
       "bytes": 2189,
-      "sha256": "338e64a03e775704b33d2b70de882f438f370c8f0eca65152adfc36220d59b92"
+      "sha256": "b1ef2651180291293dfe19b7c2037399e957b3262e81dae65ae99053f611096f"
     },
     "css/style.css": {
-      "bytes": 135310,
-      "sha256": "36f22c68f9452dc5fb321fbe3e0fd70ea294b48714e4540ded1dfa1959f80b1e"
+      "bytes": 135620,
+      "sha256": "9b63df947187499b61069b1aeccaedf6cc5776c1724b56423324f0e54fce8a62"
     },
     "fonts/glyphicons-halflings-regular.woff2": {
       "bytes": 20188,
@@ -27,16 +27,16 @@
       "sha256": "391ca4ab08150fc3a3d992b0c17e7cba145afa65f6f76e7ec61fe4b0e4061daf"
     },
     "js/main.js": {
-      "bytes": 3279124,
-      "sha256": "ba13299b85b6c4e1178c2d21fe3f7b496379296bc30a734a5f98591d85c5691d"
+      "bytes": 3279073,
+      "sha256": "09e88b4ae8079f7d6f012c79216518f03c565562913b75d7f3101d97011865f1"
     },
     "js/main.js.map": {
-      "bytes": 10458201,
-      "sha256": "af882b2fb22f09b1751d42a94307ca7411c89088ec76ee6cb719c4b0a6f1d684"
+      "bytes": 10458088,
+      "sha256": "17af1b9e59235f1c661d390b738dbfa059edd1fe913903c60a466d840bb4aac2"
     },
     "js/bootstrap.mjs": {
       "bytes": 897,
-      "sha256": "da03b70a66d75abf4d79dfffd30e36d34b107519eedd7ed3511ccdcf27714023"
+      "sha256": "803d48e3b087e3b1db6ce1b15da1d586b3b599e4d31ebb7a75cbd9b7abf33304"
     },
     "js/modules/featureRegistry.mjs": {
       "bytes": 3139,

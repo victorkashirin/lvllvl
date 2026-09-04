@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 0.497.1 - 2026-09-04
+
+### Fixed
+
+- Vertically align grid information values and colour swatches, and center native
+  and custom checkboxes with their adjacent labels.
+
 ## 0.497.0 - 2026-09-04
 
 ### Added

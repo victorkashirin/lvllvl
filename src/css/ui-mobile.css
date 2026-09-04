@@ -309,13 +309,14 @@ padding: 10px 10px 8px 10px; /*6px 10px; */
 }
 
 /* Create a custom checkbox */
-.mobileMode .checkmark {
+.mobileMode .cb-container .checkmark {
   position: absolute;
-  top: 0;
+  top: 50%;
   left: 0;
   height: 19px;
   width: 19px;
   background-color: #eeeeee;
+  transform: translateY(-50%);
 
   transition: all 0.3s;    
 }

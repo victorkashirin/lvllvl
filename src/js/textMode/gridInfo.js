@@ -20,7 +20,7 @@ GridInfo.prototype = {
   buildInterface: function(parentComponent) {
     var _this = this;
 
-    var html = '<div style="background-color: #1d1d1d; position: absolute; top: 0; left: 0; right: 0; bottom: 0">';
+    var html = '<div class="gridinfo-panel" style="background-color: #1d1d1d; position: absolute; top: 0; left: 0; right: 0; bottom: 0">';
     html += '<div id="gridinfo-coordinates" style="padding: 4px"></div>'
 
     html += '<div id="gridInfoZoom" style="text-align: right; display: block; position: absolute; width: 160px; right: 80px; top: 4px">';
@@ -129,7 +129,7 @@ GridInfo.prototype = {
     
     html += '<div class="gridinfo-value">';
     
-    html += '<div style="display: inline-block; width: 12px; height: 12px; margin-right: 3px; background-color:' + this.fgColorHex + ';"></div>';
+    html += '<span class="gridinfo-color-swatch" style="background-color:' + this.fgColorHex + ';"></span>';
     html += this.fc;
     html += '</div>';
     html += '</div>';
@@ -138,7 +138,7 @@ GridInfo.prototype = {
     html += '<label class="gridinfo-label">BG colour:</label>';
     html += '<div class="gridinfo-value">';
     if(this.bc != -1) {
-      html += '<div style="display: inline-block; width: 12px; height: 12px; margin-right: 3px; background-color:' + this.bgColorHex + ';"></div>';
+      html += '<span class="gridinfo-color-swatch" style="background-color:' + this.bgColorHex + ';"></span>';
       html += this.bc;
     } else {
       html += 'use frame';
@@ -215,7 +215,7 @@ GridInfo.prototype = {
     
     html += '<div class="gridinfo-value">';
     
-    html += '<div style="display: inline-block; width: 12px; height: 12px; margin-right: 3px; background-color:' + this.fgColorHex + ';"></div>';
+    html += '<span class="gridinfo-color-swatch" style="background-color:' + this.fgColorHex + ';"></span>';
     html += this.fc;
     html += '</div>';
     html += '</div>';
@@ -224,7 +224,7 @@ GridInfo.prototype = {
     html += '<label class="gridinfo-label">BG Colour</label>';
     html += '<div class="gridinfo-value">';
     if(this.bc != -1) {
-      html += '<div style="display: inline-block; width: 12px; height: 12px; margin-right: 3px; background-color:' + this.bgColorHex + ';"></div>';
+      html += '<span class="gridinfo-color-swatch" style="background-color:' + this.bgColorHex + ';"></span>';
       html += this.bc;
     } else {
       html += 'use frame';

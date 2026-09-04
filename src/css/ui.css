@@ -1450,11 +1450,12 @@ input[type=range]:focus::-ms-fill-upper {
 /* Create a custom checkbox */
 .cb-container .checkmark {
   position: absolute;
-  top: 0;
+  top: 50%;
   left: 0;
   height: 14px;
   width: 14px;
   background-color: #dddddd;
+  transform: translateY(-50%);
   transition: all 0.2s;
   cursor: pointer;
 }
