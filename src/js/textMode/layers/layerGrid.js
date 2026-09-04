@@ -2325,9 +2325,9 @@ LayerGrid.prototype = {
     var previewWidth = this.doc.gridWidth * this.doc.cellWidth;
     var previewHeight = this.doc.gridHeight * this.doc.cellHeight;
 
-    // need to fit into 80x80
+    // Keep the preview inside the 60px layer row, including its 6px margins.
     var maxWidth = 80;
-    var maxHeight = 80;
+    var maxHeight = 48;
     if(previewWidth > maxWidth) {
       previewHeight = (maxWidth / previewWidth) * previewHeight;
       previewWidth = maxWidth;
@@ -2339,13 +2339,8 @@ LayerGrid.prototype = {
     }
 
 
-    if(previewWidth < 1) {
-      previewWidth = 1;
-    }
-
-    if(previewHeight < 1) {
-      previewHeight = 1;
-    }
+    previewWidth = Math.max(1, Math.round(previewWidth));
+    previewHeight = Math.max(1, Math.round(previewHeight));
 
     if(this.previewCanvas.width != previewWidth || this.previewCanvas.height != previewHeight) {
       this.previewCanvas.width = previewWidth;

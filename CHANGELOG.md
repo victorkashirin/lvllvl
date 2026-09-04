@@ -10,6 +10,8 @@
 
 ### Fixed
 
+- Keep layer thumbnails contained vertically within their layer rows and visible
+  at extreme canvas ratios without repeatedly resetting their drawing contexts.
 - Preserve fractional tile-palette scales such as 25%, 50%, and 150% instead of
   truncating them to integer scale factors.
 - Snap tile-palette scaling to pixel-aligned steps so spacing remains even across

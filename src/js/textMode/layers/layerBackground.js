@@ -67,9 +67,9 @@ LayerBackground.prototype = {
     var previewWidth = this.width;
     var previewHeight = this.height;
 
-    // need to fit into 80x80
+    // Keep the preview inside the 60px layer row, including its 6px margins.
     var maxWidth = 80;
-    var maxHeight = 80;
+    var maxHeight = 48;
     if(previewWidth > maxWidth) {
       previewHeight = (maxWidth / previewWidth) * previewHeight;
       previewWidth = maxWidth;
@@ -79,6 +79,9 @@ LayerBackground.prototype = {
       previewWidth = (maxHeight / previewHeight) * previewWidth;
       previewHeight = maxHeight;
     }
+
+    previewWidth = Math.max(1, Math.round(previewWidth));
+    previewHeight = Math.max(1, Math.round(previewHeight));
 
     if(this.previewCanvas.width != previewWidth || this.previewCanvas.height != previewHeight) {
       this.previewCanvas.width = previewWidth;
