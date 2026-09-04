@@ -17,8 +17,8 @@
   while OSV Scanner remains responsible for known-vulnerability detection.
 - Include page state and observed browser failures when production startup
   checks time out, making engine-specific CI failures actionable.
-- Force Firefox's software WebGL fallback in headless Linux CI so the supported
-  browser can start the application when the runner has no GPU device.
+- Keep the 2D interface available when WebGL initialization fails instead of
+  aborting startup on GPU-less systems such as GitHub-hosted Linux runners.
 
 ## 0.496.8 - 2026-09-04
 

@@ -6,7 +6,9 @@ function observeLocalFailures(page, baseURL) {
   const localFailures = [];
   const localOrigin = new URL(baseURL).origin;
 
-  page.on("pageerror", (error) => localFailures.push(`page error: ${error.message}`));
+  page.on("pageerror", (error) =>
+    localFailures.push(`page error: ${error.stack ?? error.message}`),
+  );
   page.on("requestfailed", (request) => {
     if (new URL(request.url()).origin === localOrigin) {
       localFailures.push(`request failed: ${request.method()} ${request.url()}`);
@@ -93,38 +95,85 @@ test("production starts when external providers are offline", async ({ page }, t
   expect(localFailures, localFailures.join("\n")).toEqual([]);
 });
 
-test("Firefox creates a default project without first-party console issues", async ({ browser }, testInfo) => {
-  test.skip(testInfo.project.name !== "firefox-desktop");
+test("2D startup remains available when WebGL is unavailable", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "chromium-desktop");
 
-  const page = await browser.newPage({ baseURL: testInfo.project.use.baseURL });
-  const consoleIssues = [];
-  page.on("console", (message) => {
-    if (["warning", "error"].includes(message.type())) {
-      const location = message.location();
-      consoleIssues.push(
-        `${message.type()}: ${message.text()}${location.url ? ` (${location.url})` : ""}`,
-      );
-    }
+  const localFailures = observeLocalFailures(page, testInfo.project.use.baseURL);
+  await page.addInitScript(() => {
+    const originalGetContext = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function (type, ...args) {
+      if (["webgl", "webgl2", "experimental-webgl"].includes(type)) {
+        return null;
+      }
+      return originalGetContext.call(this, type, ...args);
+    };
   });
-  page.on("pageerror", (error) => consoleIssues.push(`page error: ${error.message}`));
-
   await page.route(/^https:\/\//, (route) =>
     route.fulfill({ body: "", contentType: "application/javascript", status: 200 }),
   );
+
   await page.goto("/", { waitUntil: "domcontentloaded" });
   await waitForStableStartPage(
     page,
     browserPolicy.performanceBudgets.startupMilliseconds,
-    consoleIssues,
+    localFailures,
   );
 
-  await page.locator("#start2D").click();
-  await page.getByText("OK", { exact: true }).last().click();
-  await expect(page.locator("#startPage")).toBeHidden();
-  await page.evaluate(
-    () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
-  );
-
-  expect(consoleIssues, consoleIssues.join("\n")).toEqual([]);
-  await page.close();
+  expect(await page.evaluate(() => ({ renderer: UI.renderer, enabled: UI.webGLEnabled }))).toEqual({
+    renderer: null,
+    enabled: false,
+  });
+  expect(localFailures, localFailures.join("\n")).toEqual([]);
 });
+
+test(
+  "Firefox creates a default project without unexpected first-party console issues",
+  async ({ browser }, testInfo) => {
+    test.skip(testInfo.project.name !== "firefox-desktop");
+
+    const page = await browser.newPage({ baseURL: testInfo.project.use.baseURL });
+    const consoleIssues = [];
+    page.on("console", (message) => {
+      if (["warning", "error"].includes(message.type())) {
+        const location = message.location();
+        consoleIssues.push(
+          `${message.type()}: ${message.text()}${location.url ? ` (${location.url})` : ""}`,
+        );
+      }
+    });
+    page.on("pageerror", (error) => consoleIssues.push(`page error: ${error.message}`));
+
+    await page.route(/^https:\/\//, (route) =>
+      route.fulfill({ body: "", contentType: "application/javascript", status: 200 }),
+    );
+    await page.goto("/", { waitUntil: "domcontentloaded" });
+    await waitForStableStartPage(
+      page,
+      browserPolicy.performanceBudgets.startupMilliseconds,
+      consoleIssues,
+    );
+
+    await page.locator("#start2D").click();
+    await page.getByText("OK", { exact: true }).last().click();
+    await expect(page.locator("#startPage")).toBeHidden();
+    await page.evaluate(
+      () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+    );
+
+    const webGLUnavailable = await page.evaluate(
+      () => UI.renderer === null && UI.webGLEnabled === false,
+    );
+    const unexpectedConsoleIssues = consoleIssues.filter(
+      (issue) =>
+        !(
+          webGLUnavailable &&
+          (issue.includes("THREE.WebGLRenderer: Error creating WebGL context") ||
+            issue.includes("Failed to create WebGL context: WebGL creation failed") ||
+            issue.includes("WebGL warning: <Create>"))
+        ),
+    );
+
+    expect(unexpectedConsoleIssues, unexpectedConsoleIssues.join("\n")).toEqual([]);
+    await page.close();
+  },
+);

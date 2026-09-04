@@ -13,7 +13,6 @@ const hasIncompatibleMacOS14WebKit =
 const configuredProjects = browserTestProjects.filter(
   (project) => !(hasIncompatibleMacOS14WebKit && project.browserName === "webkit"),
 );
-const needsFirefoxSoftwareWebGL = process.platform === "linux" && Boolean(process.env.CI);
 
 if (hasIncompatibleMacOS14WebKit) {
   console.warn(
@@ -41,16 +40,6 @@ export default defineConfig({
       ...devices[project.device],
       browserName: project.browserName,
       ...(project.viewport ? { viewport: project.viewport } : {}),
-      ...(needsFirefoxSoftwareWebGL && project.browserName === "firefox"
-        ? {
-            launchOptions: {
-              firefoxUserPrefs: {
-                "webgl.forbid-software": false,
-                "webgl.force-enabled": true,
-              },
-            },
-          }
-        : {}),
     },
   })),
   use: {

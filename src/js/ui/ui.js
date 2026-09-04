@@ -40,6 +40,8 @@ UI.isMobile = false;
 
 UI.statsEnabled = false;
 UI.isFullscreen = false;
+UI.renderer = null;
+UI.webGLEnabled = false;
 
 UI.onKeyDown = null;
 UI.onKeyUp = null;
@@ -502,8 +504,8 @@ var SHADOW_MAP_WIDTH = 2048, SHADOW_MAP_HEIGHT = 1024;
 var scene = null;
 
 UI.setWebGLEnabled = function(enabled) {
-  UI.webGLEnabled = enabled;
-  if(!enabled) {
+  UI.webGLEnabled = Boolean(enabled && UI.renderer);
+  if(!UI.webGLEnabled) {
     $('#WebGL-output').hide();
   } else {
     $('#WebGL-output').show();
@@ -513,13 +515,20 @@ UI.setWebGLEnabled = function(enabled) {
 
 UI.init3d = function() {
 
-  UI.renderer = new THREE.WebGLRenderer({ antialias: true });
+  try {
+    UI.renderer = new THREE.WebGLRenderer({ antialias: true });
+  } catch(error) {
+    UI.renderer = null;
+    UI.setWebGLEnabled(false);
+    return false;
+  }
+
   UI.renderer.setSize( window.innerWidth, window.innerHeight );
   UI.renderer.shadowMap.enabled = false;
   UI.renderer.shadowMap.type = THREE.PCFShadowMap;
 
   $('#WebGL-output').append(UI.renderer.domElement);
-//  UI.setWebGLEnabled(true);
+  UI.setWebGLEnabled(true);
 
   UI.stats = new Stats();
   UI.stats.setMode(0);
@@ -528,7 +537,7 @@ UI.init3d = function() {
   UI.stats.domElement.style.top = '0px';
   $('#Stats-output').append(UI.stats.domElement);
 
-return;
+  return true;
 }
 
 UI.webGLComponents = [];
@@ -548,7 +557,7 @@ UI.webGLRender = function() {
     return;
   }
 
-  if(UI.webGLEnabled === false) {
+  if(!UI.renderer || UI.webGLEnabled === false) {
     return;
   }
   for(var i = 0; i < UI.webGLComponents.length; i++) {
@@ -594,7 +603,9 @@ UI.resize = function() {
   }
  
 
-  UI.renderer.setSize(SCREEN_WIDTH, SCREEN_HEIGHT);    
+  if(UI.renderer) {
+    UI.renderer.setSize(SCREEN_WIDTH, SCREEN_HEIGHT);
+  }
 
   //this.layout();
   if(UI.primaryComponent && typeof UI.primaryComponent.resize != 'undefined') {
@@ -1283,7 +1294,7 @@ $(document).ready(function() {
 //      console.log(elapsed);
       g_lastUpdate = timestamp;
 
-      if(UI.statsEnabled) {
+      if(UI.statsEnabled && UI.stats) {
         UI.stats.update();
       }
       TWEEN.update();          
@@ -1363,5 +1374,4 @@ function clearInputFile(f){
     });
   });
 })([Element.prototype, Document.prototype, DocumentFragment.prototype]);
-
 

@@ -281,7 +281,17 @@ var ImageShaderEffects = function() {
 
 ImageShaderEffects.prototype = {
   init: function(args) {
-    this.renderer = new THREE.WebGLRenderer();
+    if(!UI.renderer) {
+      return false;
+    }
+
+    try {
+      this.renderer = new THREE.WebGLRenderer();
+    } catch(error) {
+      this.renderer = null;
+      return false;
+    }
+
     this.renderer.autoClear = false;    
     this.renderer.setSize( this.width, this.height );
     this.camera = new THREE.OrthographicCamera( this.width / - 2, 
@@ -294,6 +304,7 @@ ImageShaderEffects.prototype = {
 
     this.textureCanvas = document.createElement('canvas');
 
+    return true;
   },
 
   resize: function() {
