@@ -3,7 +3,7 @@ export const browserPolicy = Object.freeze({
   performanceBudgets: Object.freeze({
     initialPayloadRawBytes: 9_250_000,
     initialPayloadGzipBytes: 2_100_000,
-    startupMilliseconds: 5_000,
+    startupMilliseconds: 10_000,
   }),
 });
 

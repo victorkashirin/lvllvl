@@ -15,6 +15,8 @@
 - Parse colorized development-server output reliably in CI, and leave license
   exception enforcement to the repository's exemption-aware dependency policy
   while OSV Scanner remains responsible for known-vulnerability detection.
+- Allow up to ten seconds for production startup across supported engines so
+  Firefox remains covered on slower shared Linux runners.
 
 ## 0.496.8 - 2026-09-04
 
