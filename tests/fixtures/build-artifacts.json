@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
-  "releaseVersion": "0.496.6",
+  "releaseVersion": "0.496.7",
   "artifacts": {
     "index.html": {
-      "bytes": 2183,
-      "sha256": "24d8b09564ebd98494564594960628e248f2c025af876a7862fc44411625d986"
+      "bytes": 2173,
+      "sha256": "fbe265c8cb6584f0ade05e04a875423a54e34b1dc4203b1b4086252c29704371"
     },
     "c64/index.html": {
-      "bytes": 2200,
-      "sha256": "51508e893bffa536b118737e0d17d8281c3f2531c1366458174d5031bba2c54e"
+      "bytes": 2190,
+      "sha256": "62e8ed0910cfc6f317167dab0c6b31ad19dd35d0427b6e957cdcfbd19b6732fc"
     },
     "css/style.css": {
       "bytes": 135310,
@@ -23,16 +23,36 @@
       "sha256": "391ca4ab08150fc3a3d992b0c17e7cba145afa65f6f76e7ec61fe4b0e4061daf"
     },
     "js/main.js": {
-      "bytes": 3450547,
-      "sha256": "0e9b489b5e828efe11ebc264f5b73ef6b80a1d247acd585b8a147964e646e183"
+      "bytes": 3306264,
+      "sha256": "2435aa97d4d93caf0b95e4ef528708816fc623b9b94662c5899dfc996bd4388a"
     },
     "js/main.js.map": {
-      "bytes": 11089245,
-      "sha256": "efa01dc0cfea46d8ec146341d0a9dd40f8238c43aef9b1d89cb5a1e687f62ff7"
+      "bytes": 10548510,
+      "sha256": "d7e991e469e3ee7b8b0dbd29458b6694c29f90ea102c8664f8b8b947d95fa751"
+    },
+    "js/bootstrap.mjs": {
+      "bytes": 897,
+      "sha256": "6092e2135717239b14d9bbf98276c123532a5365a9d2460f979c4d5e3247b23c"
+    },
+    "js/modules/featureRegistry.mjs": {
+      "bytes": 3139,
+      "sha256": "58a73b4cbfa1371eb9e9bf4d0e6b05376c085c39ebb0db0a94c61f04e674a743"
+    },
+    "js/modules/imageImportFeature.mjs": {
+      "bytes": 1311,
+      "sha256": "e7c9a210c3237f5293959fa33568d99205d1b183c9e1cc7c10de2aab6d6dd976"
+    },
+    "js/features/image-import.js": {
+      "bytes": 145321,
+      "sha256": "7c573e83558315d26e99ef887514bf0f0b24a2e43fbe4a565f05fc778cbacb24"
+    },
+    "js/features/image-import.js.map": {
+      "bytes": 543272,
+      "sha256": "bcc852d18dcab78488f541c9a7f0a35b2ecf5130d645f82f8d397f0d8dbd8806"
     },
     "js/html/htmlcache.js": {
-      "bytes": 375803,
-      "sha256": "ea4f803effee1c776af54da2aa4184955ad8100870eef2cf6c6ec067b5b56a33"
+      "bytes": 375857,
+      "sha256": "b06a35bf8b317ab528bda2303d5a77b01b860b74d457fc5df215f0fe8f632c1f"
     }
   }
 }

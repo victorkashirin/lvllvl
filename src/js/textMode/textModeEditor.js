@@ -295,7 +295,8 @@ TextModeEditor.prototype = {
   init: function() {
     var _this = this;
 
-    
+    this.importImage = g_app.getFeatureFacade('imageImport', this);
+
     this.colorPaletteManager = new ColorPaletteManager();
     this.colorPaletteManager.init(this);
 
@@ -353,9 +354,6 @@ TextModeEditor.prototype = {
       _this.frames.init(_this);
       _this.frames.buildInterface(UI('framesPanel'));
       _this.frames.buildMobileInterface(UI('framesMobilePanel'));
-
-        _this.importImage = new ImportImage();
-        _this.importImage.init(_this);
 
         _this.importAssembly = new ImportAssembly();
         _this.importAssembly.init(_this);

@@ -284,7 +284,29 @@ The repository also embeds many third-party libraries, fonts, character data, em
 
 ### P1.4 Global architecture makes every change high-risk
 
-`src/index.html` references hundreds of scripts in a manually significant order. First-party code does not define an ES module graph, and shared mutable globals are pervasive; `g_app` alone is referenced throughout the application. Several individual files exceed 4,000 lines.
+**Status: Partially addressed on 2026-09-04.** The migration foundation is now in
+place: a native ES-module composition root, a single-flight feature registry,
+explicit legacy adapters, and parser-enforced dependency boundaries prevent new
+modules from accessing `g_app`, browser hosts, `globalThis`, or `eval` outside the
+composition root. The first bounded seam is complete: the approximately 380 KB
+image-import subsystem is no longer part of the initial application bundle, loads
+once on first activation, keeps its existing menu/mobile/drag-and-drop contract
+through a narrow facade, reports load failures, and can retry them. Source and
+production-browser tests cover module boundaries, concurrent activation, retry,
+legacy facade replacement, and the absence of the optional bundle during startup.
+
+**Remaining work:** migrate persistence and document lifecycle, command/history and
+editor state, the remaining import/export systems, authentication and remote
+providers, emulator/assembler integration, and UI routing behind explicit module
+interfaces. Continue splitting optional subsystems from the initial payload and
+reducing direct `g_app` access. This item can be considered fixed when these major
+seams are governed by the module boundary rules, optional features are loaded on
+demand, and legacy globals are confined to documented composition adapters.
+
+**Original finding (2026-09-03):** `src/index.html` referenced hundreds of scripts
+in a manually significant order. First-party code did not define an ES module graph,
+and shared mutable globals were pervasive; `g_app` alone was referenced throughout
+the application. Several individual files exceeded 4,000 lines.
 
 The production build eagerly bundles approximately 7.7 MB of JavaScript before considering feature usage. Heavy editors, exporters, assemblers, emulators, and integrations are paid for up front or loaded through ad hoc paths.
 

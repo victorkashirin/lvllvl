@@ -2,6 +2,31 @@
 
 ## Unreleased
 
+## 0.496.7 - 2026-09-04
+
+### Changed
+
+- Add a native ES-module composition root and single-flight feature registry with
+  parser-enforced dependency boundaries, retryable activation, and narrow adapters
+  for the remaining legacy globals.
+- Move the roughly 380 KB image-import subsystem out of the initial application
+  bundle and load it once on first use while preserving existing menu, mobile,
+  drag-and-drop, animation, and tile-palette callers through a compatibility facade.
+
+### Fixed
+
+- Keep failed lazy feature loads retryable and show an actionable persistent error
+  instead of leaving image-import callers with an unhandled load failure.
+- Limit Vite's development dependency scan to the primary HTML entry so the
+  C64 entry's base-relative bootstrap URL is not mistaken for a package import,
+  give each local rebuild a fresh asset revision, and disable caching for locally
+  rebuilt assets so stale HTML fragments and styles cannot survive a reload.
+- Close icon elements explicitly in image-import and frame HTML fragments so
+  icon-font styling cannot leak into dialog labels and controls.
+- Make ES-module boundary checks distinguish unresolved globals from local
+  bindings and property names, and include `.mjs` modules plus module-relative
+  `import.meta.url` references in runtime and asset request discovery.
+
 ## 0.496.6 - 2026-09-04
 
 ### Changed

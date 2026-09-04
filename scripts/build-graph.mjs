@@ -284,13 +284,6 @@ export const buildGraph = {
       "js/textMode/import/importCharPad.js",
       "js/textMode/import/importSpritePad.js",
       "js/textMode/import/importSpr.js",
-      "js/textMode/import2d/importColorUtils.js",
-      "js/textMode/import2d/basicImport.js",
-      "js/textMode/import2d/mobileImport.js",
-      "js/textMode/import2d/shaderImport2.js",
-      "js/textMode/import2d/importImage.js",
-      "js/textMode/import2d/importImageMobile.js",
-      "js/textMode/import2d/shaderImportEditor.js",
       "js/textMode/export/exportFrameImage.js",
       "js/textMode/export/exportImage.js",
       "js/textMode/export/exportGif.js",
@@ -407,6 +400,37 @@ export const buildGraph = {
       "js/c64/c64OnscreenKeyboard.js",
       "js/c64/roms/charROM.js",
     ],
+  },
+  "js/features/image-import.js": {
+    kind: "javascript",
+    minify: true,
+    sourceMap: true,
+    inputs: [
+      "js/textMode/import2d/importColorUtils.js",
+      "js/textMode/import2d/basicImport.js",
+      "js/textMode/import2d/mobileImport.js",
+      "js/textMode/import2d/shaderImport2.js",
+      "js/textMode/import2d/importImage.js",
+      "js/textMode/import2d/importImageMobile.js",
+      "js/textMode/import2d/shaderImportEditor.js",
+    ],
+  },
+};
+
+// These files form the first native ES-module dependency graph. The composition
+// root is the only module allowed to touch browser globals; feature adapters get
+// their legacy dependencies through explicit constructor parameters instead.
+export const moduleGraph = {
+  entry: "js/bootstrap.mjs",
+  files: {
+    "js/bootstrap.mjs": "js/bootstrap.mjs",
+    "js/modules/featureRegistry.mjs": "js/modules/featureRegistry.mjs",
+    "js/modules/imageImportFeature.mjs": "js/modules/imageImportFeature.mjs",
+  },
+  globalAccess: ["js/bootstrap.mjs"],
+  layers: {
+    "js/bootstrap.mjs": ["js/modules/"],
+    "js/modules/": ["js/modules/"],
   },
 };
 

@@ -21,7 +21,7 @@ import { rollup } from "rollup";
 import { minify as minifyJavaScript } from "terser";
 
 import { browserPolicy } from "./browser-policy.mjs";
-import { buildGraph, copiedScripts } from "./build-graph.mjs";
+import { buildGraph, copiedScripts, moduleGraph } from "./build-graph.mjs";
 import {
   assetDirectories,
   buildDirectory,
@@ -307,9 +307,10 @@ async function copyRuntimeAssets() {
   }
 }
 
-async function copyStandaloneScripts() {
-  for (const [output, source] of Object.entries(copiedScripts)) {
+async function copyDeclaredScripts(scripts) {
+  for (const [output, source] of Object.entries(scripts)) {
     const content = renderVersion(await readFile(path.join(sourceRoot, source), "utf8"));
+    await mkdir(path.join(buildRoot, path.posix.dirname(output)), { recursive: true });
     await writeFile(path.join(buildRoot, output), `${content}\n`);
   }
 }
@@ -403,7 +404,8 @@ async function build() {
     await copyRuntimeAssets();
     await buildHtmlCache();
     await buildDeclaredGraph();
-    await copyStandaloneScripts();
+    await copyDeclaredScripts(copiedScripts);
+    await copyDeclaredScripts(moduleGraph.files);
 
     await cp(path.join(sourceRoot, "manifest.json"), path.join(buildRoot, "manifest.json"), {
       force: true,

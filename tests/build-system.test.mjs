@@ -24,6 +24,15 @@ function delay(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
+function assetVersion(html) {
+  const versions = [
+    ...html.matchAll(/(?:src|href)=["'][^"']+[?&]v=([^&"']+)/g),
+  ].map((match) => match[1]);
+  assert.ok(versions.length > 0, "development HTML has no versioned assets");
+  assert.equal(new Set(versions).size, 1, "development assets use different revisions");
+  return versions[0];
+}
+
 async function waitForCondition(condition, timeout, message) {
   const deadline = Date.now() + timeout;
   while (Date.now() < deadline) {
@@ -142,7 +151,12 @@ test("the development server rebuilds once and remains available", { timeout: 60
     await ready;
     await delay(2_000);
     assert.equal((output.match(/Building lvllvl/g) ?? []).length, 1, output);
-    assert.equal((await fetch(devUrl)).status, 200, output);
+    assert.doesNotMatch(output, /Failed to run dependency scan|could not be resolved/, output);
+    const initialResponse = await fetch(devUrl);
+    assert.equal(initialResponse.status, 200, output);
+    assert.equal(initialResponse.headers.get("cache-control"), "no-store", output);
+    const initialVersion = assetVersion(await initialResponse.text());
+    assert.match(initialVersion, /-dev-/);
 
     await writeFile(rebuildTrigger, "trigger a source watcher event\n");
     await waitForCondition(
@@ -153,7 +167,9 @@ test("the development server rebuilds once and remains available", { timeout: 60
     await delay(2_000);
 
     assert.equal((output.match(/Building lvllvl/g) ?? []).length, 2, output);
-    assert.equal((await fetch(devUrl)).status, 200, output);
+    const rebuiltResponse = await fetch(devUrl);
+    assert.equal(rebuiltResponse.status, 200, output);
+    assert.notEqual(assetVersion(await rebuiltResponse.text()), initialVersion);
   } finally {
     clearTimeout(startupTimeout);
     if (!exited) {

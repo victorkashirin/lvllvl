@@ -22,7 +22,28 @@ let rebuildTimer;
 let rebuildInProgress = false;
 let rebuildQueued = false;
 let server;
+let servedPackageVersion;
+let developmentAssetVersion;
+let developmentRevision = 0;
 const inputWatchers = [];
+
+function refreshDevelopmentAssetVersion(packageJsonContents) {
+  const packageVersion = JSON.parse(packageJsonContents).version;
+  if (typeof packageVersion !== "string" || packageVersion.trim() === "") {
+    throw new Error("package.json must contain the sole release version");
+  }
+
+  servedPackageVersion = packageVersion;
+  developmentRevision++;
+  developmentAssetVersion =
+    `${packageVersion}-dev-${process.pid}-${Date.now()}-${developmentRevision}`;
+}
+
+function versionDevelopmentAssetUrls(content) {
+  return content
+    .split(`v=${servedPackageVersion}`)
+    .join(`v=${developmentAssetVersion}`);
+}
 
 async function rebuild() {
   if (rebuildInProgress) {
@@ -35,6 +56,8 @@ async function rebuild() {
     rebuildQueued = false;
     try {
       await build();
+      const packageJsonContents = await readFile(packageJsonPath, "utf8");
+      refreshDevelopmentAssetVersion(packageJsonContents);
       // Vite resolves the symlinked build root when it starts. Restarting makes
       // it serve the newly published version before clients reload.
       await server.restart();
@@ -53,14 +76,40 @@ function queueRebuild() {
 
 await build();
 let packageJsonContents = await readFile(packageJsonPath, "utf8");
+refreshDevelopmentAssetVersion(packageJsonContents);
 
 server = await createServer({
   appType: "spa",
   configFile: false,
+  plugins: [
+    {
+      name: "lvllvl-development-asset-version",
+      enforce: "pre",
+      transformIndexHtml(html) {
+        return versionDevelopmentAssetUrls(html);
+      },
+      transform(code, id) {
+        if (!/\.mjs(?:\?|$)/.test(id)) return null;
+        const transformed = versionDevelopmentAssetUrls(code);
+        return transformed === code ? null : { code: transformed, map: null };
+      },
+    },
+  ],
+  optimizeDeps: {
+    // The C64 entry relies on its <base> element for browser URL resolution.
+    // Scan only the primary entry so Vite does not mistake that relative module
+    // URL for a package import while pre-bundling development dependencies.
+    entries: ["index.html"],
+  },
   root: buildRoot,
   server: {
     fs: {
       allow: [projectRoot],
+    },
+    // Generated asset URLs receive a unique development revision above, and
+    // responses stay non-cacheable so reloads cannot reuse a stale build.
+    headers: {
+      "Cache-Control": "no-store",
     },
     host: "127.0.0.1",
     port: devPort,

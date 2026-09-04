@@ -22,9 +22,12 @@ version pointer only after the build succeeds, verifies the declared source grap
 golden artifacts, and runs production-browser tests. The sole production HTML entry
 point is `src/index.html`; Rollup consumes the ordered legacy-script graph in
 `scripts/build-graph.mjs`, while copied and runtime assets are declared in
-`scripts/build-config.mjs`. Release source maps are published beside both JavaScript
-bundles and include the original sources. After an intentional bundle change, inspect
-the generated output and run `npm run artifacts:update` to accept its new hashes.
+`scripts/build-config.mjs`. The native module composition root, lazy-feature
+contract, and dependency rules are documented in
+[`docs/architecture.md`](docs/architecture.md). Release source maps are published
+beside generated JavaScript bundles and include the original sources. After an
+intentional bundle change, inspect the generated output and run
+`npm run artifacts:update` to accept its new hashes.
 
 ## Browser support
 

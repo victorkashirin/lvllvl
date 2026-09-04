@@ -80,6 +80,7 @@ var Editor = function() {
   this.dbgFont = null;
 
   this.features = {};
+  this.featureRegistry = null;
 
   this.projectNavigator = null;
   this.projectNavigatorMobile = null;
@@ -126,6 +127,9 @@ Editor.prototype = {
     this.setEnabled('textmode3d', true);
 
     if(typeof args != 'undefined') {
+      if(typeof args.features != 'undefined') {
+        this.featureRegistry = args.features;
+      }
       if(typeof args.type != 'undefined') {
         this.isElectron = args.type == 'electron';
       }
@@ -592,6 +596,41 @@ var firebaseConfig = {
 
     return this.features[feature];
 
+  },
+
+  activateFeature: function(feature, context) {
+    if(this.featureRegistry == null) {
+      return Promise.reject(new Error('No feature registry is configured'));
+    }
+    return this.featureRegistry.activate(feature, context);
+  },
+
+  getFeatureFacade: function(feature, context) {
+    if(this.featureRegistry == null) {
+      throw new Error('No feature registry is configured');
+    }
+    return this.featureRegistry.createFacade(feature, context);
+  },
+
+  reportFeatureError: function(feature, error) {
+    console.error('Could not load ' + feature, error);
+
+    var message = document.getElementById('featureLoadError');
+    if(message == null) {
+      message = document.createElement('div');
+      message.id = 'featureLoadError';
+      message.style.cssText = 'position:fixed;left:16px;right:16px;bottom:16px;' +
+        'z-index:100000;padding:12px;background:#8b1e1e;color:#fff;border-radius:3px';
+      document.body.appendChild(message);
+    }
+    message.textContent = 'Could not load ' + feature + '. Check your connection and try again.';
+  },
+
+  clearFeatureError: function() {
+    var message = document.getElementById('featureLoadError');
+    if(message != null) {
+      message.parentNode.removeChild(message);
+    }
   },
 
   initModeEvents: function() {

@@ -197,6 +197,7 @@ export const runtimeFeatureRequests = {
   ],
   gifExport: ["lib/gif/gif.worker.js"],
   googleDrive: ["lib/google-api/api.js"],
+  imageImport: ["js/features/image-import.js"],
   mobileStyles: ["css/ui-mobile.css"],
   musicScripting: [
     "lib/codemirror/addon/dialog/dialog.js",
