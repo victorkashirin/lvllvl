@@ -3,12 +3,12 @@
   "releaseVersion": "0.496.8",
   "artifacts": {
     "index.html": {
-      "bytes": 2173,
-      "sha256": "068293be7564a551a1d3ca2369ceab9e2a6b4c89af86434eebe7a17f60ea572b"
+      "bytes": 2172,
+      "sha256": "1fad5ec870eb5538b53fdf731cd7a06ebdabcfcfb4e06ccb50f06705f11b6220"
     },
     "c64/index.html": {
-      "bytes": 2190,
-      "sha256": "662d9e388b8241bfb8c4d1119573f0753842444c65fcaf1145949e09f433f5a5"
+      "bytes": 2189,
+      "sha256": "eaa31e6090d89d79a5fc088113fcb4426c8d923ed109b6c73ce64dcd0ca3b755"
     },
     "css/style.css": {
       "bytes": 135310,

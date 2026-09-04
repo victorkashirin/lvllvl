@@ -646,6 +646,16 @@ await verifyCssReferences("css/style.css");
 await verifyCssReferences("css/ui-mobile.css");
 
 const manifest = JSON.parse(await readFile(path.join(buildRoot, "manifest.json"), "utf8"));
+if (!indexHtml.includes('<link rel="manifest" href="manifest.json">')) {
+  throw new Error("The web manifest URL must remain relative for repository Pages deployments");
+}
+for (const field of ["start_url", "scope"]) {
+  if (typeof manifest[field] !== "string" || manifest[field].startsWith("/")) {
+    throw new Error(
+      `manifest.json ${field} must remain relative for repository Pages deployments`,
+    );
+  }
+}
 for (const icon of manifest.icons ?? []) {
   await verifyOutputReference(icon.src, "", "manifest.json");
 }

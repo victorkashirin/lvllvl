@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Fixed
+
+- Keep the web app manifest, install scope, and start URL relative so deployments
+  work from repository subpaths such as `example.com/lvllvl/`.
+- Skip Playwright's incompatible bundled WebKit revision on macOS 14 while
+  retaining WebKit coverage on supported CI hosts.
+
 ## 0.496.8 - 2026-09-04
 
 ### Fixed
