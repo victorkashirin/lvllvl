@@ -526,27 +526,6 @@ GridView2d.prototype = {
     }
     return;
 
-
-
-    var x = event.pageX - $('#' + this.canvas.id).offset().left;
-    var y = event.pageY - $('#' + this.canvas.id).offset().top;
-
-
-    var tile = 0;
-    var color = 0;
-    var cell = this.xyToCell(x, y);
-    if(cell) {
-      var cellData = layer.getCell({ x: cell.x, y: cell.y });
-
-      tile = cellData.t;
-      color = cellData.fc;
-    }      
-    var _this = this;
-    this.editor.tools.drawTools.showPopup(x, y, tile, color, function() {
-      _this.setMouseCursor();
-    });
-    return;
-
   },
 
   setButtons: function(event) {
@@ -807,34 +786,28 @@ GridView2d.prototype = {
         UI.setCursor('pixel');
         drawTools.pixelDraw.mouseMove(this, event, x, y);      
         return;
-      break;
 
       
       case 'charpixel':
         drawTools.pixelCharacterDraw.mouseMove(this, x, y);
         return;
-      break;
 
       case 'linesegment':
         drawTools.lineSegmentDraw.mouseMove(this, x, y);
         return;
-        break;
 
       case 'invert':
         drawTools.invertTool.mouseMove(this, x, y);
         return;
-        break;
 
       case 'corners':
         drawTools.cornersTool.mouseMove(this, x, y);
         return;
-        break;
 
 
       case 'select':
         drawTools.select.mouseMove(this, event);
         return;
-      break;
       case 'pixelselect':
       case 'pixelmove':
         drawTools.pixelSelect.mouseMove(this, event);  
@@ -843,7 +816,6 @@ GridView2d.prototype = {
       case 'move':
         drawTools.select.mouseMove(this, event);
         return;
-      break;
     }
 
     var tool = drawTools.tool;
@@ -1638,7 +1610,6 @@ GridView2d.prototype = {
         case 'pixelselect':
           UI.setCursor('crosshair');
           break;
-        break;
         case 'pixel':
         case 'charpixel':
         case 'linesegment':

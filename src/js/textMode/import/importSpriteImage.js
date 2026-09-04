@@ -183,10 +183,6 @@ ImportSpriteImage.prototype = {
 
   setCanvasSize: function() {
     return;
-    this.canvas.width = 200;
-    this.canvas.height = 200;
-
-    this.context = this.canvas.getContext('2d');
   },
 
   initEvents: function() {

@@ -7,7 +7,6 @@ var UI = function(componentID) {
   } else {
 
     throw 'UI: Unknown component: ' + componentID;
-    return null;
   }
 }
 
@@ -530,69 +529,6 @@ UI.init3d = function() {
   $('#Stats-output').append(UI.stats.domElement);
 
 return;
-
-  scene = new THREE.Scene();
-
-
-  var geometry = new THREE.BoxGeometry( 1, 1, 1 );
-  var material = new THREE.MeshBasicMaterial( { color: 0x00ff00 } );
-  var cube = new THREE.Mesh( geometry, material );
-  scene.add( cube );
-
-  $('#WebGL-output').append(UI.renderer.domElement);
-
-  
-/*
-  UI.stats = new Stats();
-  UI.stats.setMode(0);
-  UI.stats.domElement.style.position = 'absolute';
-  UI.stats.domElement.style.right = '0px';
-  UI.stats.domElement.style.top = '0px';
-  $('#Stats-output').append(UI.stats.domElement);
-*/
-
-// temporary lights..
-  var light = new THREE.DirectionalLight( 0x0a0a0a, 1);
-
-  light.position.set( -800, 400, -1500 );
-  light.target.position.set( 0, 0, 0 );
-  light.castShadow = false;
-  light.shadow = new THREE.LightShadow( new THREE.PerspectiveCamera( 50, 1, 1200, 2500 ) );
-  light.shadow.bias = -0.00007;
-  light.shadow.mapSize.width = SHADOW_MAP_WIDTH * 2;
-  light.shadow.mapSize.height = SHADOW_MAP_HEIGHT * 2;
-  light.shadow.camera.zoom = 12;
-
-  scene.add( light );
-
-
-  var light = new THREE.AmbientLight( 0x555555 ); // soft white light
-  scene.add( light );
-
-
-  var light = new THREE.DirectionalLight( 0xffffff, 1);
-
-  light.position.set( 1000, 1000, 1500 );
-  light.target.position.set( 0, 0, 0 );
-  light.castShadow = false;
-  light.shadow = new THREE.LightShadow( new THREE.PerspectiveCamera( 50, 1, 1200, 2500 ) );
-  light.shadow.bias = -0.00007;
-  light.shadow.mapSize.width = SHADOW_MAP_WIDTH * 2;
-  light.shadow.mapSize.height = SHADOW_MAP_HEIGHT * 2;
-  light.shadow.camera.zoom = 12;
-
-  scene.add( light );
-
-  var lights = [];
-  lights[ 0 ] = new THREE.PointLight( 0xffffff, 1, 0 );
-  lights[ 1 ] = new THREE.PointLight( 0xffffff, 0.8, 0 );
-  lights[ 2 ] = new THREE.PointLight( 0xffffff, 1, 0 );
-
-  lights[ 0 ].position.set( 0, 200, 0 );
-  lights[ 1 ].position.set( 100, 200, 100 );
-  lights[ 2 ].position.set( - 100, - 200, - 100 );
-
-  UI.setWebGLEnabled(true);
 }
 
 UI.webGLComponents = [];

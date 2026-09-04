@@ -1015,52 +1015,6 @@ Frames.prototype = {
 
 
 return;
-    var colorPalette = this.editor.colorPaletteManager.getCurrentColorPalette();
-    var bgColor = this.frames[frame].bgColor;
-
-    var borderColor = this.frames[frame].borderColor;
-
-    if(colorPalette) {
-      if(typeof bgColor == 'undefined') {
-        bgColor = colorPalette.getDefaultBackgroundColor();
-
-        this.frames[frame].bgColor = bgColor;
-      }
-
-      if(typeof borderColor == 'undefined') {
-        borderColor = colorPalette.getDefaultBorderColor();
-        this.frames[frame].borderColor = borderColor;
-      }
-    }
-
-    this.editor.tools.currentBackgroundColor = bgColor;
-//    this.editor.grid.setBackgroundColor(bgColor);
-
-    //this.editor.grid.setBorderColor(borderColor);
-
-    if(bgColor !== this.editor.colorPaletteManager.noColor  && bgColor >= 0) {
-//      var colorHex = colorPalette.getHexString(bgColor);
-//      $('.backgroundColor').css('background-color', '#' + colorHex);
-      this.setBackgroundColor(bgColor, false);
-    }
-
-    if(borderColor !== this.editor.colorPaletteManager.noColor && borderColor >= 0) {
-//      var colorHex = colorPalette.getHexString(bgColor);
-      this.setBorderColor(borderColor, false);
-
-    }
-    // TODO: readd this..
-    if(this.editor.type == '2d') {
-      this.editor.grid.update();
-//      this.editor.grid.grid2d.update();
-//      this.editor.layers.updateAllLayerPreviews();
-    }
-
-    var settings = g_app.doc.getDocRecord('/settings');
-    settings.data.currentFrame = this.currentFrame;
-
-
-    this.frameTimeline.draw();
 
   },
 /*

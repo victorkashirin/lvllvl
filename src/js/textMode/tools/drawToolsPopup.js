@@ -228,88 +228,6 @@ DrawToolsPopup.prototype = {
 
     return false;
 
-    var gap =  (this.charWidth * this.charScale + this.charMargin) * 2;
-
-    var recentCharacters = this.editor.currentTile.recentCharacters;
-
-    var rightClickCharacter = this.highlightRightClickCharacter;
-    var character = this.highlightCharacter;
-    var recentCharacter = this.highlightRecentCharacter;
-
-    var rightClickColor = this.highlightRightClickColor;
-    var color = this.highlightColor;
-
-
-    this.highlightRightClickCharacter = -1;
-    this.highlightRecentCharacter = -1;
-    this.highlightColor = -1;
-    this.highlightCharacter = -1;
-    this.highlightRightClickColor = -1;
-
-    // recent characters
-    if(y >= this.recentCharactersY && y < this.recentCharactersY + this.charHeight * this.charScale) {
-      if(x >= this.recentCharactersX && x < this.recentCharactersX + this.charWidth * this.charScale) {
-        this.highlightRightClickCharacter = this.character;
-        return this.highlightRightClickCharacter != rightClickCharacter;
-      }
-
-      if(x >= this.recentCharactersX + gap) {
-        x = x - (this.recentCharactersX +  gap);
-
-        var index = Math.floor(x / (this.charWidth * this.charScale + this.charMargin))
-        if(index < recentCharacters.length) {
-          this.highlightRecentCharacter = index;
-          return this.highlightRecentCharacter != recentCharacter;
-        }
-      }
-    }
-
-    // right click color
-    if(y >= this.rightClickColorY && y < this.rightClickColorY + this.colorHeight + this.colorMargin) {
-      if(x >= this.rightClickColorX && x < this.rightClickColorX + this.colorWidth + this.colorMargin) {
-        this.highlightRightClickColor = this.color;
-        return this.highlightRightClickColor != color;
-      }
-
-    }
-
-    // color palette
-
-    var colorPaletteHeight = Math.ceil(this.colorCount / this.colorsAcross) * (this.colorHeight + this.colorMargin);
-    var colorPaletteWidth = this.colorsAcross * (this.colorWidth + this.colorMargin);
-
-    if(y >= this.colorPaletteY && y < this.colorPaletteY + colorPaletteHeight) {
-      if(x >= this.colorPaletteX && x < this.colorPaletteX + colorPaletteWidth) {
-        var xIndex = Math.floor((x - this.colorPaletteX) / (this.colorWidth + this.colorMargin));
-        var yIndex = Math.floor((y - this.colorPaletteY) / (this.colorHeight + this.colorMargin));
-        var index = xIndex + yIndex * this.colorsAcross;
-        if(index < this.colorCount) {
-          this.highlightColor = index;
-          return this.highlightColor != color;
-        }
-      }
-    }
-
-    var charPaletteHeight = this.charactersDown * (this.charHeight * this.charScale + this.charMargin);
-    var charPaletteWidth = this.charactersAcross * (this.charWidth * this.charScale + this.charMargin);
-    if(y >= this.charPaletteY && y < this.charPaletteY + charPaletteHeight) {
-      if(x >= this.charPaletteX && x <= this.charPaletteX + charPaletteWidth) {
-
-        var xIndex = Math.floor((x - this.charPaletteX) / (this.charWidth * this.charScale + this.charMargin));
-        var yIndex = Math.floor((y - this.charPaletteY) / (this.charHeight * this.charScale + this.charMargin));
-        var index = xIndex + yIndex * this.charactersAcross;
-        this.highlightCharacter = index;
-        return this.highlightCharacter != character;
-      }
-    }
-
-
-    return this.highlightRecentCharacter != recentCharacter
-        || this.highlightRightClickColor != color
-        || this.highlightRightClickCharacter != rightClickCharacter
-        || this.highlightCharacter != character
-        || this.highlightColor != color;
-
 
   },
 
@@ -539,79 +457,13 @@ DrawToolsPopup.prototype = {
     this.callback = callback;
 
     var width = 180;
-    height = 210;
+    var height = 210;
     this.uiComponent.setDimensions(width, height);
     UI.showPopup("drawToolsPopup", x, y);
 
     this.setScreenMode();
 
     return;
-    console.error('show popup');
-    this.editor.grid.setCursorEnabled(false);
-
-
-    this.character = character;
-    this.color = color;
-
-    // work out the dimensions of the popup
-    var height = 0;
-
-    var tileSet = this.editor.tileSetManager.getCurrentTileSet();
-    var colorPalette = this.editor.colorPaletteManager.getCurrentColorPalette();
-
-    this.charWidth = tileSet.getTileWidth();
-    this.charHeight = tileSet.getTileHeight();
-
-    this.charactersAcross = 16;
-    this.charactersDown = 8;
-
-    this.charScale = 2;
-    if(this.charHeight >= 16) {
-      this.charScale = 1;
-    }
-
-    this.charMargin = 2;
-
-    this.colorCount = colorPalette.getColorCount();
-    this.colorWidth = 16;
-    this.colorHeight = 16;
-    this.colorMargin = 2;
-    this.colorsAcross = colorPalette.getColorsAcross();
-    this.colorsDown = colorPalette.getColorsDown();
-
-    // tools
-    height += 72;
-
-    // recent characters
-    height += this.charHeight * this.charScale + this.charMargin;
-    height += 10;
-
-    // recent colors
-    height += this.colorHeight + this.colorMargin;
-    height += 10;
-
-    // color palette
-    height += this.colorsDown * (this.colorHeight + this.colorMargin);
-
-    height += this.charactersDown * (this.charHeight * this.charScale + this.charMargin);
-
-    // instructions text
-    height += 20;
-//    $('#drawPopupMenu').css('height', height + 'px');
-
-    var width = 180;
-    height = 210;
-    this.uiComponent.setDimensions(width, height);
-    UI.showPopup("drawToolsPopup", x, y);
-
-
-    this.highlightRecentCharacter = false;
-    this.highlightRightClickCharacter  = false;
-    this.highlightRightClickColor = false;
-    this.highlightRecentColor = false;
-
-
-    this.drawCanvas();
   },
 
 

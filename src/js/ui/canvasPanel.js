@@ -124,33 +124,6 @@ UI.CanvasPanel = function() {
   this.render = function() {
     return;
 
-    if(this.left === false) {
-      this.resize();
-    }
-
-    if(this.width == 0 || this.height == 0) {
-      return;
-    }
-
-
-    this.canvas = this.getCanvas();
-
-    if(this.width != this.canvas.style.width || this.height != this.canvas.style.height) {
-
-      if(this.width != 0 && this.height != 0) {
-        this.canvas.style.width = this.width;
-        this.canvas.style.height = this.height;
-
-        this.canvas.width = this.width * UI.devicePixelRatio;
-        this.canvas.height = this.height * UI.devicePixelRatio;
-
-        this.scale = UI.devicePixelRatio;
-
-      }
-    }
-
-    this.trigger('render', this.left, this.top, this.width, this.height);
-
     /*
     // need to work out the size
     var element = $('#' + this.id);

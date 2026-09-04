@@ -390,6 +390,21 @@ no exemption remains solely because a version was never investigated.
 - Remove dead code and unused vendor files only after reachability and browser tests exist.
 - Define privacy and retention behavior for local documents and optional cloud integrations.
 
+## P2.3: keep the default-project console actionable
+
+**Status: First-party issues fixed on 2026-09-04.** The Firefox snapshot is
+classified in [`browser_console_issues.md`](browser_console_issues.md). Obsolete
+code after unconditional returns was removed, empty label targets were repaired,
+and Glyphicons Halflings was regenerated with corrected bounds. Source tests now
+reject unreachable statements, the reviewed lost-local-binding regressions, and
+multiline empty label targets; a Firefox browser test covers console warnings and
+errors through default-project creation with external providers isolated.
+
+The remaining startup diagnostics originate in Google's legacy Drive auth client
+and OAuth iframe. They are low-priority provider noise while Drive continues to
+work, but lazy-loading or modernizing that integration remains desirable so the
+default console is clean even when real provider scripts are enabled.
+
 ## Recommended execution order
 
 1. **Contain immediate risk:** correct the missing build resources, stop false save success, remove stored OAuth tokens, and replace confirmed unsafe HTML sinks.

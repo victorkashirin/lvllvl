@@ -465,9 +465,6 @@ C64DebuggerCompact.prototype = {
 
   stepCycle: function() {
     return;
-    if(!this.c64.isRunning()) {
-      this.c64.stepCycle();
-    }
 
   },
 
@@ -768,23 +765,18 @@ C64DebuggerCompact.prototype = {
           case 'arrowdown':
             c64_joystickPush(joystickIndex, C64_JOYSTICK_DOWN);
             return;
-          break;
           case 'arrowup':
             c64_joystickPush(joystickIndex, C64_JOYSTICK_UP);
             return;
-          break;
           case 'arrowleft':
             c64_joystickPush(joystickIndex, C64_JOYSTICK_LEFT);
             return;
-          break;
           case 'arrowright':
             c64_joystickPush(joystickIndex, C64_JOYSTICK_RIGHT);
             return;
-          break;
           case 'z':
             c64_joystickPush(joystickIndex, C64_JOYSTICK_FIRE);
             return;
-          break;
         }
       }
 
@@ -805,23 +797,18 @@ C64DebuggerCompact.prototype = {
           case 'arrowdown':
             c64_joystickRelease(joystickIndex, C64_JOYSTICK_DOWN);
             return;
-          break;
           case 'arrowup':
             c64_joystickRelease(joystickIndex, C64_JOYSTICK_UP);
             return;
-          break;
           case 'arrowleft':
             c64_joystickRelease(joystickIndex, C64_JOYSTICK_LEFT);
             return;
-          break;
           case 'arrowright':
             c64_joystickRelease(joystickIndex, C64_JOYSTICK_RIGHT);
             return;
-          break;
           case 'z':
             c64_joystickRelease(joystickIndex, C64_JOYSTICK_FIRE);
             return;
-          break;
         }
       }
 

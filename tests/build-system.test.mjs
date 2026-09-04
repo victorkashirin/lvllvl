@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
+import { createRequire } from "node:module";
 import {
   lstat,
   mkdtemp,
@@ -16,9 +17,12 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 
+import { buildGraph } from "../scripts/build-graph.mjs";
 import { publishDirectory } from "../scripts/build.mjs";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const require = createRequire(import.meta.url);
+const { JSHINT } = require("jshint");
 
 function delay(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
@@ -32,6 +36,110 @@ function assetVersion(html) {
   assert.equal(new Set(versions).size, 1, "development assets use different revisions");
   return versions[0];
 }
+
+function emptyLabelTargetLines(source) {
+  return [...source.matchAll(/<label\b[^>]*\bfor\s*=\s*(["'])\1/gi)].map(
+    (match) => source.slice(0, match.index).split("\n").length,
+  );
+}
+
+test("empty label target scanning handles multiline markup", () => {
+  assert.deepEqual(emptyLabelTargetLines('<label\n  class="field"\n  for="">'), [1]);
+  assert.deepEqual(emptyLabelTargetLines('<label\n  for="field-id">'), []);
+});
+
+test("source labels never declare an empty target", async () => {
+  const sourceRoot = path.join(projectRoot, "src");
+  const markupSources = (await readdir(sourceRoot, { recursive: true }))
+    .filter((relativePath) => /\.(?:html(?:\.bk)?|m?js)$/.test(relativePath))
+    .map((relativePath) => path.join(sourceRoot, relativePath));
+
+  const invalidTargets = [];
+  for (const filename of markupSources) {
+    const source = await readFile(filename, "utf8");
+    for (const line of emptyLabelTargetLines(source)) {
+      invalidTargets.push(`${path.relative(projectRoot, filename)}:${line}`);
+    }
+  }
+
+  assert.deepEqual(
+    invalidTargets,
+    [],
+    `Empty label targets can trigger Firefox getElementById warnings:\n${invalidTargets.join("\n")}`,
+  );
+});
+
+test("first-party bundle sources contain no unreachable statements", async () => {
+  const unreachable = [];
+  for (const relativePath of buildGraph["js/main.js"].inputs) {
+    const filename = path.join(projectRoot, "src", relativePath);
+    const source = await readFile(filename, "utf8");
+    JSHINT(source, {
+      asi: true,
+      browser: true,
+      devel: true,
+      esversion: 11,
+      evil: true,
+      expr: true,
+      loopfunc: true,
+      sub: true,
+    });
+
+    for (const warning of JSHINT.errors ?? []) {
+      if (warning?.code === "W027") {
+        unreachable.push(
+          `${path.relative(projectRoot, filename)}:${warning.line}:${warning.character}: ${warning.reason}`,
+        );
+      }
+    }
+  }
+
+  assert.deepEqual(
+    unreachable,
+    [],
+    `Unreachable first-party statements:\n${unreachable.join("\n")}`,
+  );
+});
+
+test("reachable code retains local bindings after unreachable cleanup", async () => {
+  const expectedLocals = new Map([
+    ["js/file/fileManager.js", new Set(["guid"])],
+    ["js/textMode/tileSet/tileSetImport.js", new Set(["dstContext"])],
+    ["js/textMode/tools/drawToolsPopup.js", new Set(["height"])],
+  ]);
+  const undefinedBindings = [];
+
+  for (const [relativePath, identifiers] of expectedLocals) {
+    const filename = path.join(projectRoot, "src", relativePath);
+    const source = await readFile(filename, "utf8");
+    JSHINT(source, {
+      asi: true,
+      browser: true,
+      devel: true,
+      esversion: 11,
+      evil: true,
+      expr: true,
+      loopfunc: true,
+      sub: true,
+      undef: true,
+    });
+
+    for (const warning of JSHINT.errors ?? []) {
+      const identifier = /^'([^']+)' is not defined\.$/.exec(warning?.reason)?.[1];
+      if (warning?.code === "W117" && identifiers.has(identifier)) {
+        undefinedBindings.push(
+          `${path.relative(projectRoot, filename)}:${warning.line}:${warning.character}: ${warning.reason}`,
+        );
+      }
+    }
+  }
+
+  assert.deepEqual(
+    undefinedBindings,
+    [],
+    `Reachable statements lost local bindings:\n${undefinedBindings.join("\n")}`,
+  );
+});
 
 async function waitForCondition(condition, timeout, message) {
   const deadline = Date.now() + timeout;

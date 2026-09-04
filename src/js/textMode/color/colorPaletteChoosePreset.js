@@ -590,19 +590,6 @@ ColorPaletteChoosePreset.prototype = {
 
   showSampleImage: function(colors) {
     return;
-    
-    if(this.sampleImageCanvas == null) {
-      this.sampleImageCanvas = document.getElementById('chooseColorPaletteSampleImage');
-      this.sampleImageContext = this.sampleImageCanvas.getContext('2d');
-
-    }
-
-    this.sampleImageContext.drawImage(this.colorPaletteSampleImage,0,0);
-
-    var imageData = this.sampleImageContext.getImageData(0, 0, this.sampleImageCanvas.width, this.sampleImageCanvas.height);    
-//    ImageUtils.rgbQuant(imageData, colors, null);
-    ImageUtils.rgbQuant(imageData, { palette: colors, dithKern: null}); //colors, null);
-    this.sampleImageContext.putImageData(imageData, 0, 0, 0, 0, this.sampleImageCanvas.width , this.sampleImageCanvas.height); 
 
   },
 

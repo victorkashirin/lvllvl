@@ -863,27 +863,6 @@ GDrive.prototype = {
       );
     });
     return;
-
-    
-    var data = JSON.stringify(g_app.doc.data);
-
-    var extension = '';
-    var pos = filename.lastIndexOf(".");
-    if(pos !== -1) {
-      extension = filename.substr(pos + 1).toLowerCase();
-    }
-
-    if(extension != 'json') {
-      filename += '.json';
-    }
-
-
-    this.uploadToProjectFolder(data, filename, {
-        success: callback
-      }
-    );
-
-    console.log("SAVE TO GOOGLE DRIVE!!!!");
   },
 
 

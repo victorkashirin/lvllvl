@@ -841,95 +841,10 @@ TileSetImport.prototype = {
       tileCount: tileCount,
       firstChar: firstChar
     });
+    var dstContext = this.onscreenCanvas.getContext('2d');
     dstContext.putImageData(this.importArgs.dstImageData, 0, 0);
 
     return;
-    if(!this.glyphCanvas) {
-      this.glyphCanvas = document.createElement("canvas");  
-    }
-    
-    this.glyphCanvas.width = Math.floor(tileWidth);  
-    this.glyphCanvas.height = Math.floor(tileHeight); 
-    var ctx = this.glyphCanvas.getContext("2d");
-    ctx.font="20px sans";    
-    var scale = fontSize  / this.font.head.unitsPerEm;
-
-    var first = 1772;
-    var last = 1772 + 255;
-
-    var dstContext = this.loadTileSetCanvas.getContext('2d');
-//    dstContext.clearRect(0, 0,  this.loadTileSetCanvas.width,  this.loadTileSetCanvas.height);
-    dstContext.fillStyle = '#ff00ff';
-    dstContext.fillRect(0, 0,  this.loadTileSetCanvas.width,  this.loadTileSetCanvas.height);
-    
-    for(var i=first; i<last; i++)
-    {
-      var drawAtX = (tileWidth + 1) * ((i - first) % tilesPerRow);
-      var drawAtY = (tileHeight + 1) * Math.floor((i - first) / tilesPerRow);
-
-      console.log('glyph to path: ' + i);
-      var path = Typr.U.glyphToPath(this.font, i);
-//      ctx.clearRect(0, 0, this.glyphCanvas.width, this.glyphCanvas.height);
-
-//this.glyphCanvas.width = this.glyphCanvas.width;
-
-      ctx.save();
-
-//      ctx.fillStyle = '#000000';
-//      ctx.fillRect(0, 0, this.glyphCanvas.width, this.glyphCanvas.height);
-      ctx.clearRect(0, 0, this.glyphCanvas.width, this.glyphCanvas.height);
-
-//      cnv.width = cnv.width;
-      //ctx.scale(getDPR(), getDPR());
-      
-      ctx.translate( tileOffsetX, tileOffsetY  + Math.round(fontSize));  
-      
-      // red line
-//      ctx.fillStyle = "#ff0000";
-//      ctx.fillRect(0,0,cnv.width,1);
-      
-      // char number
-//      ctx.fillStyle = "#333333";
-//      ctx.fillText(i,0,20);
-      
-      ctx.scale(scale,-scale);
-      ctx.beginPath();
-      Typr.U.pathToContext(path, ctx);
-      ctx.fillStyle = '#ffffff';      
-      ctx.fill();
-
-      ctx.restore();
-
-
-
-      var imageData = ctx.getImageData(0, 0, tileWidth, tileHeight);      
-
-      for(var y = 0; y < tileHeight; y++) {
-        for(var x = 0; x < tileWidth; x++) {
-          var pixel = y * tileWidth * 4 + x * 4;
-          if(imageData.data[pixel] > 100) {
-            imageData.data[pixel] = 255;
-            imageData.data[pixel + 1] = 255;
-            imageData.data[pixel + 2] = 255;
-            imageData.data[pixel + 3] = 255;
-          } else {
-            imageData.data[pixel] = 0;
-            imageData.data[pixel + 1] = 0;
-            imageData.data[pixel + 2] = 0;
-            imageData.data[pixel + 3] = 0;
-          }
-
-        }
-      }
-
-      ctx.putImageData(imageData, 0, 0);
-
-
-      dstContext.fillStyle = '#222222';
-      dstContext.fillRect(drawAtX, drawAtY, tileWidth, tileHeight);
-      dstContext.drawImage(this.glyphCanvas, drawAtX, drawAtY);
-      
-    }
 
 
   },

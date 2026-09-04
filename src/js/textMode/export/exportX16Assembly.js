@@ -701,7 +701,7 @@ ExportX16Assembly.prototype = {
     }
 
     if(exportFormat == 'text') {
-      return this.formatBytes(byteArray, args);;
+      return this.formatBytes(byteArray, args);
     }
 
     if(exportFormat == 'binary') {

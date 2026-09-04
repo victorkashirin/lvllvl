@@ -282,13 +282,10 @@ Document.prototype = {
     switch(pathArray[0]) {
       case 'screens':
         return 'screen';
-      break;
       case 'sprites':
         return 'sprite';
-        break;
       case '3d scenes':
         return '3d scene';
-        break;
       
     }
 

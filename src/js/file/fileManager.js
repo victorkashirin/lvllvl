@@ -2208,11 +2208,7 @@ ImportOld.prototype = {
 
   getGuid: function() {
 
-    guid = generateUUID();
-    return guid;
-    
-
-    var guid = settings.data.guid++;
+    var guid = generateUUID();
     return guid;
   },
 

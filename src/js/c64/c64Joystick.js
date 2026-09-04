@@ -789,36 +789,27 @@ C64Joystick.prototype = {
         switch(key) {
           case this.joystickKeys[i][0]:  // up/left
             return true;
-            break;
           case this.joystickKeys[i][1]: // up        
             c64_joystickPush(i, C64_JOYSTICK_UP);
             return true;
-            break;
           case this.joystickKeys[i][2]: // up/right
             return true;
-            break;
           case this.joystickKeys[i][3]: // left
             c64_joystickPush(i, C64_JOYSTICK_LEFT);
             return true;
-            break;
           case this.joystickKeys[i][4]: // right
             c64_joystickPush(i, C64_JOYSTICK_RIGHT);
             return true;
-            break;
           case this.joystickKeys[i][5]: // down/left
             return true;
-            break;
           case this.joystickKeys[i][6]: // down
             c64_joystickPush(i, C64_JOYSTICK_DOWN);
             return true;
-            break;
           case this.joystickKeys[i][7]: // down/right            
             return true;
-            break;
           case this.joystickKeys[i][8]: // button 1
             c64_joystickPush(i, C64_JOYSTICK_FIRE);
             return true;
-            break;
 
           case this.joystickKeys[i][9]: // button 2
             if(this.joystickButtons[i] > 1) {
@@ -850,36 +841,27 @@ C64Joystick.prototype = {
         switch(key) {
           case this.joystickKeys[i][0]:  // up/left
             return true;
-            break;
           case this.joystickKeys[i][1]: // up
             c64_joystickRelease(i, C64_JOYSTICK_UP);
             return true;
-            break;
           case this.joystickKeys[i][2]: // up/right
             return true;
-            break;
           case this.joystickKeys[i][3]: // left
             c64_joystickRelease(i, C64_JOYSTICK_LEFT);
             return true;
-            break;
           case this.joystickKeys[i][4]: // right
             c64_joystickRelease(i, C64_JOYSTICK_RIGHT);
             return true;
-            break;
           case this.joystickKeys[i][5]: // down/left
             return true;
-            break;
           case this.joystickKeys[i][6]: // down
             c64_joystickRelease(i, C64_JOYSTICK_DOWN);
             return true;
-            break;
           case this.joystickKeys[i][7]: // down/right            
             return true;
-            break;
           case this.joystickKeys[i][8]: // fire
             c64_joystickRelease(i, C64_JOYSTICK_FIRE);
             return true;
-            break;
 
           case this.joystickKeys[i][9]: // button 2
             if(this.joystickButtons[i] > 1) {

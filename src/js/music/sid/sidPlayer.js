@@ -1028,16 +1028,12 @@ var SidPlayer  = function() {
     switch(format) {
       case 'wav':
         return this.downloadWAV(filename);
-        break;
       case 'sid':
         return this.downloadSID(filename);
-        break;
       case 'prg':
         return this.downloadPRG(filename);
-        break;
       case 'goat':
         return this.downloadGoat(filename);
-        break;
 
     }
   }

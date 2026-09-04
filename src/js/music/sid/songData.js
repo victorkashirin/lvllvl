@@ -1186,16 +1186,6 @@ var SongData = function() {
 
     return data;
 
-    var length = index;
-    var output = new Uint8Array(length);  
-
-    for(var i = 0; i < length; i++) {
-      output[i] = data[i];
-    }
-
-    data = null;
-    return output;
-
 
   }
   this.downloadPRG = function(args) {

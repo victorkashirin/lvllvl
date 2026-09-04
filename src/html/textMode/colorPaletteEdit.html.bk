@@ -191,7 +191,7 @@
             </div>
 
             <div class="formGroup">
-              <label class="controlLabel" for="">Colour Count</label>
+              <label class="controlLabel" for="colorPaletteFromImageColorCount">Colour Count</label>
               <select id="colorPaletteFromImageColorCount">
                 <option value="2">2</option>
                 <option value="4">4</option>

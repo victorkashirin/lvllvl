@@ -2091,7 +2091,6 @@ main split panel north is menu
           this.music.paste();
         }
         break;
-      break;
       case 'edit-clearall':
         if(this.mode == '3d' || this.mode == '2d') {
           this.textModeEditor.tools.drawTools.select.clearAll();
@@ -2482,7 +2481,6 @@ main split panel north is menu
 
         this.textModeEditor.tileSetManager.showChoosePreset({});
         break;
-      break;
       case 'charactersets-load':
       case 'tileset-load':
         this.textModeEditor.tileSetManager.showImport({});

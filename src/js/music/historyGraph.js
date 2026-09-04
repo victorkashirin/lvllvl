@@ -34,19 +34,6 @@ HistoryGraph.prototype = {
     this.music = music;
 
 return;
-//TODO: !!!
-
-    this.canvas = document.createElement('canvas');
-    document.body.appendChild(this.canvas);
-    this.canvas.style.zIndex = 100;
-    this.canvas.style.position = 'absolute';
-    this.canvas.style.display = 'none';
-    this.canvas.className += ' historyGraph';
-    this.resize();
-
-    for(var i = 0; i < this.segments; i++) {
-      this.data.push(0);
-    }
   },
 
   setVisible: function(visible) {

@@ -828,7 +828,6 @@ return;
             return distA - distB;
           });
         break;
-      break;
     }
 
     var sortOrder = [];

@@ -9,13 +9,10 @@ Icons.get = function(type) {
   switch(type) {
     case 'graphic':
       return 'icons/svg/glyphicons-basic-37-file.svg';
-      break;
     case 'asm':
       return 'icons/svg/glyphicons-basic-37-file.svg';
-      break;
     default:
       return 'icons/svg/glyphicons-basic-37-file.svg';
-      break;
   }
 }
 var keys = {

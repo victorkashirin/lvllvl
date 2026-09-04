@@ -2161,13 +2161,6 @@ C64Debugger.prototype = {
       window.addEventListener("orientationchange", function(event) {
 
         return;
-        
-        if( typeof event.target.screen != 'undefined' 
-            && typeof event.target.screen.orientation != 'undefined'
-            && typeof event.target.screen.orientation.angle != 'undefined') {
-          _this.orientation = event.target.screen.orientation.angle;
-        }
-        _this.layoutMobile();
       });
     }
 
@@ -2756,31 +2749,6 @@ C64Debugger.prototype = {
 
     this.gistShare.show(shareArgs);
     return;
-    // share..
-    var _this = this;
-
-    if(!this.prgData) {
-      alert('Only sharing of PRGs currently supported, please choose a PRG first');
-      return;
-    }
-
-    var files = {};
-    var data = bufferToBase64(this.prgData);
-    files[this.prgName] = { content: data };
-    var colors = c64.colors.colors;
-    var port1 = c64.joystick.portEnabled[0]; 
-    var port2 = c64.joystick.portEnabled[1]; 
-
-    var settings = {
-      "colors": colors,
-      "port1": port1,
-      "port2": port2
-    };
-
-    files["c64settings"] = {
-      "content": JSON.stringify(settings)
-    };
-    g_app.gist.share({ files: files });
   },
 
   step: function() {
@@ -3976,16 +3944,12 @@ C64Debugger.prototype = {
     switch(key) {
       case 'arrowup':
         return '<img src="icons/material/north-black-18dp.svg"/>';
-        break;
       case 'arrowdown':
         return '<img src="icons/material/south-black-18dp.svg"/>';
-        break;
       case 'arrowleft':
         return '<img src="icons/material/west-black-18dp.svg"/>';        
-        break;
       case 'arrowright':
         return '<img src="icons/material/east-black-18dp.svg"/>';
-        break;
       default: 
         return key;
     }

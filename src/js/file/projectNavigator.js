@@ -1445,7 +1445,6 @@ ProjectNavigator.prototype = {
           this.currentEditor = g_app.textEditor;
           break;
 
-        return false;
     }
 
     return true;
@@ -1751,52 +1750,6 @@ ProjectNavigator.prototype = {
     this.refreshTreeNodeChildren(docNode.children, treeNode);
 
     return;
-
-    treeNode.deleteChildren();
-    var children = docNode.children;  
-
-    var docs = [];
-    // add to an array then sort
-    for(var i = 0; i < children.length; i++) {
-      var filename = children[i].name;
-      var type = children[i].type;
-      var id = children[i].id;
-      if(typeof children[i].deleted == 'undefined' || children[i].deleted !== true) {
-        docs.push({
-          'index': i,
-          'label': filename,
-          'type': type,
-          'attributes': {
-            "filename": filename,
-            "id": id
-          }
-        });
-      }
-    }
-
-    docs.sort(function(a, b) {
-      if(a.type != b.type) {
-        if(a.type == 'folder') {
-          return -1;
-        }
-        if(b.type == 'folder') {
-          return 1;
-        }
-      }
-
-      return a.label.localeCompare(b.label);
-    });
-
-    console.log("SORTED SUB DOCS");
-    console.log(docs);
-
-    for(var i = 0; i < docs.length; i++) {
-      var node = treeNode.addChild(docs[i]);
-      this.treeMap[docs[i]['attributes'].id] = node;
-      if(docs[i].type == 'folder') {
-        this.refreshTreeNode(children[docs[i].index], node);
-      }
-    }
 
 
     /*

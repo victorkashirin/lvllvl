@@ -139,7 +139,6 @@ ImageEffects.prototype = {
     switch(effect) {
       case "Blur":
         return JSManipulate.blur.valueRanges;
-      break;
 
     }
 

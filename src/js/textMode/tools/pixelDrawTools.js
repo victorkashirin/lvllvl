@@ -387,39 +387,30 @@ PixelDrawTools.prototype = {
         case keys.textMode.toolsPencil.key:
           this.setDrawTool('pen');
           return;
-        break;
         case keys.textMode.toolsErase.key:
           this.setDrawTool('erase');
           return;
-        break;
         case keys.textMode.toolsBucket.key:
           this.setDrawTool('fill');
           return;
-        break;
         case keys.textMode.toolsEyedropper.key:
           this.setDrawTool('eyedropper');      
           return;
-        break;
         case keys.textMode.toolsMarquee.key:
           this.setDrawTool('select');      
           return;
-        break;
         case keys.textMode.toolsShape.key:
           this.toggleShape();      
           return;
-        break;
         case keys.textMode.toolsZoom.key:
           this.setDrawTool('zoom');
           return;
-        break;
         case keys.textMode.toolsHand.key:
           this.setDrawTool('hand');
           return;
-        break;
         case keys.textMode.toolsMove.key:
           this.setDrawTool('move');
           return;
-        break;
       }
     }
 

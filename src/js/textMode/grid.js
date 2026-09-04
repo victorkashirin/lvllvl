@@ -714,45 +714,6 @@ Grid.prototype = {
   setupBackgroundImage: function() {
     return;
 
-    this.backgroundImageScale = 1;
-
-    var tileSet = this.editor.tileSetManager.getCurrentTileSet();
-    if(!this.backgroundImageCanvas) {
-      this.backgroundImageCanvas = document.createElement("canvas");
-    }
-
-    this.backgroundImageCanvas.width = tileSet.charWidth * (this.width) * this.backgroundImageScale;
-    this.backgroundImageCanvas.height = tileSet.charHeight * (this.height) * this.backgroundImageScale;
-    this.backgroundImageContext = this.backgroundImageCanvas.getContext("2d");
-    this.backgroundImageContext.imageSmoothingEnabled = false;
-    this.backgroundImageContext.webkitImageSmoothingEnabled = false;
-    this.backgroundImageContext.mozImageSmoothingEnabled = false;
-    this.backgroundImageContext.msImageSmoothingEnabled = false;
-    this.backgroundImageContext.oImageSmoothingEnabled = false;
-
-
-    if(!this.backgroundImageTexture) {
-      this.backgroundImageTexture = new THREE.Texture(this.backgroundImageCanvas);
-      this.backgroundImageTexture.magFilter = THREE.NearestFilter;
-      this.backgroundImageTexture.minFilter = THREE.NearestFilter;
-      this.backgroundImageTexture.generateMipmaps = false;
-    }
-
-    this.backgroundImageContext.clearRect(0, 0, this.backgroundImageCanvas.width, this.backgroundImageCanvas.height);
-
-    this.backgroundImageTexture.needsUpdate = true;
-
-    if(!this.backgroundImageMaterial) {
-      this.backgroundImageMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, map: this.backgroundImageTexture });
-    }
-
-    var geometry = new THREE.PlaneGeometry(this.width * this.cellSizeX, this.height * this.cellSizeY);  
-    this.backgroundImage = new THREE.Mesh(geometry, this.backgroundImageMaterial);
-    this.backgroundImage.position.z = -0.1;
-    this.backgroundImage.position.x = (this.width * this.cellSizeX) / 2;
-    this.backgroundImage.position.y = (this.height * this.cellSizeY) / 2;
-    this.xyMesh.add(this.backgroundImage);
-
 //    this.backgroundImage.visible = false;
   },
 
@@ -786,7 +747,6 @@ Grid.prototype = {
   getXYGridPosition: function() {
     console.error('get xy grid position');
     return 0;
-    return this.xyPosition;
   },
 
   moveXYGrid: function(direction) {
@@ -940,57 +900,6 @@ Grid.prototype = {
     }
 
     return;
-
-    if(this.cursorCharacter && (this.cursorCharacter.character != c
-      || this.cursorCharacter.color != color
-      )) {
-      scene.remove(this.cursorCharacter);
-      this.cursorCharacter = null;
-    }
-
-    if(!this.cursorCharacter) {
-      var rgbColor = 0x000000;
-      var material = null;
-
-      if(color == -1) {
-        // erase mode
-        rgbColor = 0xffffff;
-      } else {
-        rgbColor = this.editor.colorPaletteManager.currentColorPalette.getHex(color);
-      }
-      material = new THREE.MeshPhongMaterial( { color: rgbColor, specular: 0, shininess: 0,  transparent: true, opacity: 0.6 });
-      material.flatShading = true;
-
-      var geometry = null;
-
-      if(this.editor.tools.drawTools.tool == 'erase' 
-          || this.editor.tools.drawTools.tool == 'eyedropper' 
-          || this.editor.tools.drawTools.tool == 'type' 
-          || !this.editor.tools.drawTools.drawCharacter) {
-        c = -1;
-
-        geometry = new THREE.BoxGeometry(this.cellSizeX, this.cellSizeY, this.cellSizeZ);
-      } else {
-        geometry = this.editor.tileSetManager.currentTileSet.getGeometry(c);
-      }
-
-
-      this.cursorCharacter = new THREE.Mesh(geometry, material);
-      this.cursorCharacter.rotation.order = 'YXZ';
-
-      this.cursorCharacter.castShadow  = false;
-
-      if(this.editor.tools.drawTools.tool == 'erase' 
-          || this.editor.tools.drawTools.tool == 'eyedropper' 
-          || this.editor.tools.drawTools.tool == 'type'           
-          || !this.editor.tools.drawTools.drawCharacter) {
-        this.cursorCharacter.scale.x = 1.05;
-        this.cursorCharacter.scale.y= 1.05;
-        this.cursorCharacter.scale.z = 1.05;
-      }
-
-      scene.add(this.cursorCharacter);
-    }
 
   },
 

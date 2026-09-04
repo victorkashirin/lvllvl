@@ -190,28 +190,6 @@ TrackView.prototype = {
 
     return;
 
-
-
-    // build patterns from music.patterns
-
-    this.patterns = [];
-    for(var track = 0; track < this.music.doc.data.tracks.length; track++) {
-      this.patterns[track] = [];
-      var position = 0;
-
-      for(var pattern = 0; pattern < this.music.doc.data.tracks[track].length; pattern++) {
-
-        var patternID = this.music.doc.data.tracks[track][pattern];
-
-        if(this.music.doc.data.patterns[patternID].name.indexOf('BLANK') !== 0) {//} != 'BLANK') {
-          this.patterns[track].push({ patternID: patternID, position: position });
-        }
-        position += this.music.doc.data.patterns[patternID].getLength();
-      }
-    }
-
-    this.setPatterns();
-
   },
 
 
@@ -238,52 +216,6 @@ TrackView.prototype = {
   setPatterns: function() {
 
     return;
-    var songLength = 0;
-
-    this.sortPatterns();
-
-    // find total length of song..
-    for(var track = 0; track < this.music.doc.data.tracks.length; track++) {
-      var lastPattern = this.patterns[track].length - 1;
-      if(lastPattern >= 0) {
-        var lastPatternID = this.patterns[track][lastPattern].patternID;
-        var trackLength = this.patterns[track][lastPattern].position + this.music.doc.data.patterns[lastPatternID].getLength();
-        if(trackLength > songLength) {
-          songLength = trackLength;
-        }
-      }
-    }
-
-
-    // recreate the tracks, inserting blank if needed
-    var tracks = [];
-    for(var track = 0; track < this.music.doc.data.tracks.length; track++) {
-      tracks[track] = [];
-
-      var lastPosition = 0;
-      for(var i = 0; i < this.patterns[track].length; i++) {
-        var patternID = this.patterns[track][i].patternID;
-        var position = this.patterns[track][i].position;
-
-        if(position > lastPosition) {
-          // there is a gap between this and the last pattern
-          var blankPatternLength =  position - lastPosition;
-          var blankPatternID = this.getBlankPatternID(blankPatternLength);
-          tracks[track].push(blankPatternID);
-        }
-        this.patterns[track][i].patternPosition = tracks[track].length;
-
-        tracks[track].push(patternID);
-        lastPosition = position + this.music.doc.data.patterns[patternID].getLength();
-      }
-
-      if(lastPosition < songLength) {
-        var blankPatternID = this.getBlankPatternID(songLength - lastPosition);
-        tracks[track].push(blankPatternID);
-      }
-    }
-
-    this.music.doc.data.tracks = tracks;
 
   },
 
@@ -549,65 +481,6 @@ TrackView.prototype = {
     console.log("TRACK VIEW GET HTML");
 
     return;
-
-
-    var channelOn = [true, true, true];
-    if(typeof SIDplayer != 'undefined' && SIDplayer) {
-      channelOn = SIDplayer.getChannelOn();
-    }
-    this.loadPatterns();
-
-    for(var track = 0; track < this.music.doc.data.tracks.length; track++) {
-      var html = '';
-      var channel = track + 1;
-      html += '<div class="sidTrackLabel" style="position: absolute; ';
-      html += ' width: 92px; top: 1px; left: 0px;';
-      html += ' height: 16px; padding: 2px"><label><input type="checkbox" id="channel' + channel + '"';
-      if(channelOn[track]) {
-        html += ' checked="checked" ';
-      }
-      html += '> Channel ' + channel + '</label></div>';
-      var left = this.patternStart;
-
-      for(var i = 0; i < this.patterns[track].length; i++) {
-        var patternID = this.patterns[track][i].patternID;
-        var position = this.patterns[track][i].position;
-        var pattern = this.music.doc.data.patterns[patternID];
-        var width = pattern.getLength();
-
-        left = this.patternStart + position;
-
-        html += '<div class="sidPattern" channel="' + track + '" position="' + i + '" id="sidPattern' + track + '_' + i + '" pattern="' + patternID + '"';
-
-        var padding = 2;
-        var border = 1;
-        var boxWidth = width - 2*padding - border;
-        html += ' style="position: absolute; padding: ' + padding +'px;';
-        html += ' border: ' + border +'px solid #aaaaaa;';
-        html += ' width: ' + boxWidth + 'px; height: 16px;';
-        html += ' top: 0px;'
-        html += ' left: ' + left + 'px"';
-        html += '>';
-        html += pattern.name;
-//        html += '<div style="width: 100%;  padding: 2px; border: 1px solid white;">' + pattern.name + '</div>';
-        html += '</div>';
-      }      
-
-      var boxWidth = 64;
-      html += '<div id="sidAddPattern' + track + '" ';
-      html += ' style="position: absolute; display: none; padding: ' + padding +'px;';
-      html += ' border: ' + border +'px solid #aaaaaa;';
-      html += ' width: ' + boxWidth + 'px; height: 16px;';
-      html += ' top: 0px;'
-      html += ' left: ' + left + 'px"';
-      html += '>';
-
-      html += '+ Pattern';
-      html += '</div>';
-
-      $('#sidTrack' + track).html(html);
-
-    }
 
 //    this.setupPatternEvents();
 
@@ -1685,52 +1558,6 @@ TrackView.prototype = {
 
 
     return;
-    this.trackContext.beginPath();    
-    this.trackContext.strokeStyle = '#aaaaaa';    
-    this.trackContext.font = "9px Verdana";
-
-
-    for(var i = 0; i < this.patterns.length; i++) {
-      for(var j = 0; j < this.patterns[i].length; j++) {
-        var patternID = this.patterns[i][j].patternID;
-        var position = this.patterns[i][j].position;
-        var pattern = this.music.doc.data.patterns[patternID];
-        var patternLength = pattern.getLength();
-
-        var x = position * this.patternCellWidth;
-        var y = i * this.trackHeight + 2;
-        var width = patternLength * this.patternCellWidth - 1;
-        var height = this.trackHeight - 4;
-
-        var patternColor = '444444'
-        var textColor = 'eeeeee';
-
-        if(i === this.selectedTrack && j == this.selectedPatternIndex) {
-          patternColor = 'dddddd';
-          textColor = '333333';
-        } else if(patternID == this.selectedPatternId) {
-          patternColor = '777777';
-          textColor = '333333';
-        }
-        this.trackContext.fillStyle = '#' + patternColor;
-        this.trackContext.fillRect(x, y, width, height);
-
-        this.trackContext.fillStyle = '#' + textColor;
-        this.trackContext.fillText(pattern.name, x + 4, y + 12);
-
-        if(!selected) {
-          // draw the box around the note
-          this.trackContext.moveTo(x + 0.5, y + 0.5);
-          this.trackContext.lineTo(x + width + 0.5, y + 0.5);
-          this.trackContext.lineTo(x + width + 0.5, y + height + 0.5);
-          this.trackContext.lineTo(x + 0.5, y + height + 0.5);
-          this.trackContext.lineTo(x + 0.5, y + 0.5);
-        }
-
-
-      }
-    }
-    this.trackContext.stroke();
 
   },
 

@@ -721,87 +721,6 @@ ImportC64Formats.prototype = {
 
     this.importC.doImport();
     return;
-    var layer = this.editor.layers.getSelectedLayerObject();
-    if(!layer || layer.getType() !== 'grid') {
-      alert('Please select a grid layer');
-      return;
-    }
-
-
-    var frameCount = this.importC.getFrameCount();
-    layer.setScreenMode(TextModeEditor.Mode.TEXTMODE);      
-
-    this.screenWidth = this.importC.getScreenWidth();
-    this.screenHeight = this.importC.getScreenHeight();
-    var screenDepth = 1;
-
-    this.editor.graphic.setGridDimensions({ width: this.screenWidth, height: this.screenHeight});
-
-
-    var currentFrame = this.editor.graphic.getCurrentFrame();
-    for(var frameIndex = 0; frameIndex < frameCount; frameIndex++) {
-
-      if(frameIndex != 0) {
-        var newFrame = this.editor.graphic.insertFrame();
-        this.editor.frames.gotoFrame(newFrame);
-      }
-
-      this.screenData = [];
-      this.importC.getScreenData(this.screenData, frameIndex);
-      this.colorData = [];
-      this.importC.getColorData(this.colorData, frameIndex);
-      this.bgColor = this.importC.getBackgroundColor(frameIndex);
-      this.borderColor = this.importC.getBorderColor(frameIndex);
-
-      layer.setBackgroundColor(this.bgColor);
-      layer.setBorderColor(this.borderColor);
-
-      var args = {};
-      
-      args.update = false;
-      for(var y = 0; y < this.screenHeight; y++) {
-        for(var x = 0; x < this.screenWidth; x++) {
-          var pos = x + y * this.screenWidth;
-          var c = this.screenData[pos];
-          var bc = this.editor.colorPaletteManager.noColor;
-
-          if(this.extendedBackground) {
-            var backgroundColorIndex = (c) >> 6;
-            bc = this.bgColor;
-            if(backgroundColorIndex == 1) {
-              bc = this.multi1;
-            }
-            if(backgroundColorIndex == 2) {
-              bc = this.multi2;
-            }
-            c = c & 0x3f;
-          }
-          args.x = x;
-// reverseY          args.y = this.screenHeight - y - 1;
-          args.y = y;
-          
-          args.t = c; 
-          args.fc = this.colorData[pos];
-          args.bc = bc;
-          layer.setCell(args);
-        }
-      }
-    }
- 
-    var tileSet = layer.getTileSet();
-
-    if(!tileSet.isPetscii()) {
-      tileSet.readBinaryData({ tileData: C64CharROM, characterWidth: 8, characterHeight: 8 });
-      this.editor.tileSetManager.tileSetUpdated({ updateBlankCells: false, updateSortMethods: true });
-    }
-
-
-    this.editor.frames.gotoFrame(currentFrame);
-    this.editor.gridView2d.findViewBounds();    
-    this.editor.graphic.invalidateAllCells();
-
-
-    this.editor.graphic.redraw({ allCells: true });
 
   },
 
@@ -1790,23 +1709,18 @@ c64_cpuRead(address);
           case 'arrowdown':
             c64_joystickPush(joystickIndex, C64_JOYSTICK_DOWN);
             return;
-          break;
           case 'arrowup':
             c64_joystickPush(joystickIndex, C64_JOYSTICK_UP);
             return;
-          break;
           case 'arrowleft':
             c64_joystickPush(joystickIndex, C64_JOYSTICK_LEFT);
             return;
-          break;
           case 'arrowright':
             c64_joystickPush(joystickIndex, C64_JOYSTICK_RIGHT);
             return;
-          break;
           case 'z':
             c64_joystickPush(joystickIndex, C64_JOYSTICK_FIRE);
             return;
-          break;
         }
       }
 
@@ -1826,23 +1740,18 @@ c64_cpuRead(address);
           case 'arrowdown':
             c64_joystickRelease(joystickIndex, C64_JOYSTICK_DOWN);
             return;
-          break;
           case 'arrowup':
             c64_joystickRelease(joystickIndex, C64_JOYSTICK_UP);
             return;
-          break;
           case 'arrowleft':
             c64_joystickRelease(joystickIndex, C64_JOYSTICK_LEFT);
             return;
-          break;
           case 'arrowright':
             c64_joystickRelease(joystickIndex, C64_JOYSTICK_RIGHT);
             return;
-          break;
           case 'z':
             c64_joystickRelease(joystickIndex, C64_JOYSTICK_FIRE);
             return;
-          break;
         }
       }
       c64_keyup(event);

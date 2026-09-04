@@ -218,7 +218,7 @@ NewProjectDialog.prototype = {
 
 
       html += '    <div class="formRow" id="enableFlipRotateRow">';
-      html += '      <label class="formControlLabel" for="">Enable</label>';
+      html += '      <label class="formControlLabel">Enable</label>';
 //      html += '      '
 
       html += '  <div class="checkboxGroup">';

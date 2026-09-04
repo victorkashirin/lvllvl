@@ -2043,46 +2043,6 @@ ExportC64.prototype = {
 
     return;
 
-    if(downloadPRG) {
-
-      var type = 'prg';
-      if(typeof args.type != 'undefined') {
-        type = args.type;
-      }
-
-      if(type == 'prg') {
-        if(filename.indexOf('.prg') == -1) {
-          filename += ".prg";
-        }
-        download(output, filename, "application/prg");   
-
-
-        var data = new Uint8Array(12261);
-        for(var i = 0; i < data.length; i++) {
-          data[i] = output[i + 0x800];
-        }
-        download(data, 'data.bin', 'application/bin');
-
-        
-      } else {
-
-        if(filename.indexOf('.d64') == -1) {
-          filename += ".d64";
-        }
-
-
-        var d64 = new D64();
-        d64.diskName = args.diskName;
-        d64.addFile(args.prgName, output, "prg");
-
-        d64.createD64(filename);
-      }
-
-
-    }
-
-    console.log(blocks);
-
   },
 
   downloadZip: function() {

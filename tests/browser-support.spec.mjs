@@ -70,3 +70,35 @@ test("production starts when external providers are offline", async ({ page }, t
   await startupState(page, testInfo);
   expect(localFailures, localFailures.join("\n")).toEqual([]);
 });
+
+test("Firefox creates a default project without first-party console issues", async ({ browser }, testInfo) => {
+  test.skip(testInfo.project.name !== "firefox-desktop");
+
+  const page = await browser.newPage({ baseURL: testInfo.project.use.baseURL });
+  const consoleIssues = [];
+  page.on("console", (message) => {
+    if (["warning", "error"].includes(message.type())) {
+      const location = message.location();
+      consoleIssues.push(
+        `${message.type()}: ${message.text()}${location.url ? ` (${location.url})` : ""}`,
+      );
+    }
+  });
+  page.on("pageerror", (error) => consoleIssues.push(`page error: ${error.message}`));
+
+  await page.route(/^https:\/\//, (route) =>
+    route.fulfill({ body: "", contentType: "application/javascript", status: 200 }),
+  );
+  await page.goto("/", { waitUntil: "domcontentloaded" });
+  await waitForStableStartPage(page, browserPolicy.performanceBudgets.startupMilliseconds);
+
+  await page.locator("#start2D").click();
+  await page.getByText("OK", { exact: true }).last().click();
+  await expect(page.locator("#startPage")).toBeHidden();
+  await page.evaluate(
+    () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+  );
+
+  expect(consoleIssues, consoleIssues.join("\n")).toEqual([]);
+  await page.close();
+});

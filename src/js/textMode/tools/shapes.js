@@ -34,8 +34,6 @@ Shapes.prototype = {
 
     UI.on('ready', function() {
       return;
-      shapes.holder = new THREE.Object3D();
-      scene.add(shapes.holder);
     });
   },
 

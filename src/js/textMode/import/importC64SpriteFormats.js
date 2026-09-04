@@ -808,23 +808,18 @@ ImportC64SpriteFormats.prototype = {
           case 'arrowdown':
             c64_joystickPush(joystickIndex, C64_JOYSTICK_DOWN);
             return;
-          break;
           case 'arrowup':
             c64_joystickPush(joystickIndex, C64_JOYSTICK_UP);
             return;
-          break;
           case 'arrowleft':
             c64_joystickPush(joystickIndex, C64_JOYSTICK_LEFT);
             return;
-          break;
           case 'arrowright':
             c64_joystickPush(joystickIndex, C64_JOYSTICK_RIGHT);
             return;
-          break;
           case 'z':
             c64_joystickPush(joystickIndex, C64_JOYSTICK_FIRE);
             return;
-          break;
         }
       }
 
@@ -845,23 +840,18 @@ ImportC64SpriteFormats.prototype = {
           case 'arrowdown':
             c64_joystickRelease(joystickIndex, C64_JOYSTICK_DOWN);
             return;
-          break;
           case 'arrowup':
             c64_joystickRelease(joystickIndex, C64_JOYSTICK_UP);
             return;
-          break;
           case 'arrowleft':
             c64_joystickRelease(joystickIndex, C64_JOYSTICK_LEFT);
             return;
-          break;
           case 'arrowright':
             c64_joystickRelease(joystickIndex, C64_JOYSTICK_RIGHT);
             return;
-          break;
           case 'z':
             c64_joystickRelease(joystickIndex, C64_JOYSTICK_FIRE);
             return;
-          break;
         }
       }
       c64_keyup(event);      

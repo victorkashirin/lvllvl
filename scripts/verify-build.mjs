@@ -367,6 +367,7 @@ async function verifyArtifactGolden() {
     "index.html",
     "c64/index.html",
     "css/style.css",
+    "fonts/glyphicons-halflings-regular.woff2",
     "js/libs.js",
     "js/libs.js.map",
     "js/main.js",

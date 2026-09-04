@@ -909,7 +909,6 @@ GridView3d.prototype = {
         case 'pixelselect':
           UI.setCursor('crosshair');
           break;
-        break;
         case 'pixel':
         case 'charpixel':
           UI.setCursor('pixel');

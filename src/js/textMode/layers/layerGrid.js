@@ -411,49 +411,6 @@ LayerGrid.prototype = {
     doc.frames = data.frames;
     
     return;
-    this.frames = layers[i].frames;
-    this.doc = layers[i];
-    this.frameCount = data.frames.length;
-
-    // defaults
-    if(typeof this.doc.colorPerMode == 'undefined') {
-      this.doc.colorPerMode = 'cell';
-    }
-
-    if(typeof this.doc.screenMode == 'undefined') {
-      this.doc.screenMode = 'textmode';
-    }
-
-    if(typeof this.doc.blockMode == 'undefined') {
-      this.doc.blockMode = false;
-    }
-
-    if(typeof this.doc.hasTileRotate == 'undefined') {
-      this.doc.hasTileRotate = false;
-    }
-
-    if(typeof this.doc.hasTileFlip == 'undefined') {
-      this.doc.hasTileFlip = false;
-    }
-
-    if(typeof this.doc.blockWidth == 'undefined') {
-      this.doc.blockWidth = 2;
-    }
-
-    if(typeof this.doc.blockHeight == 'undefined') {
-      this.doc.blockHeight = 2;
-    }
-
-
-
-    switch(this.doc.screenMode) {
-      case 'monochrome':
-        this.mode = TextModeEditor.Mode.TEXTMODE;
-      break;
-      default:
-        this.mode = this.doc.screenMode;  
-      break;
-    }
   },
 
 
@@ -1237,12 +1194,6 @@ LayerGrid.prototype = {
 
 
     return this.defaultBorderColor;
-    
-//    var colorPalette = this.editor.colorPaletteManager.getCurrentColorPalette();
-    var colorPalette = this.getColorPalette();
-    borderColor = colorPalette.getDefaultBorderColor();
-
-    return borderColor;
 
   },
 

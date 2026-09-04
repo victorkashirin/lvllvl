@@ -2,6 +2,27 @@
 
 ## Unreleased
 
+## 0.496.8 - 2026-09-04
+
+### Fixed
+
+- Associate form labels with their controls, or remove invalid empty targets from
+  group and spacer labels, to prevent Firefox's misleading empty
+  `getElementById()` warning.
+- Regenerate the Glyphicons Halflings WOFF2 with corrected glyph bounds and side
+  bearings, removing Firefox font warnings without changing glyph outlines or
+  character mappings.
+- Remove obsolete unreachable implementations and redundant control statements
+  from the first-party bundle while preserving reachable local bindings, and
+  reject new unreachable or undefined statements during source tests and new
+  first-party Firefox console issues in the default-project browser flow.
+
+### Documentation
+
+- Add a cross-browser console snapshot for the default new-project flow,
+  including Firefox warning classifications and historical source-map
+  locations for the formerly unreachable code.
+
 ## 0.496.7 - 2026-09-04
 
 ### Changed

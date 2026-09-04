@@ -138,7 +138,6 @@ TileEditorGrid.prototype = {
       case 'characterEyedropper':
         this.mode = 'characterEyedropper';
         break;
-      break;
     }
   },
 

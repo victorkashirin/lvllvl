@@ -156,7 +156,6 @@ UI.SplitPanel = function(args) {
 
       if(typeof this.minPanelSize['west'] != 'undefined' && newSize < this.minPanelSize['west']) {
         return;
-        newSize = this.minPanelSize['west'];
       }
 
       this.westSize = newSize;
@@ -193,7 +192,6 @@ UI.SplitPanel = function(args) {
       }
       if(typeof this.minPanelSize['east'] != 'undefined' && newSize < this.minPanelSize['east']) {
         return;
-        newSize = this.minPanelSize['east'];
       }
 
       this.eastSize = newSize;
@@ -475,19 +473,14 @@ UI.SplitPanel = function(args) {
     switch(panel) {
       case 'north':
         return this.northSize != 0;
-        break;
       case 'south':
         return this.southSize != 0;
-        break;
       case 'east':
         return this.eastSize != 0;
-        break;
       case 'west':
         return this.westSize != 0;
-        break;
       case 'center':
         return this.centerVisible;
-        break;
     }
   }
 
