@@ -16,6 +16,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
+import { stripVTControlCharacters } from "node:util";
 
 import { buildGraph } from "../scripts/build-graph.mjs";
 import { assertCaseExactPath, publishDirectory } from "../scripts/build.mjs";
@@ -248,7 +249,8 @@ test("the development server rebuilds once and remains available", { timeout: 60
 
   const collectOutput = (chunk) => {
     output += chunk.toString();
-    const urlMatch = output.match(/Local:\s+(http:\/\/\S+)/);
+    const plainOutput = stripVTControlCharacters(output);
+    const urlMatch = plainOutput.match(/Local:\s+(http:\/\/\S+)/);
     if (urlMatch) {
       devUrl = urlMatch[1];
       clearTimeout(startupTimeout);
@@ -259,7 +261,7 @@ test("the development server rebuilds once and remains available", { timeout: 60
   child.stderr.on("data", collectOutput);
   child.once("exit", (code, signal) => {
     exited = true;
-    if (!output.includes("Local:")) {
+    if (!stripVTControlCharacters(output).includes("Local:")) {
       clearTimeout(startupTimeout);
       rejectReady(
         new Error(`Development server exited before startup (${code ?? signal}):\n${output}`),

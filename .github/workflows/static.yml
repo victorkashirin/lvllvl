@@ -23,7 +23,6 @@ jobs:
     with:
       fail-on-vuln: true
       scan-args: |-
-        --licenses=Apache-2.0,BSD-3-Clause,GPL-3.0-only,GPL-3.0-or-later,ISC,JSON,MIT,Zlib
         -L
         ./docs/runtime-dependencies.spdx.json
 

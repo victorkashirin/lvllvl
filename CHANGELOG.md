@@ -12,6 +12,9 @@
   patched compatible releases so the production security audit can pass.
 - Correct the SID export build input's filename casing and validate every build
   input case-exactly so macOS catches errors that would otherwise fail Linux CI.
+- Parse colorized development-server output reliably in CI, and leave license
+  exception enforcement to the repository's exemption-aware dependency policy
+  while OSV Scanner remains responsible for known-vulnerability detection.
 
 ## 0.496.8 - 2026-09-04
 
