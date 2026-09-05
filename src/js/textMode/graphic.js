@@ -934,6 +934,9 @@ Graphic.prototype = {
 
     var canvas = args.canvas;
     var context = args.context;
+    // The editor viewport supplies a deterministic bitmap sampler. Exports and
+    // other callers keep their own context's drawing/scaling behaviour.
+    var drawImage = args.drawImage || context.drawImage.bind(context);
 
     var srcX = 0;
     var srcY = 0;
@@ -1377,13 +1380,9 @@ Graphic.prototype = {
               });
             }
 
-            context.drawImage(
-                        prevFrameCanvas, 
-                        originX,
-                        originY,
-                        layerWidth * scale, 
-                        layerHeight * scale
-                    );
+            drawImage(prevFrameCanvas,
+              0, 0, layerWidth, layerHeight,
+              originX, originY, layerWidth * scale, layerHeight * scale);
           }
 
 //          context.drawImage(previousFrameSrcCanvas, originX, originY, layerWidth * scale, layerHeight * scale);
@@ -1428,10 +1427,9 @@ Graphic.prototype = {
               */
             } else {
               // only draw visible part of canvas
-              context.drawImage(layerCanvas,
+              drawImage(layerCanvas,
                 srcX, srcY, srcWidth, srcHeight,
                 dstX, dstY, srcWidth * scale, srcHeight * scale
-//                dstX, dstY, dstWidth, dstHeight
               );
             }
 
@@ -1539,7 +1537,7 @@ Graphic.prototype = {
 
             layerObject.draw({ canvas: this.shapesCanvas,  allCells: true, draw: 'shapes' });
 
-            context.drawImage(this.shapesCanvas, 
+            drawImage(this.shapesCanvas,
               0, 0, this.shapesCanvas.width, this.shapesCanvas.height,
               originX, originY, this.shapesCanvas.width * scale, this.shapesCanvas.height * scale
               );
@@ -1573,7 +1571,7 @@ Graphic.prototype = {
               });
 
               
-              context.drawImage(this.shapesCanvas, 
+              drawImage(this.shapesCanvas,
                 0, 0, this.shapesCanvas.width, this.shapesCanvas.height,
                 originX, originY, this.shapesCanvas.width * scale, this.shapesCanvas.height * scale);
                 
@@ -1584,7 +1582,7 @@ Graphic.prototype = {
           // draw the movable pasted area
           if(drawTools.select.isInPasteMove()) {
             context.translate(originX, originY);
-            drawTools.select.drawClipboardImage(context, scale);
+            drawTools.select.drawClipboardImage(context, scale, drawImage);
             context.translate(-originX, -originY);
           }
 
@@ -1605,7 +1603,7 @@ Graphic.prototype = {
               var dx = selection.minX + pixelSelect.selectionOffsetX;
               // reverseY                    var dy = layerHeight - selection.maxY - pixelSelect.selectionOffsetY;
               var dy = selection.minY + pixelSelect.selectionOffsetY;
-              context.drawImage(pixelSelect.canvas, sx, sy, sWidth, sHeight, 
+              drawImage(pixelSelect.canvas, sx, sy, sWidth, sHeight,
                 originX + dx * scale, originY + dy * scale, sWidth * scale, sHeight * scale);
             }
           }
@@ -1621,7 +1619,7 @@ Graphic.prototype = {
             var dx = pixelSelect.pasteOffsetX;
             var dy = pixelSelect.pasteOffsetY;
 
-            context.drawImage(pixelSelect.canvas, sx, sy, sWidth, sHeight, 
+            drawImage(pixelSelect.canvas, sx, sy, sWidth, sHeight,
               originX + dx * scale, originY + dy * scale, sWidth * scale, sHeight * scale);
           }
         }

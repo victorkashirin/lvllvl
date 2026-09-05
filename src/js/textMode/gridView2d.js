@@ -17,6 +17,9 @@ var GridView2d = function() {
   this.overlayCanvas = null;
   this.overlayContext = null;
   this.overlayNeedsRedraw = true;
+  this.rasterCanvas = null;
+  this.rasterContext = null;
+  this.rasterImageData = null;
   //this.previousFrameCanvas = null;
 
   // checkerboard pattern
@@ -3319,6 +3322,105 @@ GridView2d.prototype = {
 
   },
 
+  // Sample bitmap pixels on a fixed CSS-pixel lattice, independent of browser
+  // drawImage filtering, dirty clips, scratch size, and device ratio. Quarter-step
+  // zooms (and the 10% minimum) have an exact rational representation here, so a
+  // pixel centre on a source boundary always selects the pixel to its right/below.
+  // Viewport-only: uniform zoom, with a context transform of integer DPR plus
+  // translation (including the translated clipboard path), not arbitrary affine transforms.
+  drawRasterImage: function(context, bounds, image, sx, sy, sw, sh, dx, dy, dw, dh) {
+    if(sw <= 0 || sh <= 0 || dw <= 0 || dh <= 0) {
+      return;
+    }
+    var scale = dw / sw;
+    var transform = context.getTransform();
+    var translateX = transform.e / transform.a;
+    var translateY = transform.f / transform.d;
+
+    // Integer magnification cannot put a destination pixel centre on a source
+    // boundary. Keep the native, zero-readback fast path for these common zooms.
+    if(Number.isInteger(scale) && dh / sh === scale
+      && Number.isInteger(dx + translateX) && Number.isInteger(dy + translateY)) {
+      context.drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh);
+      return;
+    }
+
+    var denominator = scale < 0.25 ? 10 : 4;
+    var numerator = Math.round(scale * denominator);
+    var originX = Math.round((dx + translateX - sx * scale) * denominator);
+    var originY = Math.round((dy + translateY - sy * scale) * denominator);
+    var sourceLeft = Math.max(0, sx);
+    var sourceTop = Math.max(0, sy);
+    var sourceRight = Math.min(image.width, sx + sw);
+    var sourceBottom = Math.min(image.height, sy + sh);
+    var left = Math.max(0, Math.ceil((originX + sourceLeft * numerator) / denominator - 0.5));
+    var top = Math.max(0, Math.ceil((originY + sourceTop * numerator) / denominator - 0.5));
+    var right = Math.min(Math.floor(this.width), Math.ceil((originX + sourceRight * numerator) / denominator - 0.5));
+    var bottom = Math.min(Math.floor(this.height), Math.ceil((originY + sourceBottom * numerator) / denominator - 0.5));
+    if(bounds) {
+      left = Math.max(left, bounds.x);
+      top = Math.max(top, bounds.y);
+      right = Math.min(right, bounds.x + bounds.width);
+      bottom = Math.min(bottom, bounds.y + bounds.height);
+    }
+    var width = right - left;
+    var height = bottom - top;
+    if(width <= 0 || height <= 0) {
+      // An offscreen source can still clear the clip in modes such as copy or
+      // destination-in. Preserve that native compositing behaviour without reads.
+      context.drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh);
+      return;
+    }
+
+    if(this.rasterCanvas == null) {
+      this.rasterCanvas = document.createElement('canvas');
+      this.rasterContext = UI.getContextNoSmoothing(this.rasterCanvas);
+    }
+    if(this.rasterImageData == null || this.rasterCanvas.width != width || this.rasterCanvas.height != height) {
+      this.rasterCanvas.width = width;
+      this.rasterCanvas.height = height;
+      this.rasterImageData = this.rasterContext.createImageData(width, height);
+    }
+    var output = new Uint32Array(this.rasterImageData.data.buffer);
+    var columns = new Int32Array(width);
+    for(var x = 0; x < width; x++) {
+      columns[x] = Math.floor(((left + x + 0.5) * denominator - originX) / numerator);
+    }
+    var readX = columns[0];
+    var readWidth = columns[width - 1] - readX + 1;
+    var lastSourceY = Math.floor(((bottom - 0.5) * denominator - originY) / numerator);
+    var sourceContext = image.getContext('2d');
+    var readY = -1;
+    var readBottom = -1;
+    var previousY = -1;
+    var input = null;
+    for(var y = 0; y < height; y++) {
+      var sourceY = Math.floor(((top + y + 0.5) * denominator - originY) / numerator);
+      var row = y * width;
+      if(sourceY === previousY) {
+        output.copyWithin(row, row - width, row);
+        continue;
+      }
+      // Read only the required source footprint, in bounded row bands. Zooming
+      // out must not allocate an ImageData for the entire large source image.
+      if(sourceY >= readBottom) {
+        readY = sourceY;
+        readBottom = Math.min(readY + 64, lastSourceY + 1);
+        var pixels = sourceContext.getImageData(readX, readY, readWidth, readBottom - readY);
+        input = new Uint32Array(pixels.data.buffer);
+      }
+      var sourceRow = (sourceY - readY) * readWidth - readX;
+      for(var x = 0; x < width; x++) {
+        output[row + x] = input[sourceRow + columns[x]];
+      }
+      previousY = sourceY;
+    }
+    this.rasterContext.putImageData(this.rasterImageData, 0, 0);
+    // One integer-positioned blit preserves the caller's opacity/composite mode.
+    // The overlay's integer device transform enlarges these same CSS pixels.
+    context.drawImage(this.rasterCanvas, left - translateX, top - translateY);
+  },
+
   // Keep cursor previews out of the cached artwork canvas.
   drawCursor: function(args) {
 
@@ -3437,18 +3539,11 @@ GridView2d.prototype = {
 
                 cursorCanvas = this.editor.currentTile.getCursorCanvas();
                 if(cursorCanvas) {
-                  /*
-                  context.drawImage(cursorCanvas,
-                    cursorOffsetX, cursorOffsetY, cursorCanvas.width, cursorCanvas.height,
-                    offsetX, offsetY, cursorCanvas.width * scale, cursorCanvas.height * scale);
-                  */
-                  
-                  context.drawImage(cursorCanvas,
-                                    cursorOffsetX, cursorOffsetY, cursorWidth, cursorHeight,
-                                    offsetX, offsetY, cursorWidth * scale, cursorHeight * scale);
-                  
-                  this.drawCursorBox(context, offsetX, offsetY, cursorWidth * scale, cursorHeight * scale, scale);                                    
-                  
+                  this.drawRasterImage(context, false, cursorCanvas,
+                    cursorOffsetX * tileWidth, cursorOffsetY * tileHeight, cursorWidth, cursorHeight,
+                    offsetX, offsetY, cursorWidth * scale, cursorHeight * scale);
+
+                  this.drawCursorBox(context, offsetX, offsetY, cursorWidth * scale, cursorHeight * scale, scale);
                 }
               }
               context.globalAlpha = 1;
@@ -3866,6 +3961,7 @@ GridView2d.prototype = {
       this.editor.graphic.drawFrame({
         canvas: this.backBufferCanvas,
         context: this.backBufferContext,
+        drawImage: this.drawRasterImage.bind(this, this.backBufferContext, dirtyArtworkBounds),
         frame: frame,
         srcX: srcX,
         srcY: srcY,

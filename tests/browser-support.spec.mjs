@@ -949,6 +949,244 @@ test("2D editor keeps a real 350% pencil hold and drag stable", async ({ page },
   );
 });
 
+test("2D bitmap sampling preserves alpha, compositing, translations and dirty clips", async ({ page }, testInfo) => {
+  test.skip(!isDesktop2DRendererProject(testInfo));
+  await open2DProject(page, testInfo);
+  const results = await page.evaluate(() => {
+    const view = new GridView2d();
+    view.width = 64;
+    view.height = 48;
+    const source = document.createElement("canvas");
+    source.width = 11;
+    source.height = 9;
+    const sourceContext = source.getContext("2d");
+    sourceContext.fillStyle = "rgba(240,40,90,0.5)";
+    sourceContext.fillRect(0, 0, 7, 9);
+    sourceContext.fillStyle = "#30bb60";
+    sourceContext.fillRect(4, 1, 5, 6);
+    const sourcePixels = sourceContext.getImageData(0, 0, 11, 9).data;
+    const results = [];
+    for (const operation of ["source-over", "multiply", "destination-in", "copy", "source-out"]) {
+      for (const offscreen of [false, true]) {
+        const scale = 2.25;
+        const originX = offscreen ? -100 : -2.25;
+        const originY = 3.5;
+        const expected = document.createElement("canvas");
+        expected.width = view.width;
+        expected.height = view.height;
+        const expectedContext = expected.getContext("2d");
+        const pixels = expectedContext.createImageData(view.width, view.height);
+        for (let y = 0; y < view.height; y++) {
+          for (let x = 0; x < view.width; x++) {
+            const sx = Math.floor(((x + 0.5) * 4 - originX * 4) / 9);
+            const sy = Math.floor(((y + 0.5) * 4 - originY * 4) / 9);
+            if (sx >= 0 && sx < 11 && sy >= 0 && sy < 9) {
+              pixels.data.set(sourcePixels.subarray((sy * 11 + sx) * 4, (sy * 11 + sx + 1) * 4),
+                (y * view.width + x) * 4);
+            }
+          }
+        }
+        expectedContext.putImageData(pixels, 0, 0);
+        const bounds = { x: 5, y: 4, width: 24, height: 24 };
+        const outputs = [false, true].map((useSampler) => {
+          const canvas = document.createElement("canvas");
+          canvas.width = view.width * 2;
+          canvas.height = view.height * 2;
+          const context = UI.getContextNoSmoothing(canvas);
+          context.fillStyle = "#517399";
+          context.fillRect(0, 0, canvas.width, canvas.height);
+          context.scale(2, 2);
+          context.beginPath();
+          context.rect(bounds.x, bounds.y, bounds.width, bounds.height);
+          context.clip();
+          context.translate(7, -3); // Same translated path as a moving clipboard.
+          context.globalAlpha = 0.4;
+          context.globalCompositeOperation = operation;
+          if (useSampler) {
+            view.drawRasterImage(context, bounds, source, 0, 0, 11, 9,
+              originX - 7, originY + 3, 11 * scale, 9 * scale);
+          } else {
+            context.drawImage(expected, -7, 3);
+          }
+          return context.getImageData(0, 0, canvas.width, canvas.height).data;
+        });
+        let differences = 0;
+        for (let i = 0; i < outputs[0].length; i++) {
+          if (outputs[0][i] !== outputs[1][i]) differences++;
+        }
+        results.push({ operation, offscreen, differences });
+      }
+    }
+    return results;
+  });
+  for (const result of results) {
+    expect(result.differences, JSON.stringify(result)).toBe(0);
+  }
+});
+
+test("2D bitmap cursor uses the artwork sampling grid on HiDPI displays", async ({ page }, testInfo) => {
+  test.skip(!isDesktop2DRendererProject(testInfo));
+  await open2DProject(page, testInfo);
+  const results = await page.evaluate(() => {
+    const editor = g_app.textModeEditor;
+    const view = editor.gridView2d;
+    const grid = editor.grid.grid2d;
+    const layer = editor.layers.getSelectedLayerObject();
+    UI.devicePixelRatio = 2;
+    view.uiComponent.resize({ force: true });
+    editor.setGridVisible(false);
+    view.setCursorBoxVisible(false);
+    editor.setCursorTileTransparent(false);
+    editor.currentTile.setColor(1);
+    editor.setSelectedTiles([[1, 2], [3, 4]]);
+    grid.setCursor(20, 12, 0, 1, -1);
+    grid.setCursorEnabled(true);
+    grid.setCursorCells();
+
+    return [0.5, 0.75, 1.25, 2.25, 2.5, 2.75, 3.5].map((zoom) => {
+      view.setScale(zoom, false);
+      editor.graphic.redraw({ allCells: true });
+      const x = Math.floor(view.width / 2 - editor.graphic.getGraphicWidth() * zoom / 2
+        - view.camera.position.x * zoom) + 20 * layer.getCellWidth() * zoom;
+      const y = Math.floor(view.height / 2 - editor.graphic.getGraphicHeight() * zoom / 2
+        + view.camera.position.y * zoom) + 12 * layer.getCellHeight() * zoom;
+      const width = layer.getCellWidth() * 2 * zoom;
+      const height = layer.getCellHeight() * 2 * zoom;
+      // Check the shared CSS sampling lattice, including fractional reductions.
+      const artwork = view.context.getImageData(x * 2, y * 2, width * 2, height * 2).data;
+      const preview = view.overlayContext.getImageData(x * 2, y * 2, width * 2, height * 2).data;
+      let differences = 0;
+      for (let index = 0; index < artwork.length; index++) {
+        if (artwork[index] !== preview[index]) differences++;
+      }
+      return { zoom, differences, scratchSize: [view.rasterCanvas.width, view.rasterCanvas.height], expectedSize: [width, height] };
+    });
+  });
+  for (const result of results) {
+    expect(result.differences, `cursor at ${result.zoom * 100}%`).toBe(0);
+    expect(result.scratchSize).toEqual(result.expectedSize);
+  }
+});
+
+// Also run with --headed on a GPU-capable host. Do not use test-side canvas
+// readback before these screenshots: that hid the original Firefox GPU bug.
+for (const { zoom, tileSize = 8, panX = 0, panY = 0, cellX = 20 } of [
+  { zoom: 0.75 },
+  { zoom: 0.75, panX: 101, panY: 101 / 3, cellX: 21 },
+  { zoom: 2.25 },
+  { zoom: 2.5 },
+  { zoom: 2.75 },
+  { zoom: 3.5 },
+  { zoom: 2.25, tileSize: 9, cellX: 21 },
+  { zoom: 2.5, tileSize: 9, panX: 1, cellX: 21 },
+  { zoom: 3.5, tileSize: 9, cellX: 21 },
+]) {
+  test(`2D keeps repainted glyphs and pencil previews stable at ${zoom * 100}%, ${tileSize}px tiles, pan ${panX}`, async ({ page }, testInfo) => {
+    test.skip(!isDesktop2DRendererProject(testInfo));
+    await open2DProject(page, testInfo);
+
+    for (const pixelRatio of [1, 2]) {
+      const sample = await page.evaluate(({ zoom, pixelRatio, tileSize, panX, panY, cellX }) => {
+        const editor = g_app.textModeEditor;
+        const gridView = editor.gridView2d;
+        const layer = editor.layers.getSelectedLayerObject();
+        const grid2d = editor.grid.grid2d;
+        layer.getTileSet().setTileDimensions({ width: tileSize, height: tileSize });
+        editor.graphic.setCellDimensionsFromTiles();
+        UI.devicePixelRatio = pixelRatio;
+        gridView.uiComponent.resize({ force: true });
+        gridView.setScale(zoom, false);
+        gridView.setCameraPosition(panX, panY);
+        editor.tools.drawTools.setDrawTool("pen");
+        editor.setGridVisible(false);
+        gridView.setCursorBoxVisible(false);
+        editor.setCursorTileTransparent(false);
+        grid2d.setCursorEnabled(false);
+        editor.currentTile.setColor(1);
+        editor.setSelectedTiles([[2]]);
+        for (let x = cellX; x <= cellX + 4; x++) {
+          layer.setCell({ x, y: 12, t: 1, fc: 1, bc: -1 });
+        }
+        editor.graphic.invalidateAllCells();
+        editor.graphic.redraw({ allCells: true });
+        const cellWidth = layer.getCellWidth() * zoom;
+        const cellHeight = layer.getCellHeight() * zoom;
+        const originX = Math.floor(gridView.width / 2 - editor.graphic.getGraphicWidth() * zoom / 2 - panX * zoom);
+        const originY = Math.floor(gridView.height / 2 - editor.graphic.getGraphicHeight() * zoom / 2 + panY * zoom);
+        const rect = gridView.canvas.getBoundingClientRect();
+        const left = originX + cellX * cellWidth;
+        const top = originY + 12 * cellHeight;
+        return {
+          // Exclude the cell's outermost pixels: at fractional cell boundaries a
+          // screenshot crop could otherwise include part of the next drag cell.
+          clip: {
+            x: rect.left + Math.ceil(left - 0.5) + 1,
+            y: rect.top + Math.ceil(top - 0.5) + 1,
+            width: Math.ceil(left + cellWidth - 0.5) - Math.ceil(left - 0.5) - 2,
+            height: Math.ceil(top + cellHeight - 0.5) - Math.ceil(top - 0.5) - 2,
+          },
+          point: { x: rect.left + left + cellWidth / 2, y: rect.top + top + cellHeight / 2 },
+          cellWidth,
+        };
+      }, { zoom, pixelRatio, tileSize, panX, panY, cellX });
+
+      const baseline = await page.screenshot({ clip: sample.clip });
+      for (const allCells of [false, true, false]) {
+        // Invalidate the source without changing its final pixels. Unlike the
+        // old untouched-region test, this samples the cell actually repainted.
+        await page.evaluate(({ allCells, cellX }) => {
+          const editor = g_app.textModeEditor;
+          const layer = editor.layers.getSelectedLayerObject();
+          layer.setCell({ x: cellX, y: 12, t: 2, fc: 1, bc: -1 });
+          layer.setCell({ x: cellX, y: 12, t: 1, fc: 1, bc: -1 });
+          if (allCells) editor.graphic.redraw({ allCells: true });
+          else editor.grid.grid2d.redrawUpdatedCells(layer);
+        }, { allCells, cellX });
+        expect(baseline.equals(await page.screenshot({ clip: sample.clip })),
+          `repaint at DPR ${pixelRatio}, allCells=${allCells}`).toBe(true);
+      }
+
+      await page.mouse.move(sample.point.x, sample.point.y);
+      await expect.poll(() => page.evaluate(() => {
+        const editor = g_app.textModeEditor;
+        const cursor = editor.grid.grid2d.cursor;
+        return {
+          enabled: editor.grid.grid2d.getCursorEnabled(),
+          x: cursor.position.x,
+          y: cursor.position.y,
+          painted: !editor.gridView2d.overlayNeedsRedraw,
+        };
+      })).toEqual({ enabled: true, x: cellX, y: 12, painted: true });
+      const preview = await page.screenshot({ clip: sample.clip });
+      expect(preview.equals(baseline)).toBe(false);
+      await page.mouse.down();
+      expect(preview.equals(await page.screenshot({ clip: sample.clip }))).toBe(true);
+      for (let step = 1; step <= 4; step++) {
+        await page.mouse.move(sample.point.x + step * sample.cellWidth, sample.point.y);
+        expect(preview.equals(await page.screenshot({ clip: sample.clip })),
+          `committed glyph at DPR ${pixelRatio}, drag step ${step}`).toBe(true);
+      }
+      await page.mouse.up();
+      await page.mouse.move(0, 0);
+      expect(preview.equals(await page.screenshot({ clip: sample.clip }))).toBe(true);
+      const state = await page.evaluate((cellX) => {
+        const editor = g_app.textModeEditor;
+        const view = editor.gridView2d;
+        return {
+          cells: Array.from({ length: 5 }, (_, x) => editor.layers.getSelectedLayerObject().getCell({ x: x + cellX, y: 12 }).t),
+          softwareRaster: view.backBufferContext.getContextAttributes().willReadFrequently,
+          scratchFitsViewport: view.rasterCanvas.width <= view.width && view.rasterCanvas.height <= view.height,
+          mouseIsDown: view.mouseIsDown,
+        };
+      }, cellX);
+      expect(state.cells).toEqual(Array(5).fill(2));
+      expect(state.softwareRaster).toBe(false);
+      expect(state.scratchFitsViewport).toBe(true);
+      expect(state.mouseIsDown).toBe(false);
+    }
+  });
+}
+
 test("2D editor keeps grid contrast stable during pencil redraws", async ({ page }, testInfo) => {
   test.skip(!isDesktop2DRendererProject(testInfo));
 

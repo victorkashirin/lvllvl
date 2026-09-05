@@ -99,7 +99,7 @@ Select.prototype = {
   },
   
   // draws the dragable clipboard image
-  drawClipboardImage: function(context, scale) {
+  drawClipboardImage: function(context, scale, drawImage) {
 
     var drawScale = 1;
     if(typeof scale != 'undefined') {
@@ -123,7 +123,8 @@ Select.prototype = {
     var x = (this.selection.minX + this.selectionOffsetX) * tileWidth;
     var y = (this.selection.minY + this.selectionOffsetY) * tileHeight;
     
-    context.drawImage(this.clipboardCanvas, 
+    drawImage = drawImage || context.drawImage.bind(context);
+    drawImage(this.clipboardCanvas,
                       0, 0, this.clipboardImageWidth, this.clipboardImageHeight,
                       x * drawScale, y * drawScale, this.clipboardImageWidth * drawScale, this.clipboardImageHeight * drawScale);
 

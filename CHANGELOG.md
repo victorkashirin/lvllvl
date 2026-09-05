@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### Fixed
+
+- Stop fractional-zoom glyph jitter with a shared, deterministic pixel-centre
+  sampler for bitmap artwork and previews, including Firefox at 225%, odd-sized
+  tiles during dirty redraws, and Chromium cursor previews below 100% zoom.
+- Keep bitmap cursor previews aligned with committed artwork at all device ratios,
+  while preserving dirty-cell updates, blending, bounded raster storage, and a
+  native no-readback fast path for integer magnification.
+
 ## 0.497.4 - 2026-09-05
 
 ### Added
