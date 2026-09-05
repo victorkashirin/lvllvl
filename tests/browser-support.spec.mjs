@@ -909,6 +909,177 @@ test("image import opens, reuses its editor instance, and closes cleanly", async
   expect(localFailures, localFailures.join("\n")).toEqual([]);
 });
 
+test("desktop dialogs refit without losing their preferred size or selector controls", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "chromium-desktop");
+
+  await open2DProject(page, testInfo);
+  await page.setViewportSize({ width: 1024, height: 600 });
+
+  await page.evaluate(() =>
+    g_app.textModeEditor.colorPaletteManager.showChoosePreset({}),
+  );
+  const paletteDialog = page.locator(".ui-dialog:visible")
+    .filter({ hasText: "Choose A Colour Palette" });
+  await expect(paletteDialog).toBeVisible();
+  await page.locator('.colorPaletteListEntry[value="appleII"]').click();
+
+  const compactPalette = await page.evaluate(() => {
+    const dialog = UI.get("colorPaletteChoosePresetDialog");
+    const dialogBounds = document.getElementById(dialog.id).getBoundingClientRect();
+    const details = document.querySelector("#chooseColorPaletteDetails");
+    const detailsBounds = details.getBoundingClientRect();
+    const controlsBounds = document.querySelector("#chooseColorPaletteControls").getBoundingClientRect();
+    const saturationBounds = document.querySelector("#choosePaletteSaturation").getBoundingClientRect();
+    return {
+      controlsFit: controlsBounds.bottom <= detailsBounds.bottom &&
+        controlsBounds.left >= detailsBounds.left && controlsBounds.right <= detailsBounds.right,
+      dialogBounds: {
+        bottom: dialogBounds.bottom,
+        left: dialogBounds.left,
+        right: dialogBounds.right,
+        top: dialogBounds.top,
+      },
+      noHorizontalOverflow: details.scrollWidth <= details.clientWidth,
+      preferredHeight: dialog.preferredHeight,
+      renderedHeight: dialog.height,
+      saturationFits: saturationBounds.bottom <= detailsBounds.bottom,
+    };
+  });
+  expect(compactPalette.preferredHeight).toBe(800);
+  expect(compactPalette.renderedHeight).toBeLessThan(compactPalette.preferredHeight);
+  expect(compactPalette.dialogBounds.left).toBeGreaterThanOrEqual(15);
+  expect(compactPalette.dialogBounds.top).toBeGreaterThanOrEqual(15);
+  expect(compactPalette.dialogBounds.right).toBeLessThanOrEqual(1024 - 15);
+  expect(compactPalette.dialogBounds.bottom).toBeLessThanOrEqual(600 - 15);
+  expect(compactPalette.controlsFit).toBe(true);
+  expect(compactPalette.saturationFits).toBe(true);
+  expect(compactPalette.noHorizontalOverflow).toBe(true);
+
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await expect.poll(() => page.evaluate(() =>
+    UI.get("colorPaletteChoosePresetDialog").height,
+  )).toBe(800);
+  const expandedPaletteHeight = await paletteDialog.evaluate((element) =>
+    element.getBoundingClientRect().height,
+  );
+  expect(expandedPaletteHeight).toBeGreaterThan(compactPalette.renderedHeight);
+
+  await page.setViewportSize({ width: 820, height: 900 });
+  await expect.poll(() => page.evaluate(() =>
+    UI.get("colorPaletteChoosePresetDialog").width,
+  )).toBeLessThan(800);
+  const compactPaletteWidth = await page.evaluate(() => {
+    const dialog = UI.get("colorPaletteChoosePresetDialog");
+    const dialogBounds = document.getElementById(dialog.id).getBoundingClientRect();
+    return {
+      dialogBounds: {
+        left: dialogBounds.left,
+        right: dialogBounds.right,
+      },
+      preferredWidth: dialog.preferredWidth,
+      renderedWidth: dialog.width,
+    };
+  });
+  expect(compactPaletteWidth.preferredWidth).toBe(800);
+  expect(compactPaletteWidth.renderedWidth).toBeLessThan(compactPaletteWidth.preferredWidth);
+  expect(compactPaletteWidth.dialogBounds.left).toBeGreaterThanOrEqual(15);
+  expect(compactPaletteWidth.dialogBounds.right).toBeLessThanOrEqual(820 - 15);
+
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await expect.poll(() => page.evaluate(() =>
+    UI.get("colorPaletteChoosePresetDialog").width,
+  )).toBe(800);
+  await page.evaluate(() => UI.closeDialog());
+
+  await page.setViewportSize({ width: 1024, height: 600 });
+  await page.evaluate(() => {
+    const manager = g_app.textModeEditor.tileSetManager;
+    manager.showChoosePreset({});
+  });
+  const tileDialog = page.locator(".ui-dialog:visible")
+    .filter({ hasText: "Choose A Tile Set" });
+  await expect(tileDialog).toBeVisible();
+  await expect(page.locator('.characterSetListEntry[value="petscii"]')).toBeVisible();
+  await page.evaluate(() => {
+    const chooser = g_app.textModeEditor.tileSetManager.getChoosePresetDialog();
+    chooser.setTilePresetType("custom");
+  });
+  await page.locator('.characterSetListEntry[value="8px"]').click();
+
+  const tileLayout = await page.evaluate(() => {
+    const details = document.querySelector("#chooseCharacterSetDetails");
+    const detailsBounds = details.getBoundingClientRect();
+    const info = document.querySelector("#chooseCharacterSetInfo");
+    const infoBounds = info.getBoundingClientRect();
+    const options = document.querySelector("#chooseCharacterSetOptions");
+    const optionsBounds = options.getBoundingClientRect();
+    return {
+      infoFits: infoBounds.bottom <= detailsBounds.bottom && infoBounds.right <= detailsBounds.right,
+      noHorizontalOverflow: info.scrollWidth <= info.clientWidth,
+      optionsFit: optionsBounds.bottom <= detailsBounds.bottom && optionsBounds.right <= detailsBounds.right,
+    };
+  });
+  expect(tileLayout).toEqual({
+    infoFits: true,
+    noHorizontalOverflow: true,
+    optionsFit: true,
+  });
+  await page.evaluate(() => UI.closeDialog());
+
+  const importer = await page.evaluate(async () => {
+    await g_app.openImageImport();
+    return g_app.services.imageImportCoordinator.getStatus();
+  });
+  expect(importer).toBe("ready");
+  await expect(page.locator(".ui-dialog:visible")
+    .filter({ hasText: "Import Image / Video" })).toBeVisible();
+  const compactImport = await page.evaluate(() => {
+    const dialog = UI.get("importImageDialog");
+    const source = document.querySelector(`#${g_app.services.imageImport
+      .getActive(g_app.textModeEditor).innerSplitPanel.id}north`).getBoundingClientRect();
+    const settings = document.querySelector("#importImageAllSettings").getBoundingClientRect();
+    return {
+      preferredHeight: dialog.preferredHeight,
+      renderedHeight: dialog.height,
+      settingsHeight: settings.height,
+      sourceHeight: source.height,
+    };
+  });
+  expect(compactImport.preferredHeight).toBe(800);
+  expect(compactImport.renderedHeight).toBeLessThan(compactImport.preferredHeight);
+  expect(compactImport.settingsHeight).toBeGreaterThan(150);
+  expect(compactImport.sourceHeight).toBeGreaterThan(150);
+
+  await page.locator("#importImageUseChars").scrollIntoViewIfNeeded();
+  const lastImportControlFits = await page.evaluate(() => {
+    const holder = document.querySelector("#importImageAllSettings").getBoundingClientRect();
+    const control = document.querySelector("#importImageUseChars").getBoundingClientRect();
+    return control.top >= holder.top && control.bottom <= holder.bottom;
+  });
+  expect(lastImportControlFits).toBe(true);
+
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await expect.poll(() => page.evaluate(() =>
+    UI.get("importImageDialog").height,
+  )).toBe(800);
+  const expandedImport = await page.evaluate(() => {
+    const activeImporter = g_app.services.imageImport.getActive(g_app.textModeEditor);
+    activeImporter.importSource = "video";
+    document.querySelector("#importImageVideoControls").style.display = "block";
+    activeImporter.resizeImportPanels();
+    const source = document.querySelector(`#${activeImporter.innerSplitPanel.id}north`);
+    const settings = document.querySelector(`#${activeImporter.innerSplitPanel.id}center`);
+    return {
+      settingsHeight: settings.getBoundingClientRect().height,
+      sourceHeight: source.getBoundingClientRect().height,
+    };
+  });
+  expect(expandedImport.sourceHeight).toBeGreaterThanOrEqual(380);
+  expect(expandedImport.sourceHeight).toBeLessThanOrEqual(388);
+  expect(expandedImport.settingsHeight).toBeGreaterThanOrEqual(360);
+  await page.evaluate(() => g_app.closeImageImport());
+});
+
 test("mobile image import serializes rapid close and reopen", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "chromium-handheld");
 

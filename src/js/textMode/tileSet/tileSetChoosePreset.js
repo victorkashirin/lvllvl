@@ -438,7 +438,7 @@ TileSetChoosePreset.prototype = {
     }
 
     if(typeof this.previewCharset.notes != 'undefined') {
-      info += '</div>' + this.previewCharset.notes + '</div>';
+      info += '<div>' + SafeHTML.escape(this.previewCharset.notes) + '</div>';
     }
 
 

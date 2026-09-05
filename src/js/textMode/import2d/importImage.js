@@ -840,6 +840,28 @@ ImportImage.prototype = {
 
   },
 
+  resizeImportPanels: function() {
+    if(this.host.isMobile() || !this.innerSplitPanel) {
+      return;
+    }
+
+    var panelHeight = $('#' + this.innerSplitPanel.id).height();
+    if(!panelHeight) {
+      return;
+    }
+
+    var dividerHeight = this.innerSplitPanel.northBarSize;
+    var idealSourceHeight = this.importSource == 'video' ? 388 : 336;
+    var minimumSettingsHeight = 360;
+    var minimumSourceHeight = Math.min(220, Math.max(0, panelHeight - dividerHeight - 160));
+    var sourceHeight = Math.max(minimumSourceHeight, panelHeight - dividerHeight - minimumSettingsHeight);
+    sourceHeight = Math.min(idealSourceHeight, sourceHeight);
+
+    if(this.innerSplitPanel.northSize != sourceHeight) {
+      this.innerSplitPanel.resizeThePanel({ "panel": 'north', "size": sourceHeight });
+    }
+  },
+
 
   initRangeControl: function() {
     var _this = this;
@@ -1150,7 +1172,7 @@ ImportImage.prototype = {
 
     if(this.uiComponent == null) {
       this.uiComponent = UI.create("UI.Dialog", 
-        { "id": "importImageDialog", "title": "Import Image", "width": 900, "height": 640 });
+        { "id": "importImageDialog", "title": "Import Image / Video", "width": 900, "height": 800 });
 
       this.splitPanel = UI.create("UI.SplitPanel", { "id": "importImageSplitPanel" });
       this.uiComponent.add(this.splitPanel);
@@ -1194,6 +1216,10 @@ ImportImage.prototype = {
       });
       this.innerSplitPanel.on('resize', function() {
         _this.updateScrollbars();
+      });
+
+      this.uiComponent.on('resize', function() {
+        _this.resizeImportPanels();
       });
 
       this.converterSettingsPanel = UI.create("UI.HTMLPanel");
@@ -3150,8 +3176,8 @@ ImportImage.prototype = {
       }
 
 
-      this.innerSplitPanel.resizeThePanel({"panel": 'north', "size": 388});
       $('#importImageVideoControls').show();
+      this.resizeImportPanels();
 
       if(typeof file.name != 'undefined') { 
         $('#importImageChooseFileName').text(file.name);
@@ -3307,11 +3333,11 @@ ImportImage.prototype = {
   setImportImageFromSrc: function(src) {
     this.importVideo = null;
 
-    this.innerSplitPanel.resizeThePanel({ "panel": 'north', "size": 336});
     $('#importImageVideoControls').hide();
     $('#importImageTickControls').show();
 
     this.importSource = 'image';
+    this.resizeImportPanels();
     this.resetCacheCanvas();
 
     this.setAnimationParameters();

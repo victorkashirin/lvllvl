@@ -623,6 +623,14 @@ UI.resize = function() {
   if(UI.primaryComponent && typeof UI.primaryComponent.resize != 'undefined') {
     UI.primaryComponent.resize();
   }
+
+  // Dialogs are not part of the primary layout tree. Keep every open dialog
+  // inside the resized viewport and let its child panels adapt to the new box.
+  for(var i = 0; i < UI.dialogStack.length; i++) {
+    if(typeof UI.dialogStack[i].resizeToViewport != 'undefined') {
+      UI.dialogStack[i].resizeToViewport();
+    }
+  }
 }
 
 

@@ -412,6 +412,82 @@ input[type=checkbox] {
   padding: 4px;
 }
 
+.presetChooserList {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  overflow: auto;
+  top: 10px;
+  width: 180px;
+}
+
+.presetChooserDetails {
+  position: absolute;
+  bottom: 0;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  left: 200px;
+  min-height: 0;
+  overflow: hidden;
+  padding: 10px;
+  right: 0;
+  top: 0;
+}
+
+.presetChooserMetadata {
+  flex: 0 1 auto;
+  max-height: 120px;
+  min-width: 0;
+  overflow: auto;
+  overflow-wrap: anywhere;
+}
+
+.presetChooserMetadata h3 {
+  margin-top: 0;
+}
+
+.presetChooserPreview {
+  align-items: flex-start;
+  background-color: #050505;
+  display: flex;
+  flex: 1 1 auto;
+  justify-content: center;
+  min-height: 0;
+  min-width: 0;
+  overflow: auto;
+  text-align: center;
+}
+
+.presetChooserPreview canvas {
+  flex: 0 0 auto;
+  max-width: 100%;
+}
+
+.presetChooserOptions {
+  background-color: #272727;
+  box-sizing: border-box;
+  flex: 0 1 auto;
+  max-height: 80px;
+  min-width: 0;
+  overflow: auto;
+  overflow-wrap: anywhere;
+  padding: 10px 10px 4px 10px;
+}
+
+.presetChooserAttribution {
+  flex: 0 1 auto;
+  max-height: 80px;
+  min-width: 0;
+  overflow: auto;
+  overflow-wrap: anywhere;
+}
+
+.presetChooserControls {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
 .characterSetListCategory, .colorPaletteListCategory {
   font-weight: bold;
   padding: 4px;
@@ -448,11 +524,17 @@ input[type=checkbox] {
 }
 
 #chooseColorPaletteControls .controlLabel {
-  width: 180px;
+  flex: 0 0 100px;
+  width: 100px;
 }
 
 #chooseColorPaletteControls input  {
   margin-right: 6px
+}
+
+#chooseColorPaletteControls input[type="range"] {
+  flex: 1 1 120px;
+  min-width: 80px;
 }
 
 #importImageProgress {

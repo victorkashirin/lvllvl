@@ -4,6 +4,9 @@
 
 ### Fixed
 
+- Keep dialogs centred and within the current viewport without permanently
+  shrinking them, make image/video import use the available height, and keep
+  tile-set and colour-palette metadata from displacing visible controls.
 - Run Chromium, Firefox, and WebKit checks as independent GitHub Actions jobs,
   keeping one Playwright worker per runner while removing the serial browser
   bottleneck from Pages deployments.

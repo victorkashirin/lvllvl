@@ -107,12 +107,21 @@ UI.Dialog = function(args) {
       this.height = args.height;
     }
 
+    // Keep the requested size separate from the rendered size. A dialog may
+    // need to shrink to fit the current viewport, but that temporary clamp
+    // must not become its new size when it is shown again on a larger screen.
+    this.preferredWidth = this.width;
+    this.preferredHeight = this.height;
+    this.fullScreen = typeof args.fullScreen != 'undefined' && args.fullScreen;
+    this.maxWidth = typeof args.maxWidth != 'undefined' ? args.maxWidth : false;
+    this.maxHeight = typeof args.maxHeight != 'undefined' ? args.maxHeight : false;
+
     this.showCloseButton = true;
     if(typeof args.showCloseButton !== 'undefined') {
       this.showCloseButton = false;
     }
 
-    if(typeof args.fullScreen != 'undefined' && args.fullScreen) {
+    if(this.fullScreen) {
 
       var screenWidth = UI.getScreenWidth();
       var screenHeight = UI.getScreenHeight();
@@ -127,6 +136,9 @@ UI.Dialog = function(args) {
       if(typeof args.maxHeight != 'undefined' && this.height > args.maxHeight) {
         this.height = args.maxHeight;
       }
+
+      this.preferredWidth = this.width;
+      this.preferredHeight = this.height;
 
     }
 
@@ -275,6 +287,20 @@ UI.Dialog = function(args) {
       $('#' + this.id).css('height', this.height);
     }
 
+    if(this.mouseDownOn == 'eastresize' || this.mouseDownOn == 'northeastresize' || this.mouseDownOn == 'southeastresize' ||
+       this.mouseDownOn == 'westresize' || this.mouseDownOn == 'northwestresize' || this.mouseDownOn == 'southwestresize') {
+      this.preferredWidth = this.width;
+    }
+
+    if(this.mouseDownOn == 'northresize' || this.mouseDownOn == 'northeastresize' || this.mouseDownOn == 'northwestresize' ||
+       this.mouseDownOn == 'southresize' || this.mouseDownOn == 'southeastresize' || this.mouseDownOn == 'southwestresize') {
+      this.preferredHeight = this.height;
+    }
+
+    this.notifyResize();
+  }
+
+  this.notifyResize = function() {
     this.trigger('resize');
     for(var i = 0; i < this.components.length; i++) {
       if(typeof this.components[i].resize != 'undefined') {
@@ -290,6 +316,7 @@ UI.Dialog = function(args) {
    * @param width {Number} The new width of the dialog
    */
   this.setWidth = function(width) {
+    this.preferredWidth = width;
     this.width = width;
     $('#' + this.id).css('width', this.width);
   }
@@ -301,8 +328,73 @@ UI.Dialog = function(args) {
    * @param height {Number} The new height of the dialog
    */
   this.setHeight = function(height) {
+    this.preferredHeight = height;
     this.height = height;
     $('#' + this.id).css('height', this.height);
+  }
+
+  /**
+   * Fit the dialog to the current viewport without changing its preferred
+   * size. Desktop dialogs are centred with a consistent margin; mobile-sized
+   * dialogs retain space for the application header.
+   */
+  this.resizeToViewport = function(notify) {
+    var windowHeight = UI.getScreenHeight();
+    var windowWidth = UI.getScreenWidth();
+    var isMobile = UI.isMobile.any();
+    var horizontalMargin = isMobile ? 5 : 16;
+    var topMargin = isMobile ? 40 : 16;
+    var bottomMargin = isMobile ? 10 : 16;
+    var horizontalFrameSize = 8;
+    var verticalFrameSize = 8;
+
+    var dialogElement = document.getElementById(this.id);
+    if(dialogElement) {
+      var dialogStyle = window.getComputedStyle(dialogElement);
+      horizontalFrameSize = parseFloat(dialogStyle.paddingLeft) + parseFloat(dialogStyle.paddingRight) +
+        parseFloat(dialogStyle.borderLeftWidth) + parseFloat(dialogStyle.borderRightWidth);
+      verticalFrameSize = parseFloat(dialogStyle.paddingTop) + parseFloat(dialogStyle.paddingBottom) +
+        parseFloat(dialogStyle.borderTopWidth) + parseFloat(dialogStyle.borderBottomWidth);
+    }
+
+    var preferredWidth = this.preferredWidth;
+    var preferredHeight = this.preferredHeight;
+
+    if(this.fullScreen) {
+      preferredWidth = windowWidth - 10 - horizontalFrameSize;
+      preferredHeight = windowHeight - 10 - verticalFrameSize;
+
+      if(this.maxWidth !== false && preferredWidth > this.maxWidth) {
+        preferredWidth = this.maxWidth;
+      }
+      if(this.maxHeight !== false && preferredHeight > this.maxHeight) {
+        preferredHeight = this.maxHeight;
+      }
+    }
+
+    var availableWidth = Math.max(0, windowWidth - horizontalMargin * 2 - horizontalFrameSize);
+    var availableHeight = Math.max(0, windowHeight - topMargin - bottomMargin - verticalFrameSize);
+
+    this.width = Math.min(preferredWidth, availableWidth);
+    this.height = Math.min(preferredHeight, availableHeight);
+
+    var outerWidth = this.width + horizontalFrameSize;
+    var outerHeight = this.height + verticalFrameSize;
+    this.left = Math.max(horizontalMargin, Math.floor((windowWidth - outerWidth) / 2));
+    this.top = isMobile
+      ? topMargin
+      : Math.max(topMargin, Math.floor((windowHeight - outerHeight) / 2));
+
+    $('#' + this.id).css({
+      'height': this.height + 'px',
+      'left': this.left + 'px',
+      'top': this.top + 'px',
+      'width': this.width + 'px'
+    });
+
+    if(notify !== false) {
+      this.notifyResize();
+    }
   }
 
   this.mouseDown = function(event) {
@@ -550,6 +642,8 @@ UI.Dialog = function(args) {
    */
   this.show = function() {
 
+    this.resizeToViewport(false);
+
     $('#' + this.id  + '-background').css('z-index', g_dialogZIndex);
     //$('#' + this.id + '-background').show();
     $('#' + this.id + '-background').fadeIn(200);
@@ -559,47 +653,11 @@ UI.Dialog = function(args) {
     $('#' + this.id).fadeIn(100);
     //$('#' + this.id).show();
 
+    this.notifyResize();
+
     g_dialogZIndex++;
 
     
-    var windowHeight = $(window).height();
-    var windowWidth = $(window).width();
-    var dialogWidth = this.width;
-    var dialogHeight = this.height;
-    if(UI.isMobile.any()) {
-      this.top = 00;
-
-
-      this.top = 40;//Math.floor((windowHeight - dialogHeight) / 3.6);
-      if(this.top < 15) {
-        this.top = 0;
-      }
-      
-      dialogWidth += 10;
-
-    } else {
-      this.top = 20;
-    }
-    this.left = (windowWidth - dialogWidth) / 2;
-
-
-
-    if(this.top + dialogHeight > windowHeight && windowHeight > 300) {
-      this.height = windowHeight - 30;
-      $('#' + this.id).css('height', this.height);
-      
-    }
-
-    if(this.left + dialogWidth > windowWidth && windowWidth > 300) {
-      this.width = windowWidth - 38;
-      this.left = 15;
-      $('#' + this.id).css('width', this.width);
-      
-    }    
-
-    $('#' + this.id).css('top', this.top + 'px');
-    $('#' + this.id).css('left', this.left + 'px');
-
     // TODO: doing this also in UI ??
     g_dialogStack.push(this);
     

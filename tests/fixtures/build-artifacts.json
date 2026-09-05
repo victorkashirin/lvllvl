@@ -11,8 +11,8 @@
       "sha256": "829f31c3db420d81e94440aad5526af5a9870ef8af39404871af3c7752411a03"
     },
     "css/style.css": {
-      "bytes": 136310,
-      "sha256": "bfff58f7520f94845f575a24341c30b457bf96206a1b7227beda1d8ff263e070"
+      "bytes": 137634,
+      "sha256": "8e5c345aa1a7fc29c64bd354eec21f77e7993526eb80836238ee94770a649763"
     },
     "fonts/glyphicons-halflings-regular.woff2": {
       "bytes": 20188,
@@ -27,12 +27,12 @@
       "sha256": "f6e20ce93d4c5e5a0fe109bd3a07dc51e482ba8700c4ef7468bbc0839d2872b8"
     },
     "js/main.js": {
-      "bytes": 3246089,
-      "sha256": "4a9328a1705ce29f3c09fafbfcc93610c9d6182f889c9936a817a0905be42b67"
+      "bytes": 3247777,
+      "sha256": "9b2289df8522488e6b9b084a04bc2d180cbde3438b52c82a4bd7cfef34597757"
     },
     "js/main.js.map": {
-      "bytes": 10359342,
-      "sha256": "22c3ecf60018698ffb3857bf3a6895bb38699dda2e35355598bb4d44bde0c890"
+      "bytes": 10364767,
+      "sha256": "8c4522c635308a61a1fb9e079431bc5369d37590cd4e818a14ce94cb1e8a4e7e"
     },
     "js/bootstrap.mjs": {
       "bytes": 3299,
@@ -83,16 +83,16 @@
       "sha256": "1b3b8e5f9b2c10a23c24b096a7c8696a83e0ffcaa8bbd6fff6af473a40265141"
     },
     "js/features/image-import.js": {
-      "bytes": 147460,
-      "sha256": "38b0c28e9ec49f6b74ff00d264fcb531dafbfc3094b10c6c0541cd95810117fa"
+      "bytes": 147877,
+      "sha256": "5a382e428ccc943a8200f77d882d697edfd84ac8b14ed8eba3d0b3e38b6f5816"
     },
     "js/features/image-import.js.map": {
-      "bytes": 549712,
-      "sha256": "bd45187c4bd5580dbbee2089ab48a1089eef9f083c06416cd97fae07485b845d"
+      "bytes": 551249,
+      "sha256": "f396b07f3692d7a8cfd285c0d86dac078750abbf75358b93b2841b1c67f75a02"
     },
     "js/html/htmlcache.js": {
-      "bytes": 364097,
-      "sha256": "080106fb0639669156aae45964cbfa8f5bd77be759d4ddc2d4dbf3a523ccea5c"
+      "bytes": 363779,
+      "sha256": "74a0bdf54100a5f157e21ec0f0765f7103ea55d9d7a9721d475a2370cdd3d403"
     }
   }
 }
