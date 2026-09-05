@@ -694,6 +694,11 @@ Grid2d.prototype = {
       updateLayerCanvas = args.updateLayerCanvas;
     }
 
+    var drawOverlays = true;
+    if(typeof args.drawOverlays != 'undefined') {
+      drawOverlays = args.drawOverlays;
+    }
+
     var animatedTilesOnly = false;
     if(typeof args.animatedTilesOnly != 'undefined') {
       animatedTilesOnly = args.animatedTilesOnly;
@@ -718,21 +723,16 @@ Grid2d.prototype = {
     }
 
 
-    if(this.effectCanvas == null) {
-      this.effectCanvas = document.createElement('canvas');
-    }
-
-    this.effectCanvas.width = screenWidth;
-    this.effectCanvas.height = screenHeight;
-    this.effectContext = this.effectCanvas.getContext('2d');
-
-
     if(!updateLayerCanvas) {
       if(this.tempCanvas == null) {
         this.tempCanvas = document.createElement('canvas');
       }
-      this.tempCanvas.width = screenWidth;
-      this.tempCanvas.height = screenHeight;
+      if(this.tempCanvas.width != screenWidth) {
+        this.tempCanvas.width = screenWidth;
+      }
+      if(this.tempCanvas.height != screenHeight) {
+        this.tempCanvas.height = screenHeight;
+      }
       this.tempContext = this.tempCanvas.getContext('2d');
     }
 
@@ -805,7 +805,8 @@ Grid2d.prototype = {
             canvas: canvas,  
             frame: frame, 
             allCells: allCells,
-            drawBackground: drawLayerBackground 
+            drawBackground: drawLayerBackground,
+            draw: drawOverlays ? 'grid' : 'preview'
           });
 
 
@@ -916,7 +917,7 @@ this.shaderEffects.applyEffects();
 
 
 
-        if(layerObject.getType() === 'grid') {
+        if(drawOverlays && layerObject.getType() === 'grid') {
           if(layerObject.isCurrentLayer()) {
             // its the current layer..draw selection and shapes
             // need to draw shapes?

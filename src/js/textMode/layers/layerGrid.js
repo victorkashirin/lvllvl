@@ -55,6 +55,7 @@ var LayerGrid = function() {
   // index instead of scanning the document or invalidating every grid layer.
   this.tileUsageByFrame = [];
   this.tileFrameRevisions = [];
+  this.frameContentRevisions = [];
   this.tileDirtyRegions = [];
 
   this.refImage = null;
@@ -297,6 +298,7 @@ LayerGrid.prototype = {
         this.frameCount = this.frames.length;
         this.tileUsageByFrame = [];
         this.tileFrameRevisions = [];
+        this.frameContentRevisions = [];
         this.tileDirtyRegions = [];
         this.prevFrameDirtyFrame = null;
         this.prevFrameDirtyRegions = [];
@@ -605,6 +607,17 @@ LayerGrid.prototype = {
   // One bounded cache per layer, never a global frame-number cache. Cell edits
   // invalidate only the cached frame; bulk legacy mutations may invalidate all.
   invalidatePrevFrame: function(frame, x, y) {
+    // Auxiliary frame caches need a content token independent of thumbnail
+    // damage and selective shared-tile patch revisions.
+    if(typeof frame === 'undefined') {
+      for(var frameIndex = 0; frameIndex < this.frames.length; frameIndex++) {
+        this.frameContentRevisions[frameIndex] =
+          (this.frameContentRevisions[frameIndex] || 0) + 1;
+      }
+    } else {
+      this.frameContentRevisions[frame] = (this.frameContentRevisions[frame] || 0) + 1;
+    }
+
     // Both caches depend on cell mutations, including legacy bulk mutations.
     if(typeof frame === 'undefined' || frame === this.currentFrame) {
       this.previewRevision++;
@@ -997,6 +1010,10 @@ LayerGrid.prototype = {
       state.push(tileSet.getFontScale(), tileSet.getFontAscent());
     }
     return state;
+  },
+
+  getFrameContentRevision: function(frameIndex) {
+    return this.frameContentRevisions[frameIndex] || 0;
   },
 
   drawPrevFrame: function(args) {
@@ -3847,7 +3864,7 @@ LayerGrid.prototype = {
               flipH = gridData[y][x].fh;
               rotZ = gridData[y][x].rz;
 
-              if(draw !== 'prevgrid' && draw !== 'thumbnail' && x >= selectionX + selectionOffsetX && x < selectionX + selectionOffsetX + selectionWidth
+              if(draw !== 'prevgrid' && draw !== 'thumbnail' && draw !== 'preview' && x >= selectionX + selectionOffsetX && x < selectionX + selectionOffsetX + selectionWidth
                 && y >= selectionY + selectionOffsetY && y < selectionY + selectionOffsetY + selectionHeight) {
                   var sX = x - selectionOffsetX;
                   var sY = y - selectionOffsetY;
@@ -4434,7 +4451,7 @@ LayerGrid.prototype = {
 
     var blankCharacter = this.blankTileId;
     var screenMode = this.getMode();
-    var dontDrawSelected = draw !== 'prevgrid' && draw !== 'thumbnail' && this.isCurrentLayer()
+    var dontDrawSelected = draw !== 'prevgrid' && draw !== 'thumbnail' && draw !== 'preview' && this.isCurrentLayer()
       && this.editor.tools.drawTools.select.isActive()
       && this.editor.tools.drawTools.select.isMovingSelectionContents()
       && !this.editor.tools.drawTools.select.isInPasteMove();

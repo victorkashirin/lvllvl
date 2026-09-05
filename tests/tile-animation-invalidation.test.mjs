@@ -443,6 +443,8 @@ test("batched setPixel mutations do not advance the global render revision", () 
   assert.equal(tileSet.renderRevision, 0);
   tileSet.updateCharacters([0], true);
   assert.equal(tileSet.renderRevision, 0);
+  assert.equal(tileSet.tileRenderRevisions[0], 1,
+    "selective consumers still receive a per-tile dependency revision");
 });
 
 test("selective tile dependency revisions change only layers that use the tile", () => {

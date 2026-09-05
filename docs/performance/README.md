@@ -340,10 +340,28 @@ a tile used in one region invalidates that region, not unrelated layers.
 
 ### R5 — P2: animation preview rebuilds unchanged frames and resets scratch canvases
 
-**Location:** [animationPreview.js:241–281](../../src/js/textMode/animationPreview.js#L241-L281),
-[308–359](../../src/js/textMode/animationPreview.js#L308-L359);
-[grid2d.js:721–737](../../src/js/textMode/grid2d.js#L721-L737),
-[805–827](../../src/js/textMode/grid2d.js#L805-L827).
+**Status: fixed.** `AnimationPreview` now keeps a three-entry least-recently-used
+cache of full preview composites. Keys cover frame/content identity, per-frame
+cell revisions, only the selective tile revisions used by that frame, palette
+and block revisions, dimensions, background visibility, layer order/visibility,
+opacity, compositing, and reference-image identity. This keeps the cache bounded
+for long animations while allowing short loops to reuse completed composites.
+One-frame ranges now skip unchanged duration ticks but still redraw when a
+dependency changes. Preview rasters explicitly omit onion skin and editing
+overlays and continue to use disposable layer canvases, so they do not consume
+main-viewport invalidation.
+
+The legacy `Grid2d.drawFrame` path now guards temporary-canvas dimensions and no
+longer allocates or resets the disabled effect canvas. Source tests cover warm
+cache hits, dependency refreshes, bounded eviction, one-frame ticks, and canvas
+size writes. Browser coverage checks zero warm cell rasterizations/size resets
+and pixel equivalence after a content change and forced fresh render. The
+observations below describe the original bug, not new timing measurements.
+
+**Location:** [animationPreview.js:240–405](../../src/js/textMode/animationPreview.js#L240-L405),
+[416–469](../../src/js/textMode/animationPreview.js#L416-L469);
+[grid2d.js:714–740](../../src/js/textMode/grid2d.js#L714-L740),
+[796–827](../../src/js/textMode/grid2d.js#L796-L827).
 
 `AnimationPreview.draw()` always requests all cells through the older
 `Grid2d.drawFrame` path. That path unconditionally assigns both dimensions of

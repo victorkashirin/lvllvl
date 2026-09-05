@@ -7,6 +7,8 @@ var AnimationPreview = function() {
   this.canvasHolderElementId = '';
   this.screenCanvas = null;
   this.screenContext = null;
+  this.frameCache = [];
+  this.frameCacheLimit = 3;
 
   this.lastFrameTime = 0;
   this.currentFrame = 0;
@@ -151,7 +153,8 @@ AnimationPreview.prototype = {
       this.toFrame = frameRanges[value].end;
     }
 
-    if(currentFrame < this.fromFrame || currentFrame >= this.toFrame) {
+    var frameChanged = this.currentFrame < this.fromFrame || this.currentFrame >= this.toFrame;
+    if(frameChanged) {
       this.currentFrame = this.fromFrame;
     }
 
@@ -167,6 +170,10 @@ AnimationPreview.prototype = {
     this.editor.spriteFrames.drawRange({ rangesChanged: false });
     this.editor.spriteFrames.draw({ framesChanged: false });
 
+    if(frameChanged) {
+      this.draw();
+    }
+
   },
 
   getFrameRange: function() {
@@ -176,6 +183,7 @@ AnimationPreview.prototype = {
   setScale: function(scale) {
     this.scaleFit = scale == 0;    
     this.scale = scale;
+    this.draw();
   },
 
   setCanvasElementId: function(canvasElementId, canvasHolderElementId) {
@@ -238,6 +246,106 @@ AnimationPreview.prototype = {
     this.draw();
   },
 
+  statesEqual: function(a, b) {
+    return a && b && a.length === b.length && a.every(function(value, index) {
+      return value === b[index];
+    });
+  },
+
+  getFrameRenderState: function(frame) {
+    var layers = this.editor.layers.layers;
+    var drawBackground = this.editor.layers.isBackgroundVisible();
+    var state = [
+      frame,
+      this.editor.graphic.getGraphicWidth(),
+      this.editor.graphic.getGraphicHeight(),
+      drawBackground,
+      layers,
+      layers.length
+    ];
+
+    for(var i = 0; i < layers.length; i++) {
+      var layer = layers[i];
+      state.push(layer, layer.layerId, layer.type, layer.visible,
+        layer.opacity, layer.compositeOperation);
+      if(!layer.visible || (layer.type !== 'grid' && layer.type !== 'image')) {
+        continue;
+      }
+
+      var layerObject = this.editor.layers.getLayerObject(layer.layerId);
+      state.push(layerObject);
+      if(!layerObject) { continue; }
+
+      if(layer.type === 'grid' && layerObject.getFrameRenderState) {
+        var layerState = layerObject.getFrameRenderState(frame, drawBackground);
+        for(var stateIndex = 0; stateIndex < layerState.length; stateIndex++) {
+          state.push(layerState[stateIndex]);
+        }
+        state.push(layerObject.getFrameContentRevision
+          ? layerObject.getFrameContentRevision(frame) : 0);
+
+        // Selective tile animation intentionally does not advance the global
+        // tile-set revision. Key only the glyph revisions this frame uses.
+        var tileSet = layerObject.getTileSet && layerObject.getTileSet();
+        var usage = layerObject.getTileUsage && layerObject.getTileUsage(frame);
+        if(tileSet && usage) {
+          var tileIds = Object.keys(usage).sort(function(a, b) { return Number(a) - Number(b); });
+          state.push(tileIds.length);
+          for(var tileIndex = 0; tileIndex < tileIds.length; tileIndex++) {
+            var tileId = tileIds[tileIndex];
+            state.push(tileId, tileSet.tileRenderRevisions
+              ? tileSet.tileRenderRevisions[tileId] || 0 : 0);
+          }
+        }
+      } else if(layer.type === 'image') {
+        var doc = layerObject.doc || layer;
+        state.push(doc, doc.imageData, doc.width, doc.height,
+          layerObject.image, layerObject.imageCanvas,
+          layerObject.imageCanvas && layerObject.imageCanvas.width,
+          layerObject.imageCanvas && layerObject.imageCanvas.height);
+      }
+    }
+    return state;
+  },
+
+  getCachedFrame: function(state) {
+    for(var i = 0; i < this.frameCache.length; i++) {
+      if(this.statesEqual(this.frameCache[i].state, state)) {
+        var entry = this.frameCache.splice(i, 1)[0];
+        this.frameCache.unshift(entry);
+        return entry;
+      }
+    }
+    return null;
+  },
+
+  isFrameCached: function(frame) {
+    var state = this.getFrameRenderState(frame);
+    for(var i = 0; i < this.frameCache.length; i++) {
+      if(this.statesEqual(this.frameCache[i].state, state)) { return true; }
+    }
+    return false;
+  },
+
+  createFrameCacheEntry: function(frame) {
+    var entry = null;
+    for(var i = 0; i < this.frameCache.length; i++) {
+      if(this.frameCache[i].frame === frame) {
+        entry = this.frameCache.splice(i, 1)[0];
+        break;
+      }
+    }
+    if(!entry && this.frameCache.length >= this.frameCacheLimit) {
+      entry = this.frameCache.pop();
+    }
+    if(!entry) {
+      entry = { canvas: document.createElement('canvas'), state: null };
+    }
+    entry.frame = frame;
+    this.frameCache.unshift(entry);
+    return entry;
+  },
+
   draw: function() {
     if(!this.visible) {
       return;
@@ -246,38 +354,45 @@ AnimationPreview.prototype = {
     var screenWidth =  this.editor.graphic.getGraphicWidth();
     var screenHeight = this.editor.graphic.getGraphicHeight();
 
-    if(this.screenCanvas == null) {
-      this.screenCanvas = document.createElement('canvas');
-    }
-
-    if(this.screenContext == null || this.screenCanvas.width != screenWidth || this.screenCanvas.height != screenHeight) {
-      this.screenCanvas.width = screenWidth;
-      this.screenCanvas.height = screenHeight;
+    var state = this.getFrameRenderState(this.currentFrame);
+    var entry = this.getCachedFrame(state);
+    if(!entry) {
+      entry = this.createFrameCacheEntry(this.currentFrame);
+      this.screenCanvas = entry.canvas;
+      if(this.screenCanvas.width != screenWidth) {
+        this.screenCanvas.width = screenWidth;
+      }
+      if(this.screenCanvas.height != screenHeight) {
+        this.screenCanvas.height = screenHeight;
+      }
       this.screenContext = this.screenCanvas.getContext('2d');
-
       this.screenContext.imageSmoothingEnabled = false;
       this.screenContext.webkitImageSmoothingEnabled = false;
       this.screenContext.mozImageSmoothingEnabled = false;
       this.screenContext.msImageSmoothingEnabled = false;
       this.screenContext.oImageSmoothingEnabled = false;
+      this.screenContext.clearRect(0, 0, this.screenCanvas.width, this.screenCanvas.height);
+
+      try {
+        this.editor.grid.grid2d.drawFrame({
+          allCells: true,
+          updateLayerCanvas: false,
+          drawPreviousFrame: false,
+          drawOverlays: false,
+          canvas: this.screenCanvas,
+          context: this.screenContext,
+          frame: this.currentFrame,
+          layers: 'visible'
+        });
+        entry.state = state;
+      } catch(error) {
+        entry.state = null;
+        throw error;
+      }
+    } else {
+      this.screenCanvas = entry.canvas;
+      this.screenContext = this.screenCanvas.getContext('2d');
     }
-
-
-
-    this.layers = 'visible';
-
-    this.screenContext.clearRect(0, 0, this.screenCanvas.width, this.screenCanvas.height);
-
-    var selectionActive = this.editor.tools.drawTools.pixelSelect.isActive();
-    this.editor.tools.drawTools.pixelSelect.setActive(false);
-    this.editor.grid.grid2d.drawFrame({ 
-      allCells: true,
-      updateLayerCanvas: false,
-      canvas: this.screenCanvas, 
-      context: this.screenContext, 
-      frame: this.currentFrame, 
-      layers: this.layers });
-    this.editor.tools.drawTools.pixelSelect.setActive(selectionActive);
 
     var scale = this.scale * this.canvasScale;
     if(scale === 0) {
@@ -309,7 +424,7 @@ AnimationPreview.prototype = {
     if(this.editor.frames.playFrames) {
       // playing so just do the same frames...
       var frame = this.editor.graphic.getCurrentFrame();
-      if(frame !== this.currentFrame) {
+      if(frame !== this.currentFrame || !this.isFrameCached(frame)) {
         this.currentFrame = frame;
         this.draw();        
       }
@@ -350,9 +465,12 @@ AnimationPreview.prototype = {
           frame = this.fromFrame;
         }      
 
+        var frameChanged = frame !== this.currentFrame;
         this.currentFrame = frame;
         this.lastFrameTime = time;      
-        this.draw();
+        if(frameChanged || !this.isFrameCached(frame)) {
+          this.draw();
+        }
 
       }
     
@@ -360,4 +478,3 @@ AnimationPreview.prototype = {
   }
 
 }
-

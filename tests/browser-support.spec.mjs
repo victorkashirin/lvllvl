@@ -735,6 +735,106 @@ test("2D shape previews retain offscreen artwork dirtiness across animation-prev
   for (const [name, value] of Object.entries(result)) expect(value, name).toBe(true);
 });
 
+test("2D animation preview reuses unchanged frame composites and refreshes changed content", async ({ page }, testInfo) => {
+  test.skip(!isDesktop2DRendererProject(testInfo));
+  await open2DProject(page, testInfo);
+  const errors = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  const result = await page.evaluate(() => {
+    const editor = g_app.textModeEditor;
+    const graphic = editor.graphic;
+    const layer = editor.layers.getSelectedLayerObject();
+    const preview = editor.animationPreview;
+    const grid = editor.grid.grid2d;
+    graphic.setGridDimensions({ width: 40, height: 25 });
+    for (let y = 0; y < 25; y++) for (let x = 0; x < 40; x++) {
+      layer.setCell({ x, y, t: 65, fc: 1, bc: -1, update: false });
+    }
+    graphic.invalidateAllCells();
+
+    const originalVisible = preview.visible;
+    const originalDraw = layer.draw;
+    const widthDescriptor = Object.getOwnPropertyDescriptor(HTMLCanvasElement.prototype, "width");
+    const heightDescriptor = Object.getOwnPropertyDescriptor(HTMLCanvasElement.prototype, "height");
+    let rasterizations = 0;
+    let scratchSizeWrites = 0;
+    const equal = (a, b) => a.length === b.length && a.every((value, index) => value === b[index]);
+    try {
+      preview.visible = true;
+      if (!preview.canvas) preview.canvas = document.createElement("canvas");
+      preview.canvas.width = 320;
+      preview.canvas.height = 200;
+      preview.context = preview.canvas.getContext("2d");
+      preview.canvasScale = 1;
+      preview.currentFrame = 0;
+      preview.frameCache = [];
+      layer.draw = function(args) {
+        if (args.canvas === grid.tempCanvas) rasterizations++;
+        return originalDraw.call(this, args);
+      };
+      Object.defineProperty(HTMLCanvasElement.prototype, "width", {
+        configurable: widthDescriptor.configurable,
+        enumerable: widthDescriptor.enumerable,
+        get: widthDescriptor.get,
+        set(value) {
+          if (this === grid.tempCanvas) scratchSizeWrites++;
+          widthDescriptor.set.call(this, value);
+        },
+      });
+      Object.defineProperty(HTMLCanvasElement.prototype, "height", {
+        configurable: heightDescriptor.configurable,
+        enumerable: heightDescriptor.enumerable,
+        get: heightDescriptor.get,
+        set(value) {
+          if (this === grid.tempCanvas) scratchSizeWrites++;
+          heightDescriptor.set.call(this, value);
+        },
+      });
+
+      preview.draw();
+      const cold = Array.from(preview.screenContext.getImageData(0, 0, 320, 200).data);
+      rasterizations = 0;
+      scratchSizeWrites = 0;
+      preview.draw();
+      const warm = Array.from(preview.screenContext.getImageData(0, 0, 320, 200).data);
+      const warmRasterizations = rasterizations;
+      const warmSizeWrites = scratchSizeWrites;
+
+      layer.setCell({ x: 0, y: 0, t: 65, fc: 2, bc: -1 });
+      preview.draw();
+      const changed = Array.from(preview.screenContext.getImageData(0, 0, 320, 200).data);
+      const changedRasterizations = rasterizations;
+      preview.frameCache = [];
+      preview.draw();
+      const fresh = Array.from(preview.screenContext.getImageData(0, 0, 320, 200).data);
+      return {
+        warmRasterizations,
+        warmSizeWrites,
+        changedRasterizations,
+        warmEqual: equal(cold, warm),
+        changedPixels: !equal(warm, changed),
+        freshEqual: equal(changed, fresh),
+        cacheBounded: preview.frameCache.length <= preview.frameCacheLimit,
+      };
+    } finally {
+      layer.draw = originalDraw;
+      Object.defineProperty(HTMLCanvasElement.prototype, "width", widthDescriptor);
+      Object.defineProperty(HTMLCanvasElement.prototype, "height", heightDescriptor);
+      preview.visible = originalVisible;
+    }
+  });
+  expect(errors).toEqual([]);
+  expect(result).toEqual({
+    warmRasterizations: 0,
+    warmSizeWrites: 0,
+    changedRasterizations: 1,
+    warmEqual: true,
+    changedPixels: true,
+    freshEqual: true,
+    cacheBounded: true,
+  });
+});
+
 test("2D vector shape composites have no fractional-edge seams with odd tiles and layer blending", async ({ page }, testInfo) => {
   test.skip(!isDesktop2DRendererProject(testInfo));
   await open2DProject(page, testInfo, { vector: true });

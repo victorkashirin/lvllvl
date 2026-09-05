@@ -4,6 +4,11 @@
 
 ### Fixed
 
+- Cache animation-preview composites in a bounded three-frame LRU keyed by cell,
+  used-tile, palette, block, layer, background, dimension, and reference-image
+  dependencies. Skip unchanged one-frame ticks, keep preview rendering isolated
+  from viewport state and editing overlays, guard scratch-canvas dimensions, and
+  remove resets of the disabled legacy effect buffer.
 - Limit animated-tile and pixel-edit redraws to layers and cell regions that use
   the changed tiles. Reuse per-frame usage indexes, retain disconnected and
   offscreen damage, patch affected onion-skin regions, refresh hidden-layer

@@ -22,6 +22,10 @@ if (!HTMLCanvasElement.prototype.toBlob) {
 var TileSet = function() {
   this.tileSetId = null;
   this.renderRevision = 0;
+  // Selective animation/pixel updates deliberately leave renderRevision alone
+  // so unrelated layers keep their caches. Consumers that know which glyphs a
+  // frame uses can key against these narrower revisions instead.
+  this.tileRenderRevisions = [];
   this.name = '';
   this.label = '';
   this.type = 'petscii';
@@ -3090,6 +3094,11 @@ TileSet.prototype = {
       if(unique.indexOf(characters[i]) === -1) { unique.push(characters[i]); }
     }
     if(unique.length === 0) { return false; }
+
+    for(var i = 0; i < unique.length; i++) {
+      var tile = unique[i];
+      this.tileRenderRevisions[tile] = (this.tileRenderRevisions[tile] || 0) + 1;
+    }
 
     // Also covers animation frames and legacy callers writing tile data directly.
     if(selective !== true) { this.renderRevision++; }
