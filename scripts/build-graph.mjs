@@ -453,8 +453,12 @@ export const moduleGraph = {
     },
   ],
   publicEntries: [
+    "js/modules/application/documentSession.mjs",
     "js/modules/application/featureRegistry.mjs",
+    "js/modules/application/persistenceService.mjs",
+    "js/modules/domain/documentRevisionState.mjs",
     "js/modules/feature-adapters/imageImportFeature.mjs",
+    "js/modules/infrastructure/browserStorageAdapter.mjs",
     "js/modules/infrastructure/classicScriptLoader.mjs",
   ],
   cycleExceptions: [],

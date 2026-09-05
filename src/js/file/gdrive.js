@@ -902,8 +902,7 @@ GDrive.prototype = {
         return;
       }
 //      console.log(response);
-      g_app.doc = new Document();    
-      g_app.doc.init(g_app);
+      g_app.doc = g_app.createDocument();
       g_app.createDocumentStructure( g_app.doc);
 
       g_app.doc.loadZipFile(response, function() {

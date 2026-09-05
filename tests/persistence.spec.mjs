@@ -8,6 +8,7 @@ const githubSource = await readFile("src/js/file/github.js", "utf8");
 const githubClientSource = await readFile("src/js/file/githubClient.js", "utf8");
 
 async function openPersistenceHarness(page, initialEntries = {}) {
+  await page.unroute("**/__persistence-test__.html");
   await page.route("**/__persistence-test__.html", (route) => route.fulfill({
     body: "<!doctype html><html><body></body></html>",
     contentType: "text/html",
@@ -65,13 +66,25 @@ async function openPersistenceHarness(page, initialEntries = {}) {
   await page.addScriptTag({ content: githubSource });
   await page.addScriptTag({ content: githubClientSource });
 
-  await page.evaluate(() => {
+  await page.evaluate(async () => {
+    const [{ PersistenceService }, { DocumentSession }, { createBrowserStorageAdapter }] =
+      await Promise.all([
+        import("/js/modules/application/persistenceService.mjs"),
+        import("/js/modules/application/documentSession.mjs"),
+        import("/js/modules/infrastructure/browserStorageAdapter.mjs"),
+      ]);
     window.getTimestamp = () => Date.now();
     let guid = 0;
+    const clock = () => Date.now();
+    const createId = () => `generated-${++guid}`;
+    const persistence = new PersistenceService({
+      storage: createBrowserStorageAdapter(BrowserStorage),
+      clock,
+      createId,
+    });
     window.g_app = {
       getGuid() {
-        guid += 1;
-        return `generated-${guid}`;
+        return createId();
       },
       projectNavigator: {
         getCurrentEditor() { return null; },
@@ -80,9 +93,30 @@ async function openPersistenceHarness(page, initialEntries = {}) {
         updateModifiedList() {},
       },
     };
+    g_app.services = {
+      persistence,
+      createDocumentSession() {
+        return new DocumentSession({
+          persistence,
+          clock,
+          createId,
+          reportError(operation, error) {
+            g_app.fileManager?.showBrowserStorageError(operation, error);
+          },
+          clearError(operation) {
+            g_app.fileManager?.clearBrowserStorageError(operation);
+          },
+        });
+      },
+    };
+    g_app.createDocument = () => {
+      const doc = new Document({ documentSession: g_app.services.createDocumentSession() });
+      doc.init(g_app);
+      return doc;
+    };
 
-    g_app.fileManager = new FileManager();
-    g_app.doc = new Document();
+    g_app.fileManager = new FileManager({ persistence });
+    g_app.doc = g_app.createDocument();
     g_app.fileManager.filename = "Project";
     g_app.fileManager.isNew = false;
     g_app.fileManager.saveTo = "browserStorage";
@@ -116,6 +150,64 @@ const existingProject = {
   }],
   projects: [{ id: "project-1", name: "Project", type: "project" }],
 };
+
+test("browser storage creates, reopens after reload, and deletes a project", async ({ page }) => {
+  await openPersistenceHarness(page);
+  await configureChangedDocument(page, "browser lifecycle contents");
+
+  const created = await page.evaluate(async () => {
+    const saved = await g_app.fileManager.save({ filename: "Created project" });
+    return {
+      entries: Object.fromEntries(__storage.entries()),
+      projectId: saved.projectId,
+      success: saved.success,
+    };
+  });
+  expect(created.success).toBe(true);
+
+  await openPersistenceHarness(page, created.entries);
+  const reopenedAndDeleted = await page.evaluate(async (projectId) => {
+    const listed = await new Promise((resolve) => {
+      g_app.fileManager.getProjectList({ thumbnails: false, type: "project" }, resolve);
+    });
+    const manifest = await g_app.fileManager.getProjectFiles({ projectId });
+    g_app.doc = g_app.createDocument();
+    const opened = await new Promise((resolve) => {
+      g_app.doc.openBrowserStorageProject({ projectId }, resolve);
+    });
+    const contents = g_app.doc.getDocRecord("/file.txt")?.data;
+    const activeRevision = g_app.doc.documentSession.activeRevision;
+    const deleted = await g_app.fileManager.deleteBrowserStorageProject({ projectId });
+    const afterDelete = await new Promise((resolve) => {
+      g_app.fileManager.getProjectList({ thumbnails: false, type: "project" }, resolve);
+    });
+    return {
+      activeRevision,
+      blobPresent: __storage.has(manifest.files[0].id),
+      contents,
+      deleteJournalPresent: __storage.has(BrowserStorage.PROJECT_DELETE_JOURNAL_KEY),
+      deleteSuccess: deleted.success,
+      listedNames: listed.projects.map((project) => project.name),
+      manifestPresent: __storage.has(manifest.versionKey),
+      openFailed: Boolean(opened.error),
+      pointerPresent: __storage.has(projectId),
+      projectsAfterDelete: afterDelete.projects.length,
+    };
+  }, created.projectId);
+
+  expect(reopenedAndDeleted).toEqual({
+    activeRevision: expect.any(String),
+    blobPresent: false,
+    contents: "browser lifecycle contents",
+    deleteJournalPresent: false,
+    deleteSuccess: true,
+    listedNames: ["Created project"],
+    manifestPresent: false,
+    openFailed: false,
+    pointerPresent: false,
+    projectsAfterDelete: 0,
+  });
+});
 
 test("project metadata writes propagate their storage error", async ({ page }) => {
   await openPersistenceHarness(page);
@@ -160,15 +252,20 @@ test("an unavailable storage driver cannot report save success", async ({ page }
   await configureChangedDocument(page);
 
   const result = await page.evaluate(async () => {
+    let exportedFilename = null;
+    g_app.doc.downloadAs = (filename) => { exportedFilename = filename; };
     const originalSetItem = localforage.setItem;
     localforage.setItem = () => {
       throw new Error("Injected unavailable storage driver");
     };
     const saved = await g_app.fileManager.save({ filename: "Project" });
     localforage.setItem = originalSetItem;
+    const fallbackAvailable = g_app.fileManager.downloadAs({ filename: "recovery-copy" });
     return {
       dirty: Object.hasOwn(g_app.doc.modified, "document-file"),
       error: saved.error.message,
+      exportedFilename,
+      fallbackAvailable,
       success: saved.success,
     };
   });
@@ -176,6 +273,8 @@ test("an unavailable storage driver cannot report save success", async ({ page }
   expect(result).toEqual({
     dirty: true,
     error: "Injected unavailable storage driver",
+    exportedFilename: "recovery-copy",
+    fallbackAvailable: true,
     success: false,
   });
 });
@@ -283,7 +382,7 @@ test("a committed project is recovered after its catalog update is interrupted",
   });
 
   const recovered = await page.evaluate(async () => {
-    const reloadedFileManager = new FileManager();
+    const reloadedFileManager = new FileManager({ persistence: g_app.services.persistence });
     g_app.fileManager = reloadedFileManager;
     const list = await new Promise((resolve) => {
       reloadedFileManager.getProjectList({ thumbnails: false, type: "project" }, resolve);

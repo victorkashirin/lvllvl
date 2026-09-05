@@ -75,6 +75,61 @@ context, instance, facade, and disposal target are inferred from the registered
 definition. New module callers should retain that handle instead of using the
 string-based compatibility methods exposed to the legacy editor.
 
+## Persistence and document sessions
+
+Persistence is an eager core service assembled in `src/js/bootstrap.mjs`; it is
+not a feature and is never lazy-loaded. The composition root injects the clock,
+identifier generator, error reporting, and the infrastructure storage adapter.
+Only `modules/infrastructure/browserStorageAdapter.mjs` knows about the legacy
+`BrowserStorage`/localForage host. Application and domain modules do not read
+`g_app`, browser storage, `Date`, or randomness directly.
+
+`modules/application/persistenceService.mjs` is the persistence contract used by
+the legacy `FileManager` adapter. It owns immutable blobs, versioned manifests
+and pointers, the save journal, project catalog and thumbnail metadata, autosave,
+recovery, and cleanup. A normal project save has one publication protocol:
+
+```text
+serialize + dirty snapshot
+        -> journal
+        -> immutable blobs
+        -> immutable manifest
+        -> active-version pointer
+        -> thumbnail + project catalog
+        -> stale-data cleanup
+        -> journal removal
+```
+
+Until the pointer changes, recovery removes unreachable staged data and retains
+the previous project. After the pointer changes, recovery finishes metadata and
+cleanup. Save, recovery, deletion, and catalog mutations share one application
+queue because the journals are application-wide; a concurrent list or second
+document session therefore cannot recover a transaction that is still running.
+There is no second legacy write path.
+
+Project deletion has its own resumable journal. It records the pointer, active
+manifest, thumbnail, and blob keys, removes the project from the catalog first,
+then cleans up those records and removes the journal. If catalog publication
+fails, the project and all data remain available until recovery retries. If later
+cleanup fails, the project stays hidden from the catalog and recovery resumes the
+idempotent cleanup, so the catalog never advertises a partly deleted project.
+
+`modules/application/documentSession.mjs` coordinates that protocol with
+`modules/domain/documentRevisionState.mjs`. Each `Document` receives a fresh
+session from `Editor.createDocument()`. The session owns the active persisted
+revision, monotonically increasing dirty revisions, and save-in-flight state. It
+publishes a completed save only after the full persistence protocol succeeds,
+and clears a dirty record only when the saved revision still matches, so edits
+made during an in-flight save remain dirty.
+
+The legacy `Document` and `FileManager` globals are compatibility adapters while
+their UI and serialization callers remain in the ordered graph. Project open,
+ordinary save, autosave, Save As, recovery, catalog updates, repository metadata,
+and delete now cross the injected service boundary. The Download As safety action
+remains a direct local export and therefore stays available when persistence is
+unavailable. Contract coverage lives in `tests/persistence-services.test.mjs`
+and `tests/persistence.spec.mjs`.
+
 ## Legacy graph non-growth
 
 `tests/fixtures/legacy-main-graph.json` records the current ordered `js/main.js`

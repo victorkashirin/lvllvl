@@ -9,8 +9,10 @@ function isString (value) {
   return typeof value === 'string' || value instanceof String;
 }
 
-var Document = function() {
+var Document = function(dependencies) {
   this.data = {};
+
+  this.documentSession = dependencies && dependencies.documentSession ? dependencies.documentSession : null;
 
 
   this.savingToBrowserStorage = false;
@@ -191,6 +193,13 @@ Document.prototype = {
     } else {
       this.editor = g_app;
     }
+    if(!this.documentSession && this.editor.services) {
+      this.documentSession = this.editor.services.createDocumentSession();
+    }
+    if(this.documentSession) {
+      this.modified = this.documentSession.modified;
+      this.modifiedRevision = this.documentSession.modifiedRevision;
+    }
     this.data = {
       children: [
         {
@@ -336,7 +345,7 @@ Document.prototype = {
   createDocRecord: function(parentPath, name, type, data, createAsId) {
     var id = createAsId;
     if(typeof createAsId == 'undefined' || createAsId === false) {
-      id = g_app.getGuid();
+      id = this.documentSession.createId();
     }
 
 
@@ -406,6 +415,13 @@ Document.prototype = {
   },
 
   recordSaved: function(id, revision) {
+    if(this.documentSession) {
+      this.documentSession.adoptLegacyState(this.modified, this.modifiedRevision);
+      this.documentSession.markSaved(id, revision);
+      this.modified = this.documentSession.modified;
+      this.modifiedRevision = this.documentSession.modifiedRevision;
+      return;
+    }
     if(this.modified.hasOwnProperty(id) &&
       (typeof revision == 'undefined' || this.modified[id].revision == revision)) {
       delete this.modified[id];
@@ -423,11 +439,18 @@ Document.prototype = {
     }
     // Every edit gets a revision so a save cannot clear changes made while its
     // asynchronous storage writes are still in flight.
-    this.modifiedRevision++;
-    this.modified[id] = {
-      path: path,
-      revision: this.modifiedRevision
-    };
+    if(this.documentSession) {
+      this.documentSession.adoptLegacyState(this.modified, this.modifiedRevision);
+      this.documentSession.markModified(id, path);
+      this.modified = this.documentSession.modified;
+      this.modifiedRevision = this.documentSession.modifiedRevision;
+    } else {
+      this.modifiedRevision++;
+      this.modified[id] = {
+        path: path,
+        revision: this.modifiedRevision
+      };
+    }
   },
 
   getDocRecord: function(path) {
@@ -754,7 +777,7 @@ Document.prototype = {
           }
 
           if(typeof data.id === 'undefined') {                
-            data.id = g_app.getGuid();
+            data.id = this.documentSession.createId();
           }
           if(!record) {
             record = this.createDocRecord('/' + parentPath, name, 'graphic', data, data.id);      
@@ -772,7 +795,7 @@ Document.prototype = {
           }
 
           if(typeof data.id === 'undefined') {                
-            data.id = g_app.getGuid();
+            data.id = this.documentSession.createId();
           }
           if(!record) {
             record = this.createDocRecord('/' + parentPath, name, '3d scene', data, data.id);      
@@ -787,7 +810,7 @@ Document.prototype = {
           }
 
           if(typeof data.id == 'undefined') {                
-            data.id = g_app.getGuid();
+            data.id = this.documentSession.createId();
           }
           if(!record) {
             record = this.createDocRecord('/' + parentPath, name, 'music', data, data.id);      
@@ -1304,108 +1327,13 @@ Document.prototype = {
 
 
 
-  createBrowserSavePlan: function(projectFiles, modifiedSnapshot) {
-    modifiedSnapshot = modifiedSnapshot || {};
-    var manifest = [];
-    var writes = [];
-    var savedRevisions = [];
-    var staleFileIds = projectFiles.map(function(projectFile) { return projectFile.id; });
-
-    for(var fileIndex = 0; fileIndex < this.filesToSave.length; fileIndex++) {
-      var file = this.filesToSave[fileIndex];
-      var modifiedRecord = modifiedSnapshot[file.id];
-      var fileId = g_app.getGuid();
-      var content = file.deleted ? '' : file.content;
-
-      manifest.push({
-        path: file.path,
-        lastModified: Date.now(),
-        sha: typeof file.sha == 'undefined' ? '' : file.sha,
-        id: fileId,
-        deleted: !!file.deleted
-      });
-
-      writes.push({
-        file: { content: content },
-        fileId: fileId
-      });
-
-      if(modifiedRecord) {
-        savedRevisions.push({ id: file.id, revision: modifiedRecord.revision });
-      }
-    }
-
-    return {
-      manifest: manifest,
-      savedRevisions: savedRevisions,
-      stagedFileIds: writes.map(function(write) { return write.fileId; }),
-      staleFileIds: staleFileIds,
-      writes: writes
-    };
-  },
-
-  saveFilesToBrowser: function(args, callback) {
-    var fileManager = g_app.fileManager;
-    var savePlan = args.savePlan;
-    var writeIndex = 0;
-
-    var writeNext = function() {
-      if(writeIndex >= savePlan.writes.length) {
-        return BrowserStorage.commitVersioned(
-          args.projectId,
-          savePlan.manifest,
-          args.commitKey
-        );
-      }
-
-      var write = savePlan.writes[writeIndex++];
-      return fileManager.saveFile(write).then(function(result) {
-        if(!result.success) {
-          throw result.error || new Error('Unable to save a project file.');
-        }
-        return writeNext();
-      });
-    };
-
-    var promise = writeNext().then(function(commit) {
-      return { success: true, commit: commit, savePlan: savePlan };
-    }).catch(function(error) {
-      return { success: false, error: error, savePlan: savePlan };
-    });
-
-    if(typeof callback != 'undefined') {
-      promise.then(callback);
-    }
-    return promise;
-  },
-
-
   // save the project to browser storage...  
   saveToBrowserStorage: function(args, callback) {
     var _this = this;
-    if(this.savingToBrowserStorage) {
-      var busyResult = {
-        success: false,
-        error: new Error('A browser-storage save is already in progress.')
-      };
-      if(typeof callback != 'undefined') {
-        callback(busyResult);
-      }
-      return Promise.resolve(busyResult);
-    }
-
     var thumbnailData = null;
-
-    // record time save started
-    this.saveStartedAt = getTimestamp();
-
-    // current action is saving to browser storage
-    this.savingToBrowserStorage = true;
-
-    // save status of project
-    var currentEditor = g_app.projectNavigator.getCurrentEditor();
-    var currentPath = g_app.projectNavigator.getCurrentPath();
-    var projectNavVisible = g_app.projectNavigator.getVisible();
+    var currentEditor = this.editor.projectNavigator.getCurrentEditor();
+    var currentPath = this.editor.projectNavigator.getCurrentPath();
+    var projectNavVisible = this.editor.projectNavigator.getVisible();
 
     // is there a thumbnail, if so get the data
     try {
@@ -1420,45 +1348,13 @@ Document.prototype = {
     }
 
     var name = args.filename;
-    var type = 'project';
-
-    var fileManager = g_app.fileManager;
-
-    // make an array of the files to save
-    try {
-      this.filesToSave = this.getFiles();
-    } catch(error) {
-      this.savingToBrowserStorage = false;
-      fileManager.showBrowserStorageError('Save', error);
-      var failedResult = { success: false, error: error };
-      if(typeof callback != 'undefined') {
-        callback(failedResult);
-      }
-      return Promise.resolve(failedResult);
-    }
-
-    // Snapshot revisions at the same synchronous boundary as file contents.
-    // Reading this.modified later would let an edit made during the storage
-    // lookups pair a new revision with the older contents in filesToSave.
-    var modifiedSnapshot = {};
-    for(var modifiedId in this.modified) {
-      if(this.modified.hasOwnProperty(modifiedId)) {
-        modifiedSnapshot[modifiedId] = {
-          revision: this.modified[modifiedId].revision
-        };
-      }
-    }
-    this.savedFiles = 0;
-
-
     var projectDetails = {
       name: name,
-      type: type
+      type: 'project',
+      currentPath: currentPath,
+      projectNavVisible: projectNavVisible,
+      thumbnailData: thumbnailData
     }
-
-    projectDetails['currentPath'] = currentPath;
-    projectDetails['projectNavVisible'] = projectNavVisible;
-    projectDetails['thumbnailData'] = thumbnailData;
 
     if(typeof args.owner != 'undefined') {
       projectDetails['owner'] = args.owner;
@@ -1467,79 +1363,37 @@ Document.prototype = {
     if(typeof args.repository != 'undefined') {
       projectDetails['repository'] = args.repository;
     }
-    if(this.pendingBrowserSave && this.pendingBrowserSave.name == name) {
-      projectDetails.projectId = this.pendingBrowserSave.projectId;
-    }
-
-    var saveDetails;
-    var savePlan;
-    var promise = fileManager.recoverPendingProjectSave().then(function() {
-      return fileManager.prepareProjectSave(projectDetails);
-    }).then(function(details) {
-      saveDetails = details;
-      _this.currentProjectId = details.projectId;
-      _this.pendingBrowserSave = { name: name, projectId: details.projectId };
-      return fileManager.getProjectFiles({ projectId: details.projectId });
-    }).then(function(result) {
-      if(!result.success) {
-        throw result.error || new Error('Unable to read the current project version.');
+    this.documentSession.adoptLegacyState(this.modified, this.modifiedRevision);
+    var pendingProjectId = this.pendingBrowserSave && this.pendingBrowserSave.name == name ?
+      this.pendingBrowserSave.projectId : null;
+    this.savingToBrowserStorage = true;
+    var promise = this.documentSession.save({
+      projectDetails: projectDetails,
+      pendingProjectId: pendingProjectId,
+      serialize: function() {
+        return _this.getFiles();
+      },
+      onProjectIdentified: function(projectId) {
+        _this.currentProjectId = projectId;
+        _this.pendingBrowserSave = { name: name, projectId: projectId };
+      },
+      onPublished: function(result) {
+        _this.projectFiles = result.manifest;
+        _this.filesToSave = [];
+        _this.savedFiles = 0;
+        _this.pendingBrowserSave = null;
       }
-
-      _this.projectFiles = result.files;
-      savePlan = _this.createBrowserSavePlan(result.files, modifiedSnapshot);
-      var commitKey = BrowserStorage.createVersionKey(saveDetails.projectId);
-      saveDetails.commitKey = commitKey;
-      saveDetails.stagedFileIds = savePlan.stagedFileIds;
-      saveDetails.staleFileIds = savePlan.staleFileIds;
-      saveDetails.previousVersionKey = result.versionKey;
-
-      return BrowserStorage.setItem(BrowserStorage.PROJECT_SAVE_JOURNAL_KEY, saveDetails).then(function() {
-        return _this.saveFilesToBrowser({
-          commitKey: commitKey,
-          projectId: saveDetails.projectId,
-          savePlan: savePlan
-        });
-      });
-    }).then(function(result) {
-      if(!result.success) {
-        throw result.error || new Error('Unable to commit the project files.');
-      }
-      return fileManager.writeProjectMetadata(saveDetails);
-    }).then(function() {
-      return fileManager.cleanupCommittedProjectSave(saveDetails);
-    }).then(function() {
-      return BrowserStorage.removeItem(BrowserStorage.PROJECT_SAVE_JOURNAL_KEY);
-    }).then(function() {
-      _this.projectFiles = savePlan.manifest;
-      _this.filesToSave = [];
-      _this.savedFiles = 0;
-      _this.pendingBrowserSave = null;
-
-      for(var i = 0; i < savePlan.savedRevisions.length; i++) {
-        var savedRevision = savePlan.savedRevisions[i];
-        _this.recordSaved(savedRevision.id, savedRevision.revision);
-      }
-
-      _this.savingToBrowserStorage = false;
-      fileManager.clearBrowserStorageError();
-      console.log('save done, took: ' + (getTimestamp() - _this.saveStartedAt));
-
-      var result = { success: true, projectId: saveDetails.projectId };
-      if(typeof callback != 'undefined') {
-        callback(result);
-      }
-
-      return result;
-    }).catch(function(error) {
-      _this.savingToBrowserStorage = false;
-      fileManager.showBrowserStorageError('Save', error);
-      var result = { success: false, error: error };
-      if(typeof callback != 'undefined') {
-        callback(result);
-      }
-      return result;
     });
-
+    this.savingToBrowserStorage = this.documentSession.saveInFlight;
+    promise.then(function(result) {
+      _this.modified = _this.documentSession.modified;
+      _this.modifiedRevision = _this.documentSession.modifiedRevision;
+      _this.savingToBrowserStorage = _this.documentSession.saveInFlight;
+      if(result.success) {
+        console.log('save done, took: ' + result.duration);
+      }
+      if(typeof callback != 'undefined') callback(result);
+    });
     return promise;
   },
 
@@ -1623,6 +1477,12 @@ Document.prototype = {
         fileManager.showBrowserStorageError('Opening project', result.error);
         callback(result);
         return;
+      }
+
+      if(_this.documentSession) {
+        _this.documentSession.open(result.versionKey || null);
+        _this.modified = _this.documentSession.modified;
+        _this.modifiedRevision = _this.documentSession.modifiedRevision;
       }
 
 

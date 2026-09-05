@@ -1,5 +1,6 @@
-var FileManager = function() {
+var FileManager = function(dependencies) {
   this.editor = null;
+  this.persistence = dependencies && dependencies.persistence ? dependencies.persistence : null;
 
 
   this.filename = 'Untitled';
@@ -31,6 +32,9 @@ var FileManager = function() {
 FileManager.prototype = {
   init: function(editor) {
     this.editor = editor;
+    if(!this.persistence && editor.services) {
+      this.persistence = editor.services.persistence;
+    }
 
     if(g_app.isDesktopApp()) {
       this.desktopFileManager = new DesktopFileManager(this.editor);
@@ -338,8 +342,7 @@ FileManager.prototype = {
         break;
     
       case 'zip':
-        g_app.doc = new Document();    
-        g_app.doc.init(g_app);
+        g_app.doc = g_app.createDocument();
         g_app.createDocumentStructure( g_app.doc);
 
         g_app.doc.loadZipFile(file, function() {
@@ -465,7 +468,7 @@ FileManager.prototype = {
     }
   },
   loadNESFile: function(byteArray) {
-    g_app.doc = new Document();    
+    g_app.doc = g_app.createDocument();
 
     var _this = this;
     g_app.newProject({}, function() {
@@ -606,7 +609,7 @@ FileManager.prototype = {
       this.importC = new ImportC();
       this.importC.init(g_app.textModeEditor);
     }
-    g_app.doc = new Document();    
+    g_app.doc = g_app.createDocument();
 
     var _this = this;
     g_app.newProject({}, function() {
@@ -630,7 +633,7 @@ FileManager.prototype = {
       this.importCharPad = new ImportCharPad();
       this.importCharPad.init(g_app.textModeEditor);
     }
-    g_app.doc = new Document();    
+    g_app.doc = g_app.createDocument();
 
     var _this = this;
     g_app.newProject({}, function() {
@@ -655,7 +658,7 @@ FileManager.prototype = {
       this.importSpritePad = new ImportSpritePad();
       this.importSpritePad.init(g_app.textModeEditor);
     }
-    g_app.doc = new Document();    
+    g_app.doc = g_app.createDocument();
 
     var _this = this;
     g_app.newProject({}, function() {
@@ -683,7 +686,7 @@ FileManager.prototype = {
 
   loadLocalFile: function(contents) {
     //if(g_app.doc == null) {
-    g_app.doc = new Document();    
+    g_app.doc = g_app.createDocument();
     //}
     
     g_app.doc.loadLocalFile(contents, function() {
@@ -766,41 +769,6 @@ FileManager.prototype = {
     g_app.newProject(args);  
   },
 
-
-  deleteBrowserStorageProjectOld: function(fileId) {
-
-    // update the directory
-    var directory = localStorage.getItem("directory");
-    if(typeof directory == 'undefined' || !directory) {
-      directory = [];
-    } else {
-      directory = $.parseJSON(directory);
-    }
-
-    var index = false;
-
-    for(var i = 0; i < directory.length; i++) {
-      if(directory[i].fileId == fileId) {
-        // found existing...
-        index = i;
-        break;
-      }
-    } 
-
-    if(index === false) {
-      //uh oh
-      return;
-    }
-    directory.splice(index, 1);
-
-
-    localStorage.setItem("directory", JSON.stringify(directory));
-
-    localStorage.removeItem(fileId);
-
-  },
-
-
   // recursively delete files
   removeBrowserStorageFiles: function(fileList, fileIndex, callback) {
 
@@ -811,7 +779,7 @@ FileManager.prototype = {
 
       if(true) {
         var _this = this;
-        BrowserStorage.removeItem(key, function() {
+        this.persistence.removeRaw(key).catch(function() {}).then(function() {
           _this.removeBrowserStorageFiles(fileList, fileIndex, callback);
         });
       } else {
@@ -822,14 +790,13 @@ FileManager.prototype = {
 
   checkCacheExpiry: function(callback) {
     var _this = this;
-
-    BrowserStorage.getItem('cachedir', function(err, result) {
+    this.persistence.readRaw('cachedir').then(function(result) {
       var cacheEntries = result;
       if(typeof cacheEntries === 'undefined' || !cacheEntries) {
         cacheEntries = [];
       }
 
-      var timeNow = Date.now();
+      var timeNow = _this.persistence.clock();
       var newCacheEntries = [];
       var toRemoveKeys = [];
       for(var i = 0; i < cacheEntries.length; i++) {
@@ -844,21 +811,18 @@ FileManager.prototype = {
       }
 
 
-      BrowserStorage.setItem('cachedir', newCacheEntries, function(err) {
+      _this.persistence.writeRaw('cachedir', newCacheEntries).then(function() {
         _this.removeBrowserStorageFiles(toRemoveKeys, 0, function() {
           if(typeof callback != 'undefined') {
             callback();
           }
         });
+      }).catch(function(error) {
+        if(typeof callback != 'undefined') callback(error);
       });
 
-/*
-      BrowserStorage.setItem('cachedir', newCacheEntries, function(err) {
-        if(typeof callback != 'undefined') {
-          callback();
-        }
-      });
-*/
+    }).catch(function(error) {
+      if(typeof callback != 'undefined') callback(error);
     });
 
   },
@@ -867,7 +831,7 @@ FileManager.prototype = {
     var _this = this;
 
 
-    BrowserStorage.getItem('cachedir', function(err, result) {
+    this.persistence.readRaw('cachedir').then(function(result) {
       var cacheEntries = result;
       if(typeof cacheEntries === 'undefined' || !cacheEntries) {
         cacheEntries = [];
@@ -882,8 +846,7 @@ FileManager.prototype = {
         }
       }
 
-      var date = new Date();
-      var expiryDate = Date.now() + expirySeconds * 1000;//date.getUTCSeconds() + expirySeconds;
+      var expiryDate = _this.persistence.clock() + expirySeconds * 1000;
 
       var cacheDirEntry = {
         key: key,
@@ -895,25 +858,32 @@ FileManager.prototype = {
       } else {
         cacheEntries.push(cacheDirEntry);
       }
-      BrowserStorage.setItem('cachedir', cacheEntries, function(err) {
-        BrowserStorage.setItem(key, file, function(err) {
+      _this.persistence.writeRaw('cachedir', cacheEntries).then(function() {
+        return _this.persistence.writeRaw(key, file);
+      }).then(function() {
           // success!
           if(typeof callback != 'undefined') {
-            callback(err);
+            callback(null);
           }
-        })
+      }).catch(function(error) {
+        if(typeof callback != 'undefined') callback(error);
       });
+    }).catch(function(error) {
+      if(typeof callback != 'undefined') callback(error);
     });
   },
 
   getCacheFile: function(key, callback) {
-
+    var _this = this;
     this.checkCacheExpiry(function() {
-      BrowserStorage.getItem(key, function(err, result) {
+      _this.persistence.readRaw(key).then(function(result) {
         if(typeof result == 'undefined') {
           callback(null);
+          return;
         }
         callback(result);
+      }).catch(function() {
+        callback(null);
       });
     });
 
@@ -944,12 +914,10 @@ FileManager.prototype = {
     var _this = this;
     var snapshot = {
       data: doc,
-      savedAt: Date.now(),
       thumbnailData: thumbnailData
     };
 
-    return BrowserStorage.commitVersioned(BrowserStorage.AUTOSAVE_KEY, snapshot).then(function(commit) {
-      BrowserStorage.cleanupPreviousVersion(commit);
+    return this.persistence.saveAutosave(snapshot).then(function() {
       _this.clearBrowserStorageError('Autosave');
       var result = { success: true };
       if(typeof callback != 'undefined') {
@@ -968,16 +936,8 @@ FileManager.prototype = {
 
 
   getAutosaveSummary: function(callback) {
-    BrowserStorage.getVersionedItem(BrowserStorage.AUTOSAVE_KEY).then(function(snapshot) {
-      if(snapshot && snapshot.data) {
-        callback({ success: true, thumbnailData: snapshot.thumbnailData });
-        return;
-      }
-
-      // Read pre-P0.2 autosaves so existing users keep their recovery copy.
-      return BrowserStorage.getItem('__autosaveThumbnail').then(function(thumbnailData) {
-        callback({ success: thumbnailData !== null, thumbnailData: thumbnailData });
-      });
+    this.persistence.getAutosaveSummary().then(function(result) {
+      callback(result);
     }).catch(function(error) {
       callback({ success: false, error: error });
     });
@@ -987,7 +947,7 @@ FileManager.prototype = {
 
   // load a cached version
   loadCachedData: function(args, callback) {
-    g_app.doc = new Document();  
+    g_app.doc = g_app.createDocument();
     g_app.doc.data = args.data;
     var view = false;
     if(typeof args.view !== 'undefined') {
@@ -1029,15 +989,11 @@ FileManager.prototype = {
   },
 
   loadAutosave: function() {
-    BrowserStorage.getVersionedItem(BrowserStorage.AUTOSAVE_KEY).then(function(snapshot) {
-      if(snapshot && snapshot.data) {
-        return snapshot.data;
-      }
-      return BrowserStorage.getItem('__autosaveData');
-    }).then(function(result) {
+    this.persistence.loadAutosaveSnapshot().then(function(snapshot) {
+      var result = snapshot && snapshot.data ? snapshot.data : null;
       if(result !== null && typeof result != 'undefined') {
 
-        g_app.doc = new Document();  
+        g_app.doc = g_app.createDocument();
         g_app.doc.data = result;
 
         g_app.projectNavigator.refreshTree();
@@ -1374,62 +1330,20 @@ FileManager.prototype = {
     return true;
   },
 
-
-  // recursively delete files
-  deleteBrowserStorageFiles: function(callback) {
-
-
-    if(this.filesDeleted >= this.filesToDelete.length) {
-      this.filesDeleted = 0;
-      this.filesToDelete = [];
-      callback();
-    } else {
-      var fileId = this.filesToDelete[this.filesDeleted].id;
-
-      var _this = this;
-      BrowserStorage.removeItem(fileId, function() {
-        _this.filesDeleted++;
-        _this.deleteBrowserStorageFiles(callback);
-      });
-    }
-  },
-
   deleteBrowserStorageProject: function(args, callback) {
     var projectId = args.projectId;
     var _this = this;
-
-
-    this.getProjectFiles({ projectId: projectId }, function(result) {
-      var files = result.files;
-      _this.filesToDelete = files;
-      _this.filesDeleted = 0;
-      _this.deleteBrowserStorageFiles(function() {
-        BrowserStorage.removeItem(projectId, function() {
-          BrowserStorage.removeItem(projectId + '-thumbnail', function() {
-            BrowserStorage.getItem('projects', function(err, projects) {
-
-              var projectList = [];
-              var newProjectList = [];
-              if(projects !== 'undefined' && projects !== null && typeof projects.length !== 'undefined') {
-                projectList = projects;              
-              }
-
-              for(var i = 0; i < projectList.length; i++) {
-                if(projectList[i].id != projectId) {
-                  newProjectList.push(projectList[i]);
-                }
-              }
-
-              BrowserStorage.setItem('projects', newProjectList, function() {
-                callback();
-              });
-            });
-          });
-        });
-      });
-
-//      console.log(files);
+    var promise = this.persistence.deleteProject(projectId).then(function() {
+      var result = { success: true };
+      if(typeof callback != 'undefined') callback(result);
+      return result;
+    }).catch(function(error) {
+      _this.showBrowserStorageError('Deleting project', error);
+      var result = { success: false, error: error };
+      if(typeof callback != 'undefined') callback(result);
+      return result;
     });
+    return promise;
 
   },
 
@@ -1525,31 +1439,11 @@ FileManager.prototype = {
 
   saveProjectRepositoryDetails: function(args, callback) {
     var name = this.filename;
-    var type = 'project';    
     var owner = args.owner;
     var repository = args.repository;
     var _this = this;
-    var promise = BrowserStorage.getItem('projects').then(function(projects) {
-      if(projects === null || typeof projects == 'undefined' || typeof projects.length == 'undefined') {
-        projects = [];
-      }
-      var projectFound = false;
-      // does project already exist?
-      for(var i = 0; i < projects.length; i++) {
-        if(projects[i].name == name && projects[i].type == type) {
-          // found it
-          projects[i].githubRepository = repository;
-          projects[i].githubOwner = owner;
-          projectFound = true;
-          break;
-        }
-      }
-      if(!projectFound) {
-        throw new Error('The local project could not be found.');
-      }
-      return BrowserStorage.setItem('projects', projects).then(function() {
-        return { success: true };
-      });
+    var promise = this.persistence.updateProjectRepository(name, owner, repository).then(function() {
+      return { success: true };
     }).catch(function(error) {
       _this.showBrowserStorageError('Saving repository details', error);
       return { success: false, error: error };
@@ -1589,8 +1483,7 @@ FileManager.prototype = {
           }
         }
 
-        BrowserStorage.commitVersioned(projectId, files).then(function(commit) {
-          BrowserStorage.cleanupPreviousVersion(commit);
+        _this.persistence.commitProjectManifest(projectId, files).then(function() {
           callback({ success: true });
         }).catch(function(error) {
           _this.showBrowserStorageError('Saving repository file status', error);
@@ -1609,7 +1502,7 @@ FileManager.prototype = {
     var projectName = name;
 
     // get the list of projects to make sure name is unique
-    g_app.fileManager.getProjectList({ type: 'project' }, function(result) {
+    this.getProjectList({ type: 'project' }, function(result) {
       if(!result.success) {
         callback({ success: false, error: result.error });
         return;
@@ -1634,168 +1527,10 @@ FileManager.prototype = {
   },
 
 
-  mergeProjectMetadata: function(projects, projectData) {
-    var projectList = [];
-    if(projects !== null && typeof projects != 'undefined' && typeof projects.length != 'undefined') {
-      projectList = projects.slice(0);
-    }
-
-    var projectIndex = false;
-    for(var i = 0; i < projectList.length; i++) {
-      if(projectList[i].id == projectData.id) {
-        projectIndex = i;
-        break;
-      }
-    }
-
-    if(projectIndex === false) {
-      projectList.push(projectData);
-    } else {
-      projectList[projectIndex] = projectData;
-    }
-    return projectList;
-  },
-
-  prepareProjectSave: function(args) {
-    return BrowserStorage.getItem('projects').then(function(projects) {
-      var projectList = [];
-      if(projects !== null && typeof projects != 'undefined' && typeof projects.length != 'undefined') {
-        projectList = projects;
-      }
-
-      var type = typeof args.type == 'undefined' ? 'project' : args.type;
-      var existingProject = null;
-      for(var i = 0; i < projectList.length; i++) {
-        if(projectList[i].name == args.name && projectList[i].type == type) {
-          existingProject = projectList[i];
-          break;
-        }
-      }
-
-      var projectId = existingProject ? existingProject.id : false;
-      if(!projectId && args.projectId) {
-        var preferredIdIsUnused = true;
-        for(var j = 0; j < projectList.length; j++) {
-          if(projectList[j].id == args.projectId) {
-            preferredIdIsUnused = false;
-            break;
-          }
-        }
-        if(preferredIdIsUnused) {
-          projectId = args.projectId;
-        }
-      }
-      if(!projectId) {
-        projectId = g_app.getGuid();
-      }
-
-      var projectData = {};
-      if(existingProject) {
-        for(var key in existingProject) {
-          if(existingProject.hasOwnProperty(key)) {
-            projectData[key] = existingProject[key];
-          }
-        }
-      }
-
-      projectData.id = projectId;
-      projectData.name = args.name;
-      projectData.type = type;
-      projectData.lastModified = Date.now();
-      projectData.projectNavVisible = typeof args.projectNavVisible == 'undefined' ? false : args.projectNavVisible;
-
-      if(typeof args.currentPath != 'undefined' && args.currentPath !== false) {
-        projectData.currentPath = args.currentPath;
-      }
-      if(typeof args.owner != 'undefined' && typeof args.repository != 'undefined') {
-        projectData.githubOwner = args.owner;
-        projectData.githubRepository = args.repository;
-      }
-
-      return {
-        projectData: projectData,
-        projectId: projectId,
-        thumbnailData: typeof args.thumbnailData == 'undefined' ? null : args.thumbnailData
-      };
-    });
-  },
-
-  writeProjectMetadata: function(saveDetails) {
-    var _this = this;
-    return BrowserStorage.getItem('projects').then(function(projects) {
-      var projectList = _this.mergeProjectMetadata(projects, saveDetails.projectData);
-      return BrowserStorage.setItem(saveDetails.projectId + '-thumbnail', saveDetails.thumbnailData).then(function() {
-        return BrowserStorage.setItem('projects', projectList);
-      });
-    });
-  },
-
-  cleanupCommittedProjectSave: function(saveDetails) {
-    var cleanupKeys = (saveDetails.staleFileIds || []).slice(0);
-    if(saveDetails.previousVersionKey &&
-      saveDetails.previousVersionKey != saveDetails.commitKey) {
-      cleanupKeys.push(saveDetails.previousVersionKey);
-    }
-
-    var cleanup = Promise.resolve();
-    for(var i = 0; i < cleanupKeys.length; i++) {
-      (function(key) {
-        cleanup = cleanup.then(function() {
-          return BrowserStorage.removeItem(key);
-        });
-      })(cleanupKeys[i]);
-    }
-    return cleanup;
-  },
-
-  recoverPendingProjectSave: function() {
-    var _this = this;
-    return BrowserStorage.getItem(BrowserStorage.PROJECT_SAVE_JOURNAL_KEY).then(function(journal) {
-      if(!journal || !journal.projectId || !journal.commitKey) {
-        return { recovered: false };
-      }
-
-      return BrowserStorage.getItem(journal.projectId).then(function(pointer) {
-        var commitIsActive = BrowserStorage.isVersionPointer(pointer) &&
-          pointer.activeVersion == journal.commitKey;
-
-        if(commitIsActive) {
-          return _this.writeProjectMetadata(journal).then(function() {
-            return _this.cleanupCommittedProjectSave(journal);
-          }).then(function() {
-            return BrowserStorage.removeItem(BrowserStorage.PROJECT_SAVE_JOURNAL_KEY);
-          }).then(function() {
-            return { recovered: true, projectId: journal.projectId };
-          });
-        }
-
-        var staleKeys = journal.stagedFileIds || [];
-        staleKeys = staleKeys.concat([journal.commitKey]);
-        var cleanup = Promise.resolve();
-        for(var i = 0; i < staleKeys.length; i++) {
-          (function(key) {
-            cleanup = cleanup.then(function() {
-              return BrowserStorage.removeItem(key).catch(function() {});
-            });
-          })(staleKeys[i]);
-        }
-
-        return cleanup.then(function() {
-          return BrowserStorage.removeItem(BrowserStorage.PROJECT_SAVE_JOURNAL_KEY);
-        }).then(function() {
-          return { recovered: false, rolledBack: true };
-        });
-      });
-    });
-  },
-
   // Save project-list metadata with the same error contract as file writes.
   saveProject: function(args, callback) {
-    var _this = this;
-    var promise = this.prepareProjectSave(args).then(function(saveDetails) {
-      return _this.writeProjectMetadata(saveDetails).then(function() {
-        return { success: true, projectId: saveDetails.projectId };
-      });
+    var promise = this.persistence.saveProjectMetadata(args).then(function(result) {
+      return { success: true, projectId: result.projectId };
     }).catch(function(error) {
       return { success: false, error: error };
     });
@@ -1857,12 +1592,14 @@ FileManager.prototype = {
     var project = this.projectList[this.projectThumbnailsLoaded];
     var projectId = project.id;
 
-    BrowserStorage.getItem(projectId + '-thumbnail', function(err, result) {
+    this.persistence.readThumbnail(projectId).then(function(result) {
       if(_this.projectThumbnailsLoaded < _this.projectList.length) {
         _this.projectList[_this.projectThumbnailsLoaded].thumbnailData = result;
       }
       _this.projectThumbnailsLoaded++;
       _this.getProjectThumbnails(callback);
+    }).catch(function(error) {
+      callback({ success: false, error: error, projects: [] });
     });
   },
 
@@ -1881,17 +1618,11 @@ FileManager.prototype = {
 
     var _this = this;
 
-    this.recoverPendingProjectSave().then(function() {
-      return BrowserStorage.getItem('projects');
-    }).then(function(projects) {
+    this.persistence.listProjects(type).then(function(projects) {
 
       _this.projectList = [];
       if(projects !== 'undefined' && projects != null && typeof projects.length !== 'undefined') {
-        for(var i = 0; i < projects.length; i++) {
-          if(projects[i].type == type) {
-            _this.projectList.push(projects[i]);
-          }
-        }
+        for(var i = 0; i < projects.length; i++) _this.projectList.push(projects[i]);
       }
 
       if(thumbnails) {
@@ -1937,36 +1668,10 @@ FileManager.prototype = {
 
   },
 
-  saveFile: function(args, callback) {
-    var file = args.file;
-    var fileId = false;
-    
-    if(typeof args.fileId != 'undefined' && args.fileId !== false) {
-      fileId = args.fileId;
-    } else {
-      fileId = g_app.getGuid();
-      // should make sure doesn't exist??
-    }
-
-    var promise = BrowserStorage.setItem(fileId, file.content).then(function() {
-      return { success: true, fileId: fileId };
-    }).catch(function(error) {
-      return { success: false, error: error, fileId: fileId };
-    });
-
-    if(typeof callback != 'undefined') {
-      promise.then(callback);
-    }
-    return promise;
-  },
-
   getBrowserFile: function(args, callback) {
     var fileId = args.fileId;
 
-    var promise = BrowserStorage.getItem(fileId).then(function(result) {
-      if(result === null || typeof result == 'undefined') {
-        throw new Error('A saved project file is missing.');
-      }
+    var promise = this.persistence.loadBlob(fileId).then(function(result) {
       return { success: true, content: result };
     }).catch(function(error) {
       return { success: false, error: error };
@@ -1982,18 +1687,10 @@ FileManager.prototype = {
   getProjectFiles: function(args, callback) {
     var projectId = args.projectId;
 
-    var promise = BrowserStorage.getVersionedRecord(projectId).then(function(record) {
-      var result = record.value;
-      var projectFiles = [];
-      if(typeof result != 'undefined' && result !== null) {
-        if(typeof result.length == 'undefined') {
-          throw new Error('The saved project manifest is invalid.');
-        }
-        projectFiles = result;
-      }
+    var promise = this.persistence.getProjectManifest(projectId).then(function(record) {
       return {
         success: true,
-        files: projectFiles,
+        files: record.files,
         versionKey: record.versionKey
       };
     }).catch(function(error) {
@@ -2012,18 +1709,8 @@ FileManager.prototype = {
     var name = args.name;
 
     var _this = this;
-    var promise = BrowserStorage.getItem('projects').then(function(projects) {
-      if(projects !== 'undefined' && projects != null && typeof projects.length !== 'undefined') {
-        for(var i = 0; i < projects.length; i++) {
-          if(projects[i].id == projectId) {
-            projects[i].name = name;
-          }
-        }
-      }
-
-      return BrowserStorage.setItem('projects', projects).then(function() {
-        return { success: true };
-      });
+    var promise = this.persistence.renameProject(projectId, name).then(function() {
+      return { success: true };
     }).catch(function(error) {
       _this.showBrowserStorageError('Renaming project', error);
       return { success: false, error: error };

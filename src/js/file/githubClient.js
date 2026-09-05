@@ -663,8 +663,7 @@ var GitHubClient = function() {
   // treeFiles is from doLoad, contains all the files in the repository
   this.loadFiles = async function(treeFiles, args, callback) {
 
-    g_app.doc = new Document();
-    g_app.doc.init(g_app);   
+    g_app.doc = g_app.createDocument();
     var doc = g_app.doc; 
 
     var colorPaletteManager = g_app.textModeEditor.colorPaletteManager;

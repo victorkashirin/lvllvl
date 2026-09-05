@@ -81,6 +81,7 @@ var Editor = function() {
 
   this.features = {};
   this.featureRegistry = null;
+  this.services = null;
 
   this.projectNavigator = null;
   this.projectNavigatorMobile = null;
@@ -130,6 +131,9 @@ Editor.prototype = {
       if(typeof args.features != 'undefined') {
         this.featureRegistry = args.features;
       }
+      if(typeof args.services != 'undefined') {
+        this.services = args.services;
+      }
       if(typeof args.type != 'undefined') {
         this.isElectron = args.type == 'electron';
       }
@@ -168,13 +172,19 @@ Editor.prototype = {
 
     this.buildInterface();
 
-    this.fileManager = new FileManager();
+    this.fileManager = new FileManager({ persistence: this.services.persistence });
     this.fileManager.init(this);
 
     this.textDialog = new TextDialog();
 
     this.startPage.processURL();
     
+  },
+
+  createDocument: function() {
+    var doc = new Document({ documentSession: this.services.createDocumentSession() });
+    doc.init(this);
+    return doc;
   },
 
 
@@ -259,8 +269,7 @@ Editor.prototype = {
 //    var githubCheck = args.githubCheck;
     this.openingProject = true;
 
-    this.doc = new Document();
-    this.doc.init(this);
+    this.doc = this.createDocument();
     this.createDocumentStructure(this.doc);
 
     var _this = this;
@@ -3210,8 +3219,7 @@ main split panel north is menu
     }
 
 
-    this.doc = new Document();
-    this.doc.init(this);
+    this.doc = this.createDocument();
 
     // load the colour palette and tile set
     var colorPalettePresetId = 'c64_colodore';

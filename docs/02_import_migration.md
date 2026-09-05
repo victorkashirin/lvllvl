@@ -215,6 +215,16 @@ saving and cold first-use cost.
 
 Overall score: **Necessary**
 
+Status: **Completed 2026-09-05.** Browser storage is isolated behind an
+infrastructure adapter and an eager application persistence service; document
+revision, dirty, and save-in-flight state is owned by a per-document session.
+The legacy `Document` and `FileManager` surfaces now adapt their callers to the
+injected contracts, and focused service plus browser contract tests cover the
+publication and recovery protocol. Project mutations share a serial queue, and
+deletion is journaled and catalog-first so recovery cannot expose a partly
+deleted project. See `docs/architecture.md` for the operational boundary and save
+sequence.
+
 This is a correctness and maintainability phase, not a lazy-loading phase. Saving,
 recovery, revision tracking, and dirty-state decisions must be available whenever
 a document is open.

@@ -4,6 +4,9 @@
 
 ### Added
 
+- Add injected persistence and document-session contracts for immutable blobs,
+  versioned manifests, journals, catalog metadata, active revisions, dirty state,
+  and save-in-flight publication, with lifecycle and per-stage failure coverage.
 - Add automatic native-module discovery, layered public-entry and cycle checks,
   a legacy ordered-graph non-growth policy, checked JSDoc boundary contracts, and
   reproducible desktop and minimum-mobile performance baseline reporting.
@@ -12,11 +15,22 @@
 
 ### Changed
 
+- Route project open, ordinary save, autosave, Save As, recovery, catalog and
+  repository metadata, delete, and cache persistence through the eager
+  application service and its browser-storage adapter.
+- Create every legacy `Document` with an isolated revision session and generate
+  identifiers and timestamps through composition-root dependencies.
 - Make image import context-scoped and restore its compatibility facade after
   disposal so separate editors cannot share importer state.
 
 ### Fixed
 
+- Serialize project save, recovery, and catalog mutations so a second session or
+  project listing cannot mistake a live transaction for an interrupted save.
+- Journal browser-project deletion, remove its catalog entry before data cleanup,
+  and resume either an interrupted catalog update or cleanup on the next access.
+- Remove the active immutable manifest record when deleting a browser project,
+  avoiding an orphaned version after its pointer is removed.
 - Serialize feature activation with disposal, retain instances after failed
   cleanup for retry, and preserve feature-specific types through registration
   handles.

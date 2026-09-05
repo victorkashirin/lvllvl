@@ -27,24 +27,40 @@
       "sha256": "f6e20ce93d4c5e5a0fe109bd3a07dc51e482ba8700c4ef7468bbc0839d2872b8"
     },
     "js/main.js": {
-      "bytes": 3306610,
-      "sha256": "ef39c3091f7813a2a41c8191278aacd9b5cea90bd78a6b46dda4851e8d40a000"
+      "bytes": 3300649,
+      "sha256": "1b7661ef6933ed31669b30e4f237cbdabe1e50cf0cb1de9a9e66ca1a64d3b3fd"
     },
     "js/main.js.map": {
-      "bytes": 10530466,
-      "sha256": "c3cb5695fb479cec19d04ab6ad5d633915987af44367c7484b74900e08a1742a"
+      "bytes": 10508972,
+      "sha256": "39529235d0d11b41eb6800ea569ae19b6f42dcb59edebb83d39b54d45ccb7053"
     },
     "js/bootstrap.mjs": {
-      "bytes": 1022,
-      "sha256": "ff1966550d42ece75369b4c2b96b9feb1fa90d7f99955418a7cd2e37d3567c90"
+      "bytes": 1923,
+      "sha256": "cf0e9891f99695dcfc91fa034f6c57d7cffd4183bfb28f208de5624bcb8b0f66"
+    },
+    "js/modules/application/documentSession.mjs": {
+      "bytes": 4351,
+      "sha256": "0a5488bceb01fa945b84e56c67ad78745afbdfa34c509acec0c6f8d6fcb4d2a0"
     },
     "js/modules/application/featureRegistry.mjs": {
       "bytes": 15212,
       "sha256": "2ee147ba392d34e298a7a8b8294ee1475cf89b2fc446ddbbc48d395868df6dd3"
     },
+    "js/modules/application/persistenceService.mjs": {
+      "bytes": 15728,
+      "sha256": "54d9267a78ea64f682fcc3ff0b50f689f5ee2738fcbac8554cfd2efcbdde8299"
+    },
+    "js/modules/domain/documentRevisionState.mjs": {
+      "bytes": 1677,
+      "sha256": "edf8e490574850373e5e2f3b305c4420e5b1ad9ef032158103e708cf1ed3130d"
+    },
     "js/modules/feature-adapters/imageImportFeature.mjs": {
       "bytes": 3627,
       "sha256": "ac80e51dd3e720a585847a08f9c2f68742a64a3c1ff9bf31cc3ea10b6794ccdd"
+    },
+    "js/modules/infrastructure/browserStorageAdapter.mjs": {
+      "bytes": 3463,
+      "sha256": "89678ab081ea86cda29f947650d779257347bc421eea78ebc31c42b0d73edd06"
     },
     "js/modules/infrastructure/classicScriptLoader.mjs": {
       "bytes": 1124,
