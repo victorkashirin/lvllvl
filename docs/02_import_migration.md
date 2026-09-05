@@ -107,11 +107,10 @@ As of this plan:
   non-image import code, and 96 KB of assembler code. These are source sizes, not
   predicted transfer savings.
 
-The image-import implementation proves that a compatibility facade can preserve
-existing menu, mobile, and drag-and-drop behavior while loading code once and
-retrying a failed request. It does not yet prove that the feature internals are
-modular: they are still concatenated classic scripts that publish a global
-`ImportImage` constructor.
+At this baseline, the image-import implementation used a compatibility facade to
+preserve menu, mobile, and drag-and-drop behavior. Phase 5 subsequently replaced
+that facade and global constructor with a generated ESM entry; the classic
+implementation files remain contained inside that entry.
 
 ## Delivery principles
 
@@ -469,6 +468,23 @@ subscriptions or feature state.
 
 Overall score: **Mixed**
 
+Status: **In progress.** Validated import-source, immutable export-snapshot,
+generated-artifact, cancellation, and timeout contracts live in the governed
+module graph. SVG is the first production export slice using a detached data
+snapshot and generated artifact; its deterministic browser coverage checks the
+result against the production renderer. Every other active text-mode format
+launcher uses the named legacy import/export adapter and receives only its
+format's declared document capabilities plus a composition-owned host port. The
+image importer is a context-scoped ESM feature with retryable module loading and
+no global constructor or editor facade.
+
+The phase is not complete yet: remaining classic format families still need
+data-only import/export slices and the golden, malformed-input, round-trip, and
+deterministic-output coverage applicable to each format. Their compatibility
+ports are contained and reject direct mutation/backreference traversal, but they
+are not described as immutable snapshots. Music and debugger exporters remain
+part of the explicitly deferred Phase 7 subsystem work.
+
 - Containing imports and exports behind narrow document boundaries is
   **Necessary** to close P1.4.
 - Converting implementation files to native modules is **Good to have** only when
@@ -521,6 +537,13 @@ depend on its globals.
 ## Phase 6: retire import/export adapters and tighten the default path
 
 Overall score: **Necessary** for the current implementation tranche
+
+Status: **In progress alongside Phase 5.** The generic feature facade API,
+image-import editor property, global image constructor, and classic script loader
+were removed. The image build entry is now an ESM artifact, direct text-mode
+format construction is guarded by source tests, and the remaining classic format
+surface is confined to the composition-root constructor table and named
+capability adapter. Cleanup continues as each remaining format slice migrates.
 
 Phase 6 follows Phase 5 directly. Its cleanup is performed after every completed
 format-family slice rather than being postponed until all importers and exporters

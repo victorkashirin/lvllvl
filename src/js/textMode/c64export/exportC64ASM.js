@@ -88,10 +88,11 @@ var ExportC64ASM = function() {
 }
 
 ExportC64ASM.prototype = {
-  init: function(editor) {
+  init: function(editor, host) {
     this.editor = editor;
+    this.host = host;
     this.c64Asm = new C64ASM();
-    this.c64Asm.init(this.editor);
+    this.c64Asm.init(this.editor, this.host);
   },
 
 
@@ -119,8 +120,7 @@ ExportC64ASM.prototype = {
 
 //    console.log(code);
 
-    var assembler = g_app.assembler;
-//    console.log(g_app.assembler);
+    var assembler = this.host.assembler;
 
     var result = assembler.assemble(code, 0x801);
 //    console.log('result = ');
@@ -569,10 +569,10 @@ ExportC64ASM.prototype = {
     if(music != 'no' && music != 'sid') {
       var path = music;
 
-      if(g_app.doc.getDocRecord(path) != null) {
+      if(this.host.doc.getDocRecord(path) != null) {
 
 
-        g_app.music.show(path);
+        this.host.music.show(path);
 
         var sidStartAddress = 0x1000;
 
@@ -580,13 +580,13 @@ ExportC64ASM.prototype = {
         this.sidLoadAddr = sidStartAddress;
         this.sidInitAddr = sidStartAddress;
         this.sidPlayAddr = sidStartAddress + 3; 
-        this.sidSpeed = g_app.music.sidSpeed; 
+        this.sidSpeed = this.host.music.sidSpeed;
 
-        g_app.music.createSid();
-        if(typeof g_app.music.musicPlayer2.songData != 'undefined' 
-          && typeof g_app.music.musicPlayer2.songData.getSIDData != 'undefined') {
+        this.host.music.createSid();
+        if(typeof this.host.music.musicPlayer2.songData != 'undefined'
+          && typeof this.host.music.musicPlayer2.songData.getSIDData != 'undefined') {
           
-          this.sidData = g_app.music.musicPlayer2.songData.getSIDData();
+          this.sidData = this.host.music.musicPlayer2.songData.getSIDData();
         } else {
           alert('sorry, the current music play does not support sid data export');
           this.sidData = null;

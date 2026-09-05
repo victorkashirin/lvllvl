@@ -10,7 +10,8 @@ var TextModeEditor = function() {
   this.colorPaletteManager = null;
   this.blockSetManager = null;
 
-  this.importImage = null;
+  this.imageImportFeature = null;
+  this.importExportControllers = null;
   this.importC64Formats = null;
   this.importC64SpriteFormats = null;
   this.importSpriteImage = null;
@@ -297,9 +298,8 @@ TextModeEditor.prototype = {
   init: function(services) {
     var _this = this;
 
-    // Temporary compatibility state for legacy update paths. All user-facing
-    // launchers enter through the UI route service.
-    this.importImage = g_app.getFeatureFacade('imageImport', this);
+    this.imageImportFeature = services.imageImport;
+    this.importExportControllers = services.importExportControllers;
     this.commands = services.createTextModeCommandService(this);
     this.editorState = this.commands.state;
     this.history = this.commands;
@@ -318,8 +318,7 @@ TextModeEditor.prototype = {
 
       _this.checkerboardPattern = new CheckerboardPattern();
       
-      _this.exportFrameImage = new ExportFrameImage();
-      _this.exportFrameImage.init(_this);
+      _this.exportFrameImage = _this.importExportControllers.createExportController('frame-image', _this);
 
       // need to init character set manager before grid
       _this.tileSetManager = new TileSetManager();
@@ -362,14 +361,11 @@ TextModeEditor.prototype = {
       _this.frames.buildInterface(UI('framesPanel'));
       _this.frames.buildMobileInterface(UI('framesMobilePanel'));
 
-        _this.importAssembly = new ImportAssembly();
-        _this.importAssembly.init(_this);
+        _this.importAssembly = _this.importExportControllers.createImportController('assembly', _this);
 
-        _this.importC64Formats = new ImportC64Formats();
-        _this.importC64Formats.init(_this);
+        _this.importC64Formats = _this.importExportControllers.createImportController('c64-formats', _this);
 
-        _this.importC64SpriteFormats = new ImportC64SpriteFormats();
-        _this.importC64SpriteFormats.init(_this);
+        _this.importC64SpriteFormats = _this.importExportControllers.createImportController('c64-sprite-formats', _this);
 
         _this.chooseColorsDialog = new ChooseColorsDialog();
         _this.chooseColorsDialog.init(_this);
@@ -380,14 +376,11 @@ TextModeEditor.prototype = {
         _this.backgroundImage = new BackgroundImage();
         _this.backgroundImage.init(_this);
         
-        _this.toPrg = new ToPRG();
-        _this.toPrg.init(_this);
+        _this.toPrg = _this.importExportControllers.createExportController('to-prg', _this);
 
-        _this.toPrgAdv = new ToPRGAdv();
-        _this.toPrgAdv.init(_this);
+        _this.toPrgAdv = _this.importExportControllers.createExportController('to-prg-advanced', _this);
 
-        _this.exportC64 = new ExportC64Dialog();
-        _this.exportC64.init(_this);
+        _this.exportC64 = _this.importExportControllers.createExportController('c64-dialog', _this);
 
         _this.textModeFile = new TextModeFile();
         _this.textModeFile.init(_this);
@@ -1800,13 +1793,11 @@ TextModeEditor.prototype = {
 
 
   editImportShader: function() {
-    if(this.importShaderEditor == null) {
-      this.importShaderEditor = new ImportShaderEditor();
-      this.importShaderEditor.init(this);
-    }
-
-    this.importShaderEditor.show();
-    
+    return this.imageImportFeature.activate(this).then(function(imageImporter) {
+      imageImporter.openShaderEditor();
+    }).catch(function(error) {
+      g_app.reportFeatureError('image import shader', error);
+    });
   },
 
   setType: function(type) {
@@ -2017,69 +2008,44 @@ TextModeEditor.prototype = {
 
   export3dAsGif: function() {
     if(g_app.isMobile()) {
-      if(this.export3dGifMobileDialog == null) {
-        this.export3dGifMobileDialog = new Export3dGifMobile();
-        this.export3dGifMobileDialog.init(this);
-      }
-
-      this.export3dGifMobileDialog.show();
-    } else {
-      if(this.export3dGifDialog == null) {
-        this.export3dGifDialog = new Export3dGif();
-        this.export3dGifDialog.init(this);
-      }
-
-      this.export3dGifDialog.start();
-
+      return;
     }
+    if(this.export3dGifDialog == null) {
+      this.export3dGifDialog = this.importExportControllers.createExportController('3d-gif', this);
+    }
+    this.export3dGifDialog.start();
 
   },
 
   exportGif: function() {
     if(g_app.isMobile()) {
       if(this.exportGifMobileDialog == null) {
-        this.exportGifMobileDialog = new ExportGifMobile();
-        this.exportGifMobileDialog.init(this);
+        this.exportGifMobileDialog = this.importExportControllers.createExportController('gif-mobile', this);
       }
 
       this.exportGifMobileDialog.show();
     } else {
       if(this.exportGifDialog == null) {
-        this.exportGifDialog = new ExportGif();
-        this.exportGifDialog.init(this);
+        this.exportGifDialog = this.importExportControllers.createExportController('gif', this);
       }
 
       this.exportGifDialog.start();
 
     }
-//            _this.exportGif = new ExportGif();
-//        _this.exportGif.init(_this);
-
   },
 
   exportImage: function() {
     if(this.exportImageDialog == null) {
-      this.exportImageDialog = new ExportImage();
-      this.exportImageDialog.init(this);
+      this.exportImageDialog = this.importExportControllers.createExportController('image', this);
     }
 
     this.exportImageDialog.show();
   },
 
   exportSvg: function() {
-    if(g_app.isMobile()) {
-      /*
-      if(this.exportSvgMobileDialog == null) {
-        this.exportSvgMobileDialog = new ExportSvgMobile();
-        this.exportSvgMobileDialog.init(this);
-      }
-
-      this.exportSvgMobileDialog.show();
-      */
-    } else {
+    if(!g_app.isMobile()) {
       if(this.exportSvgDialog == null) {
-        this.exportSvgDialog = new ExportSvg();
-        this.exportSvgDialog.init(this);
+        this.exportSvgDialog = this.importExportControllers.createExportController('svg', this);
       }
 
       this.exportSvgDialog.show();
@@ -2094,8 +2060,7 @@ TextModeEditor.prototype = {
 
       } else {
         if(this.exportSpritePngDialog == null) {
-          this.exportSpritePngDialog = new ExportSpritePng();
-          this.exportSpritePngDialog.init(this);
+          this.exportSpritePngDialog = this.importExportControllers.createExportController('sprite-png', this);
         }
   
         this.exportSpritePngDialog.show();
@@ -2106,15 +2071,13 @@ TextModeEditor.prototype = {
 
     if(g_app.isMobile()) {
       if(this.exportPngMobileDialog == null) {
-        this.exportPngMobileDialog = new ExportPngMobile();
-        this.exportPngMobileDialog.init(this);
+        this.exportPngMobileDialog = this.importExportControllers.createExportController('png-mobile', this);
       }
 
       this.exportPngMobileDialog.show();
     } else {
       if(this.exportPngDialog == null) {
-        this.exportPngDialog = new ExportPng();
-        this.exportPngDialog.init(this);
+        this.exportPngDialog = this.importExportControllers.createExportController('png', this);
       }
 
       this.exportPngDialog.show();
@@ -2127,16 +2090,14 @@ TextModeEditor.prototype = {
   copyAsImage: function() {
     if(g_app.isMobile()) {
       if(this.exportPngMobileDialog == null) {
-        this.exportPngMobileDialog = new ExportPngMobile();
-        this.exportPngMobileDialog.init(this);
+        this.exportPngMobileDialog = this.importExportControllers.createExportController('png-mobile', this);
       }
 
       this.exportPngMobileDialog.show();
     } else {
 
       if(this.exportImageDialog == null) {
-        this.exportImageDialog = new ExportImage();
-        this.exportImageDialog.init(this);
+        this.exportImageDialog = this.importExportControllers.createExportController('image', this);
       }
 
       var _this = this;
@@ -2215,8 +2176,7 @@ TextModeEditor.prototype = {
     var result = { success: false };
 
     if(this.exportC64Assembly == null) {
-      this.exportC64Assembly = new ExportC64Assembly();
-      this.exportC64Assembly.init(this);
+      this.exportC64Assembly = this.importExportControllers.createExportController('c64-assembly', this);
     }
 
 
@@ -2284,8 +2244,7 @@ TextModeEditor.prototype = {
 
   startImportSpriteImage: function() {
     if(this.importSpriteImage == null) {
-      this.importSpriteImage = new ImportSpriteImage();
-      this.importSpriteImage.init(this);
+      this.importSpriteImage = this.importExportControllers.createImportController('sprite-image', this);
     }
     this.importSpriteImage.start();
   },
@@ -2294,16 +2253,14 @@ TextModeEditor.prototype = {
     switch(type) {
       case 'txt':
         if(this.exportTxt == null) {
-          this.exportTxt = new ExportTxt();
-          this.exportTxt.init(this);
+          this.exportTxt = this.importExportControllers.createExportController('text', this);
         }
 
         this.exportTxt.start();
         break;
       case 'json':
         if(this.exportJson == null) {
-          this.exportJson = new ExportJson();
-          this.exportJson.init(this);
+          this.exportJson = this.importExportControllers.createExportController('json', this);
         }
 
         this.exportJson.start();
@@ -2311,30 +2268,26 @@ TextModeEditor.prototype = {
       case 'binary':
         if(this.graphic.getType() == 'sprite') {
           if(this.exportSpriteBinaryData == null) {
-            this.exportSpriteBinaryData = new ExportSpriteBinaryData();
-            this.exportSpriteBinaryData.init(this);
+            this.exportSpriteBinaryData = this.importExportControllers.createExportController('sprite-binary', this);
           }
           this.exportSpriteBinaryData.start();
 
         } else {
           if(this.exportBinaryData == null) {
-            this.exportBinaryData = new ExportBinaryData();
-            this.exportBinaryData.init(this);
+            this.exportBinaryData = this.importExportControllers.createExportController('binary', this);
           }
           this.exportBinaryData.start();
         }
       break;
       case 'petsciic':
         if(this.exportPetsciiC == null) {
-          this.exportPetsciiC = new ExportPetsciiC();
-          this.exportPetsciiC.init(this);
+          this.exportPetsciiC = this.importExportControllers.createExportController('petscii-c', this);
         }
         this.exportPetsciiC.start();
       break;
       case 'pet':
         if(this.exportPet == null) {
-          this.exportPet = new ExportPet();
-          this.exportPet.init(this);
+          this.exportPet = this.importExportControllers.createExportController('pet', this);
         }
         this.exportPet.start();
         break;
@@ -2342,15 +2295,13 @@ TextModeEditor.prototype = {
 
         if(this.graphic.getType() == 'sprite') {
           if(this.exportC64SpriteAssembly == null) {
-            this.exportC64SpriteAssembly = new ExportC64SpriteAssembly();
-            this.exportC64SpriteAssembly.init(this);
+            this.exportC64SpriteAssembly = this.importExportControllers.createExportController('c64-sprite-assembly', this);
           }
           this.exportC64SpriteAssembly.start();
 
         } else {
           if(this.exportC64Assembly == null) {
-            this.exportC64Assembly = new ExportC64Assembly();
-            this.exportC64Assembly.init(this);
+            this.exportC64Assembly = this.importExportControllers.createExportController('c64-assembly', this);
           }
           this.exportC64Assembly.start();
         }
@@ -2358,16 +2309,14 @@ TextModeEditor.prototype = {
 
       case 'mega65assembly':
         if(this.exportMega65Assembly == null) {
-          this.exportMega65Assembly = new ExportMega65Assembly();
-          this.exportMega65Assembly.init(this);
+          this.exportMega65Assembly = this.importExportControllers.createExportController('mega65-assembly', this);
         }
         this.exportMega65Assembly.start();
         break;
 
       case 'x16assembly':
         if(this.exportX16Assembly == null) {
-          this.exportX16Assembly = new ExportX16Assembly();
-          this.exportX16Assembly.init(this);
+          this.exportX16Assembly = this.importExportControllers.createExportController('x16-assembly', this);
         }
         this.exportX16Assembly.start();
         break;
@@ -2375,8 +2324,7 @@ TextModeEditor.prototype = {
         
       case 'charpad':
         if(this.exportCharPad == null) {
-          this.exportCharPad = new ExportCharPad();
-          this.exportCharPad.init(this);
+          this.exportCharPad = this.importExportControllers.createExportController('charpad', this);
         }
         this.exportCharPad.start();
         break;
@@ -2384,40 +2332,35 @@ TextModeEditor.prototype = {
 
       case 'spritepad':
         if(this.exportSpritePad == null) {
-          this.exportSpritePad = new ExportSpritePad();
-          this.exportSpritePad.init(this);
+          this.exportSpritePad = this.importExportControllers.createExportController('sprite-pad', this);
         }
         this.exportSpritePad.start();
         break;
 
       case 'seq':
         if(this.exportSEQ == null) {
-          this.exportSEQ = new ExportSEQ();
-          this.exportSEQ.init(this);
+          this.exportSEQ = this.importExportControllers.createExportController('seq', this);
         }
         this.exportSEQ.start();
         break;
 
       case 'x16basic':
         if(this.exportX16Basic == null) {
-          this.exportX16Basic = new ExportX16Basic();
-          this.exportX16Basic.init(this);
+          this.exportX16Basic = this.importExportControllers.createExportController('x16-basic', this);
         }
 
         this.exportX16Basic.start();
         break;
       case 'vox':
         if(this.exportVox == null) {
-          this.exportVox = new ExportVox();
-          this.exportVox.init(this);
+          this.exportVox = this.importExportControllers.createExportController('vox', this);
         }
 
         this.exportVox.start();
         break;
       case 'obj':
         if(this.exportObj == null) {
-          this.exportObj = new ExportObj();
-          this.exportObj.init(this);
+          this.exportObj = this.importExportControllers.createExportController('obj', this);
         }
 
         this.exportObj.start();
@@ -2516,6 +2459,9 @@ TextModeEditor.prototype = {
 
   update: function() {
     var time = getTimestamp();
+    var imageImporter = this.imageImportFeature
+      ? this.imageImportFeature.getActive(this)
+      : null;
 
 
     // animate select marquee
@@ -2530,8 +2476,8 @@ TextModeEditor.prototype = {
     }
 
 
-    if(this.importImage !== null) {
-      this.importImage.update();
+    if(imageImporter !== null) {
+      imageImporter.update();
     }
 
     if(this.exportGifDialog !== null) {
@@ -2575,7 +2521,7 @@ TextModeEditor.prototype = {
     }
     
 
-    if(this.importImage.visible !== true) {
+    if(imageImporter === null || imageImporter.visible !== true) {
 
       if(this.gridView2d && this.type == '2d') {
         this.gridView2d.render();

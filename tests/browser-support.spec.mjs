@@ -160,7 +160,7 @@ test("direct image-import routes activate and clean up on desktop and touch prof
 
   if (testInfo.project.metadata.deviceClass === "desktop") {
     const originalImporter = await page.evaluate(async () => {
-      const importer = g_app.textModeEditor.importImage;
+      const importer = g_app.services.imageImport.getActive(g_app.textModeEditor);
       await g_app.closeRoute("feature:image-import");
       globalThis.__routeTestImporter = importer;
       return Boolean(importer);
@@ -174,12 +174,12 @@ test("direct image-import routes activate and clean up on desktop and touch prof
       status: "ready",
     });
     expect(await page.evaluate(() =>
-      g_app.textModeEditor.importImage === globalThis.__routeTestImporter,
+      g_app.services.imageImport.getActive(g_app.textModeEditor) === globalThis.__routeTestImporter,
     )).toBe(true);
   }
 
   const repeated = await page.evaluate(async () => {
-    const firstInstance = g_app.textModeEditor.importImage;
+    const firstInstance = g_app.services.imageImport.getActive(g_app.textModeEditor);
     const [first, second] = await Promise.all([
       g_app.openImageImport(undefined, "keyboard"),
       g_app.openImageImport(undefined, "menu"),
@@ -233,7 +233,7 @@ test("mobile image import serializes rapid close and reopen", async ({ page }, t
       dialog.uiID === "importImageMobile",
     ).length,
     status: g_app.services.uiRoutes.getState("feature:image-import").status,
-    visible: g_app.textModeEditor.importImage.visible,
+    visible: g_app.services.imageImport.getActive(g_app.textModeEditor)?.visible,
   }))).toEqual({
     active: "feature:image-import",
     stackEntries: 1,
@@ -255,7 +255,7 @@ test("mobile image import serializes rapid close and reopen", async ({ page }, t
       dialog.uiID === "importImageMobile",
     ).length,
     status: g_app.services.uiRoutes.getState("feature:image-import").status,
-    visible: g_app.textModeEditor.importImage.visible,
+    visible: g_app.services.imageImport.getActive(g_app.textModeEditor)?.visible,
   }))).toEqual({
     active: "feature:image-import",
     stackEntries: 1,
@@ -305,9 +305,10 @@ test("production image-import entry points share their context-scoped instance",
   }));
   const rememberInstance = () => page.evaluate(() => {
     if (!globalThis.__entrypointImporter) {
-      globalThis.__entrypointImporter = g_app.textModeEditor.importImage;
+      globalThis.__entrypointImporter = g_app.services.imageImport.getActive(g_app.textModeEditor);
     }
-    return g_app.textModeEditor.importImage === globalThis.__entrypointImporter;
+    return g_app.services.imageImport.getActive(g_app.textModeEditor) ===
+      globalThis.__entrypointImporter;
   });
   const waitForImport = async (source) => {
     await expect.poll(routeState).toEqual({
@@ -383,7 +384,7 @@ test("production image-import entry points share their context-scoped instance",
       g_app.setMode("start");
     });
     await expect.poll(() => page.evaluate(() => ({
-      importVisible: g_app.textModeEditor.importImage.visible,
+      importVisible: g_app.services.imageImport.getActive(g_app.textModeEditor)?.visible,
       nestedClosed: globalThis.__nestedRouteDialogClosed === true,
       route: g_app.services.uiRoutes.getActiveRoute(),
       stackHasImporter: UI.dialogStack.some((dialog) =>

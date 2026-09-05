@@ -408,6 +408,7 @@ export const buildGraph = {
       "js/textMode/import2d/importImage.js",
       "js/textMode/import2d/importImageMobile.js",
       "js/textMode/import2d/shaderImportEditor.js",
+      "js/textMode/import2d/imageImportEntry.mjs",
     ],
   },
 };
@@ -417,6 +418,10 @@ export const buildGraph = {
 // injected through a layer-specific public entry point.
 export const moduleGraph = {
   entry: "js/bootstrap.mjs",
+  generatedEntries: ["js/features/image-import.js"],
+  dynamicImportEntries: {
+    "js/modules/infrastructure/imageImportModuleLoader.mjs": ["js/features/image-import.js"],
+  },
   sourceRoots: ["js/bootstrap.mjs", "js/modules"],
   globalAccess: ["js/bootstrap.mjs"],
   layers: [
@@ -452,19 +457,24 @@ export const moduleGraph = {
     "js/modules/application/editorStateService.mjs",
     "js/modules/application/featureRegistry.mjs",
     "js/modules/application/historyService.mjs",
+    "js/modules/application/importExportService.mjs",
     "js/modules/application/persistenceService.mjs",
     "js/modules/application/remoteProviderService.mjs",
     "js/modules/application/uiRouteService.mjs",
     "js/modules/domain/documentRevisionState.mjs",
     "js/modules/domain/githubRepositoryAddress.mjs",
     "js/modules/domain/historyState.mjs",
+    "js/modules/domain/importExportValues.mjs",
+    "js/modules/domain/svgExport.mjs",
     "js/modules/feature-adapters/imageImportFeature.mjs",
+    "js/modules/feature-adapters/legacySvgExportAdapter.mjs",
     "js/modules/feature-adapters/legacyUiRoutes.mjs",
     "js/modules/feature-adapters/legacyRemoteProviderFacades.mjs",
+    "js/modules/feature-adapters/legacyImportExportAdapter.mjs",
     "js/modules/feature-adapters/textModeHistoryAdapter.mjs",
     "js/modules/infrastructure/browserStorageAdapter.mjs",
-    "js/modules/infrastructure/classicScriptLoader.mjs",
     "js/modules/infrastructure/disabledRemoteProviderAdapter.mjs",
+    "js/modules/infrastructure/imageImportModuleLoader.mjs",
   ],
   cycleExceptions: [],
 };

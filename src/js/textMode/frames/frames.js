@@ -1148,7 +1148,10 @@ return;
 
   play: function(forcePlay) {
 
-    if(this.editor.importImage.importInProgress) {
+    var imageImporter = this.editor.imageImportFeature
+      ? this.editor.imageImportFeature.getActive(this.editor)
+      : null;
+    if(imageImporter && imageImporter.importInProgress) {
       // don't play if import in progress
       return;
     }

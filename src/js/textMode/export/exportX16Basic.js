@@ -4,8 +4,9 @@ var ExportX16Basic = function() {
 
 
 ExportX16Basic.prototype = {
-  init: function(editor) {
+  init: function(editor, host) {
     this.editor = editor;
+    this.host = host;
   },
 
 
@@ -49,18 +50,19 @@ ExportX16Basic.prototype = {
   },
 
   initContent: function() {
+    var host = this.host;
 
     if(this.basicEditor == null) {
       this.basicEditor = ace.edit("exportX16BasicSource");
       this.basicEditor.getSession().setTabSize(2);
       this.basicEditor.getSession().setUseSoftTabs(true);
       this.basicEditor.on('focus', function() {
-        g_app.setAllowKeyShortcuts(false);
+        host.setAllowKeyShortcuts(false);
         UI.setAllowBrowserEditOperations(true);
       });
 
       this.basicEditor.on('blur', function() {
-        g_app.setAllowKeyShortcuts(true);
+        host.setAllowKeyShortcuts(true);
         UI.setAllowBrowserEditOperations(false);
       });
       var mode = 'ace/mode/assembly_6502';

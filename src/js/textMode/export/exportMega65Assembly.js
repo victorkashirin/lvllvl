@@ -8,8 +8,9 @@ var ExportMega65Assembly = function() {
 
 ExportMega65Assembly.prototype = {
 
-  init: function(editor) {
+  init: function(editor, host) {
     this.editor = editor;
+    this.host = host;
   },
 
   formatBytes: function(bytes, args) {
@@ -96,18 +97,19 @@ ExportMega65Assembly.prototype = {
   },
 
   initContent: function() {
+    var host = this.host;
 
     if(this.asmEditor == null) {
       this.asmEditor = ace.edit("exportMega65AssemblySource");
       this.asmEditor.getSession().setTabSize(2);
       this.asmEditor.getSession().setUseSoftTabs(true);
       this.asmEditor.on('focus', function() {
-        g_app.setAllowKeyShortcuts(false);
+        host.setAllowKeyShortcuts(false);
         UI.setAllowBrowserEditOperations(true);
       });
 
       this.asmEditor.on('blur', function() {
-        g_app.setAllowKeyShortcuts(true);
+        host.setAllowKeyShortcuts(true);
         UI.setAllowBrowserEditOperations(false);
       });
       var mode = 'ace/mode/assembly_6502';
@@ -123,7 +125,7 @@ ExportMega65Assembly.prototype = {
     this.colorPerMode = this.editor.getColorPerMode();
     this.blockModeEnabled = this.editor.getBlockModeEnabled();
 
-    $('#exportMega65AssemblyAs').val(g_app.fileManager.filename);
+    $('#exportMega65AssemblyAs').val(this.host.fileManager.filename);
 
     var frameCount = this.editor.graphic.getFrameCount();
 
@@ -586,7 +588,7 @@ ExportMega65Assembly.prototype = {
 
   getLayerFromPath: function(args) {
     var layerId = false;    
-    var graphicRecord = g_app.doc.getDocRecord(args.path);
+    var graphicRecord = this.host.doc.getDocRecord(args.path);
 
     if(graphicRecord) {
       if(typeof args.layerId === 'undefined') {
@@ -1328,8 +1330,8 @@ ExportMega65Assembly.prototype = {
     }
 
     if(typeof args.displayOnly != 'undefined' && args.displayOnly) {
-//      g_app.textDialog.setText(screenData);
-//      g_app.textDialog.show();
+//      this.host.textDialog.setText(screenData);
+//      this.host.textDialog.show();
       this.asmEditor.setValue(screenData, -1);
 
     } else {
@@ -1410,7 +1412,7 @@ ExportMega65Assembly.prototype = {
   exportMega65AssemblyAs: function(args) {
 
     if(typeof args.filename == 'undefined') {
-      args.filename = g_app.fileManager.filename;
+      args.filename = this.host.fileManager.filename;
     }
 
     if(typeof args.format == 'undefined') {

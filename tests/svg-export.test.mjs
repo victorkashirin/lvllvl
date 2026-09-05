@@ -5,6 +5,13 @@ import test from "node:test";
 import vm from "node:vm";
 import { fileURLToPath } from "node:url";
 
+import { ImportExportService } from "../src/js/modules/application/importExportService.mjs";
+import { encodeSvgExport } from "../src/js/modules/domain/svgExport.mjs";
+import {
+  captureLegacySvgExportSnapshot,
+  createLegacySvgExportPort,
+} from "../src/js/modules/feature-adapters/legacySvgExportAdapter.mjs";
+
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 async function loadLegacySource(relativePath, context = {}) {
@@ -58,16 +65,6 @@ function createTextModeLayer({ cells, pixels, flip = false, rotate = false }) {
 }
 
 test("text-mode SVG export converts binary tile pixels into crisp vector paths", async () => {
-  const context = await loadLegacySource("src/js/textMode/export/exportSvg.js", {
-    TextModeEditor: {
-      Mode: {
-        VECTOR: "vector",
-        TEXTMODE: "textmode",
-        C64STANDARD: "c64standard",
-        C64ECM: "c64ecm",
-      },
-    },
-  });
   const cells = [[
     { t: 0, fc: 1, bc: -1, fh: 0, fv: 0, rz: 0 },
     { t: 0, fc: 1, bc: 2, fh: 1, fv: 0, rz: 0 },
@@ -77,13 +74,12 @@ test("text-mode SVG export converts binary tile pixels into crisp vector paths",
     pixels: [[1, 1, 0, 0, 1, 1]],
     flip: true,
   });
-  const exporter = new context.ExportSvg();
-  exporter.init({
+  const editor = {
     colorPaletteManager: { noColor: -1 },
     layers: { getSelectedLayerObject: () => layer },
-  });
-
-  const svg = exporter.getSVGData();
+  };
+  const snapshot = captureLegacySvgExportSnapshot(editor);
+  const svg = encodeSvgExport(snapshot).data;
 
   assert.match(svg, /<svg xmlns="http:\/\/www\.w3\.org\/2000\/svg" width="6" height="2" viewBox="0 0 6 2" shape-rendering="crispEdges">/);
   assert.doesNotMatch(svg, /<rect width="100%"/);
@@ -95,49 +91,38 @@ test("text-mode SVG export converts binary tile pixels into crisp vector paths",
 });
 
 test("text-mode SVG paths honor tile rotation metadata", async () => {
-  const context = await loadLegacySource("src/js/textMode/export/exportSvg.js", {
-    TextModeEditor: {
-      Mode: {
-        VECTOR: "vector",
-        TEXTMODE: "textmode",
-        C64STANDARD: "c64standard",
-        C64ECM: "c64ecm",
-      },
-    },
-  });
-  const exporter = new context.ExportSvg();
-  const pathData = exporter.getRasterPath(
-    {
+  const tileSet = {
       getPixel(tileIndex, x, y, frame) {
         assert.equal(tileIndex, 0);
         assert.equal(frame, "current");
         return [1, 0, 0, 0][x + y * 2];
       },
-    },
-    0,
-    { rz: 1 },
-    {
-      getHasTileFlip: () => false,
-      getHasTileRotate: () => true,
-    },
-    2,
-    2,
-  );
+  };
+  const layer = {
+    getType: () => "grid",
+    getScreenMode: () => "textmode",
+    getGridWidth: () => 1,
+    getGridHeight: () => 1,
+    getCellWidth: () => 2,
+    getCellHeight: () => 2,
+    getTileSet: () => tileSet,
+    getColorPalette: () => ({ getRGBA: () => [255, 255, 255, 255] }),
+    getBackgroundColor: () => -1,
+    getColorPerMode: () => "cell",
+    getBlockModeEnabled: () => false,
+    getHasTileFlip: () => false,
+    getHasTileRotate: () => true,
+    getCell: () => ({ t: 0, fc: 1, bc: -1, rz: 1 }),
+  };
+  const snapshot = captureLegacySvgExportSnapshot({
+    colorPaletteManager: { noColor: -1 },
+    layers: { getSelectedLayerObject: () => layer },
+  });
 
-  assert.equal(pathData, "M1 0h1v1h-1z");
+  assert.equal(snapshot.cells[0].path, "M1 0h1v1h-1z");
 });
 
 test("vector SVG export retains paths while using the selected grid dimensions", async () => {
-  const context = await loadLegacySource("src/js/textMode/export/exportSvg.js", {
-    TextModeEditor: {
-      Mode: {
-        VECTOR: "vector",
-        TEXTMODE: "textmode",
-        C64STANDARD: "c64standard",
-        C64ECM: "c64ecm",
-      },
-    },
-  });
   const cells = [
     { t: 0, fc: 1, bc: -1 },
     { t: 1, fc: 1, bc: -1 },
@@ -158,13 +143,12 @@ test("vector SVG export retains paths while using the selected grid dimensions",
     getColorPerMode: () => "cell",
     getCell: ({ x }) => cells[x],
   };
-  const exporter = new context.ExportSvg();
-  exporter.init({
+  const editor = {
     colorPaletteManager: { noColor: -1 },
     layers: { getSelectedLayerObject: () => layer },
-  });
-
-  const svg = exporter.getSVGData();
+  };
+  const snapshot = captureLegacySvgExportSnapshot(editor);
+  const svg = encodeSvgExport(snapshot).data;
 
   assert.match(svg, /width="64" height="32" viewBox="0 0 64 32"/);
   assert.doesNotMatch(svg, /shape-rendering=/);
@@ -186,30 +170,29 @@ test("the editor enables SVG export for monochrome text modes", async () => {
 
 test("SVG downloads use the standard MIME type and preserve an existing extension", async () => {
   const downloads = [];
-  const context = await loadLegacySource("src/js/textMode/export/exportSvg.js", {
-    TextModeEditor: {
-      Mode: {
-        VECTOR: "vector",
-        TEXTMODE: "textmode",
-        C64STANDARD: "c64standard",
-        C64ECM: "c64ecm",
-      },
-    },
-    download: (...args) => downloads.push(args),
-  });
   const { layer } = createTextModeLayer({
     cells: [[{ t: 0, fc: 1, bc: -1, fh: 0, fv: 0, rz: 0 }]],
     pixels: [[1, 0, 0, 0, 0, 0]],
   });
-  const exporter = new context.ExportSvg();
-  exporter.init({
+  const editor = {
     colorPaletteManager: { noColor: -1 },
     layers: { getSelectedLayerObject: () => layer },
+  };
+  const service = new ImportExportService();
+  service.registerExporter("svg", { encode: encodeSvgExport });
+  const port = createLegacySvgExportPort({
+    editor,
+    operations: service,
+    host: {
+      downloadArtifact: (artifact) => downloads.push(artifact),
+      reportError: (operation, error) => assert.fail(`${operation}: ${error}`),
+      showAlert: (message) => assert.fail(message),
+    },
   });
 
-  exporter.exportSVG({ filename: "picture.SVG" });
+  await port.export("picture.SVG");
 
   assert.equal(downloads.length, 1);
-  assert.equal(downloads[0][1], "picture.SVG");
-  assert.equal(downloads[0][2], "image/svg+xml");
+  assert.equal(downloads[0].filename, "picture.SVG");
+  assert.equal(downloads[0].mediaType, "image/svg+xml");
 });

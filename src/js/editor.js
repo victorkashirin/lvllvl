@@ -354,13 +354,6 @@ Editor.prototype = {
     return this.featureRegistry.activate(feature, context);
   },
 
-  getFeatureFacade: function(feature, context) {
-    if(this.featureRegistry == null) {
-      throw new Error('No feature registry is configured');
-    }
-    return this.featureRegistry.createFacade(feature, context);
-  },
-
   navigateRoute: function(route, options) {
     if(!this.services || !this.services.uiRoutes) {
       return Promise.reject(new Error('No UI route service is configured'));

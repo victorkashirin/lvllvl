@@ -4,6 +4,17 @@
 
 ### Added
 
+- Add a rendering performance review with prioritized bottlenecks, reproducible
+  Chromium probes, and recorded operation counts and timings in `docs/performance`.
+- Add validated text/byte import sources, immutable export snapshots, generated
+  artifact values, and stateless import/export operations with cancellation,
+  timeout, retry, malformed-input, and deterministic-output coverage.
+- Add a named legacy import/export adapter with per-format document capabilities
+  and an injected application host for the remaining stable text-mode formats;
+  its recursive membrane hides editor backreferences and prevents direct export-
+  port mutation.
+- Migrate SVG export to a detached data snapshot, pure deterministic encoder, and
+  generated artifact downloaded through the composition host.
 - Add a credential-free remote-provider service with explicit capabilities,
   content, progress, cancellation, disabled session state, normalized errors,
   and separate GitHub, Gist, and Google Drive adapter registrations.
@@ -26,6 +37,11 @@
 
 ### Changed
 
+- Route every active text-mode import/export launcher through explicit capability
+  contracts, including file-manager and tile-set CharPad paths, and remove direct
+  `g_app` access from the contained format implementations.
+- Emit image import as a retryable ESM feature entry and resolve its active
+  context instance through the feature handle instead of an editor facade.
 - Define the current P1.4 implementation target as import/export boundary
   containment plus immediate legacy cleanup, move that cleanup ahead of the
   specialized subsystem phase, and explicitly defer payload optimization,
@@ -47,14 +63,30 @@
   application service and its browser-storage adapter.
 - Create every legacy `Document` with an isolated revision session and generate
   identifiers and timestamps through composition-root dependencies.
-- Make image import context-scoped and restore its compatibility facade after
-  disposal so separate editors cannot share importer state.
+- Make image import context-scoped with explicit disposal so separate editors
+  cannot share importer state.
 - Route editor modes and every image-import entry point through one activation
   service with cancellation, cleanup, retry UI, and focus restoration owned by a
   DOM adapter.
 
 ### Fixed
 
+- Keep generated SVG path and transform data inside escaped attributes.
+- Keep Vite's development transform from rewriting the retryable image-import
+  module URL into an unsupported variable-import glob.
+- Require computed dynamic imports to retain an exact graph-declared module path,
+  preventing a declared generated entry from masking unrelated runtime imports.
+- Keep import application as a synchronous atomic commit so cancellation or
+  timeout cannot reject while a late apply promise continues mutating a document.
+- Preserve own `__proto__` fields when copying immutable export snapshots without
+  changing the copied object's prototype.
+- Consume shader-import activation failures after showing the error banner,
+  avoiding an unhandled promise rejection from the menu command.
+- Allow image-import retry to recover after a failed ESM request by giving each
+  attempt a distinct release-scoped URL, avoiding the browser's cached failed
+  module-map entry.
+- Declare image-conversion loop state locally so the former classic-script code
+  retains its behavior under the strict semantics of its new ESM entry.
 - Make retired GitHub, Gist, and Google Drive links return to the start page,
   enforce provider capabilities per operation, validate a strict request envelope,
   sanitize adapter session/error state, and keep every remaining callback-era

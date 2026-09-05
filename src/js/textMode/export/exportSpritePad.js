@@ -4,8 +4,9 @@ var ExportSpritePad = function() {
 
 ExportSpritePad.prototype = {
 
-  init: function(editor) {
+  init: function(editor, host) {
     this.editor = editor;
+    this.host = host;
   },
 
 
@@ -46,7 +47,7 @@ ExportSpritePad.prototype = {
     this.colorPerMode = this.editor.getColorPerMode();
     this.blockModeEnabled = this.editor.getBlockModeEnabled();
 
-    $('#exportSpritePadAs').val(g_app.fileManager.filename);
+    $('#exportSpritePadAs').val(this.host.fileManager.filename);
 
   },
 
@@ -61,7 +62,7 @@ ExportSpritePad.prototype = {
     var currentFrame = this.editor.graphic.getCurrentFrame();
 
     if(typeof args.filename == 'undefined') {
-      args.filename = g_app.fileManager.filename;
+      args.filename = this.host.fileManager.filename;
     }
 
     if(typeof args.format == 'undefined') {

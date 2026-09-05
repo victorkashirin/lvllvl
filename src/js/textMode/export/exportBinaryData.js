@@ -8,8 +8,9 @@ var ExportBinaryData = function() {
 
 ExportBinaryData.prototype = {
 
-  init: function(editor) {
+  init: function(editor, host) {
     this.editor = editor;
+    this.host = host;
   },
 
 
@@ -51,7 +52,7 @@ ExportBinaryData.prototype = {
 
   initContent: function() {
 
-    $('#exportBinaryAs').val(g_app.fileManager.filename);
+    $('#exportBinaryAs').val(this.host.fileManager.filename);
 
     var frameCount = this.editor.graphic.getFrameCount();
 
@@ -130,7 +131,7 @@ ExportBinaryData.prototype = {
     console.log('export mega 65');
     var layer = this.editor.layers.getSelectedLayerObject();
     var screenMode = layer.getScreenMode();
-    var filename = g_app.fileManager.filename;
+    var filename = this.host.fileManager.filename;
 
     if(typeof args.filename != 'undefined') {
       filename = args.filename;
@@ -262,7 +263,7 @@ ExportBinaryData.prototype = {
       return;
     }    
 
-    var filename = g_app.fileManager.filename;
+    var filename = this.host.fileManager.filename;
 
     if(typeof args.filename != 'undefined') {
       filename = args.filename;

@@ -5,8 +5,9 @@ var ExportPetsciiC = function() {
 
 ExportPetsciiC.prototype = {
 
-  init: function(editor) {
+  init: function(editor, host) {
     this.editor = editor;
+    this.host = host;
   },
 
 
@@ -45,7 +46,7 @@ ExportPetsciiC.prototype = {
 
   initContent: function() {
 
-    $('#exportPetsciiCAs').val(g_app.fileManager.filename);
+    $('#exportPetsciiCAs').val(this.host.fileManager.filename);
 
     var frameCount = this.editor.graphic.getFrameCount();
     $('#exportPetsciiCToFrame').val(frameCount);

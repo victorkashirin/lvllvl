@@ -31,15 +31,15 @@ test("image import is loaded once on first activation", async ({ page }) => {
     active: g_app.featureRegistry.isActive("imageImport"),
     route: g_app.services.uiRoutes.getState("feature:image-import").status,
     constructorType: typeof ImportImage,
-    importInProgress: g_app.textModeEditor.importImage.importInProgress,
-    visible: g_app.textModeEditor.importImage.visible,
+    activeInstance: g_app.services.imageImport.getActive(g_app.textModeEditor),
+    ownsImportImage: Object.hasOwn(g_app.textModeEditor, "importImage"),
   }));
   expect(before).toEqual({
     active: false,
     route: "disposed",
     constructorType: "undefined",
-    importInProgress: false,
-    visible: false,
+    activeInstance: null,
+    ownsImportImage: false,
   });
   expect(featureRequests).toEqual([]);
 
@@ -51,29 +51,31 @@ test("image import is loaded once on first activation", async ({ page }) => {
     ]);
     const otherEditor = {};
     const otherInstance = await g_app.activateFeature("imageImport", otherEditor);
-    const contextsAreIsolated = otherInstance !== first && otherInstance.editor === otherEditor;
+    const contextsAreIsolated = otherInstance !== first && otherInstance.editor !== first.editor;
     await g_app.featureRegistry.dispose("imageImport", otherEditor);
     await g_app.featureRegistry.dispose("imageImport", editor);
-    const facadeWasRestored = editor.importImage !== first &&
-      typeof editor.importImage.start === "function";
+    const disposedInstance = g_app.services.imageImport.getActive(editor);
     const reactivated = await g_app.activateFeature("imageImport", editor);
     return {
       active: g_app.featureRegistry.isActive("imageImport"),
       constructorType: typeof ImportImage,
       contextsAreIsolated,
-      facadeWasRestored,
-      initialized: first.editor === editor,
-      reactivatedWithNewInstance: reactivated !== first && reactivated === editor.importImage,
+      disposedInstance,
+      initializedWithPort: first.editor !== editor && Object.isFrozen(first.editor),
+      ownsImportImage: Object.hasOwn(editor, "importImage"),
+      reactivatedWithNewInstance: reactivated !== first &&
+        reactivated === g_app.services.imageImport.getActive(editor),
       sameConcurrentInstance: first === second,
     };
   });
 
   expect(after).toEqual({
     active: true,
-    constructorType: "function",
+    constructorType: "undefined",
     contextsAreIsolated: true,
-    facadeWasRestored: true,
-    initialized: true,
+    disposedInstance: null,
+    initializedWithPort: true,
+    ownsImportImage: false,
     reactivatedWithNewInstance: true,
     sameConcurrentInstance: true,
   });
@@ -173,6 +175,17 @@ test("the image-import dialog keeps application typography and valid icons", asy
 
   const panel = page.locator("#importImagePanel");
   await expect(panel).toBeVisible();
+  const colorAnalysis = await page.evaluate(() => {
+    const editor = g_app.textModeEditor;
+    const importer = g_app.services.imageImport.getActive(editor);
+    const tileSet = editor.tileSetManager.getCurrentTileSet();
+    const imageData = new ImageData(
+      editor.frames.width * tileSet.charWidth,
+      editor.frames.height * tileSet.charHeight,
+    );
+    return importer.importColorUtils.findColors(imageData, [0]);
+  });
+  expect(colorAnalysis).toEqual([{ color: 0, timesUsed: 0 }]);
   const dialog = panel.locator(
     "xpath=ancestor::div[contains(concat(' ', normalize-space(@class), ' '), ' ui-dialog ')][1]",
   );

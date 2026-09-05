@@ -125,6 +125,7 @@ BasicImport.prototype = {
     var chosenColor2 = -1;  
 
     var backgroundColors = 1;
+    var c2 = false;
 
     if(this.useMultipleBGColors) {
       backgroundColors = this.bgColors.length;
@@ -150,8 +151,8 @@ BasicImport.prototype = {
           var blankSquare = true;
 
           var testScore = 0;
-          for(cy = 0; cy < tileSet.charHeight; cy++) {
-            for(cx = 0; cx < tileSet.charWidth; cx++) {
+          for(var cy = 0; cy < tileSet.charHeight; cy++) {
+            for(var cx = 0; cx < tileSet.charWidth; cx++) {
 
               var backgroundColor = c2;
               if(backgroundColors == 1) {//} && !this.blackAndWhite) {

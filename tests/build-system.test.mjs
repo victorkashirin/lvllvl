@@ -280,6 +280,19 @@ test("the development server rebuilds once and remains available", { timeout: 60
     const initialVersion = assetVersion(await initialResponse.text());
     assert.match(initialVersion, /-dev-/);
 
+    const imageLoaderResponse = await fetch(new URL(
+      `js/modules/infrastructure/imageImportModuleLoader.mjs?v=${initialVersion}`,
+      devUrl,
+    ));
+    assert.equal(imageLoaderResponse.status, 200, output);
+    const imageLoaderSource = await imageLoaderResponse.text();
+    assert.match(imageLoaderSource, /import\(\s*\/\* @vite-ignore \*\//);
+    assert.doesNotMatch(
+      imageLoaderSource,
+      /dynamic-import-helper|__variableDynamicImportRuntimeHelper/,
+      "Vite must leave the retryable image-import URL for the browser to resolve",
+    );
+
     await writeFile(rebuildTrigger, "trigger a source watcher event\n");
     await waitForCondition(
       () => output.includes("server restarted"),

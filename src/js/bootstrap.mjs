@@ -7,6 +7,7 @@ import {
 } from "./modules/application/uiRouteService.mjs";
 import { DocumentSession } from "./modules/application/documentSession.mjs";
 import { EditorCommandService } from "./modules/application/editorCommandService.mjs";
+import { ImportExportService } from "./modules/application/importExportService.mjs";
 import { PersistenceService } from "./modules/application/persistenceService.mjs";
 import {
   RemoteProviderCapability,
@@ -27,30 +28,100 @@ import {
   createTextModeHistoryReplay,
 } from "./modules/feature-adapters/textModeHistoryAdapter.mjs";
 import { createLegacyRemoteProviderFacades } from "./modules/feature-adapters/legacyRemoteProviderFacades.mjs";
-import { createClassicScriptLoader } from "./modules/infrastructure/classicScriptLoader.mjs";
+import { createLegacyImportExportAdapter } from "./modules/feature-adapters/legacyImportExportAdapter.mjs";
+import { createLegacySvgExportPort } from "./modules/feature-adapters/legacySvgExportAdapter.mjs";
 import { createBrowserStorageAdapter } from "./modules/infrastructure/browserStorageAdapter.mjs";
 import { createDisabledRemoteProviderAdapter } from "./modules/infrastructure/disabledRemoteProviderAdapter.mjs";
+import { createImageImportModuleLoader } from "./modules/infrastructure/imageImportModuleLoader.mjs";
+import { encodeSvgExport } from "./modules/domain/svgExport.mjs";
 
 const featureRegistry = new FeatureRegistry();
-const featureScriptUrl = new URL("./features/image-import.js", import.meta.url);
-featureScriptUrl.search = new URL(import.meta.url).search;
+const app = /** @type {any} */ (new globalThis.Editor());
+const legacy = /** @type {any} */ (globalThis);
+const importExportOperations = new ImportExportService();
+importExportOperations.registerExporter("svg", { encode: encodeSvgExport });
+const loadImageImportModule = createImageImportModuleLoader("{v}");
+const legacyImportExportHost = Object.freeze({
+  get assembler() { return app.assembler; },
+  get assemblerEditor() { return app.assemblerEditor; },
+  get doc() { return app.doc; },
+  get fileManager() { return app.fileManager; },
+  get gdrive() { return app.gdrive; },
+  get music() { return app.music; },
+  get textDialog() { return app.textDialog; },
+  downloadArtifact(/** @type {any} */ artifact) {
+    const data = typeof artifact.text === "string" ? artifact.text : artifact.readBytes();
+    legacy.download(data, artifact.filename, artifact.mediaType);
+  },
+  isDesktopApp: () => app.isDesktopApp(),
+  isMobile: () => app.isMobile(),
+  reportError: (/** @type {string} */ operation, /** @type {unknown} */ error) =>
+    app.reportFeatureError(operation, error),
+  setAllowKeyShortcuts: (/** @type {boolean} */ allow) => app.setAllowKeyShortcuts(allow),
+  showAlert: (/** @type {string} */ message) => legacy.alert(message),
+  showAssembler: () => app.showAssembler(),
+});
+const importExportControllers = createLegacyImportExportAdapter({
+  host: legacyImportExportHost,
+  ports: {
+    "export:svg": (editor) => createLegacySvgExportPort({
+      editor,
+      host: legacyImportExportHost,
+      operations: importExportOperations,
+    }),
+  },
+  constructors: {
+    "import:assembly": legacy.ImportAssembly,
+    "import:c": legacy.ImportC,
+    "import:c64-formats": legacy.ImportC64Formats,
+    "import:c64-sprite-formats": legacy.ImportC64SpriteFormats,
+    "import:charpad": legacy.ImportCharPad,
+    "import:spr": legacy.ImportSPR,
+    "import:sprite-image": legacy.ImportSpriteImage,
+    "import:spritepad": legacy.ImportSpritePad,
+    "export:3d-gif": legacy.Export3dGif,
+    "export:binary": legacy.ExportBinaryData,
+    "export:c64-assembly": legacy.ExportC64Assembly,
+    "export:c64-dialog": legacy.ExportC64Dialog,
+    "export:c64-sprite-assembly": legacy.ExportC64SpriteAssembly,
+    "export:charpad": legacy.ExportCharPad,
+    "export:frame-image": legacy.ExportFrameImage,
+    "export:gif": legacy.ExportGif,
+    "export:gif-mobile": legacy.ExportGifMobile,
+    "export:image": legacy.ExportImage,
+    "export:json": legacy.ExportJson,
+    "export:mega65-assembly": legacy.ExportMega65Assembly,
+    "export:obj": legacy.ExportObj,
+    "export:pet": legacy.ExportPet,
+    "export:petscii-c": legacy.ExportPetsciiC,
+    "export:png": legacy.ExportPng,
+    "export:png-mobile": legacy.ExportPngMobile,
+    "export:seq": legacy.ExportSEQ,
+    "export:sprite-binary": legacy.ExportSpriteBinaryData,
+    "export:sprite-pad": legacy.ExportSpritePad,
+    "export:sprite-png": legacy.ExportSpritePng,
+    "export:svg": legacy.ExportSvg,
+    "export:text": legacy.ExportTxt,
+    "export:to-prg": legacy.ToPRG,
+    "export:to-prg-advanced": legacy.ToPRGAdv,
+    "export:vox": legacy.ExportVox,
+    "export:x16-assembly": legacy.ExportX16Assembly,
+    "export:x16-basic": legacy.ExportX16Basic,
+  },
+});
 
 const imageImportFeature = featureRegistry.register(
   imageImportFeatureName,
   createImageImportFeature({
-    legacyGlobal: /** @type {any} */ (globalThis),
-    loadScript: createClassicScriptLoader(document),
-    scriptUrl: featureScriptUrl.href,
-    reportError(error) {
-      globalThis.g_app?.reportFeatureError("image import", error);
-    },
+    loadModule: loadImageImportModule,
+    createDestination: (editor) => importExportControllers.createImportDestination("image", editor),
+    host: legacyImportExportHost,
     clearError() {
       globalThis.g_app?.clearFeatureError();
     },
   }),
 );
 
-const app = new globalThis.Editor();
 const uiRoutes = new UiRouteService({
   ui: createLegacyUiRouteAdapter({
     document,
@@ -132,6 +203,9 @@ function createTextModeCommandService(editor) {
 
 const services = {
   clock,
+  imageImport: imageImportFeature,
+  importExportControllers,
+  importExportOperations,
   persistence,
   remoteProviderFacades,
   remoteProviders,

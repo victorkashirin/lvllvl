@@ -6,8 +6,9 @@ var ExportJson = function() {
 
 ExportJson.prototype = {
 
-  init: function(editor) {
+  init: function(editor, host) {
     this.editor = editor;
+    this.host = host;
   },
 
 
@@ -50,7 +51,7 @@ ExportJson.prototype = {
     this.colorPerMode = this.editor.getColorPerMode();
     this.blockModeEnabled = this.editor.getBlockModeEnabled();
 
-    $('#exportJSONAs').val(g_app.fileManager.filename);
+    $('#exportJSONAs').val(this.host.fileManager.filename);
 
     var frameCount = this.editor.graphic.getFrameCount();
 

@@ -21,7 +21,8 @@ layer and direct dependencies. It rejects:
   adapters;
 - reverse layer imports;
 - cross-package imports that bypass a declared public entry point;
-- non-literal dynamic imports and imports outside governed roots;
+- non-literal dynamic imports and imports outside governed roots, except for a
+  declared retryable generated-entry loader;
 - unreachable modules; and
 - dependency cycles without a specific documented exception.
 
@@ -58,9 +59,11 @@ receive one another's state. Failed loading and activation remain retryable.
 Context and per-use definitions must provide disposal, and the registry exposes
 both targeted `dispose()` and `disposeAll()` operations.
 
-The image importer is context-scoped. Disposal releases an optional importer
-cleanup hook and restores the editor's compatibility facade, allowing later
-reactivation without reloading its code.
+The image importer is context-scoped. Disposal releases its optional cleanup hook
+and removes the active instance from the registry; later activation creates a new
+instance without reusing another editor's state. Callers inspect a context's
+active instance through the typed feature handle, and no importer facade is
+installed on the editor.
 
 ## UI routing and activation
 
@@ -93,7 +96,7 @@ check, graph check, and legacy-growth check run together through
 `npm run architecture:check` and as part of source tests.
 
 `FeatureRegistry.register()` returns a typed feature handle whose activation
-context, instance, facade, and disposal target are inferred from the registered
+context, instance, and disposal target are inferred from the registered
 definition. New module callers should retain that handle instead of using the
 string-based compatibility methods exposed to the legacy editor.
 
@@ -229,6 +232,47 @@ tile mutation path with history recording disabled. Focused contract coverage is
 in `tests/editor-commands.test.mjs`; existing browser routes continue to converge
 on `Editor.undo()` and `Editor.redo()`.
 
+## Import and export boundaries
+
+`modules/application/importExportService.mjs` is the stateless native operation
+boundary. Import requests contain exactly one validated text or byte source and
+an explicit destination. Source bytes are copied before parsing, size and media-
+type constraints produce stable error categories, parsing completes before any
+destination operation runs, and cancellation or timeout prevents a late parser
+from applying results. Destination application is a synchronous atomic commit;
+asynchronous work belongs in the cancellable parse stage. Export requests are
+deep-copied into plain, frozen data;
+encoders return a text or binary artifact with its filename and media type.
+Binary artifacts expose fresh byte copies so callers cannot mutate generated
+output. A shared service retains registrations only, never per-use state. SVG is
+the first production registration: its feature adapter captures a detached
+document snapshot, the domain encoder generates deterministic SVG text, and the
+composition host downloads the returned artifact.
+
+The stable classic text-mode formats remain behind
+`modules/feature-adapters/legacyImportExportAdapter.mjs`. The composition root is
+the sole place that maps format names to their historical constructors. Each
+controller receives a frozen, format-specific capability port and an injected
+host port for application services formerly reached through `g_app`. A recursive
+membrane hides application/editor backreferences from objects returned through
+the port; remaining legacy export ports also reject direct property mutation.
+These compatibility ports are not immutable snapshots. Converted encoders use
+the data-only service contract described above. Import capabilities are
+write-oriented destination operations; legacy export capabilities are
+read-oriented document views. Existing controller instances are owned by their
+text-mode editor context, while new stateful operations must use `per-use`
+feature scope. Source tests reject direct constructor calls from the editor, file
+manager, image-drop, and tile-set entry points and reject `g_app` inside every
+contained text-mode import/export source.
+
+The image-import classic sources are emitted as one generated ESM entry. The
+context-scoped feature imports its `ImportImage` export, constructs it with the
+image destination capabilities and host port, and never publishes the constructor
+on `globalThis` or the editor. A dedicated infrastructure loader varies only the
+query of that declared generated entry because browsers cache failed module loads
+by URL; this preserves visible retry without creating a general ungoverned
+dynamic-import path.
+
 ## Legacy graph non-growth
 
 `tests/fixtures/legacy-main-graph.json` records the current ordered `js/main.js`
@@ -260,15 +304,17 @@ added only after repeated baseline runs establish stable variance.
 Activation request bytes include every local resource type and repeated transfers;
 the initial chunk table remains limited to unique JavaScript and CSS chunks.
 
-## First migrated feature
+## Image-import module entry
 
 The image importer is emitted as `js/features/image-import.js` instead of being part
 of the initial `js/main.js` payload. User-facing menu, keyboard, mobile,
 drag-and-drop, start-page, and deep-link callers enter through the UI route
 service. The first activation loads the feature code once and creates one
-`ImportImage` for that text-mode editor. A narrow compatibility facade remains
-only for legacy update paths that inspect importer state. Failed activation is
-retryable through the central route adapter.
+importer for that text-mode editor. The generated bundle exports its constructor
+as an ES module and leaves no global or compatibility facade. Active update and
+drop paths obtain the scoped instance from the feature handle. Failed activation
+uses a new URL for the same declared module target and remains retryable through
+the central route adapter.
 
 Use the same sequence for later migrations: identify one host interface, add a
 layered module adapter, keep the legacy surface narrow, split the ordered

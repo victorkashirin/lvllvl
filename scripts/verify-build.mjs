@@ -9,7 +9,7 @@ import { parse, tokenizer } from "acorn";
 import browserslist from "browserslist";
 
 import { browserPolicy } from "./browser-policy.mjs";
-import { buildGraph, copiedScripts } from "./build-graph.mjs";
+import { buildGraph, copiedScripts, moduleGraph } from "./build-graph.mjs";
 import { verifyProductionLegacyGraph } from "./legacy-graph-policy.mjs";
 import {
   formatModuleDependencyReport,
@@ -183,14 +183,18 @@ async function verifyBrowserPolicy() {
   );
   for (const filename of javascriptFiles) {
     const source = await readFile(filename, "utf8");
+    const relativePath = path.relative(buildRoot, filename).split(path.sep).join("/");
+    const sourceType = filename.endsWith(".mjs") ||
+      (moduleGraph.generatedEntries ?? []).includes(relativePath)
+      ? "module"
+      : "script";
     try {
       parse(source, {
         allowHashBang: true,
         ecmaVersion: browserPolicy.javascriptEcmaVersion,
-        sourceType: filename.endsWith(".mjs") ? "module" : "script",
+        sourceType,
       });
     } catch (error) {
-      const relativePath = path.relative(buildRoot, filename);
       throw new Error(
         `${relativePath} exceeds the ECMA ${browserPolicy.javascriptEcmaVersion} output target: ${error.message}`,
       );

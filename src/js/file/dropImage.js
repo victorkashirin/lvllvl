@@ -70,8 +70,8 @@ DropImage.prototype = {
 
     if(action == 'import') {
       g_app.openImageImport({
-        dialogReadyCallback: function() {
-          g_app.textModeEditor.importImage.setImportImage(_this.file);
+        dialogReadyCallback: function(importer) {
+          importer.setImportImage(_this.file);
         }
       }, 'drag-and-drop');
     }
@@ -136,7 +136,8 @@ DropImage.prototype = {
 
     if(g_app.doc !== null) {
       // a doc is open, do we already know what to do without asking user?
-      if(g_app.textModeEditor.importImage.visible) {
+      var imageImporter = g_app.services.imageImport.getActive(g_app.textModeEditor);
+      if(imageImporter && imageImporter.visible) {
         this.doAction('import');
         return;
       }
@@ -176,4 +177,3 @@ DropImage.prototype = {
 
   }
 }
-

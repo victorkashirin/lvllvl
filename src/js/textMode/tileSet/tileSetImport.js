@@ -746,8 +746,8 @@ TileSetImport.prototype = {
  
   readCharPad: function(byteArray) {
     if(this.importCharPad == null) {
-      this.importCharPad = new ImportCharPad();
-      this.importCharPad.init(this.editor);
+      this.importCharPad = this.editor.importExportControllers
+        .createImportController('charpad', this.editor);
     }
     this.importCharPad.readCharPad(byteArray);
     this.setLoadParameters(true);

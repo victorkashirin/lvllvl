@@ -3,49 +3,38 @@ import { FeatureId, FeatureScope } from "../application/featureRegistry.mjs";
 /**
  * @typedef {import("../application/featureRegistry.mjs").FeatureDefinition<
  *   TextModeEditor,
- *   ImageImporter,
- *   ImageImportFacade
+ *   ImageImporter
  * >} ImageImportFeatureDefinition
  */
 
 /**
  * @typedef {object} ImageImporter
- * @property {(editor: TextModeEditor) => void} init
+ * @property {(editor: TextModeEditor | object, host?: object) => void} init
  * @property {(args?: unknown) => unknown} start
+ * @property {() => unknown} [openShaderEditor]
  * @property {() => void | Promise<void>} [dispose]
  */
 
 /**
- * @typedef {object} ImageImportFacade
- * @property {unknown} importImageMobile
- * @property {boolean} importInProgress
- * @property {boolean} visible
- * @property {(args?: unknown) => Promise<unknown>} start
- * @property {() => void} update
- */
-
-/**
  * @typedef {object} TextModeEditor
- * @property {ImageImporter | ImageImportFacade | null} [importImage]
  */
 
 /**
  * @typedef {object} ImageImportDependencies
- * @property {{ ImportImage?: new () => ImageImporter }} legacyGlobal
- * @property {(source: string) => void | Promise<void>} loadScript
- * @property {string} scriptUrl
- * @property {(error: unknown) => void} [reportError]
+ * @property {() => Promise<{ ImportImage?: new () => ImageImporter }>} loadModule
+ * @property {(editor: TextModeEditor) => object} createDestination
+ * @property {object} host
  * @property {() => void} [clearError]
  */
 
 export const imageImportFeatureName = FeatureId.IMAGE_IMPORT;
 
-/** @param {{ ImportImage?: new () => ImageImporter }} legacyGlobal */
-function imageImporterConstructor(legacyGlobal) {
-  if (typeof legacyGlobal.ImportImage !== "function") {
-    throw new Error("The image-import bundle did not expose ImportImage");
+/** @param {{ ImportImage?: new () => ImageImporter } | null} imageImportModule */
+function imageImporterConstructor(imageImportModule) {
+  if (typeof imageImportModule?.ImportImage !== "function") {
+    throw new Error("The image-import module did not export ImportImage");
   }
-  return legacyGlobal.ImportImage;
+  return imageImportModule.ImportImage;
 }
 
 /**
@@ -53,73 +42,39 @@ function imageImporterConstructor(legacyGlobal) {
  * @returns {ImageImportFeatureDefinition}
  */
 export function createImageImportFeature({
-  legacyGlobal,
-  loadScript,
-  scriptUrl,
-  reportError = () => {},
+  loadModule,
+  createDestination,
+  host,
   clearError = () => {},
 }) {
-  if (!legacyGlobal || typeof loadScript !== "function" || !scriptUrl) {
-    throw new TypeError("The image-import feature requires its legacy host and script loader");
+  if (typeof loadModule !== "function" || typeof createDestination !== "function" || !host) {
+    throw new TypeError("The image-import feature requires its module and document ports");
   }
-
-  /** @type {WeakMap<TextModeEditor, ImageImportFacade>} */
-  const facades = new WeakMap();
+  /** @type {{ ImportImage?: new () => ImageImporter } | null} */
+  let imageImportModule = null;
 
   return {
     scope: FeatureScope.CONTEXT,
 
     async load() {
-      await loadScript(scriptUrl);
-      imageImporterConstructor(legacyGlobal);
+      imageImportModule = await loadModule();
+      imageImporterConstructor(imageImportModule);
     },
 
     /** @param {TextModeEditor} textModeEditor */
     activate(textModeEditor) {
       if (!textModeEditor) throw new Error("Image import requires a text-mode editor");
 
-      const ImageImporter = imageImporterConstructor(legacyGlobal);
+      const ImageImporter = imageImporterConstructor(imageImportModule);
       const imageImporter = new ImageImporter();
-      imageImporter.init(textModeEditor);
-      textModeEditor.importImage = imageImporter;
+      imageImporter.init(createDestination(textModeEditor), host);
       clearError();
       return imageImporter;
     },
 
-    /** @param {ImageImporter} imageImporter @param {TextModeEditor} textModeEditor */
-    async dispose(imageImporter, textModeEditor) {
+    /** @param {ImageImporter} imageImporter */
+    async dispose(imageImporter) {
       await imageImporter.dispose?.();
-      if (textModeEditor?.importImage === imageImporter) {
-        textModeEditor.importImage = facades.get(textModeEditor) ?? null;
-      }
-    },
-
-    /**
-     * @param {() => Promise<ImageImporter>} activate
-     * @param {TextModeEditor} textModeEditor
-     */
-    createFacade(activate, textModeEditor) {
-      const facade = {
-        importImageMobile: null,
-        importInProgress: false,
-        visible: false,
-
-        /** @param {unknown} [args] */
-        start(args) {
-          return activate().then(
-            (imageImporter) => imageImporter.start(args),
-            (error) => {
-              reportError(error);
-            },
-          );
-        },
-
-        update() {},
-      };
-      if (textModeEditor && typeof textModeEditor === "object") {
-        facades.set(textModeEditor, facade);
-      }
-      return facade;
     },
   };
 }

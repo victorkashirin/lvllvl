@@ -11,8 +11,9 @@ var ExportC64Dialog = function() {
 }
 
 ExportC64Dialog.prototype = {
-  init: function(editor) {
+  init: function(editor, host) {
     this.editor = editor;
+    this.host = host;
   },
 
   start: function() {
@@ -22,7 +23,7 @@ ExportC64Dialog.prototype = {
 
     if(this.exportC64 == null) {
       this.exportC64 = new ExportC64();
-      this.exportC64.init(this.editor);
+      this.exportC64.init(this.editor, this.host);
       this.exportC64.loadSource(function() {
         console.log('export c64 dialog source loaded!');
         $('#exportC64LoadingMessage').hide();
@@ -88,7 +89,7 @@ ExportC64Dialog.prototype = {
     }
 
 
-    $('#exportC64As').val(g_app.fileManager.filename);
+    $('#exportC64As').val(this.host.fileManager.filename);
 
     var frameCount = this.editor.graphic.getFrameCount();
 
@@ -116,7 +117,7 @@ ExportC64Dialog.prototype = {
 
     // get the music..
     var musicHTML = '';
-    var musicDir = g_app.doc.dir('/music');
+    var musicDir = this.host.doc.dir('/music');
     var selectedMusic = $('#exportC64Music').val();
     if(typeof selectedMusic == 'undefined') {
       selectedMusic = false;

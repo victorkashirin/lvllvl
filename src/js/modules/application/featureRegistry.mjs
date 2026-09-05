@@ -3,24 +3,21 @@
 /**
  * @template Context
  * @template Instance
- * @template Facade
  * @typedef {object} FeatureDefinition
  * @property {FeatureScopeName} scope
  * @property {() => void | Promise<void>} load
  * @property {(context: Context) => Instance | Promise<Instance>} activate
  * @property {(instance: Instance, context: Context) => void | Promise<void>} [dispose]
- * @property {(activate: () => Promise<Instance>, context: Context) => Facade} [createFacade]
  */
 
 /**
  * @template Context
  * @template Instance
- * @template Facade
  * @typedef {object} FeatureHandle
  * @property {(context: Context) => Promise<Instance>} activate
- * @property {(context: Context) => Facade} createFacade
  * @property {(target?: Context | Instance) => Promise<boolean>} dispose
  * @property {() => Promise<number>} disposeAll
+ * @property {(context?: Context) => Instance | null} getActive
  * @property {() => boolean} isLoaded
  * @property {(target?: Context | Instance) => boolean} isActive
  */
@@ -34,7 +31,7 @@
  * @property {Map<any, Promise<any>>} contextActivations
  * @property {Map<any, Promise<boolean>>} contextDisposals
  * @property {Map<any, any>} contextInstances
- * @property {FeatureDefinition<any, any, any>} definition
+ * @property {FeatureDefinition<any, any>} definition
  * @property {Promise<number> | null} disposeAllPromise
  * @property {boolean} loaded
  * @property {Promise<void> | null} loadPromise
@@ -62,7 +59,7 @@ function requireFeatureName(name) {
   }
 }
 
-/** @param {FeatureDefinition<any, any, any>} definition */
+/** @param {FeatureDefinition<any, any>} definition */
 function requireDefinition(definition) {
   if (
     !definition ||
@@ -95,10 +92,9 @@ export class FeatureRegistry {
   /**
    * @template Context
    * @template Instance
-   * @template Facade
    * @param {string} name
-   * @param {FeatureDefinition<Context, Instance, Facade>} definition
-   * @returns {FeatureHandle<Context, Instance, Facade>}
+   * @param {FeatureDefinition<Context, Instance>} definition
+   * @returns {FeatureHandle<Context, Instance>}
    */
   register(name, definition) {
     requireFeatureName(name);
@@ -125,10 +121,12 @@ export class FeatureRegistry {
     return Object.freeze({
       activate: (context) =>
         /** @type {Promise<Instance>} */ (this.activate(name, context)),
-      createFacade: (context) =>
-        /** @type {Facade} */ (this.createFacade(name, context)),
       dispose: (target) => this.dispose(name, target),
       disposeAll: () => this.disposeAll(name),
+      getActive: (...contexts) =>
+        /** @type {Instance | null} */ (
+          contexts.length > 0 ? this.getActive(name, contexts[0]) : this.getActive(name)
+        ),
       isActive: (...targets) =>
         targets.length > 0 ? this.isActive(name, targets[0]) : this.isActive(name),
       isLoaded: () => this.isLoaded(name),
@@ -163,6 +161,20 @@ export class FeatureRegistry {
           : state.perUseInstances.size > 0;
       default:
         return false;
+    }
+  }
+
+  /** @param {string} name @param {unknown} [context] @returns {unknown | null} */
+  getActive(name, context) {
+    const state = this.features.get(name);
+    if (!state) return null;
+    switch (state.definition.scope) {
+      case FeatureScope.APPLICATION:
+        return state.applicationInstance;
+      case FeatureScope.CONTEXT:
+        return arguments.length > 1 ? state.contextInstances.get(context) ?? null : null;
+      default:
+        return null;
     }
   }
 
@@ -428,15 +440,4 @@ export class FeatureRegistry {
     return disposal;
   }
 
-  /** @param {string} name @param {unknown} context @returns {unknown} */
-  createFacade(name, context) {
-    const state = this.features.get(name);
-    if (!state) throw new Error(`Unknown feature: ${name}`);
-    if (typeof state.definition.createFacade !== "function") {
-      throw new Error(`Feature does not define a legacy facade: ${name}`);
-    }
-
-    const activate = () => this.activate(name, context);
-    return state.definition.createFacade(activate, context);
-  }
 }

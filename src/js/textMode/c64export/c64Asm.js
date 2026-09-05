@@ -29,8 +29,9 @@ var C64ASM = function() {
 }
 
 C64ASM.prototype = {
-  init: function(editor) {
+  init: function(editor, host) {
     this.editor = editor;
+    this.host = host;
 
     this.files = new AssemblerFiles();
 
@@ -54,7 +55,7 @@ C64ASM.prototype = {
   },
 
   editCode: function() {
-    g_app.assemblerEditor.setFiles(this.files);
-    g_app.showAssembler();
+    this.host.assemblerEditor.setFiles(this.files);
+    this.host.showAssembler();
   }
 }

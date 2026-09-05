@@ -89,8 +89,9 @@ ExportGif.prototype = {
 
   },
 
-  init: function(editor) {
+  init: function(editor, host) {
     this.editor = editor;
+    this.host = host;
 
     this.shaderEffects = new ImageShaderEffects();
     this.shaderEffects.init();
@@ -341,13 +342,13 @@ ExportGif.prototype = {
   },  
 
   saveToGDrive: function() {
-    g_app.gdrive.handleAuthClick();
+    this.host.gdrive.handleAuthClick();
   },
 
   initContent: function() {
     var _this = this;
 
-    $('#exportGIFAs').val(g_app.fileManager.filename);
+    $('#exportGIFAs').val(this.host.fileManager.filename);
 
     var frameCount = this.editor.graphic.getFrameCount();
     $('#exportGIFToFrame').val(frameCount);

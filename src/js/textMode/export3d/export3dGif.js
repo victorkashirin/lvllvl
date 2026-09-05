@@ -88,8 +88,9 @@ Export3dGif.prototype = {
 
   },
 
-  init: function(editor) {
+  init: function(editor, host) {
     this.editor = editor;
+    this.host = host;
 
   },
 
@@ -378,13 +379,13 @@ Export3dGif.prototype = {
   },  
 
   saveToGDrive: function() {
-    g_app.gdrive.handleAuthClick();
+    this.host.gdrive.handleAuthClick();
   },
 
   initContent: function() {
     var _this = this;
 
-    $('#export3dGIFAs').val(g_app.fileManager.filename);
+    $('#export3dGIFAs').val(this.host.fileManager.filename);
 
     var frameCount = this.editor.grid3d.getFrameCount();
 

@@ -13,7 +13,7 @@ async function startDefaultProject(page) {
 test("a text-mode project exports parseable SVG geometry", async ({ page }) => {
   await startDefaultProject(page);
 
-  const result = await page.evaluate(() => {
+  const result = await page.evaluate(async () => {
     const editor = g_app.textModeEditor;
     const layer = editor.layers.getSelectedLayerObject();
     const tileSet = layer.getTileSet();
@@ -33,9 +33,9 @@ test("a text-mode project exports parseable SVG geometry", async ({ page }) => {
       update: false,
     });
 
-    const exporter = new ExportSvg();
-    exporter.init(editor);
-    const svg = exporter.getSVGData();
+    const exporter = g_app.services.importExportControllers
+      .createExportController("svg", editor);
+    const svg = await exporter.getSVGData();
     const parsed = new DOMParser().parseFromString(SafeHTML.createSVG(svg), "image/svg+xml");
 
     return {
@@ -166,9 +166,9 @@ test("C64 monochrome SVG output matches the production renderer", async ({ page 
       layer.draw({ canvas, allCells: true, drawBackground: true });
       const rendered = canvas.getContext("2d").getImageData(0, 0, width, height).data;
 
-      const exporter = new ExportSvg();
-      exporter.init(editor);
-      const svg = exporter.getSVGData();
+      const exporter = g_app.services.importExportControllers
+        .createExportController("svg", editor);
+      const svg = await exporter.getSVGData();
       const exported = await renderSvg(svg, width, height);
       const parsed = new DOMParser().parseFromString(SafeHTML.createSVG(svg), "image/svg+xml");
       let mismatchedBytes = 0;
