@@ -12,7 +12,7 @@ function createCanvas() {
     drawImage() {},
     fillRect() {},
     clearRect() {},
-    save() {}, restore() {}, beginPath() {}, rect() {}, clip() {},
+    save() {}, restore() {}, beginPath() {}, rect() {}, clip() {}, setTransform() {},
   };
   let height = 0;
   let resizeCount = 0;

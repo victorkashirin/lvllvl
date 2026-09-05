@@ -2,8 +2,20 @@
 
 ## Unreleased
 
+### Added
+
+- Add an opt-in production-build rendering workflow benchmark with isolated
+  projects, source-map qualification, raw input/RAF/main-thread measurements,
+  separate Canvas operation counts, and final document/thumbnail checks. Record
+  a same-host before/after comparison of R1–R3 for drawing, drag strokes, onion
+  skin, rectangle previews, tile selection, and panning in `docs/performance`.
+
 ### Fixed
 
+- Preserve full-image sampling when repairing cropped layer thumbnails. Apply
+  one world-aligned scale instead of independently scaling each crop rectangle,
+  fixing small pixel discrepancies after onion-skin drawing in Chromium and
+  Firefox without increasing raster work or scratch storage.
 - Batch dirty layer thumbnails on a 100 ms schedule instead of resampling on
   every pencil redraw, with explicit release/history/display flushes. Cache by
   content dependencies and skip view-only changes. Repair warm offscreen/vector

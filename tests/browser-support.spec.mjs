@@ -306,6 +306,81 @@ for (const vector of [false, true]) {
   });
 }
 
+test("2D onion thumbnail repairs preserve full-image sampling at cropped origins", async ({ page }, testInfo) => {
+  test.skip(!isDesktop2DRendererProject(testInfo));
+  await open2DProject(page, testInfo);
+  const errors = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  const results = await page.evaluate(() => {
+    const editor = g_app.textModeEditor;
+    const { graphic, layers, gridView2d: view } = editor;
+    const layer = layers.getSelectedLayerObject();
+    graphic.setGridDimensions({ width: 40, height: 25 });
+    for (let y = 0; y < 25; y++) for (let x = 0; x < 40; x++) {
+      layer.setCell({ x, y, t: 1, fc: 14, bc: -1, update: false });
+    }
+    graphic.duplicateFrame(0);
+    editor.frames.setShowPrevFrame(true);
+    view.setScale(3.5, false);
+    view.setCameraPosition(0, 0);
+    const results = [];
+    for (const background of [0, -1]) {
+      layer.setBackgroundColor(background);
+      graphic.redraw({ allCells: true });
+      layers.updateAllLayerPreviews();
+      const crops = [];
+      const draw = layer.draw;
+      layer.draw = function(args) {
+        if (args.draw === "thumbnail") crops.push({
+          x: args.canvasFromX * 8, y: args.canvasFromY * 8,
+          width: args.canvas.width, height: args.canvas.height,
+        });
+        return draw.call(this, args);
+      };
+      try {
+        // Two overlapping repairs with nonzero origins. At 77x48 thumbnail
+        // pixels, independently rounded crop destination rectangles used to
+        // perturb unchanged glyph pixels along row 25 (outside the edit).
+        for (const fc of [1, 2]) {
+          for (const y of [9, 11]) for (let x = 15; x <= 23; x++) {
+            layer.setCell({ x, y, t: 2, fc, bc: -1 });
+          }
+          editor.grid.grid2d.redrawUpdatedCells(layer);
+          layers.updateAllLayerPreviews();
+          layer.setCell({ x: 15, y: 11, t: 2, fc: 3, bc: -1 });
+          editor.grid.grid2d.redrawUpdatedCells(layer);
+          layers.updateAllLayerPreviews();
+        }
+      } finally { layer.draw = draw; }
+      const preview = layer.previewCanvas;
+      // No thumbnail readbacks before all repairs: those could switch Canvas
+      // backends and mask the sampling regression we want to exercise.
+      const actual = preview.getContext("2d").getImageData(0, 0, preview.width, preview.height).data;
+      const raster = document.createElement("canvas");
+      raster.width = layer.getWidth(); raster.height = layer.getHeight();
+      layer.draw({ canvas: raster, frame: layer.currentFrame, draw: "prevgrid", allCells: true,
+        drawBackground: layers.isBackgroundVisible(), scale: 1,
+        drawFromX: 0, drawFromY: 0, drawToX: raster.width, drawToY: raster.height });
+      const fresh = document.createElement("canvas");
+      fresh.width = preview.width; fresh.height = preview.height;
+      const context = fresh.getContext("2d");
+      context.drawImage(layer.backgroundCanvas, 0, 0);
+      context.drawImage(raster, 0, 0, fresh.width, fresh.height);
+      const expected = context.getImageData(0, 0, fresh.width, fresh.height).data;
+      results.push({ background, crops,
+        differentChannels: actual.reduce((count, value, i) => count + (value !== expected[i]), 0) });
+    }
+    return results;
+  });
+  for (const result of results) {
+    expect(result.differentChannels, JSON.stringify(result)).toBe(0);
+    expect(result.crops).toHaveLength(4);
+    expect(result.crops.every((crop) => crop.x > 0 && crop.y > 0)).toBe(true);
+    expect(Math.max(...result.crops.map((crop) => crop.width * crop.height))).toBeLessThanOrEqual(120 * 72);
+  }
+  expect(errors).toEqual([]);
+});
+
 for (const vector of [false, true]) {
   test(`2D ${vector ? "vector" : "bitmap"} onion skin reuses unchanged rasters and matches a fresh composite`, async ({ page }, testInfo) => {
     test.skip(!isDesktop2DRendererProject(testInfo));

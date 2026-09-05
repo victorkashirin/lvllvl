@@ -2570,17 +2570,18 @@ LayerGrid.prototype = {
 
     var damage = this.getPreviewDamage();
     var region = this.drawPreviewRegion(canvas, damage);
-    var scaleX = previewWidth / this.getWidth(), scaleY = previewHeight / this.getHeight();
     this.previewContext.save();
     try {
       this.previewContext.beginPath();
       this.previewContext.rect(damage.minX, damage.minY, damage.maxX - damage.minX, damage.maxY - damage.minY);
       this.previewContext.clip();
       this.previewContext.drawImage(this.backgroundCanvas, 0, 0);
-      // Keep the full-image sampling phase, even though only a cropped source
-      // was rasterized. The source guard keeps filter taps away from crop edges.
-      this.previewContext.drawImage(region.canvas, region.x * scaleX, region.y * scaleY,
-        region.canvas.width * scaleX, region.canvas.height * scaleY);
+      // Apply the full-image scale once, keeping the crop's origin and size in
+      // integer source pixels. A separately scaled destination rectangle can
+      // round differently for each crop and shift the downsampling filter.
+      this.previewContext.setTransform(previewWidth / this.getWidth(), 0, 0,
+        previewHeight / this.getHeight(), 0, 0);
+      this.previewContext.drawImage(region.canvas, region.x, region.y);
     } finally {
       this.previewContext.restore();
     }

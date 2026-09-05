@@ -2,6 +2,12 @@
 
 Reviewed: **2026-09-05**. Findings only; no application rendering code changed.
 
+**Follow-up:** [Common workflow measurements after R1–R3](workflows.md) compare
+fresh before/after production builds for clicks, pencil drags, onion skin,
+rectangle previews, tile selection, and panning. That report includes an opt-in
+harness, raw samples, operation counts, and correctness qualifications; the
+method-call timings below remain historical.
+
 ## Summary
 
 The main problem is **inconsistent invalidation**, not a complete absence of
@@ -225,8 +231,10 @@ work, and batches resolve live layer objects to avoid drawing deleted layers.
 A complete, current bitmap artwork raster can supply the thumbnail directly.
 Otherwise, thumbnail cell damage is tracked independently of viewport dirtiness.
 Warm edits repair whole thumbnail pixels using a cropped, shared scratch raster,
-with filter/glyph padding and a world-aligned sampling origin. Reference images
-also use the crop's world origin. Offscreen dirtiness, omitted backgrounds or
+with filter/glyph padding and a world-aligned sampling origin. A shared
+full-image scale transform preserves filter alignment across crops; independently
+scaled destination rectangles caused the small onion-thumbnail mismatch found
+in the workflow follow-up. Reference images also use the crop's world origin. Offscreen dirtiness, omitted backgrounds or
 selections, and viewport-sized vector artwork no longer force repeated full-layer
 thumbnail rasters. The fallback neither consumes viewport invalidation nor
 includes transient previews, and removes R2's thumbnail-driven full-artwork redraw
@@ -521,9 +529,9 @@ marching ants, typing cursors, scripting, and active 3D camera motion.
    Moving wasteful full-frame work into a Worker does not remove the work or the
    transfer cost.
 
-Add rendering workloads to maintained performance coverage. Cross-profile browser
-tests currently guard user-visible startup time, but there is no committed
-single-host generated baseline for drawing costs.
+Cross-profile browser tests guard user-visible startup time. The new opt-in
+[workflow harness](workflows.md#reproduce) records same-host drawing diagnostics
+and raw evidence, but does not establish a maintained cross-host timing budget.
 
 A useful follow-up matrix includes ordinary/diagonal pencil strokes, pixel edits,
 small/large shapes, onion skin, one/many animated tiles, preview playback, pan/zoom,
