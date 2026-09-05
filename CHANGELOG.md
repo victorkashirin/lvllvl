@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Fixed
+
+- Keep image import available through its CPU conversion path when the browser
+  cannot allocate the importer's optional WebGL effects renderer.
+- Isolate shape-preview rendering measurements from independently scheduled
+  layer-thumbnail refreshes on slower browsers.
+
 ## 0.497.5 - 2026-09-05
 
 ### Documentation

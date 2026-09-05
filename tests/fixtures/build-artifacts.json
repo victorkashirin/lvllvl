@@ -83,12 +83,12 @@
       "sha256": "1b3b8e5f9b2c10a23c24b096a7c8696a83e0ffcaa8bbd6fff6af473a40265141"
     },
     "js/features/image-import.js": {
-      "bytes": 147173,
-      "sha256": "22fd9f3e2f4c2a58a6c976333f96964139f58f26529709a1610f0ccce5338a0d"
+      "bytes": 147460,
+      "sha256": "38b0c28e9ec49f6b74ff00d264fcb531dafbfc3094b10c6c0541cd95810117fa"
     },
     "js/features/image-import.js.map": {
-      "bytes": 548998,
-      "sha256": "f5e9cfeb4dcf69d2378fcff0dd51e423d7b543939c0f49f592615ec2827e4fff"
+      "bytes": 549712,
+      "sha256": "bd45187c4bd5580dbbee2089ab48a1089eef9f083c06416cd97fae07485b845d"
     },
     "js/html/htmlcache.js": {
       "bytes": 364097,

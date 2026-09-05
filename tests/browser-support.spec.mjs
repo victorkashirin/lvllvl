@@ -530,6 +530,10 @@ for (const vector of [false, true]) {
         // Warm only the viewport, leaving offscreen artwork dirty on purpose.
         graphic.invalidateAllCells();
         graphic.redraw();
+        // Dimension and cell changes schedule an independent thumbnail refresh.
+        // Flush it before measuring shape-only rendering so slower browsers do
+        // not attribute the timer's full-layer raster to the preview.
+        editor.layers.updateAllLayerPreviews(true);
         const baseline = pixels();
         let artworkPixels = 0, artworkGlyphs = 0, shapePixels = 0, shapeGlyphs = 0, presentations = 0;
         let active = null;
@@ -864,6 +868,12 @@ test("production starts offline without external provider requests", async ({ pa
 
 test("image import opens, reuses its editor instance, and closes cleanly", async ({ page }, testInfo) => {
   const localFailures = observeLocalFailures(page, testInfo.project.use.baseURL);
+  const imageImportErrors = [];
+  page.on("console", (message) => {
+    if (message.type() === "error" && message.text().startsWith("Could not load image import")) {
+      imageImportErrors.push(message.text());
+    }
+  });
   await open2DProject(page, testInfo);
 
   const panel = page.locator(".ui-dialog:visible, .ui-mobilepanel:visible")
@@ -880,7 +890,11 @@ test("image import opens, reuses its editor instance, and closes cleanly", async
       status: g_app.services.imageImportCoordinator.getStatus(),
     };
   });
-  expect(opened).toEqual({ active: true, sameInstance: true, status: "ready" });
+  expect(opened, imageImportErrors.join("\n")).toEqual({
+    active: true,
+    sameInstance: true,
+    status: "ready",
+  });
   await expect(panel).toBeVisible();
   expect(await page.evaluate(() => UI.dialogStack.filter((dialog) =>
     dialog.uiID === "importImageDialog" || dialog.uiID === "importImageMobile",
@@ -891,6 +905,7 @@ test("image import opens, reuses its editor instance, and closes cleanly", async
     g_app.services.imageImportCoordinator.getStatus(),
   )).toBe("disposed");
   await expect(panel).toHaveCount(0);
+  expect(imageImportErrors, imageImportErrors.join("\n")).toEqual([]);
   expect(localFailures, localFailures.join("\n")).toEqual([]);
 });
 
@@ -1077,6 +1092,21 @@ test("2D startup remains available when WebGL is unavailable", async ({ page }, 
     renderer: null,
     enabled: false,
   });
+
+  await page.locator("#start2D").click();
+  await page.getByText("OK", { exact: true }).last().click();
+  await expect(page.locator("#startPage")).toBeHidden();
+  const importState = await page.evaluate(async () => {
+    const importer = await g_app.openImageImport();
+    return {
+      active: g_app.featureRegistry.isActive("imageImport", g_app.textModeEditor),
+      effectsAvailable: importer.shaderEffectsAvailable,
+      status: g_app.services.imageImportCoordinator.getStatus(),
+    };
+  });
+  expect(importState).toEqual({ active: true, effectsAvailable: false, status: "ready" });
+  await expect(page.locator(".ui-dialog:visible").filter({ hasText: "Import Image" })).toBeVisible();
+  await page.evaluate(() => g_app.closeImageImport());
   expect(localFailures, localFailures.join("\n")).toEqual([]);
 });
 

@@ -172,6 +172,7 @@ var ImportImage = function() {
   this.noiseEffect = null;
   this.imageParametersEffect = null;
   this.shaderEffects = null;
+  this.shaderEffectsAvailable = false;
   this.shaderEffectsList = [];
 
   this.edgeDetect = false;
@@ -463,6 +464,10 @@ ImportImage.prototype = {
     var html = '';
     for(var i = 0; i < this.importEffects.length; i++) {
 
+      if(this.importEffects[i].type == 'shadereffect' && !this.shaderEffectsAvailable) {
+        continue;
+      }
+
       var name = this.importEffects[i].name;
 
 
@@ -649,6 +654,11 @@ ImportImage.prototype = {
 
 
   updateShaderEffects: function() {
+    if(!this.shaderEffectsAvailable) {
+      this.shaderEffectsList = [];
+      return;
+    }
+
     var shaderEffectsList = [];
     for(var i = 0; i < this.importEffects.length; i++) {
       if(this.importEffects[i].type == 'shadereffect' && this.importEffects[i].enabled) {
@@ -782,7 +792,7 @@ ImportImage.prototype = {
 
     if(this.shaderEffects == null) {
       this.shaderEffects = new ImageShaderEffects();
-      this.shaderEffects.init();
+      this.shaderEffectsAvailable = this.shaderEffects.init() !== false;
     }
 
 
@@ -3510,13 +3520,17 @@ ImportImage.prototype = {
       this.srcCanvas = document.createElement('canvas');
       this.srcCanvas.width = width;//img.naturalWidth;
       this.srcCanvas.height = height;//img.naturalHeight;
-      this.shaderEffects.setInput(this.srcCanvas, this.srcCanvas);
+      if(this.shaderEffectsAvailable) {
+        this.shaderEffects.setInput(this.srcCanvas, this.srcCanvas);
+      }
       this.srcContext = this.srcCanvas.getContext("2d");
     } else if(this.srcCanvas.width != width || this.srcCanvas.height != height) {
       this.srcCanvas.width = width;//img.naturalWidth;
       this.srcCanvas.height = height;//img.naturalHeight;
       this.srcContext = this.srcCanvas.getContext("2d");
-      this.shaderEffects.setInput(this.srcCanvas, this.srcCanvas);
+      if(this.shaderEffectsAvailable) {
+        this.shaderEffects.setInput(this.srcCanvas, this.srcCanvas);
+      }
     }
 
 
