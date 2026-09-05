@@ -10,7 +10,8 @@ var TextModeEditor = function() {
   this.colorPaletteManager = null;
   this.blockSetManager = null;
 
-  this.importImage = null;
+  this.imageImportFeature = null;
+  this.createSvgExportPort = null;
   this.importC64Formats = null;
   this.importC64SpriteFormats = null;
   this.importSpriteImage = null;
@@ -122,6 +123,7 @@ var TextModeEditor = function() {
 
   this.editorMode = 'tile';
   this.histories = {};
+  this.history = null;
   this.openingDoc = false;
 }
 
@@ -292,10 +294,11 @@ TextModeEditor.prototype = {
     }
   },
 
-  init: function() {
+  init: function(services) {
     var _this = this;
 
-    this.importImage = g_app.getFeatureFacade('imageImport', this);
+    this.imageImportFeature = services.imageImport;
+    this.createSvgExportPort = services.createSvgExportPort;
 
     this.colorPaletteManager = new ColorPaletteManager();
     this.colorPaletteManager.init(this);
@@ -582,6 +585,7 @@ TextModeEditor.prototype = {
 
     this.path = path;
     this.doc = g_app.doc.getDocRecord(path);
+    this.setupHistory();
 
     this.grid3d.connectToDoc();
     this.tools.drawTools.setDrawTool('pen');
@@ -594,9 +598,6 @@ TextModeEditor.prototype = {
     }
 
 //    var currentColor = this.currentTile.getColor();
-    this.setupHistory();
-
-
     if(tilePaletteDisplay) {
       // reenable draw tile palette and draw all the tiles
       tilePaletteDisplay.setDrawEnabled(drawTilePaletteEnabledSave);
@@ -1799,13 +1800,11 @@ TextModeEditor.prototype = {
 
 
   editImportShader: function() {
-    if(this.importShaderEditor == null) {
-      this.importShaderEditor = new ImportShaderEditor();
-      this.importShaderEditor.init(this);
-    }
-
-    this.importShaderEditor.show();
-    
+    return this.imageImportFeature.activate(this).then(function(imageImporter) {
+      imageImporter.openShaderEditor();
+    }).catch(function(error) {
+      g_app.reportFeatureError('image import shader', error);
+    });
   },
 
   setType: function(type) {
@@ -2016,21 +2015,13 @@ TextModeEditor.prototype = {
 
   export3dAsGif: function() {
     if(g_app.isMobile()) {
-      if(this.export3dGifMobileDialog == null) {
-        this.export3dGifMobileDialog = new Export3dGifMobile();
-        this.export3dGifMobileDialog.init(this);
-      }
-
-      this.export3dGifMobileDialog.show();
-    } else {
-      if(this.export3dGifDialog == null) {
-        this.export3dGifDialog = new Export3dGif();
-        this.export3dGifDialog.init(this);
-      }
-
-      this.export3dGifDialog.start();
-
+      return;
     }
+    if(this.export3dGifDialog == null) {
+      this.export3dGifDialog = new Export3dGif();
+      this.export3dGifDialog.init(this);
+    }
+    this.export3dGifDialog.start();
 
   },
 
@@ -2078,7 +2069,7 @@ TextModeEditor.prototype = {
     } else {
       if(this.exportSvgDialog == null) {
         this.exportSvgDialog = new ExportSvg();
-        this.exportSvgDialog.init(this);
+        this.exportSvgDialog.init(this.createSvgExportPort(this));
       }
 
       this.exportSvgDialog.show();
@@ -2515,6 +2506,9 @@ TextModeEditor.prototype = {
 
   update: function() {
     var time = getTimestamp();
+    var imageImporter = this.imageImportFeature
+      ? this.imageImportFeature.getActive(this)
+      : null;
 
 
     // animate select marquee
@@ -2529,8 +2523,8 @@ TextModeEditor.prototype = {
     }
 
 
-    if(this.importImage !== null) {
-      this.importImage.update();
+    if(imageImporter !== null) {
+      imageImporter.update();
     }
 
     if(this.exportGifDialog !== null) {
@@ -2574,7 +2568,7 @@ TextModeEditor.prototype = {
     }
     
 
-    if(this.importImage.visible !== true) {
+    if(imageImporter === null || imageImporter.visible !== true) {
 
       if(this.gridView2d && this.type == '2d') {
         this.gridView2d.render();

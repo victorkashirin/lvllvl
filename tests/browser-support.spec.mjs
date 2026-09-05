@@ -92,8 +92,8 @@ async function open2DProject(page, testInfo, { vector = false } = {}) {
 test("first-party production startup stays within budget", async ({ page }, testInfo) => {
   const localFailures = observeLocalFailures(page, testInfo.project.use.baseURL);
 
-  // Provider SDK latency is outside the first-party startup budget. Empty scripts
-  // isolate the local application while preserving successful script responses.
+  // Any unexpected external startup request is isolated from the first-party
+  // timing and is rejected by the dedicated no-external-request test below.
   await page.route(/^https:\/\//, (route) =>
     route.fulfill({ body: "", contentType: "application/javascript", status: 200 }),
   );
@@ -114,10 +114,14 @@ test("first-party production startup stays within budget", async ({ page }, test
   expect(localFailures, localFailures.join("\n")).toEqual([]);
 });
 
-test("production starts when external providers are offline", async ({ page }, testInfo) => {
+test("production starts offline without external provider requests", async ({ page }, testInfo) => {
   const localFailures = observeLocalFailures(page, testInfo.project.use.baseURL);
+  const externalRequests = [];
 
-  await page.route(/^https:\/\//, (route) => route.abort("internetdisconnected"));
+  await page.route(/^https:\/\//, (route) => {
+    externalRequests.push(route.request().url());
+    return route.abort("internetdisconnected");
+  });
   await page.goto("/", { waitUntil: "domcontentloaded" });
   await waitForStableStartPage(
     page,
@@ -126,6 +130,194 @@ test("production starts when external providers are offline", async ({ page }, t
   );
 
   await startupState(page, testInfo);
+  expect(externalRequests).toEqual([]);
+  expect(localFailures, localFailures.join("\n")).toEqual([]);
+});
+
+test("image import opens, reuses its editor instance, and closes cleanly", async ({ page }, testInfo) => {
+  const localFailures = observeLocalFailures(page, testInfo.project.use.baseURL);
+  await open2DProject(page, testInfo);
+
+  const panel = page.locator(".ui-dialog:visible, .ui-mobilepanel:visible")
+    .filter({ hasText: "Import Image" });
+  const opened = await page.evaluate(async () => {
+    const first = await g_app.openImageImport();
+    const [second, third] = await Promise.all([
+      g_app.openImageImport(),
+      g_app.openImageImport(),
+    ]);
+    return {
+      active: g_app.featureRegistry.isActive("imageImport", g_app.textModeEditor),
+      sameInstance: first === second && second === third,
+      status: g_app.services.imageImportCoordinator.getStatus(),
+    };
+  });
+  expect(opened).toEqual({ active: true, sameInstance: true, status: "ready" });
+  await expect(panel).toBeVisible();
+  expect(await page.evaluate(() => UI.dialogStack.filter((dialog) =>
+    dialog.uiID === "importImageDialog" || dialog.uiID === "importImageMobile",
+  ).length)).toBe(1);
+
+  await page.evaluate(() => g_app.closeImageImport());
+  await expect.poll(() => page.evaluate(() =>
+    g_app.services.imageImportCoordinator.getStatus(),
+  )).toBe("disposed");
+  await expect(panel).toHaveCount(0);
+  expect(localFailures, localFailures.join("\n")).toEqual([]);
+});
+
+test("mobile image import serializes rapid close and reopen", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "chromium-handheld");
+
+  const localFailures = observeLocalFailures(page, testInfo.project.use.baseURL);
+  await open2DProject(page, testInfo);
+  await page.evaluate(() => g_app.openImageImport());
+  await expect.poll(() => page.evaluate(() =>
+    g_app.services.imageImportCoordinator.getStatus(),
+  )).toBe("ready");
+
+  await page.evaluate(async () => {
+    const closing = g_app.closeImageImport();
+    const reopening = g_app.openImageImport();
+    await Promise.all([closing, reopening]);
+  });
+
+  expect(await page.evaluate(() => ({
+    stackEntries: UI.dialogStack.filter((dialog) => dialog.uiID === "importImageMobile").length,
+    status: g_app.services.imageImportCoordinator.getStatus(),
+    visible: g_app.services.imageImport.getActive(g_app.textModeEditor)?.visible,
+  }))).toEqual({ stackEntries: 1, status: "ready", visible: true });
+  await expect(page.locator(".ui-mobilepanel:visible").filter({
+    hasText: "Import Image",
+  })).toBeVisible();
+
+  const mode = await page.evaluate(() => {
+    g_app.setMode("start");
+    return g_app.getMode();
+  });
+  expect(mode).toBe("start");
+  await expect.poll(() => page.evaluate(() =>
+    g_app.services.imageImportCoordinator.getStatus(),
+  )).toBe("disposed");
+  await expect(page.locator(".ui-mobilepanel:visible").filter({
+    hasText: "Import Image",
+  })).toHaveCount(0);
+  expect(localFailures, localFailures.join("\n")).toEqual([]);
+});
+
+test("production image-import entry points share their context-scoped instance", async ({ page }, testInfo) => {
+  test.skip(!["chromium-desktop", "chromium-handheld"].includes(testInfo.project.name));
+
+  const localFailures = observeLocalFailures(page, testInfo.project.use.baseURL);
+  await page.route(/^https:\/\//, (route) =>
+    route.fulfill({ body: "", contentType: "application/javascript", status: 200 }),
+  );
+  await page.goto("/", { waitUntil: "domcontentloaded" });
+  await waitForStableStartPage(
+    page,
+    browserPolicy.performanceBudgets.startupMilliseconds,
+    localFailures,
+  );
+
+  const rememberInstance = () => page.evaluate(() => {
+    if (!globalThis.__entrypointImporter) {
+      globalThis.__entrypointImporter = g_app.services.imageImport.getActive(g_app.textModeEditor);
+    }
+    return g_app.services.imageImport.getActive(g_app.textModeEditor) ===
+      globalThis.__entrypointImporter;
+  });
+  const waitForImport = async () => {
+    await expect.poll(() => page.evaluate(() =>
+      g_app.services.imageImportCoordinator.getStatus(),
+    )).toBe("ready");
+    expect(await rememberInstance()).toBe(true);
+    const focusTarget = testInfo.project.metadata.deviceClass === "desktop"
+      ? page.locator("#importImageChooseFile")
+      : page.locator("#importImageMobileChooseFile");
+    await expect(focusTarget).toBeFocused();
+  };
+  const closeImport = async () => {
+    await page.evaluate(() => g_app.closeImageImport());
+    await expect.poll(() => page.evaluate(() =>
+      g_app.services.imageImportCoordinator.getStatus(),
+    )).toBe("disposed");
+  };
+
+  if (testInfo.project.metadata.deviceClass === "desktop") {
+    await page.keyboard.press("Alt+Shift+I");
+    expect(await page.evaluate(() => g_app.services.imageImportCoordinator.isOpen())).toBe(false);
+  }
+  await page.locator("#startImportImage").click();
+  await waitForImport();
+  await closeImport();
+
+  if (testInfo.project.metadata.deviceClass === "desktop") {
+    const importMenu = page.locator(".ui-menubar-item:visible").filter({ hasText: /^Import$/ });
+    await importMenu.click();
+    await page.locator(".ui-menu-item:visible").filter({
+      has: page.locator(".ui-menu-item-label", { hasText: /^Image \/ Video\.\.\.$/ }),
+    }).click();
+    await waitForImport();
+    await closeImport();
+
+    await page.keyboard.press("Alt+Shift+I");
+    await waitForImport();
+    await closeImport();
+
+    await page.evaluate(() => {
+      const file = new File([
+        Uint8Array.from(atob(
+          "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAFgAI/ScL3WQAAAABJRU5ErkJggg==",
+        ), (character) => character.charCodeAt(0)),
+      ], "import-test.png", { type: "image/png" });
+      const event = new Event("drop", {
+        bubbles: true,
+        cancelable: true,
+      });
+      Object.defineProperty(event, "dataTransfer", { value: { files: [file] } });
+      document.dispatchEvent(event);
+    });
+    const dropDialog = page.locator(".ui-dialog:visible").filter({
+      has: page.locator("#dropImageAction_import"),
+    });
+    await expect(dropDialog).toBeVisible();
+    await dropDialog.getByText("OK", { exact: true }).click();
+    await waitForImport();
+
+    await page.evaluate(() => {
+      const nested = UI.create("UI.Dialog", {
+        id: "imageImportNestedDialog",
+        title: "Nested import dialog",
+        width: 200,
+        height: 100,
+      });
+      nested.on("close", () => { globalThis.__nestedRouteDialogClosed = true; });
+      UI.showDialog(nested);
+      g_app.setMode("start");
+    });
+    await expect.poll(() => page.evaluate(() => ({
+      importVisible: g_app.services.imageImport.getActive(g_app.textModeEditor)?.visible,
+      nestedClosed: globalThis.__nestedRouteDialogClosed === true,
+      status: g_app.services.imageImportCoordinator.getStatus(),
+      stackHasImporter: UI.dialogStack.some((dialog) =>
+        dialog.uiID === "importImageDialog" || dialog.uiID === "importImageMobile"),
+    }))).toEqual({
+      importVisible: false,
+      nestedClosed: true,
+      status: "disposed",
+      stackHasImporter: false,
+    });
+  } else {
+    await page.locator("#mobileMenuBarHamburger").click();
+    await page.locator(".mobile-menu-item").filter({ hasText: "Import Image / Video" }).click();
+    await waitForImport();
+    await closeImport();
+  }
+
+  await page.evaluate(() => {
+    delete globalThis.__entrypointImporter;
+    delete globalThis.__nestedRouteDialogClosed;
+  });
   expect(localFailures, localFailures.join("\n")).toEqual([]);
 });
 

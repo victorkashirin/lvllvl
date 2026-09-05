@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFile, readdir } from "node:fs/promises";
+import { access, readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
 import vm from "node:vm";
@@ -348,38 +348,6 @@ test("music sandbox bounds pending work and removes timed-out queued scripts", a
   assert.deepEqual(clearedTimers, []);
 });
 
-test("GitHub repository addresses accept only exact GitHub identifier forms", async () => {
-  const context = await loadLegacyScript("src/js/file/github.js");
-  const parseAddress = context.parseGitHubRepositoryAddress;
-
-  assert.deepEqual(
-    { ...parseAddress("openai/codex") },
-    { owner: "openai", repository: "codex" },
-  );
-  assert.deepEqual(
-    { ...parseAddress("https://github.com/openai/codex.git") },
-    { owner: "openai", repository: "codex" },
-  );
-  assert.deepEqual(
-    { ...parseAddress("git@github.com:openai/codex.git") },
-    { owner: "openai", repository: "codex" },
-  );
-
-  for(const address of [
-    "javascript:alert(1)",
-    "https://evil.example/openai/codex",
-    "https://github.com/openai/codex/issues",
-    "https://github.com/openai/codex?tab=readme",
-    "https://github.com/openai/codex%2Fother",
-    "open--ai/codex",
-    "-openai/codex",
-    "openai/<img src=x onerror=alert(1)>",
-    "openai/codex/other",
-  ]) {
-    assert.equal(parseAddress(address), null, address);
-  }
-});
-
 test("first-party application scripts contain no direct eval calls", async () => {
   const directEvalCalls = [];
 
@@ -442,12 +410,24 @@ test("the app CSP requires Trusted Types and keeps dynamic code in the opaque sa
 
   assert.match(index, /require-trusted-types-for 'script'/);
   assert.doesNotMatch(index, /script-src[^;]*'unsafe-eval'/);
-  assert.match(index, /connect-src[^;]*https:\/\/drive\.google\.com/);
-  assert.match(index, /connect-src[^;]*https:\/\/drive\.usercontent\.google\.com/);
   assert.match(index, /connect-src[^;]*https:\/\/lospec\.com/);
-  assert.match(index, /frame-src[^;]*https:\/\/content\.googleapis\.com/);
+  assert.doesNotMatch(index, /firebase|googleapis|drive\.google|github\.com/i);
   assert.match(sandbox, /script-src 'self' 'unsafe-eval'/);
   assert.match(sandbox, /connect-src 'none'/);
   assert.match(musicScripting, /setAttribute\('sandbox', 'allow-scripts'\)/);
   assert.doesNotMatch(musicScripting, /allow-same-origin/);
+});
+
+test("retired browser credential implementations are absent from source", async () => {
+  for(const relativePath of [
+    "src/js/file/gdrive.js",
+    "src/js/file/gist.js",
+    "src/js/file/github.js",
+    "src/js/file/githubApi.js",
+    "src/js/file/githubapi-todelete.js",
+    "src/js/file/githubClient.js",
+    "src/lib/google-api/api.js",
+  ]) {
+    await assert.rejects(access(path.join(projectRoot, relativePath)), { code: "ENOENT" });
+  }
 });

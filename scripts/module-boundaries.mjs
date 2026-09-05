@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { readFile, readdir, stat } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -10,11 +10,19 @@ import { sourceDirectory } from "./build-config.mjs";
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const defaultSourceRoot = path.join(projectRoot, sourceDirectory);
 const forbiddenGlobals = new Set([
+  "Function",
+  "SharedWorker",
+  "WebSocket",
+  "Worker",
+  "caches",
   "document",
   "eval",
+  "fetch",
   "g_app",
   "globalThis",
+  "indexedDB",
   "localStorage",
+  "localforage",
   "navigator",
   "sessionStorage",
   "window",
@@ -32,8 +40,28 @@ function forEachChild(node, visit) {
   }
 }
 
+function dynamicImportSpecifier(source, filename) {
+  if (source.type === "Literal" && typeof source.value === "string") {
+    return { computed: false, specifier: source.value };
+  }
+  if (source.type === "TemplateLiteral") {
+    if (source.expressions.length === 0) {
+      return { computed: false, specifier: source.quasis[0].value.cooked };
+    }
+    const prefix = source.quasis[0].value.cooked;
+    const queryIndex = typeof prefix === "string" ? prefix.search(/[?#]/) : -1;
+    if (queryIndex > 0) {
+      return { computed: true, specifier: prefix.slice(0, queryIndex) };
+    }
+  }
+  throw new Error(
+    `${filename} has a dynamic import whose module path is not statically fixed`,
+  );
+}
+
 function moduleImports(ast, filename) {
   const imports = [];
+  const dynamicImports = [];
 
   function visit(node) {
     if (
@@ -45,17 +73,16 @@ function moduleImports(ast, filename) {
       imports.push(node.source.value);
     }
     if (node.type === "ImportExpression") {
-      if (node.source.type !== "Literal" || typeof node.source.value !== "string") {
-        throw new Error(`${filename} has a non-literal dynamic import`);
-      }
-      imports.push(node.source.value);
+      const dynamicImport = dynamicImportSpecifier(node.source, filename);
+      imports.push(dynamicImport.specifier);
+      dynamicImports.push(dynamicImport);
     }
 
     forEachChild(node, visit);
   }
 
   visit(ast);
-  return imports;
+  return { dynamicImports, imports };
 }
 
 function addPatternBindings(pattern, scope) {
@@ -197,6 +224,62 @@ function buildScopeMap(ast) {
 
   visit(ast, rootScope);
   return scopeByNode;
+}
+
+/**
+ * ES modules are always strict. Report assignment targets that would have
+ * become implicit globals in a classic script and would instead throw at
+ * runtime when a generated legacy bundle is emitted as ESM.
+ *
+ * @param {any} ast
+ */
+export function unboundAssignmentTargets(ast) {
+  const scopeByNode = buildScopeMap(ast);
+  const names = new Set();
+
+  function isBound(name, scope) {
+    for (let current = scope; current; current = current.parent) {
+      if (current.bindings.has(name)) return true;
+    }
+    return false;
+  }
+
+  function inspectTarget(target, scope) {
+    if (!target) return;
+    switch (target.type) {
+      case "Identifier":
+        if (!isBound(target.name, scope)) names.add(target.name);
+        return;
+      case "AssignmentPattern":
+        inspectTarget(target.left, scope);
+        return;
+      case "ArrayPattern":
+        for (const element of target.elements) inspectTarget(element, scope);
+        return;
+      case "ObjectPattern":
+        for (const property of target.properties) {
+          inspectTarget(property.type === "RestElement" ? property.argument : property.value, scope);
+        }
+        return;
+      case "RestElement":
+        inspectTarget(target.argument, scope);
+        return;
+    }
+  }
+
+  function visit(node, inheritedScope) {
+    const scope = scopeByNode.get(node) ?? inheritedScope;
+    if (node.type === "AssignmentExpression" || node.type === "UpdateExpression") {
+      inspectTarget(node.left ?? node.argument, scope);
+    } else if ((node.type === "ForInStatement" || node.type === "ForOfStatement") &&
+        node.left.type !== "VariableDeclaration") {
+      inspectTarget(node.left, scope);
+    }
+    forEachChild(node, (child) => visit(child, scope));
+  }
+
+  visit(ast, scopeByNode.get(ast));
+  return [...names].sort();
 }
 
 function usedForbiddenGlobals(ast) {
@@ -372,12 +455,15 @@ function usedForbiddenGlobals(ast) {
 }
 
 function matchingLayer(filename, layers) {
-  return Object.entries(layers)
-    .filter(([prefix]) => filename === prefix || filename.startsWith(prefix))
-    .sort(([left], [right]) => right.length - left.length)[0];
+  return layers
+    .filter(({ root }) => filename === root || filename.startsWith(root))
+    .sort((left, right) => right.root.length - left.root.length)[0];
 }
 
 function resolveModuleImport(importer, specifier) {
+  if (/[?#]/.test(specifier)) {
+    throw new Error(`${importer} imports a source module with a query or fragment: ${specifier}`);
+  }
   const withoutQuery = specifier.split(/[?#]/, 1)[0];
   if (!withoutQuery.startsWith(".")) {
     throw new Error(`${importer} imports unsupported external module ${specifier}`);
@@ -385,10 +471,185 @@ function resolveModuleImport(importer, specifier) {
   return path.posix.normalize(path.posix.join(path.posix.dirname(importer), withoutQuery));
 }
 
+async function filesUnderRoot(sourceRoot, relativeRoot) {
+  const absoluteRoot = path.resolve(sourceRoot, relativeRoot);
+  const relative = path.relative(sourceRoot, absoluteRoot);
+  if (relative === ".." || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
+    throw new Error(`Module source root escapes the source directory: ${relativeRoot}`);
+  }
+
+  const rootStat = await stat(absoluteRoot);
+  if (rootStat.isFile()) {
+    if (!relativeRoot.endsWith(".mjs")) {
+      throw new Error(`Governed module files must use the .mjs extension: ${relativeRoot}`);
+    }
+    return [relativeRoot.split(path.sep).join("/")];
+  }
+  if (!rootStat.isDirectory()) {
+    throw new Error(`Module source root is not a file or directory: ${relativeRoot}`);
+  }
+
+  const discovered = [];
+  async function visit(directory) {
+    const entries = await readdir(directory, { withFileTypes: true });
+    entries.sort((left, right) => left.name.localeCompare(right.name));
+    for (const entry of entries) {
+      const filename = path.join(directory, entry.name);
+      if (entry.isDirectory()) await visit(filename);
+      if (entry.isFile() && entry.name.endsWith(".mjs")) {
+        discovered.push(path.relative(sourceRoot, filename).split(path.sep).join("/"));
+      } else if (entry.isFile() && /\.(?:c)?js$/.test(entry.name)) {
+        throw new Error(
+          `Governed runtime modules must use the .mjs extension: ${path.relative(sourceRoot, filename)}`,
+        );
+      }
+    }
+  }
+
+  await visit(absoluteRoot);
+  return discovered;
+}
+
+export async function discoverModuleFiles({
+  graph = moduleGraph,
+  sourceRoot = defaultSourceRoot,
+} = {}) {
+  if (Array.isArray(graph.sourceRoots)) {
+    if (graph.sourceRoots.length === 0) throw new Error("Module graph has no governed source roots");
+    const files = (
+      await Promise.all(graph.sourceRoots.map((root) => filesUnderRoot(sourceRoot, root)))
+    ).flat();
+    return [...new Set(files)].sort();
+  }
+
+  // Retain support for small, in-memory test graphs while production coverage is
+  // derived exclusively from governed source roots.
+  if (graph.files && typeof graph.files === "object") {
+    return [...new Set(Object.values(graph.files))].sort();
+  }
+  throw new Error("Module graph must define governed source roots");
+}
+
+function moduleLayers(graph) {
+  if (!Array.isArray(graph.layers) || graph.layers.length === 0) {
+    throw new Error("Module graph must define at least one layer");
+  }
+
+  const names = new Set();
+  for (const layer of graph.layers) {
+    if (
+      !layer ||
+      typeof layer.name !== "string" ||
+      typeof layer.root !== "string" ||
+      !Array.isArray(layer.mayImport)
+    ) {
+      throw new Error("Module layers require name, root, and mayImport fields");
+    }
+    if (names.has(layer.name)) throw new Error(`Duplicate module layer: ${layer.name}`);
+    names.add(layer.name);
+  }
+
+  for (const layer of graph.layers) {
+    for (const importedLayer of layer.mayImport) {
+      if (!names.has(importedLayer)) {
+        throw new Error(`${layer.name} may import unknown module layer ${importedLayer}`);
+      }
+    }
+  }
+  return graph.layers;
+}
+
+function packageName(filename, layer) {
+  const relative = filename.slice(layer.root.length).replace(/^\//, "");
+  return `${layer.name}:${relative.split("/", 1)[0]}`;
+}
+
+function dependencyCycles(dependencies) {
+  const cycles = [];
+  const visited = new Set();
+  const active = new Map();
+  const pathStack = [];
+
+  function visit(filename) {
+    if (active.has(filename)) {
+      cycles.push([...pathStack.slice(active.get(filename)), filename]);
+      return;
+    }
+    if (visited.has(filename)) return;
+
+    active.set(filename, pathStack.length);
+    pathStack.push(filename);
+    for (const dependency of dependencies.get(filename) ?? []) visit(dependency);
+    pathStack.pop();
+    active.delete(filename);
+    visited.add(filename);
+  }
+
+  for (const filename of dependencies.keys()) visit(filename);
+  return cycles;
+}
+
+function cycleKey(cycle) {
+  const nodes = cycle.slice(0, -1);
+  const rotations = nodes.map((_, index) => [
+    ...nodes.slice(index),
+    ...nodes.slice(0, index),
+  ].join(" -> "));
+  return rotations.sort()[0];
+}
+
+function allowedCycleKeys(graph, declaredFiles) {
+  const allowed = new Set();
+  for (const exception of graph.cycleExceptions ?? []) {
+    if (
+      !exception ||
+      !Array.isArray(exception.modules) ||
+      exception.modules.length < 2 ||
+      typeof exception.reason !== "string" ||
+      exception.reason.trim() === ""
+    ) {
+      throw new Error("Module cycle exceptions require modules and a review reason");
+    }
+    for (const filename of exception.modules) {
+      if (!declaredFiles.has(filename)) {
+        throw new Error(`Module cycle exception names an unknown module: ${filename}`);
+      }
+    }
+    allowed.add(cycleKey([...exception.modules, exception.modules[0]]));
+  }
+  return allowed;
+}
+
 export async function verifyModuleBoundaries({ graph = moduleGraph, sourceRoot = defaultSourceRoot } = {}) {
-  const declaredFiles = new Set(Object.values(graph.files));
+  const modules = await discoverModuleFiles({ graph, sourceRoot });
+  const declaredFiles = new Set(modules);
   if (!declaredFiles.has(graph.entry)) {
-    throw new Error(`Module entry is not declared: ${graph.entry}`);
+    throw new Error(`Module entry is outside the governed source roots: ${graph.entry}`);
+  }
+
+  const layers = moduleLayers(graph);
+  const publicEntries = new Set(graph.publicEntries ?? []);
+  const generatedEntries = new Set(graph.generatedEntries ?? []);
+  const dynamicImportEntries = graph.dynamicImportEntries ?? {};
+  for (const filename of publicEntries) {
+    if (!declaredFiles.has(filename)) {
+      throw new Error(`Public module entry is outside the governed source roots: ${filename}`);
+    }
+  }
+  for (const filename of graph.globalAccess ?? []) {
+    if (!declaredFiles.has(filename)) {
+      throw new Error(`Global-access adapter is outside the governed source roots: ${filename}`);
+    }
+  }
+  for (const [filename, entries] of Object.entries(dynamicImportEntries)) {
+    if (!declaredFiles.has(filename)) {
+      throw new Error(`Dynamic-import adapter is outside the governed source roots: ${filename}`);
+    }
+    for (const entry of entries) {
+      if (!generatedEntries.has(entry)) {
+        throw new Error(`Dynamic-import adapter targets an undeclared generated entry: ${entry}`);
+      }
+    }
   }
 
   const dependencies = new Map();
@@ -399,28 +660,55 @@ export async function verifyModuleBoundaries({ graph = moduleGraph, sourceRoot =
       sourceFile: filename,
       sourceType: "module",
     });
-    const importedFiles = moduleImports(ast, filename).map((specifier) =>
+    const declaredDynamicEntries = new Set(dynamicImportEntries[filename] ?? []);
+    const parsedImports = moduleImports(ast, filename);
+    const resolvedDynamicImports = parsedImports.dynamicImports.map((entry) => ({
+      ...entry,
+      filename: resolveModuleImport(filename, entry.specifier),
+    }));
+    for (const entry of resolvedDynamicImports) {
+      if (entry.computed && !declaredDynamicEntries.has(entry.filename)) {
+        throw new Error(
+          `${filename} has an undeclared computed dynamic import: ${entry.filename}`,
+        );
+      }
+    }
+    for (const entry of declaredDynamicEntries) {
+      if (!resolvedDynamicImports.some(({ filename: imported }) => imported === entry)) {
+        throw new Error(`${filename} declares a dynamic import it does not contain: ${entry}`);
+      }
+    }
+    const importedFiles = [...new Set(parsedImports.imports.map((specifier) =>
       resolveModuleImport(filename, specifier),
-    );
+    ))];
     dependencies.set(filename, importedFiles);
 
-    if (!graph.globalAccess.includes(filename)) {
+    if (!(graph.globalAccess ?? []).includes(filename)) {
       const globals = usedForbiddenGlobals(ast);
       if (globals.length > 0) {
         throw new Error(`${filename} accesses forbidden globals: ${globals.join(", ")}`);
       }
     }
 
-    const layer = matchingLayer(filename, graph.layers);
+    const layer = matchingLayer(filename, layers);
     if (!layer) throw new Error(`${filename} is not assigned to a module layer`);
-    const allowedImports = layer[1];
 
     for (const importedFile of importedFiles) {
       if (!declaredFiles.has(importedFile)) {
-        throw new Error(`${filename} imports undeclared module ${importedFile}`);
+        if (generatedEntries.has(importedFile)) continue;
+        throw new Error(`${filename} imports module outside the governed roots: ${importedFile}`);
       }
-      if (!allowedImports.some((prefix) => importedFile.startsWith(prefix))) {
-        throw new Error(`${filename} crosses its dependency boundary into ${importedFile}`);
+      const importedLayer = matchingLayer(importedFile, layers);
+      if (!importedLayer || !layer.mayImport.includes(importedLayer.name)) {
+        throw new Error(
+          `${filename} crosses its ${layer.name} dependency boundary into ${importedFile}`,
+        );
+      }
+      if (
+        packageName(filename, layer) !== packageName(importedFile, importedLayer) &&
+        !publicEntries.has(importedFile)
+      ) {
+        throw new Error(`${filename} bypasses the public entry point for ${importedFile}`);
       }
     }
   }
@@ -439,10 +727,46 @@ export async function verifyModuleBoundaries({ graph = moduleGraph, sourceRoot =
     throw new Error(`Module graph contains unreachable files: ${unreachable.join(", ")}`);
   }
 
-  return { files: declaredFiles.size };
+  const allowedCycles = allowedCycleKeys(graph, declaredFiles);
+  const detectedCycles = dependencyCycles(dependencies);
+  const detectedCycleKeys = new Set(detectedCycles.map((cycle) => cycleKey(cycle)));
+  const staleCycleExceptions = [...allowedCycles].filter((cycle) => !detectedCycleKeys.has(cycle));
+  if (staleCycleExceptions.length > 0) {
+    throw new Error(`Module graph has unused cycle exceptions: ${staleCycleExceptions.join(", ")}`);
+  }
+  const cycles = detectedCycles.filter(
+    (cycle) => !allowedCycles.has(cycleKey(cycle)),
+  );
+  if (cycles.length > 0) {
+    throw new Error(`Module dependency cycle: ${cycles[0].join(" -> ")}`);
+  }
+
+  const edges = modules.flatMap((filename) =>
+    (dependencies.get(filename) ?? []).map((dependency) => ({ from: filename, to: dependency })),
+  );
+  return {
+    edges,
+    files: declaredFiles.size,
+    layers: Object.fromEntries(
+      modules.map((filename) => [filename, matchingLayer(filename, layers).name]),
+    ),
+    modules,
+  };
+}
+
+export function formatModuleDependencyReport(result) {
+  const lines = [`Module dependency report: ${result.files} modules, ${result.edges.length} edges`];
+  for (const filename of result.modules) {
+    const targets = result.edges
+      .filter(({ from }) => from === filename)
+      .map(({ to }) => to)
+      .join(", ");
+    lines.push(`- ${filename} [${result.layers[filename]}] -> ${targets || "(none)"}`);
+  }
+  return lines.join("\n");
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const result = await verifyModuleBoundaries();
-  console.log(`Verified ${result.files} ES modules and their dependency boundaries`);
+  console.log(formatModuleDependencyReport(result));
 }

@@ -366,41 +366,70 @@ test("layer rows keep imported identifiers inert", async ({ page }) => {
   });
 });
 
-test("authentication details tolerate every layout and delayed menu construction", async ({ page }) => {
+test("remote provider controls and credential SDK globals are absent", async ({ page }) => {
   await openApp(page);
 
   const result = await page.evaluate(() => {
-    const layout = {
-      desktopStart: Boolean(document.getElementById("start-username")),
-      mobileStart: Boolean(document.getElementById("start-user-info")),
-    };
-    const fakeApp = {
-      githubClient: {
-        getLoginName: () => '<span id="auth-attacker" data-ui-button-id="ui1">Attacker</span>',
-        isLoggedIn: () => true,
+    const providers = ["github", "gist", "google-drive"];
+    return {
+      disabled: Object.fromEntries(providers.map((providerId) => [
+        providerId,
+        !g_app.services.remoteProviders.isEnabled(providerId),
+      ])),
+      globals: {
+        firebase: typeof window.firebase,
+        gapi: typeof window.gapi,
+        GitHub: typeof window.GitHub,
+        GitHubUI: typeof window.GitHubUI,
+        GDrive: typeof window.GDrive,
       },
+      providerControls: [
+        "login-button",
+        "start-login-mobile",
+        "connectToGDriveButton",
+        "connectToGDriveButtonMobile",
+        "disconnectFromGDriveButton",
+        "disconnectFromGDriveButtonMobile",
+        "exportGIFMobileSaveGDrive",
+        "gdriveMenu",
+        "github_repositories",
+        "loadRepository",
+        "projectGithubPanel",
+        "repositoryMenu",
+        "saveAsConnectToGDriveButton",
+        "saveAsConnectToGDriveButtonSection",
+        "saveMethod_googleDrive",
+        "startGoogleDriveStatus",
+        "startGoogleDriveStatusMobile",
+      ].filter((id) => document.getElementById(id) !== null),
     };
-
-    Editor.prototype.displayUserDetails.call(fakeApp);
-    const visibleText = (
-      document.getElementById("start-username") ??
-      document.getElementById("start-user-info")
-    )?.textContent;
-    const injectedMarkup = Boolean(document.getElementById("auth-attacker"));
-
-    for(const id of ["start-username", "start-user-info", "menuUserInfo", "mobileMenuUserInfo"]) {
-      document.getElementById(id)?.remove();
-    }
-    Editor.prototype.displayUserDetails.call(fakeApp);
-    fakeApp.githubClient.isLoggedIn = () => false;
-    Editor.prototype.displayUserDetails.call(fakeApp);
-
-    return { injectedMarkup, layout, visibleText };
   });
 
-  expect(result.layout.desktopStart || result.layout.mobileStart).toBe(true);
-  expect(result.injectedMarkup).toBe(false);
-  expect(result.visibleText).toContain("Attacker");
+  expect(result).toEqual({
+    disabled: { github: true, gist: true, "google-drive": true },
+    globals: {
+      firebase: "undefined",
+      gapi: "undefined",
+      GitHub: "undefined",
+      GitHubUI: "undefined",
+      GDrive: "undefined",
+    },
+    providerControls: [],
+  });
+});
+
+test("retired provider links report the disabled state and show the start page", async ({ page }) => {
+  await page.route(/^https:\/\//, (route) =>
+    route.fulfill({ body: "", contentType: "application/javascript", status: 200 }),
+  );
+
+  for (const query of ["gh=owner/repository", "gd=file", "gist=id", "gid=id"]) {
+    await page.goto(`/?${query}`, { waitUntil: "domcontentloaded" });
+    await expect(page.locator("#remoteProviderError")).toBeVisible();
+    await expect(page.locator("#start2D")).toBeVisible();
+    await expect.poll(() => page.evaluate(() => g_app.getMode())).toBe("start");
+    await expect(page.getByText("loading....", { exact: true })).toBeHidden();
+  }
 });
 
 test("mobile project rows treat document metadata as text and inert attributes", async ({ page }) => {
@@ -489,43 +518,28 @@ test("shared SVG policy preserves generated geometry without executable markup",
   });
 });
 
-test("GitHub remote errors are rendered as text", async ({ page }) => {
+test("disabled-provider errors expose no remote or attacker-controlled markup", async ({ page }) => {
   await openApp(page);
 
   const result = await page.evaluate(() => {
-    let target = document.getElementById('loadingRepositoryAlert');
-    if(!target) {
-      target = document.createElement('div');
-      target.id = 'loadingRepositoryAlert';
-      document.body.appendChild(target);
-    }
     const payload = '<img id="attacker" src=x onerror="window.__securityTestExecuted=true">' +
       '<svg onload="window.__securityTestExecuted=true"></svg> remote failure';
     window.__securityTestExecuted = false;
-    new GitHubUI().showLoadRepositoryError(payload, true);
-
-    const githubUI = new GitHubUI();
-    githubUI.showLoadingDialog = () => {};
-    githubUI.loadProgressBar = { setProgress: () => {} };
-    githubUI.githubClient = {
-      load: (args, callback) => callback({ success: false }),
-    };
-    githubUI.openRepository({ owner: "openai", repository: "codex" });
+    g_app.reportRemoteProviderError(payload, new Error(payload));
+    const target = document.getElementById('remoteProviderError');
 
     return {
       attackerElement: Boolean(target.querySelector('#attacker, svg')),
-      callbackIsOptional: true,
       executed: window.__securityTestExecuted,
-      message: target.querySelector('strong')?.textContent,
+      message: target.textContent,
     };
   });
 
   expect(result).toEqual({
     attackerElement: false,
-    callbackIsOptional: true,
     executed: false,
-    message: '<img id="attacker" src=x onerror="window.__securityTestExecuted=true">' +
-      '<svg onload="window.__securityTestExecuted=true"></svg> remote failure',
+    message: "GitHub, Gist, and Google Drive are temporarily disabled while secure " +
+      "credential handling is prepared.",
   });
 });
 
@@ -580,37 +594,26 @@ test("music sandbox rejects aggregate instrument-table payloads", async ({ page 
   expect(result.error).toContain("instrument tables are too large");
 });
 
-test("CSP permits the provider endpoints used by existing integrations", async ({ page }) => {
+test("CSP blocks disabled provider endpoints while retaining palette access", async ({ page }) => {
   await openApp(page);
 
-  const requests = [
-    "https://drive.google.com/uc?export=download&id=security-test",
-    "https://drive.usercontent.google.com/download?id=security-test",
-    "https://lospec.com/palette-list/security-test.json",
-  ];
-  for(const url of requests) {
-    await page.route(url, (route) => route.fulfill({
-      body: "ok",
-      headers: { "Access-Control-Allow-Origin": "*" },
-      status: 200,
-    }));
-  }
-  await page.route("https://content.googleapis.com/security-test", (route) =>
-    route.fulfill({ body: "<!doctype html><title>provider frame</title>", contentType: "text/html" }),
-  );
-
-  const fetchResults = await page.evaluate(async (urls) => Promise.all(
-    urls.map(async (url) => ({ url, text: await (await fetch(url)).text() })),
-  ), requests);
-  const frameRequest = page.waitForRequest("https://content.googleapis.com/security-test");
-  await page.evaluate(() => {
-    const iframe = document.createElement("iframe");
-    iframe.src = "https://content.googleapis.com/security-test";
-    document.body.appendChild(iframe);
+  const results = await page.evaluate(async () => {
+    const canFetch = async (url) => {
+      try {
+        await fetch(url);
+        return true;
+      } catch {
+        return false;
+      }
+    };
+    return {
+      drive: await canFetch("https://drive.google.com/security-test"),
+      github: await canFetch("https://api.github.com/security-test"),
+      lospec: await canFetch("https://lospec.com/palette-list/security-test.json"),
+    };
   });
-  await frameRequest;
 
-  expect(fetchResults).toEqual(requests.map((url) => ({ url, text: "ok" })));
+  expect(results).toEqual({ drive: false, github: false, lospec: true });
 });
 
 test("production policy forbids app-origin eval and requires Trusted Types", async ({ page }) => {
@@ -619,10 +622,8 @@ test("production policy forbids app-origin eval and requires Trusted Types", asy
 
   expect(policy).toContain("require-trusted-types-for 'script'");
   expect(policy).toContain("object-src 'none'");
-  expect(policy).toContain("https://drive.google.com");
-  expect(policy).toContain("https://drive.usercontent.google.com");
   expect(policy).toContain("https://lospec.com");
-  expect(policy).toContain("https://content.googleapis.com");
+  expect(policy).not.toMatch(/firebase|googleapis|drive\.google|github\.com/i);
   const scriptPolicy = policy.match(/script-src[^;]*/)?.[0];
   expect(scriptPolicy).toContain("'wasm-unsafe-eval'");
   expect(scriptPolicy).not.toContain("'unsafe-eval'");

@@ -163,7 +163,6 @@ var C64Debugger = function() {
   this.autostartD64 = false;
 
   this.assemblerEditor = null;
-  this.gistShare = null;
 
   this.driveVisible = false;
 
@@ -1136,13 +1135,6 @@ C64Debugger.prototype = {
       html += '      PRG:';
       html += '      <div style="display: inline; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 200px; " id="c64DebuggerCurrentPRG' + this.type + '">None</div>';    
 */
-      if(false && !isMobile) {
-        html += '  <div id="c64DebuggerShare" class="ui-button">';
-        html += '    <img src="icons/material/share-24px.svg">&nbsp;';
-        html += '    Share PRG...';
-        html += '  </div>';
-      }    
-
       html += '    </div>';
 
       html += '  </div>';
@@ -2215,10 +2207,6 @@ C64Debugger.prototype = {
       _this.toggleJoystick();
     });
 
-    $('#c64DebuggerShare').on('click', function() {
-      _this.share();
-    });
-
     $('#c64DebuggerTabs .ui-tab').on('click', function() {
       var tab = $(this).attr('data-tab');
       $('#c64DebuggerTabs .ui-tab').removeClass('ui-current-tab');
@@ -2717,40 +2705,6 @@ C64Debugger.prototype = {
 
   },
 
-  share: function(args) {
-    
-    var shareArgs = args;
-
-    if(typeof args == 'undefined') {
-      shareArgs = {};
-    }
-
-    if(typeof shareArgs.type == 'undefined') {
-      // try to figure out the type...
-      if(this.prgData) {
-        shareArgs.type = 'prg';
-      } else if(this.d64Data) {
-        shareArgs.type = 'd64';
-      } else if(this.crtData) {
-        shareArgs.type = 'crt';
-      } else if(this.panelVisible['assembler']) {
-        shareArgs.type = 'assembly';
-        shareArgs.view = 'current';
-      } else if(this.panelVisible['basic']) {
-        shareArgs.type = 'basic';
-        shareArgs.view = 'current';
-      }
-      
-    }
-
-    if(this.gistShare == null) {
-      this.gistShare = new C64GistShare();
-    }
-
-    this.gistShare.show(shareArgs);
-    return;
-  },
-
   step: function() {
     if(!debugger_isRunning()) {
       debugger_step();
@@ -3156,10 +3110,8 @@ C64Debugger.prototype = {
         $('#shareButton').hide();
       } 
       
-      UI('c64-share-link').setEnabled(g_c64Settings.share);
       UI('c64-export-html-page').setEnabled(g_c64Settings.share);
     } else {
-      UI('c64-share-link').setEnabled(true);
       UI('c64-export-html-page').setEnabled(true);
     }
 

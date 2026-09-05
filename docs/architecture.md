@@ -1,38 +1,158 @@
-# Architecture migration
+# Application architecture
 
-lvllvl is moving from one ordered global-script bundle to native ES modules one
-feature seam at a time. The legacy graph remains declared in
-`scripts/build-graph.mjs`; new code must enter through the module graph declared in
-the same file.
+Updated: 2026-09-05
 
-## Module boundaries
+lvllvl uses a deliberate hybrid architecture: a large ordered classic-script
+application plus a small governed native-module graph around boundaries that
+benefit from explicit ownership. See [the consolidation decision](02_import_migration.md).
 
-- `src/js/bootstrap.mjs` is the composition root. It may read browser globals and
-  passes those dependencies into adapters explicitly.
-- `src/js/modules/featureRegistry.mjs` owns feature registration, single-flight
-  loading, activation, and retry after a failed load.
-- Feature modules under `src/js/modules/` may depend on other modules, but may not
-  access browser hosts (`window`, `document`, `navigator`, or web storage),
-  `globalThis`, `g_app`, or `eval` directly.
-- A feature adapter may expose a small compatibility facade to legacy callers while
-  its implementation is loading. The adapter replaces that facade with the real
-  feature instance after successful activation.
+## Composition and module governance
 
-`node scripts/module-boundaries.mjs` parses every declared module, rejects undeclared
-or layer-crossing imports, rejects new global coupling outside the composition root,
-and rejects unreachable module files. It runs as part of the normal source and build
-verification.
+`src/js/bootstrap.mjs` is the composition root. It creates the application,
+selects concrete browser adapters, registers the image-import feature, and
+injects the retained services into the classic application.
 
-## First migrated feature
+Production modules under `src/js/modules` are discovered from imports rather
+than a hand-maintained allowlist. `scripts/module-boundaries.mjs` verifies that
+each discovered module is reachable, emitted, and follows these layers:
 
-The image importer is emitted as `js/features/image-import.js` instead of being part
-of the initial `js/main.js` payload. Existing menu, mobile, drag-and-drop, frame
-animation, and tile-palette callers use a compatibility facade. The first call to
-`start()` loads the feature once, creates `ImportImage`, initializes it with the
-text-mode editor interface, and replaces the facade. A failed request remains
-retryable and displays a persistent error message.
+```text
+bootstrap
+  -> feature adapters
+  -> application services
+  -> domain
+  -> infrastructure adapters
+```
 
-Use the same sequence for later migrations: identify one host interface, add a
-module adapter, keep the legacy surface narrow, split the ordered implementation
-into a lazy bundle, add failure and browser activation coverage, then move internals
-behind the interface without expanding global access.
+Domain code cannot read browser or application globals. Application services
+coordinate injected ports. Infrastructure adapters own browser storage or
+module loading. Feature adapters connect one classic UI seam to those contracts.
+Only bootstrap selects concrete implementations.
+
+JSDoc contracts for the governed graph are checked with TypeScript. This check
+does not attempt to type-check or convert the classic tree.
+
+## Classic graph policy
+
+`scripts/build-graph.mjs` remains the source of truth for classic script order.
+The current `js/main.js` graph has 306 inputs. Its fixture is a non-growth and
+ordering baseline: new entries require an explicit, reviewed, expiring exception.
+Removing entries is allowed when a real slice no longer needs them.
+
+The count is not a target. Existing classic files and `g_app` references can stay
+when they express the application's actual ownership more clearly than an adapter
+chain. Governed modules may not add global access to make a count appear smaller.
+
+## Feature lifetime
+
+`FeatureRegistry` supports the lifetime the application uses today:
+context-scoped instances with single-flight code loading. Image-import code loads
+once, while each editor context receives its own importer instance.
+
+Activation waits for in-flight disposal. Failed loads and activations can be
+retried. Failed disposal retains the instance so cleanup can be retried. The
+registry also supports disposing all active contexts for the feature.
+
+No application-singleton or per-use feature abstraction is retained because no
+production feature needs one.
+
+## Persistence and document sessions
+
+Persistence is an eager application boundary because data safety must be
+available whenever a document is open.
+
+`browserStorageAdapter.mjs` is the browser-host boundary. `PersistenceService`
+owns immutable file blobs, versioned manifests, active-version pointers,
+transaction journals, catalog metadata, cleanup, and recovery. Project mutations
+are serialized so a live transaction cannot be mistaken for an interrupted one.
+
+A save publishes in stages:
+
+```text
+write journal
+  -> write immutable blobs
+  -> write manifest
+  -> publish active pointer
+  -> publish catalog metadata
+  -> cleanup journal and obsolete data
+```
+
+Failures before pointer publication leave the previous project active. Failures
+after pointer publication recover metadata on the next access. Deletion is also
+journaled and removes catalog visibility before data cleanup.
+
+Each classic `Document` owns a `DocumentSession`. The session tracks revision,
+dirty state, save-in-flight state, and Save As semantics. `PersistenceService`
+owns autosave snapshots alongside durable project publication. An edit made
+while a save is running remains dirty after the older revision is published.
+
+## History and editor state
+
+Text-mode documents use the classic `History` object. It remains the single
+recording and replay path for classic action shapes and is scoped per document.
+Undo and redo compensate actions already applied when a later replay action
+throws, then restore their prior position and enabled state. No-op tile pixel
+writes do not add history or dirty/redraw side effects.
+
+Editor mode, frame, tool, layer, and selection state remain owned by their
+existing classic controllers. There is no parallel command or editor-state
+service.
+
+## Remote-provider security posture
+
+Browser GitHub, Gist, and Google Drive integrations are hard-disabled. Their
+credential SDKs, provider implementations, controls, startup requests, and CSP
+allowances are absent from production.
+
+Bootstrap exposes one small disabled policy and minimal callback-era facades so
+dormant legacy branches fail predictably. The facades do not store sessions,
+forward credentials, load SDKs, or enable UI. A future provider requires a new
+server-side credential design and security review.
+
+## Image import
+
+Image import is emitted as `js/features/image-import.js`, a strict ESM feature
+entry. The entry does not publish `ImportImage` globally. A feature adapter gives
+the importer a frozen, named set of editor capabilities; the importer does not
+receive the mutable editor object itself.
+
+`imageImportCoordinator.mjs` is a narrow UI boundary, not an application router.
+It owns:
+
+- single-flight open and serialized close/reopen;
+- cancellation of stale activation results;
+- loading, failure, and retry UI;
+- focus transfer to the visible file chooser and restoration on close; and
+- cleanup when the desktop dialog or mobile panel closes itself.
+
+Menu, keyboard, start-page, mobile-menu, and drag-and-drop entry points all call
+the same coordinator. Ordinary `setMode` behavior remains synchronous.
+
+## SVG export
+
+SVG retains a small data boundary because deterministic encoding is independent
+of UI ownership.
+
+`legacySvgExportAdapter.mjs` captures the selected grid layer into a detached
+snapshot. `domain/svgExport.mjs` converts that snapshot into SVG text without DOM
+or application globals. The classic `ExportSvg` dialog receives a port from
+bootstrap for data generation, download, alerts, and error reporting.
+
+Other import and export formats remain classic and construct their existing
+controllers directly. There is no general import/export registry or capability
+membrane.
+
+## Performance policy
+
+Cross-profile Playwright startup tests enforce the maintained user-visible
+budget. One-off generated startup snapshots are not committed as architectural
+baselines because they become stale when the branch, browser, or host changes.
+Add a new benchmark only when its environment is reproducible and it gates a
+specific decision.
+
+## Change criteria
+
+A new boundary should remove an old path and improve independently testable
+correctness, security, lifecycle, or measured loading behavior. Avoid generic
+registries for hypothetical consumers and avoid treating module, input, or
+global-reference counts as delivery metrics.

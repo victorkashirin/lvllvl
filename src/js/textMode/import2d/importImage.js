@@ -1,6 +1,8 @@
 var ImportImage = function() {
 
   this.editor = null;
+  this.host = null;
+  this.closeCallback = null;
   this.importColorUtils = null;
 
   this.importSource = 'image';
@@ -98,6 +100,7 @@ var ImportImage = function() {
 
 
   this.importImageMobile = null;
+  this.importShaderEditor = null;
 /*
   this.brightnessFrom = 0;
   this.brightnessTo = 0;
@@ -399,13 +402,61 @@ var ImportImage = function() {
 
 ImportImage.prototype = {
 
-  init: function(editor) {
+  init: function(editor, host) {
     this.editor = editor;
+    this.host = host;
     this.importColorUtils = new ImportColorUtils();
     this.importColorUtils.init(this.editor);
 
     this.imageLib = new ImageLib();
 
+  },
+
+  openShaderEditor: function() {
+    if(this.importShaderEditor == null) {
+      this.importShaderEditor = new ImportShaderEditor();
+      this.importShaderEditor.init(this.editor);
+    }
+    this.importShaderEditor.show();
+  },
+
+  dispose: function() {
+    if(this.importShaderEditor && this.importShaderEditor.uiComponent) {
+      var shaderDialogIndex = UI.dialogStack.indexOf(this.importShaderEditor.uiComponent);
+      while(shaderDialogIndex !== -1 && UI.dialogStack.length > shaderDialogIndex) {
+        UI.closeDialog();
+      }
+    }
+    return this.close();
+  },
+
+  close: function() {
+    var routeDialog = null;
+    var closePromise = this.importImageMobile
+      ? this.importImageMobile.whenClosed()
+      : null;
+    if(this.importImageMobile && this.importImageMobile.uiComponent &&
+        UI.dialogStack.indexOf(this.importImageMobile.uiComponent) !== -1) {
+      routeDialog = this.importImageMobile.uiComponent;
+    } else if(this.uiComponent && UI.dialogStack.indexOf(this.uiComponent) !== -1) {
+      routeDialog = this.uiComponent;
+    }
+
+    if(routeDialog) {
+      var dialogIndex = UI.dialogStack.indexOf(routeDialog);
+      while(UI.dialogStack.length > dialogIndex) {
+        UI.closeDialog();
+      }
+      if(this.importImageMobile && routeDialog === this.importImageMobile.uiComponent) {
+        closePromise = this.importImageMobile.whenClosed();
+      }
+    } else {
+      this.visible = false;
+      if(this.importImageMobile) {
+        this.importImageMobile.visible = false;
+      }
+    }
+    return closePromise;
   },
 
   effectsHTML : function() {
@@ -764,7 +815,7 @@ ImportImage.prototype = {
       }
 
       if(this.dialogReadyCallback !== false) {
-        this.dialogReadyCallback();
+        this.dialogReadyCallback(this);
       }
     }
   },
@@ -782,7 +833,7 @@ ImportImage.prototype = {
 
   initRangeControl: function() {
     var _this = this;
-    if(g_app.isMobile()) {
+    if(this.host.isMobile()) {
 
       this.rangeCanvas = document.getElementById('importImageVideoRangeMobile');
     } else {
@@ -802,7 +853,7 @@ ImportImage.prototype = {
   },
 
   setVideoImportFrom: function(importFrom) {
-    if(g_app.isMobile()) {
+    if(this.host.isMobile()) {
       importFrom = parseFloat(importFrom);
       this.rangeStartValue = importFrom;
       $('#importImageMobileStartTime').val(importFrom);
@@ -818,7 +869,7 @@ ImportImage.prototype = {
   },
 
   setVideoImportTo: function(importTo) {
-    if(g_app.isMobile()) {
+    if(this.host.isMobile()) {
       importTo = parseFloat(importTo);
       $('#importImageMobileEndTime').val(importTo);
       $('#importImageMobileEndTimeValue').val(importTo);
@@ -963,7 +1014,7 @@ ImportImage.prototype = {
     this.rangeContext.fillStyle= '#aaaaaa';
 
     // control handle
-    if(!g_app.isMobile()) {
+    if(!this.host.isMobile()) {
       /*
       this.rangeContext.fillRect(this.rangeStartPosition - controlHandleWidth, (controlHeight - controlHandleHeight) / 2, 
                                   controlHandleWidth, controlHandleHeight);
@@ -983,7 +1034,7 @@ ImportImage.prototype = {
 
 
     // control handle
-    if(!g_app.isMobile()) {
+    if(!this.host.isMobile()) {
       this.rangeContext.beginPath();
       this.rangeContext.moveTo(this.rangeEndPosition + 1, (controlHeight) / 2);
       this.rangeContext.lineTo(this.rangeEndPosition + 1 + controlHandleWidth, (controlHeight - controlHandleHeight) / 2);
@@ -1022,13 +1073,13 @@ ImportImage.prototype = {
       }
     }
 
-    // stop play
-    this.editor.frames.stop();
-
     var layer = this.editor.layers.getSelectedLayerObject();
     if(!layer || layer.getType() != 'grid') {
-      return;
+      return false;
     }
+
+    // stop play only after confirming that this route can open.
+    this.editor.frames.stop();
 
     var tileSet = layer.getTileSet();
 
@@ -1068,15 +1119,18 @@ ImportImage.prototype = {
 
 
 
-    if(g_app.isMobile()) {
+    if(this.host.isMobile()) {
 //    if(this.useMobile) {
       if(this.importImageMobile == null) {
         this.importImageMobile = new ImportImageMobile();
         this.importImageMobile.init(this.editor, this);
       }
 
-      this.importImageMobile.show();
-      return;
+      var mobileShown = this.importImageMobile.show();
+      if(mobileShown && typeof mobileShown.then == 'function') {
+        return mobileShown.then(function() { return true; });
+      }
+      return true;
     }
 
     var _this = this;
@@ -1167,12 +1221,15 @@ ImportImage.prototype = {
       this.uiComponent.on('close', function() {
 //        alert('close');
         _this.visible = false;
+        if(_this.closeCallback) {
+          _this.closeCallback();
+        }
       });
 
     } else {
       _this.initContent();
       if(_this.dialogReadyCallback !== false) {
-        _this.dialogReadyCallback();
+        _this.dialogReadyCallback(_this);
       }
     }
 
@@ -1180,6 +1237,7 @@ ImportImage.prototype = {
       UI.showDialog("importImageDialog");
     }
     this.visible = true;
+    return true;
 
   },
 
@@ -2172,7 +2230,7 @@ ImportImage.prototype = {
       return;
     }
 
-    if(g_app.isMobile()) {
+    if(this.host.isMobile()) {
       this.frameCount = this.importImageMobile.frameCount;
 //      this.videoPlaybackDirection = 'forwards';
       this.videoStartAt = this.rangeStartValue;
@@ -2325,7 +2383,7 @@ ImportImage.prototype = {
     scale = scale * 100;
     this.importImageScale = scale;
 
-    if(g_app.isMobile()) {
+    if(this.host.isMobile()) {
       $('#importImageMobileScale').val(scale);
 
     } else {
@@ -3074,7 +3132,7 @@ ImportImage.prototype = {
     this.importSource = 'video';
     this.resetCacheCanvas();
 
-    if(g_app.isMobile()) {
+    if(this.host.isMobile()) {
     } else {
       var frameCount = parseInt($('#importImageFrames').val());
       if(isNaN(frameCount) || frameCount <= 1) {
@@ -3120,7 +3178,7 @@ ImportImage.prototype = {
 
       } else {
 
-        if(g_app.isMobile()) {
+        if(_this.host.isMobile()) {
           _this.drawRangeControl();
           _this.importImageMobile.parameterChanged();
         } else {
@@ -3143,7 +3201,7 @@ ImportImage.prototype = {
 
         _this.rangeMaxValue = duration;
 
-        if(g_app.isMobile()) {
+        if(_this.host.isMobile()) {
           $('#importImageMobileStartTime').attr('max', _this.rangeMaxValue);
           $('#importImageMobileStartTimeValue').attr('max', _this.rangeMaxValue);          
 
@@ -3178,7 +3236,7 @@ ImportImage.prototype = {
       } else {
 
 
-        if(g_app.isMobile()) {
+        if(_this.host.isMobile()) {
           _this.drawRangeControl();
           _this.importImageMobile.parameterChanged();
         } else {
@@ -3842,7 +3900,7 @@ ImportImage.prototype = {
     }
 
     // no animation effects at the moment on mobile.
-    if(this.importImageAnimate && !g_app.isMobile()) {
+    if(this.importImageAnimate && !this.host.isMobile()) {
       this.setAnimationParameters();
       var ticksPerFrame = parseInt($('#importImageTicksPerFrame').val());
       if(!isNaN(ticksPerFrame)) {
@@ -3949,7 +4007,7 @@ ImportImage.prototype = {
     }
 
     var ticksPerFrame = 6;
-    if(!g_app.isMobile()) {
+    if(!this.host.isMobile()) {
       ticksPerFrame = parseInt($('#importImageTicksPerFrame').val());
     }
     this.editor.graphic.setFrameDuration(ticksPerFrame);

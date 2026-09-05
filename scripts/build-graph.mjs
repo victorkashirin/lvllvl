@@ -126,11 +126,8 @@ export const buildGraph = {
       "js/editor.js",
       "js/file/newProjectDialog.js",
       "js/file/projectNavigator.js",
-      "js/file/projectShare.js",
       "js/file/projectNavigatorMobile.js",
       "js/file/startPage.js",
-      "js/file/github.js",
-      "js/file/gist.js",
       "js/file/createTemplateLink.js",
       "js/file/dropImage.js",
       "js/scripting/scripting.js",
@@ -151,7 +148,6 @@ export const buildGraph = {
       "js/file/fileManager.js",
       "js/file/desktopFileManager.js",
       "js/file/document.js",
-      "js/file/gdrive.js",
       "js/sprite/spriteEditor.js",
       "js/textMode/textModeEditor.js",
       "js/textMode/textModeEditorLayout.js",
@@ -390,7 +386,6 @@ export const buildGraph = {
       "js/debugger/mos6510Opcodes.js",
       "js/c64/c64Debugger.js",
       "js/c64/c64DebuggerExportHTML.js",
-      "js/c64/c64GistShare.js",
       "js/c64/c64DebuggerCompact.js",
       "js/c64/c64Joystick.js",
       "js/c64/c64Scripting.js",
@@ -414,33 +409,75 @@ export const buildGraph = {
       "js/textMode/import2d/importImage.js",
       "js/textMode/import2d/importImageMobile.js",
       "js/textMode/import2d/shaderImportEditor.js",
+      "js/textMode/import2d/imageImportEntry.mjs",
     ],
   },
 };
 
-// These files form the first native ES-module dependency graph. The composition
-// root is the only module allowed to touch browser globals; feature adapters get
-// their legacy dependencies through explicit constructor parameters instead.
+// Native modules are discovered from these governed roots. The composition root
+// is the only module allowed to touch browser globals; every other dependency is
+// injected through a layer-specific public entry point.
 export const moduleGraph = {
   entry: "js/bootstrap.mjs",
-  files: {
-    "js/bootstrap.mjs": "js/bootstrap.mjs",
-    "js/modules/featureRegistry.mjs": "js/modules/featureRegistry.mjs",
-    "js/modules/imageImportFeature.mjs": "js/modules/imageImportFeature.mjs",
+  generatedEntries: ["js/features/image-import.js"],
+  dynamicImportEntries: {
+    "js/modules/infrastructure/imageImportModuleLoader.mjs": ["js/features/image-import.js"],
   },
+  sourceRoots: ["js/bootstrap.mjs", "js/modules"],
   globalAccess: ["js/bootstrap.mjs"],
-  layers: {
-    "js/bootstrap.mjs": ["js/modules/"],
-    "js/modules/": ["js/modules/"],
-  },
+  layers: [
+    {
+      name: "bootstrap",
+      root: "js/bootstrap.mjs",
+      mayImport: ["feature-adapter", "application", "infrastructure", "domain"],
+    },
+    {
+      name: "feature-adapter",
+      root: "js/modules/feature-adapters/",
+      mayImport: ["application", "domain"],
+    },
+    {
+      name: "application",
+      root: "js/modules/application/",
+      mayImport: ["application", "domain"],
+    },
+    {
+      name: "infrastructure",
+      root: "js/modules/infrastructure/",
+      mayImport: ["infrastructure", "application", "domain"],
+    },
+    {
+      name: "domain",
+      root: "js/modules/domain/",
+      mayImport: ["domain"],
+    },
+  ],
+  publicEntries: [
+    "js/modules/application/documentSession.mjs",
+    "js/modules/application/featureRegistry.mjs",
+    "js/modules/application/persistenceService.mjs",
+    "js/modules/domain/documentRevisionState.mjs",
+    "js/modules/domain/svgExport.mjs",
+    "js/modules/feature-adapters/imageImportCoordinator.mjs",
+    "js/modules/feature-adapters/imageImportFeature.mjs",
+    "js/modules/feature-adapters/legacySvgExportAdapter.mjs",
+    "js/modules/feature-adapters/legacyRemoteProviderFacades.mjs",
+    "js/modules/infrastructure/browserStorageAdapter.mjs",
+    "js/modules/infrastructure/imageImportModuleLoader.mjs",
+  ],
+  cycleExceptions: [],
 };
+
+// New files may enter the ordered legacy application graph only through a
+// temporary, reviewed exception. Keep this empty during normal module work.
+// Exception values require { reason, expires: "YYYY-MM-DD" } and are verified
+// against tests/fixtures/legacy-main-graph.json.
+export const legacyGraphExceptions = {};
 
 export const copiedScripts = {
   "js/htmlPolicy.js": "js/security/htmlPolicy.js",
   "js/startup.js": "js/startup.js",
   "js/storageManager.js": "js/utils/storageManager.js",
-  "js/githubApi.js": "js/file/githubApi.js",
-  "js/githubClient.js": "js/file/githubClient.js",
   "js/acmeAssembler.js": "js/assembler/acmeAssembler.js",
   "js/ca65Assembler.js": "js/assembler/ca65Assembler.js",
   "js/c64/c64.js": "js/c64/c64.js",

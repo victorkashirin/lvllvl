@@ -4,10 +4,9 @@ import { expect, test } from "@playwright/test";
 const storageManagerSource = await readFile("src/js/utils/storageManager.js", "utf8");
 const fileManagerSource = await readFile("src/js/file/fileManager.js", "utf8");
 const documentSource = await readFile("src/js/file/document.js", "utf8");
-const githubSource = await readFile("src/js/file/github.js", "utf8");
-const githubClientSource = await readFile("src/js/file/githubClient.js", "utf8");
 
 async function openPersistenceHarness(page, initialEntries = {}) {
+  await page.unroute("**/__persistence-test__.html");
   await page.route("**/__persistence-test__.html", (route) => route.fulfill({
     body: "<!doctype html><html><body></body></html>",
     contentType: "text/html",
@@ -62,16 +61,26 @@ async function openPersistenceHarness(page, initialEntries = {}) {
   await page.addScriptTag({ content: storageManagerSource });
   await page.addScriptTag({ content: fileManagerSource });
   await page.addScriptTag({ content: documentSource });
-  await page.addScriptTag({ content: githubSource });
-  await page.addScriptTag({ content: githubClientSource });
 
-  await page.evaluate(() => {
+  await page.evaluate(async () => {
+    const [{ PersistenceService }, { DocumentSession }, { createBrowserStorageAdapter }] =
+      await Promise.all([
+        import("/js/modules/application/persistenceService.mjs"),
+        import("/js/modules/application/documentSession.mjs"),
+        import("/js/modules/infrastructure/browserStorageAdapter.mjs"),
+      ]);
     window.getTimestamp = () => Date.now();
     let guid = 0;
+    const clock = () => Date.now();
+    const createId = () => `generated-${++guid}`;
+    const persistence = new PersistenceService({
+      storage: createBrowserStorageAdapter(BrowserStorage),
+      clock,
+      createId,
+    });
     window.g_app = {
       getGuid() {
-        guid += 1;
-        return `generated-${guid}`;
+        return createId();
       },
       projectNavigator: {
         getCurrentEditor() { return null; },
@@ -80,9 +89,30 @@ async function openPersistenceHarness(page, initialEntries = {}) {
         updateModifiedList() {},
       },
     };
+    g_app.services = {
+      persistence,
+      createDocumentSession() {
+        return new DocumentSession({
+          persistence,
+          clock,
+          createId,
+          reportError(operation, error) {
+            g_app.fileManager?.showBrowserStorageError(operation, error);
+          },
+          clearError(operation) {
+            g_app.fileManager?.clearBrowserStorageError(operation);
+          },
+        });
+      },
+    };
+    g_app.createDocument = () => {
+      const doc = new Document({ documentSession: g_app.services.createDocumentSession() });
+      doc.init(g_app);
+      return doc;
+    };
 
-    g_app.fileManager = new FileManager();
-    g_app.doc = new Document();
+    g_app.fileManager = new FileManager({ persistence });
+    g_app.doc = g_app.createDocument();
     g_app.fileManager.filename = "Project";
     g_app.fileManager.isNew = false;
     g_app.fileManager.saveTo = "browserStorage";
@@ -116,6 +146,64 @@ const existingProject = {
   }],
   projects: [{ id: "project-1", name: "Project", type: "project" }],
 };
+
+test("browser storage creates, reopens after reload, and deletes a project", async ({ page }) => {
+  await openPersistenceHarness(page);
+  await configureChangedDocument(page, "browser lifecycle contents");
+
+  const created = await page.evaluate(async () => {
+    const saved = await g_app.fileManager.save({ filename: "Created project" });
+    return {
+      entries: Object.fromEntries(__storage.entries()),
+      projectId: saved.projectId,
+      success: saved.success,
+    };
+  });
+  expect(created.success).toBe(true);
+
+  await openPersistenceHarness(page, created.entries);
+  const reopenedAndDeleted = await page.evaluate(async (projectId) => {
+    const listed = await new Promise((resolve) => {
+      g_app.fileManager.getProjectList({ thumbnails: false, type: "project" }, resolve);
+    });
+    const manifest = await g_app.fileManager.getProjectFiles({ projectId });
+    g_app.doc = g_app.createDocument();
+    const opened = await new Promise((resolve) => {
+      g_app.doc.openBrowserStorageProject({ projectId }, resolve);
+    });
+    const contents = g_app.doc.getDocRecord("/file.txt")?.data;
+    const activeRevision = g_app.doc.documentSession.activeRevision;
+    const deleted = await g_app.fileManager.deleteBrowserStorageProject({ projectId });
+    const afterDelete = await new Promise((resolve) => {
+      g_app.fileManager.getProjectList({ thumbnails: false, type: "project" }, resolve);
+    });
+    return {
+      activeRevision,
+      blobPresent: __storage.has(manifest.files[0].id),
+      contents,
+      deleteJournalPresent: __storage.has(BrowserStorage.PROJECT_DELETE_JOURNAL_KEY),
+      deleteSuccess: deleted.success,
+      listedNames: listed.projects.map((project) => project.name),
+      manifestPresent: __storage.has(manifest.versionKey),
+      openFailed: Boolean(opened.error),
+      pointerPresent: __storage.has(projectId),
+      projectsAfterDelete: afterDelete.projects.length,
+    };
+  }, created.projectId);
+
+  expect(reopenedAndDeleted).toEqual({
+    activeRevision: expect.any(String),
+    blobPresent: false,
+    contents: "browser lifecycle contents",
+    deleteJournalPresent: false,
+    deleteSuccess: true,
+    listedNames: ["Created project"],
+    manifestPresent: false,
+    openFailed: false,
+    pointerPresent: false,
+    projectsAfterDelete: 0,
+  });
+});
 
 test("project metadata writes propagate their storage error", async ({ page }) => {
   await openPersistenceHarness(page);
@@ -160,15 +248,20 @@ test("an unavailable storage driver cannot report save success", async ({ page }
   await configureChangedDocument(page);
 
   const result = await page.evaluate(async () => {
+    let exportedFilename = null;
+    g_app.doc.downloadAs = (filename) => { exportedFilename = filename; };
     const originalSetItem = localforage.setItem;
     localforage.setItem = () => {
       throw new Error("Injected unavailable storage driver");
     };
     const saved = await g_app.fileManager.save({ filename: "Project" });
     localforage.setItem = originalSetItem;
+    const fallbackAvailable = g_app.fileManager.downloadAs({ filename: "recovery-copy" });
     return {
       dirty: Object.hasOwn(g_app.doc.modified, "document-file"),
       error: saved.error.message,
+      exportedFilename,
+      fallbackAvailable,
       success: saved.success,
     };
   });
@@ -176,6 +269,8 @@ test("an unavailable storage driver cannot report save success", async ({ page }
   expect(result).toEqual({
     dirty: true,
     error: "Injected unavailable storage driver",
+    exportedFilename: "recovery-copy",
+    fallbackAvailable: true,
     success: false,
   });
 });
@@ -283,7 +378,7 @@ test("a committed project is recovered after its catalog update is interrupted",
   });
 
   const recovered = await page.evaluate(async () => {
-    const reloadedFileManager = new FileManager();
+    const reloadedFileManager = new FileManager({ persistence: g_app.services.persistence });
     g_app.fileManager = reloadedFileManager;
     const list = await new Promise((resolve) => {
       reloadedFileManager.getProjectList({ thumbnails: false, type: "project" }, resolve);
@@ -451,6 +546,50 @@ test("Save As aborts when checking for an existing project fails", async ({ page
   });
 });
 
+test("a disabled Google Drive save cannot mark the project as saved", async ({ page }) => {
+  await openPersistenceHarness(page);
+
+  const result = await page.evaluate(async () => {
+    const originalProvider = g_app.gdrive;
+    g_app.gdrive = {
+      saveProject(_args, callback) {
+        callback({
+          error: new Error("Google Drive is disabled"),
+          success: false,
+        });
+      },
+    };
+    g_app.fileManager.filename = "Unsaved project";
+    g_app.fileManager.saveTo = "browserStorage";
+    g_app.fileManager.setIsNew(true);
+
+    const saved = await new Promise((resolve) => {
+      g_app.fileManager.save({
+        filename: "Remote project",
+        saveAs: true,
+        saveTo: "googleDrive",
+      }, resolve);
+    });
+    const state = {
+      filename: g_app.fileManager.filename,
+      inProgress: g_app.fileManager.gDriveSaveInProgress,
+      isNew: g_app.fileManager.getIsNew(),
+      saveTo: g_app.fileManager.saveTo,
+      success: saved.success,
+    };
+    g_app.gdrive = originalProvider;
+    return state;
+  });
+
+  expect(result).toEqual({
+    filename: "Unsaved project",
+    inProgress: false,
+    isNew: true,
+    saveTo: "browserStorage",
+    success: false,
+  });
+});
+
 test("unique project naming propagates reads and returns the unused name", async ({ page }) => {
   await openPersistenceHarness(page, {
     projects: [{ id: "existing", name: "Repository", type: "project" }],
@@ -535,112 +674,5 @@ test("autosave continues without a thumbnail when canvas capture throws", async 
     success: true,
     thumbnailData: null,
     version: "recoverable",
-  });
-});
-
-test("repository opening reports a requested local-save failure", async ({ page }) => {
-  await openPersistenceHarness(page);
-
-  const result = await page.evaluate(async () => {
-    let refreshCount = 0;
-    window.UI = { closeDialog() {} };
-    window.$ = () => ({ html() {}, hide() {}, show() {}, text() {} });
-    g_app.projectNavigator.refreshTree = () => { refreshCount += 1; };
-    g_app.fileManager.getUniqueProjectName = (name, callback) => {
-      callback({ success: true, name });
-    };
-    g_app.doc.saveToBrowserStorage = (args, callback) => {
-      setTimeout(() => callback({
-        success: false,
-        error: new Error("Injected local save failure"),
-      }), 0);
-    };
-
-    const github = new GitHubUI();
-    github.showLoadingDialog = () => {};
-    github.setRepositoryDetails = () => {};
-    github.loadProgressBar = { setProgress() {} };
-    github.githubClient = {
-      load(args, callback) { callback({ success: true }); },
-    };
-
-    const opened = await new Promise((resolve) => {
-      github.openRepository({ owner: "owner", repository: "repo" }, resolve);
-    });
-    return {
-      error: opened.error.message,
-      refreshCount,
-      success: opened.success,
-    };
-  });
-
-  expect(result).toEqual({
-    error: "Injected local save failure",
-    refreshCount: 0,
-    success: false,
-  });
-});
-
-test("repository creation stops when local metadata persistence fails", async ({ page }) => {
-  await openPersistenceHarness(page);
-
-  const result = await page.evaluate(() => {
-    let pushed = false;
-    window.$ = () => ({ html() {}, hide() {}, show() {}, text() {} });
-    g_app.fileManager.saveProjectRepositoryDetails = (args, callback) => {
-      callback({ success: false, error: new Error("Injected metadata failure") });
-    };
-
-    const github = new GitHubUI();
-    github.repoOkButton = { setEnabled() {} };
-    github.repoCloseButton = { setEnabled() {} };
-    github.recordRepository = (args, callback) => callback({});
-    github.saveToRepository = () => { pushed = true; };
-    github.githubClient = {
-      createRepo(args, callback) {
-        callback({
-          status: 201,
-          data: { id: 1, name: args.repository, full_name: `${args.owner}/${args.repository}` },
-        });
-      },
-      setRepositoryFolder() {},
-    };
-
-    github.createRepository({ owner: "owner", repository: "repo" });
-    return { pushed };
-  });
-
-  expect(result).toEqual({ pushed: false });
-});
-
-test("repository SHA failures propagate without changing in-memory status", async ({ page }) => {
-  await openPersistenceHarness(page);
-
-  const result = await page.evaluate(async () => {
-    const record = { sha: "modified" };
-    g_app.doc.getDocRecord = () => record;
-    g_app.fileManager.updateFileSHA = (repositoryId, treeFiles, files, callback) => {
-      callback({ success: false, error: new Error("Injected SHA save failure") });
-    };
-
-    const githubClient = new GitHubClient();
-    const updated = await new Promise((resolve) => {
-      githubClient.updateBrowserFiles(
-        [{ path: "file.txt", sha: "remote-sha" }],
-        [],
-        resolve,
-      );
-    });
-    return {
-      error: updated.error.message,
-      sha: record.sha,
-      success: updated.success,
-    };
-  });
-
-  expect(result).toEqual({
-    error: "Injected SHA save failure",
-    sha: "modified",
-    success: false,
   });
 });

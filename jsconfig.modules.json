@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": true,
+    "lib": ["ES2020", "DOM"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "noEmit": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "target": "ES2020"
+  },
+  "include": ["src/js/bootstrap.mjs", "src/js/modules/**/*.mjs", "src/js/modules/**/*.d.ts"]
+}

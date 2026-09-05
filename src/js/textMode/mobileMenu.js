@@ -89,11 +89,6 @@ MobileMenu.prototype = {
 
     html += '</div>';
 
-    html += '<div style="padding: 10px 0">';
-    html += '<div class="ui-button ui-button-info" id="mobileMenuGitHub"> <img  height="25" src="icons/svg/glyphicons-basic-545-cloud-upload.svg"/>&nbsp;<span class="ui-text" data-textid="Commit To GitHub">' + TextStore.get("Commit To GitHub") + '</span>...</div>';
-    html += '</div>';
-
-
     html += '</div>';
 
 
@@ -239,10 +234,6 @@ MobileMenu.prototype = {
         g_app.fileManager.showSaveAs();
       });
 
-      $('#mobileMenuGitHub').on('click', function() {
-        _this.hideMenu();        
-        g_app.github.save(); 
-      });
     }
 
     if(this.editor.graphic.getType() == 'sprite') {
@@ -503,7 +494,7 @@ MobileMenu.prototype = {
         this.editor.exportTileset();
       break;      
       case 'importimage':
-        this.editor.importImage.start();
+        g_app.openImageImport(undefined, 'mobile-menu');
       break;
       case 'togglegrid':
 //        this.editor.grid.toggleGrid();

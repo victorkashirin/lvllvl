@@ -200,13 +200,13 @@ UI.MenuItem = function() {
     return element;    
   }
 
-  this.click = function(event) {
+  this.click = function(event, source) {
     if(this.menuBar !== false) {
       this.menuBar.hideMenu();
     }
 
     if(this.enabled) {
-      this.menuBar.trigger('itemclick', this.uiID);
+      this.menuBar.trigger('itemclick', this.uiID, source);
       this.trigger('click', this.uiID);
 
       if(this.menu !== false) {
@@ -214,6 +214,17 @@ UI.MenuItem = function() {
       }
     }
 
+  }
+
+  this.isShortcutAvailable = function() {
+    if(!this.enabled || !this.visible) {
+      return false;
+    }
+    if(this.menu === false) {
+      return true;
+    }
+    var menuBarItem = document.getElementById(this.menu.menuBarItemId);
+    return menuBarItem !== null && menuBarItem.getClientRects().length > 0;
   }
 }
 UI.registerComponentType("UI.MenuItem", UI.MenuItem);
@@ -584,12 +595,13 @@ UI.MenuBar = function() {
 
     for(var i = 0; i < this.shortcuts.length; i++) {
 
-      if(this.shortcuts[i].enabled && c == this.shortcuts[i].shortcut.keyLowerCase) {
+      if(this.shortcuts[i].enabled && this.shortcuts[i].menuItem.isShortcutAvailable() &&
+          c == this.shortcuts[i].shortcut.keyLowerCase) {
         if(this.shortcuts[i].shortcut.cmd == cmdDown && this.shortcuts[i].shortcut.shift == shiftDown 
            && this.shortcuts[i].shortcut.ctrl == ctrlDown
            && this.shortcuts[i].shortcut.alt == altDown) {
 
-          this.shortcuts[i].menuItem.click();
+          this.shortcuts[i].menuItem.click(undefined, 'keyboard');
           event.preventDefault();
           return true;
         }
@@ -624,7 +636,8 @@ UI.MenuBar = function() {
 
     for(var i = 0; i < this.shortcuts.length; i++) {
 
-      if(this.shortcuts[i].enabled && c == this.shortcuts[i].shortcut.keyLowerCase) {
+      if(this.shortcuts[i].enabled && this.shortcuts[i].menuItem.isShortcutAvailable() &&
+          c == this.shortcuts[i].shortcut.keyLowerCase) {
         if(this.shortcuts[i].shortcut.cmd == cmdDown && this.shortcuts[i].shortcut.shift == shiftDown
            && this.shortcuts[i].shortcut.ctrl == ctrlDown
            && this.shortcuts[i].shortcut.alt == altDown ) {

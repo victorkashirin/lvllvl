@@ -150,7 +150,6 @@ StartPage.prototype = {
         editor = urlParams.get('editor');
       }
 
-
       if(url.indexOf('/c64/') !== -1) {
         editor = 'c64';
       }
@@ -212,6 +211,11 @@ StartPage.prototype = {
       }
 
       if(gh !== false) {
+        if(!g_app.isRemoteProviderEnabled('github')) {
+          g_app.reportRemoteProviderError('github', new Error('GitHub links are disabled.'));
+          g_app.setMode('start');
+          return;
+        }
         // loading a github repository
         _this.repositoryToLoad = gh;
         _this.repositoryToLoadView = view;
@@ -223,6 +227,11 @@ StartPage.prototype = {
       }
 
       if(gd !== false) {
+        if(!g_app.isRemoteProviderEnabled('google-drive')) {
+          g_app.reportRemoteProviderError('google-drive', new Error('Google Drive links are disabled.'));
+          g_app.setMode('start');
+          return;
+        }
         // loading a google drive repository
         _this.gdriveFileIdToLoad = gd;
         if(_this.gdriveStatusKnown) {
@@ -232,6 +241,11 @@ StartPage.prototype = {
       }
 
       if(gist !== false) {
+        if(!g_app.isRemoteProviderEnabled('gist')) {
+          g_app.reportRemoteProviderError('gist', new Error('Gist links are disabled.'));
+          g_app.setMode('start');
+          return;
+        }
         // loading from a gist
         _this.gistToLoad = gist;
         _this.gistToLoadView = view;
@@ -241,7 +255,6 @@ StartPage.prototype = {
         }
         return;
       }
-
 
       if(charset != '' || palette != '' || editor != '') {
         var args = {};
@@ -380,6 +393,8 @@ StartPage.prototype = {
     var _this = this;
     var projectsHTML = '';
     this.projects = Object.create(null);
+    var githubEnabled = g_app.isRemoteProviderEnabled('github');
+    var googleDriveEnabled = g_app.isRemoteProviderEnabled('google-drive');
 
 
     var projects = [];
@@ -388,7 +403,7 @@ StartPage.prototype = {
       projects.push(this.localProjectList[i]);
     }
 
-    for(var i = 0; i < this.githubProjectList.length; i++) {
+    for(var i = 0; githubEnabled && i < this.githubProjectList.length; i++) {
       this.githubProjectList[i].type = 'github';
       // only add it if not already in list
 
@@ -411,7 +426,7 @@ StartPage.prototype = {
       }
     }
 
-    for(var i = 0; i < this.googleDriveProjectList.length; i++) {
+    for(var i = 0; googleDriveEnabled && i < this.googleDriveProjectList.length; i++) {
       this.googleDriveProjectList[i].type = 'gdrive';
       projects.push(this.googleDriveProjectList[i]);
     }
@@ -465,7 +480,7 @@ StartPage.prototype = {
           var githubOwner = false;
           var githubRepository = false;
 
-          if(typeof projects[i].githubOwner !== 'undefined' && typeof projects[i].githubRepository != 'undefined') {
+          if(githubEnabled && typeof projects[i].githubOwner !== 'undefined' && typeof projects[i].githubRepository != 'undefined') {
             githubOwner = projects[i].githubOwner;
             githubRepository = projects[i].githubRepository;            
           }
@@ -825,7 +840,7 @@ StartPage.prototype = {
       g_app.newProject(args, function() {
 
         g_app.setMode('2d');
-        g_app.textModeEditor.importImage.start();
+        g_app.openImageImport(undefined, 'start-page');
       });
       
 

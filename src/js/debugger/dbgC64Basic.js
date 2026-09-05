@@ -821,7 +821,6 @@ DbgC64Basic.prototype = {
     controlsHTML += '  <div style="margin-right: 6px" class="ui-button ui-button-primary" id="' + this.prefix + 'BasicRun"><i class="halflings halflings-play"></i> RUN (F5)</div>';
     controlsHTML += '  <div style="margin-right: 6px" class="ui-button" id="' + this.prefix + 'BasicStop"><i class="halflings halflings-stop"></i> STOP</div>';
     controlsHTML += '  <div style="margin-right: 6px" class="ui-button" id="' + this.prefix + 'BasicDownload"><img src="icons/svg/glyphicons-basic-199-save.svg"> Download PRG</div>';
-    controlsHTML += '  <div style="margin-right: 6px" class="ui-button" id="' + this.prefix + 'BasicShare"><img src="icons/material/share-24px.svg">&nbsp;Share</div>';
     
     controlsHTML += '</div>';
 
@@ -917,12 +916,6 @@ DbgC64Basic.prototype = {
       _this.download();
     });
 
-    $('#' + this.prefix + 'BasicShare').on('click', function() {
-      if(g_app.c64Debugger) {
-        g_app.c64Debugger.share({ "type": 'basic' });
-      }        
-    });
-      
   },
 
   shiftCode: function(key) {

@@ -410,6 +410,10 @@ UI.MobilePanel = function(args) {
   this.close = function() {
 
     var _this = this;
+    // Consumers that bridge this animated component to an application
+    // lifecycle need to capture the closing generation synchronously. The
+    // existing close event remains the animation-complete notification.
+    this.trigger('closing');
 
     if(true) {
       $('#' + this.id).animate({

@@ -174,7 +174,6 @@ export const runtimeAssetFiles = [
   "lib/codemirror/addon/search/searchcursor.js",
   "lib/codemirror/codemirror.js",
   "lib/codemirror/mode/javascript/javascript.js",
-  "lib/google-api/api.js",
   "lib/gif/gif.worker.js",
   "lib/jshint/jshint.js",
 ];
@@ -211,7 +210,6 @@ export const runtimeFeatureRequests = {
     "c64/exomizer/exomizer.js",
   ],
   gifExport: ["lib/gif/gif.worker.js"],
-  googleDrive: ["lib/google-api/api.js"],
   imageImport: ["js/features/image-import.js"],
   mobileStyles: ["css/ui-mobile.css"],
   musicScripting: [

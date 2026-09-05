@@ -2,7 +2,7 @@
 
 Review date: 2026-09-03
 
-Last status update: 2026-09-04
+Last status update: 2026-09-05
 
 ## Behavior
 
@@ -20,7 +20,9 @@ The first modernization milestone should protect user data and credentials and m
 
 1. **Fixed:** the production build omitted files loaded dynamically at runtime while the build verifier still passed.
 2. **Fixed:** IndexedDB/localForage write failures were ignored in important save paths, so the UI could report success after data was not persisted.
-3. A broad GitHub OAuth token is stored in Firestore and reused by the browser client.
+3. **Mitigated:** GitHub, Gist, and Google Drive are disabled and their browser
+   credential implementations have been removed; revoking and deleting any
+   credentials stored before this change remains an operational action.
 4. User- and server-controlled strings are inserted as HTML, while music scripting
    and assembler expressions use main-origin dynamic code execution.
 5. **Fixed:** there was no first-party behavioral test suite or pull-request CI gate to make a large refactor safe.
@@ -124,6 +126,39 @@ IndexedDB writes can fail because of quota limits, private browsing restrictions
 
 ### P0.3 GitHub credentials are handled as application data
 
+**Status: Mitigated by disabling providers on 2026-09-05.** The production app
+no longer loads Firebase, the Google API loader, or the GitHub client; it contains
+no provider login controls or live GitHub, Gist, or Google Drive adapters. The
+former code that requested broad `repo`/`gist` access and persisted a GitHub token
+in Firestore has been removed. Production CSP no longer permits those provider
+origins.
+
+Remote operations now cross a credential-free, provider-neutral application
+service. GitHub, Gist, and Google Drive are separate disabled infrastructure
+adapters selected at the composition root, and an independent provider-UI
+registration is empty so an adapter change alone cannot expose legacy controls.
+The boundary accepts explicit content,
+capabilities, progress, and cancellation only, rejects fields outside that strict
+request envelope, enforces the capability required by each operation, and
+normalizes disabled, offline, cancellation, authentication, rate-limit, and
+provider failures. Opaque project content is not interpreted by key name;
+adapter sessions are schema-checked and raw provider errors are replaced with
+fixed application messages so response details cannot leak across the boundary.
+Credentials remain unavailable to the application layer by construction. Strict
+repository-address parsing remains a domain rule. Any future live adapter must
+also introduce an explicitly reviewed application result contract before it can
+be registered.
+
+This repository change prevents new credentials from being requested, stored, or
+used. It cannot revoke OAuth grants or delete tokens already held in the deployed
+Firestore project. The deployment owner must still revoke existing GitHub grants,
+delete historical token fields, and inspect access logs where available. No
+provider may be re-enabled until a threat model and reviewed server-side OAuth or
+provider-app design provides short-lived, least-privilege access without exposing
+reusable credentials to browser storage or application data.
+
+**Original finding (2026-09-03):**
+
 `src/js/file/githubClient.js` asks for the broad `repo` and `gist` scopes, obtains the provider access token in the browser, stores it as `token` in the user's Firestore document, and later reads it back for reuse.
 
 Firebase client configuration values in source are public identifiers, not secrets by themselves. The OAuth access token is different: it grants repository access and is a high-value credential. Client-side Firestore rules are not included in this repository, so the access boundary cannot be reviewed or reproduced.
@@ -139,7 +174,11 @@ Firebase client configuration values in source are public identifiers, not secre
 - Version, review, and test Firebase/Firestore rules and deployment configuration alongside the application, or document their separately controlled source of truth.
 - Add an authentication and credential threat model before changing this subsystem.
 
-**Exit criteria:** no long-lived GitHub token is persisted as ordinary user data, access is least-privilege, and backend authorization policy has automated tests.
+**Disabled-posture exit criteria:** production requests no provider credentials,
+loads no provider credential SDK, exposes no provider action, and stores no new
+provider token. **Re-enable gate:** historical grants/data are revoked and removed,
+access is short-lived and least-privilege, and backend authorization policy has
+automated tests.
 
 ### P0.4 Unsafe HTML and dynamic code execution create a same-origin XSS risk
 
@@ -235,9 +274,9 @@ production dependency closure is now validated and published as a content-addres
 SPDX SBOM with package URLs, checksums,
 license expressions, reachable entry points, and bundled dependency relationships.
 jQuery, JSZip, CodeMirror, and Perfect Scrollbar are exact npm dependencies covered
-by browser compatibility tests; the vulnerable GitHub.js/axios bundle was replaced
-with a first-party Fetch adapter; unused vendored duplicates were deleted; and the
-Google API loader is self-hosted as a checksum-tracked snapshot. CI blocks deployment
+by browser compatibility tests; the vulnerable GitHub.js/axios bundle, Firebase
+runtime, and retained Google API loader are absent from the production closure;
+and unused vendored duplicates were deleted. CI blocks deployment
 on npm and OSV vulnerability checks, enforces an SPDX license allowlist, and runs on
 pull requests and weekly. Components without a resolvable advisory identity require
 a documented, expiring exemption that is rejected once stale. This establishes
@@ -400,22 +439,19 @@ no exemption remains solely because a version was never investigated.
 
 ## P2.3: keep the default-project console actionable
 
-**Status: First-party issues fixed on 2026-09-04.** The Firefox snapshot is
+**Status: Fixed on 2026-09-05.** The Firefox snapshot is
 classified in [`browser_console_issues.md`](browser_console_issues.md). Obsolete
 code after unconditional returns was removed, empty label targets were repaired,
 and Glyphicons Halflings was regenerated with corrected bounds. Source tests now
 reject unreachable statements, the reviewed lost-local-binding regressions, and
 multiline empty label targets; a Firefox browser test covers console warnings and
-errors through default-project creation with external providers isolated.
-
-The remaining startup diagnostics originate in Google's legacy Drive auth client
-and OAuth iframe. They are low-priority provider noise while Drive continues to
-work, but lazy-loading or modernizing that integration remains desirable so the
-default console is clean even when real provider scripts are enabled.
+errors through default-project creation. The remaining Google Drive diagnostics
+were eliminated when the disabled-provider release removed the legacy Google API
+loader and OAuth iframe from startup.
 
 ## Recommended execution order
 
-1. **Contain immediate risk:** correct the missing build resources, stop false save success, remove stored OAuth tokens, and replace confirmed unsafe HTML sinks.
+1. **Contain immediate risk:** correct the missing build resources, stop false save success, disable unsafe OAuth flows, operationally revoke/delete historical stored tokens, and replace confirmed unsafe HTML sinks.
 2. **Install a safety net:** add PR CI and a focused browser characterization suite, including failure injection and request/404 monitoring.
 3. **Establish ownership:** document the MIT license scope and inherited provenance, add a third-party inventory and security policy, and establish a backend-rule source of truth and browser support policy.
 4. **Make the build conventional:** converge on one entry point and dependency graph, package active runtime libraries, and remove textual rewrites with golden comparisons.

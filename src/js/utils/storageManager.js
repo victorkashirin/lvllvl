@@ -110,6 +110,7 @@ async function tryPersistWithoutPromtingUser(callback) {
 // every caller gets the same synchronous-throw and asynchronous-error handling.
 var BrowserStorage = {
   VERSION_POINTER_FORMAT: 'lvllvl-version-pointer-v1',
+  PROJECT_DELETE_JOURNAL_KEY: '__lvllvlProjectDeleteJournal',
   PROJECT_SAVE_JOURNAL_KEY: '__lvllvlProjectSaveJournal',
   AUTOSAVE_KEY: '__lvllvlAutosave',
 

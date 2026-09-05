@@ -9,6 +9,7 @@ var History = function() {
 
   this.enabled = true;
   this.newEntryEnabled = true;
+  this.compensatingReplay = false;
 }
 
 History.prototype = {
@@ -30,10 +31,12 @@ History.prototype = {
 
   undo: function() {
     // dont record history actions while undoing
+    var previousEnabled = this.enabled;
+    var previousPosition = this.historyPosition;
     this.setEnabled(false);
 
-
-    var updateWholeGrid = false;
+    try {
+      var updateWholeGrid = false;
 
     if(this.historyPosition > 0) {
       this.historyPosition--;
@@ -46,6 +49,7 @@ History.prototype = {
         var gridCellsChanged = false;
 
         var args = {};
+        var appliedActions = [];
 
         for(var i = changes.actions.length - 1; i >= 0; i--) {
 
@@ -61,7 +65,7 @@ History.prototype = {
               this.editor.frames.gotoFrame(params.frame);
             }
 
-            var layerRef = params.layerRef;            
+            var layerRef = params.layerRef;
             args.t = params.oldCharacter;
             args.x = params.x;
             args.y = params.y;
@@ -111,7 +115,7 @@ History.prototype = {
 
           if(actionName == 'setSelection') {
             this.editor.tools.drawTools.select.setSelection({ from: params.lastFrom, to: params.lastTo, enabled: params.lastEnabled});
-            this.editor.graphic.redraw({ allCells: true }); 
+            this.editor.graphic.redraw({ allCells: true });
           }
 
           if(actionName == 'pixelSetSelection') {
@@ -164,10 +168,10 @@ History.prototype = {
             this.editor.layers.deleteLayer({ layerId: params.layerId });
           }
 
-
+          appliedActions.push(changes.actions[i]);
         }
 
-        if(updateWholeGrid) { 
+        if(updateWholeGrid) {
 
           if(g_newSystem) {
             this.editor.graphic.invalidateAllCells();
@@ -175,7 +179,7 @@ History.prototype = {
           } else {
             this.editor.grid.update({ allCells: true });
           }
-      
+
         } else if(gridCellsChanged) {
 
           if(g_newSystem) {
@@ -183,7 +187,7 @@ History.prototype = {
           } else {
             this.editor.grid.update();
           }
-                
+
           this.editor.layers.updateAllLayerPreviews();
         }
 
@@ -205,18 +209,34 @@ History.prototype = {
         }
       }
     }
-
-
-
-    this.setEnabled(true);
+    } catch(error) {
+      try {
+        if(!this.compensatingReplay && appliedActions && appliedActions.length > 0) {
+          this.compensateReplay('redo', appliedActions.slice().reverse());
+        }
+      } catch(rollbackError) {
+        this.historyPosition = Math.max(0, previousPosition - 1);
+        throw new AggregateError(
+          [error, rollbackError],
+          'Undo replay and its rollback both failed'
+        );
+      }
+      this.historyPosition = previousPosition;
+      throw error;
+    } finally {
+      this.setEnabled(previousEnabled);
+    }
   },
 
   redo: function() {
     //console.log('redo');
     // dont record history actions while redoing
+    var previousEnabled = this.enabled;
+    var previousPosition = this.historyPosition;
     this.setEnabled(false);
 
-    if(this.historyPosition < this.historyLength ) {
+    try {
+      if(this.historyPosition < this.historyLength ) {
       var changes = this.history[this.historyPosition];
 
       var tileSet = this.editor.tileSetManager.getCurrentTileSet();
@@ -225,6 +245,7 @@ History.prototype = {
 
 
       var args = {};
+      var appliedActions = [];
       for(var i = 0; i < changes.actions.length; i++) {
 
         var actionName = changes.actions[i].name;
@@ -303,7 +324,7 @@ History.prototype = {
 
         if(actionName == 'setSelection') {
           this.editor.tools.drawTools.select.setSelection({ from: params.from, to: params.to, enabled: params.enabled});
-          this.editor.graphic.redraw({ allCells: true }); 
+          this.editor.graphic.redraw({ allCells: true });
         }
 
         if(actionName == 'pixelSetSelection') {
@@ -342,6 +363,8 @@ History.prototype = {
           });
         }
 
+        appliedActions.push(changes.actions[i]);
+
 
 /*
         if(changes[i].action == 'createframe') {
@@ -351,7 +374,7 @@ History.prototype = {
         }
 
         if(changes[i].action == 'gotoframe') {
-          this.gotoFrame(changes[i].newframe, true);              
+          this.gotoFrame(changes[i].newframe, true);
         }
 */
 
@@ -370,7 +393,7 @@ History.prototype = {
           this.editor.grid.update({ allCells: true });
         }
 
-        
+
         this.editor.layers.updateAllLayerPreviews();
 
       }
@@ -390,15 +413,50 @@ History.prototype = {
         }
 
 //        this.editor.grid.update({ allCells: true });
-        
+
       }
 
 
       this.historyPosition++;
     }
 
+    } catch(error) {
+      try {
+        if(!this.compensatingReplay && appliedActions && appliedActions.length > 0) {
+          this.compensateReplay('undo', appliedActions);
+        }
+      } catch(rollbackError) {
+        this.historyPosition = Math.min(this.historyLength, previousPosition + 1);
+        throw new AggregateError(
+          [error, rollbackError],
+          'Redo replay and its rollback both failed'
+        );
+      }
+      this.historyPosition = previousPosition;
+      throw error;
+    } finally {
+      this.setEnabled(previousEnabled);
+    }
+  },
 
-    this.setEnabled(true);
+  compensateReplay: function(direction, actions) {
+    var previousHistory = this.history;
+    var previousLength = this.historyLength;
+    var previousPosition = this.historyPosition;
+    var previousCompensatingReplay = this.compensatingReplay;
+
+    this.history = [{ name: 'history replay rollback', actions: actions }];
+    this.historyLength = 1;
+    this.historyPosition = direction == 'undo' ? 1 : 0;
+    this.compensatingReplay = true;
+    try {
+      this[direction]();
+    } finally {
+      this.history = previousHistory;
+      this.historyLength = previousLength;
+      this.historyPosition = previousPosition;
+      this.compensatingReplay = previousCompensatingReplay;
+    }
   },
 
   startEntry: function(name) {
@@ -426,10 +484,10 @@ History.prototype = {
       for(var i = this.changes.length - 1; i >= 0; i--) {
         // if cell has been set before, remove this entry
         // this is so one history entry doesn't set same cell twice??
-        if(this.changes[i].name == actionName && 
-          this.changes[i].params.x == params.x && 
-          this.changes[i].params.y == params.y && 
-          this.changes[i].params.z == params.z && 
+        if(this.changes[i].name == actionName &&
+          this.changes[i].params.x == params.x &&
+          this.changes[i].params.y == params.y &&
+          this.changes[i].params.z == params.z &&
           this.changes[i].params.frame == params.frame) {
 
           params.layerRef = this.changes[i].params.layerRef;

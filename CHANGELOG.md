@@ -2,6 +2,101 @@
 
 ## Unreleased
 
+### Added
+
+- Add a rendering performance review with prioritized bottlenecks and summarized
+  Chromium observations in `docs/performance`.
+- Add detached SVG document snapshots and a pure deterministic encoder behind
+  the classic SVG export dialog.
+- Add injected persistence and document-session contracts for immutable blobs,
+  versioned manifests, journals, catalog metadata, active revisions, dirty state,
+  and save-in-flight publication, with lifecycle and per-stage failure coverage.
+- Add automatic native-module discovery, layered public-entry and cycle checks,
+  a legacy ordered-graph non-growth policy, and checked JSDoc contracts for the
+  governed module graph.
+- Add context-scoped image-import loading with focused open/close coordination,
+  retry UI, stale-open cancellation, and focus restoration.
+
+### Changed
+
+- Adopt a stable hybrid architecture: retain boundaries that improve data safety,
+  security, deterministic encoding, or lazy-feature lifetime while leaving stable
+  editor and format controllers in the classic ordered graph.
+- Emit image import as a retryable ESM feature entry and resolve its active
+  context instance through a feature handle instead of a global constructor or
+  editor-owned importer.
+- Temporarily disable GitHub, Gist, and Google Drive, remove their provider-facing
+  controls and runtime artifacts, and tighten CSP to the remaining Lospec network
+  dependency until a reviewed server-side credential design is available.
+- Consolidate disabled-provider behavior into one hard-disabled policy plus
+  deterministic callback-era stubs instead of retaining a provider framework.
+- Keep text-mode mutations on the per-document classic `History` path and remove
+  the parallel command, replay, history-state, and editor-state abstractions.
+- Keep stable import/export formats on their direct classic construction paths;
+  remove the generic registry, values, capability membrane, and mass caller
+  rewiring.
+- Route project open, ordinary save, autosave, Save As, recovery, catalog and
+  repository metadata, delete, and cache persistence through the eager
+  application service and its browser-storage adapter.
+- Create every legacy `Document` with an isolated revision session and generate
+  identifiers and timestamps through composition-root dependencies.
+- Keep ordinary editor mode changes synchronous and route only image-import entry
+  points through its narrow coordinator.
+- Replace the phase-by-phase extraction roadmap with the preserved hybrid endpoint
+  and criteria for any future boundary.
+- Allow local browser tests to select an unused preview port when another project
+  already owns the default port.
+
+### Fixed
+
+- Keep generated SVG path and transform data inside escaped attributes.
+- Keep Vite's development transform from rewriting the retryable image-import
+  module URL into an unsupported variable-import glob.
+- Require computed dynamic imports to retain an exact graph-declared module path,
+  preventing a declared generated entry from masking unrelated runtime imports.
+- Consume shader-import activation failures after showing the error banner,
+  avoiding an unhandled promise rejection from the menu command.
+- Allow image-import retry to recover after a failed ESM request by giving each
+  attempt a distinct release-scoped URL, avoiding the browser's cached failed
+  module-map entry.
+- Declare image-conversion loop state locally so the former classic-script code
+  retains its behavior under the strict semantics of its new ESM entry.
+- Make retired GitHub, Gist, and Google Drive links return to the start page and
+  keep remaining callback-era provider callers failure-safe.
+- Prevent a failed or disabled Google Drive save from changing the project name,
+  destination, or new-project state and then reporting success.
+- Stop requesting broad GitHub OAuth scopes or persisting reusable provider
+  tokens as Firestore application data by removing the browser credential flow;
+  historical deployed tokens still require operational revocation and deletion.
+- Restore the prior history position and enabled state when classic undo or redo
+  replay fails, compensate earlier actions in a partially failed replay, and
+  avoid dirtying, redrawing, or recording unchanged tile pixels.
+- Serialize project save, recovery, and catalog mutations so a second session or
+  project listing cannot mistake a live transaction for an interrupted save.
+- Journal browser-project deletion, remove its catalog entry before data cleanup,
+  and resume either an interrupted catalog update or cleanup on the next access.
+- Remove the active immutable manifest record when deleting a browser project,
+  avoiding an orphaned version after its pointer is removed.
+- Serialize feature activation with disposal, retain instances after failed
+  cleanup for retry, and preserve feature-specific types through registration
+  handles.
+- Prevent cache-version rewriting from modifying comments or string content, and
+  version valid imports containing comments through parsed source locations.
+- Enforce the legacy graph baseline against its Git predecessor so editing the
+  fixture cannot bypass reviewed exceptions.
+- Roll back incomplete image-import opens, close nested dialogs safely, serialize
+  asynchronous teardown, and focus the visible chooser.
+- Close partially opened image-import UI when importer startup throws, and retire
+  failed import state when the editor changes mode.
+- Observe browser-test request failures on the configured preview origin instead
+  of assuming the default port.
+- Compare legacy-graph policy against the complete pre-push revision so a
+  multi-commit push cannot hide baseline growth.
+- Ignore image-import shortcuts while their menu is hidden, and keep the mobile
+  import action from blocking adjacent start-page controls.
+- Serialize animated mobile image-import teardown, keep repeated opens idempotent,
+  and prevent stale activations from replacing active UI.
+
 ## 0.497.3 - 2026-09-05
 
 ### Added

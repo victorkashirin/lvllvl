@@ -638,7 +638,7 @@ MobileImport.prototype = {
 
         var vWeights = [];
         var hWeights = [];
-        totalWeight = 0;
+        var totalWeight = 0;
 
 
         if(color2Index === false) {

@@ -1787,10 +1787,10 @@ ToPRGAdv.prototype = {
         this.sidLoadAddr = sidStartAddress;
         this.sidInitAddr = sidStartAddress;
         this.sidPlayAddr = sidStartAddress + 3; 
-        this.sidSpeed = g_app.music.sidSpeed; 
+        this.sidSpeed = g_app.music.sidSpeed;
 
         g_app.music.createSid();
-        if(typeof g_app.music.musicPlayer2.songData != 'undefined' 
+        if(typeof g_app.music.musicPlayer2.songData != 'undefined'
           && typeof g_app.music.musicPlayer2.songData.getSIDData != 'undefined') {
           
           this.sidData = g_app.music.musicPlayer2.songData.getSIDData();

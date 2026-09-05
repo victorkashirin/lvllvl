@@ -183,7 +183,7 @@ ImportColorUtils.prototype = {
     this.importToX = this.editor.frames.width;
     this.importToY = this.editor.frames.height;
 
-    imageColors = [];
+    var imageColors = [];
     for(var i = 0; i < useColors.length; i++) {
       imageColors[i] = {"color": useColors[i], "timesUsed": 0};
     }
@@ -203,8 +203,8 @@ ImportColorUtils.prototype = {
 
           var colorFound = false;
 
-          for(cy = 0; cy < tileSet.charHeight; cy++) {
-            for(cx = 0; cx < tileSet.charWidth; cx++) {
+          for(var cy = 0; cy < tileSet.charHeight; cy++) {
+            for(var cx = 0; cx < tileSet.charWidth; cx++) {
               var offset = (y1 * tileSet.charHeight * imageData.width * 4) + (x1 * tileSet.charWidth * 4) 
                             + (cy * imageData.width * 4) + cx * 4;
 

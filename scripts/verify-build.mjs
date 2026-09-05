@@ -10,7 +10,12 @@ import browserslist from "browserslist";
 
 import { browserPolicy } from "./browser-policy.mjs";
 import { buildGraph, copiedScripts, moduleGraph } from "./build-graph.mjs";
-import { verifyModuleBoundaries } from "./module-boundaries.mjs";
+import { verifyProductionLegacyGraph } from "./legacy-graph-policy.mjs";
+import {
+  formatModuleDependencyReport,
+  verifyModuleBoundaries,
+} from "./module-boundaries.mjs";
+import { versionModuleImports } from "./module-versioning.mjs";
 
 import {
   buildDirectory,
@@ -32,6 +37,10 @@ const artifactGoldenFile = path.join(projectRoot, "tests/fixtures/build-artifact
 const packageJson = JSON.parse(await readFile(path.join(projectRoot, "package.json"), "utf8"));
 const version = packageJson.version;
 const embeddedPackageSourceMaps = new Set(packageSourceMapsWithEmbeddedSources);
+const legacyGraphVerification = await verifyProductionLegacyGraph();
+const moduleVerification = await verifyModuleBoundaries();
+const moduleFiles = moduleVerification.modules;
+const moduleScripts = Object.fromEntries(moduleFiles.map((filename) => [filename, filename]));
 
 function sourceFile(relativePath) {
   const packageAsset = packageAssetFiles[relativePath];
@@ -51,10 +60,8 @@ const coreFiles = [
   "js/libs.js",
   "js/libs.js.map",
   "js/html/htmlcache.js",
-  ...Object.keys(moduleGraph.files),
+  ...moduleFiles,
   "js/storageManager.js",
-  "js/githubApi.js",
-  "js/githubClient.js",
   "js/acmeAssembler.js",
   "js/ca65Assembler.js",
   "js/c64/c64.js",
@@ -176,14 +183,18 @@ async function verifyBrowserPolicy() {
   );
   for (const filename of javascriptFiles) {
     const source = await readFile(filename, "utf8");
+    const relativePath = path.relative(buildRoot, filename).split(path.sep).join("/");
+    const sourceType = filename.endsWith(".mjs") ||
+      (moduleGraph.generatedEntries ?? []).includes(relativePath)
+      ? "module"
+      : "script";
     try {
       parse(source, {
         allowHashBang: true,
         ecmaVersion: browserPolicy.javascriptEcmaVersion,
-        sourceType: filename.endsWith(".mjs") ? "module" : "script",
+        sourceType,
       });
     } catch (error) {
-      const relativePath = path.relative(buildRoot, filename);
       throw new Error(
         `${relativePath} exceeds the ECMA ${browserPolicy.javascriptEcmaVersion} output target: ${error.message}`,
       );
@@ -198,7 +209,7 @@ async function verifyPerformanceBudgets(indexHtml) {
     ...new Set([
       ...localStylesheetReferences(indexHtml),
       ...localScriptReferences(indexHtml),
-      ...Object.keys(moduleGraph.files),
+      ...moduleFiles,
       ...runtimeFeatureRequests.mobileStyles,
     ]),
   ];
@@ -250,7 +261,7 @@ async function verifyBuildGraph() {
     );
   }
 
-  const declaredScripts = { ...copiedScripts, ...moduleGraph.files };
+  const declaredScripts = { ...copiedScripts, ...moduleScripts };
   const copiedSources = new Set(Object.values(declaredScripts));
   for (const [output, graph] of Object.entries(buildGraph)) {
     if (!Array.isArray(graph.inputs) || graph.inputs.length === 0) {
@@ -272,7 +283,11 @@ async function verifyBuildGraph() {
 
   for (const [output, source] of Object.entries(declaredScripts)) {
     const sourceContent = await readFile(path.join(sourceRoot, source), "utf8");
-    const expected = `${sourceContent.split("{v}").join(version)}\n`;
+    const rendered = sourceContent.split("{v}").join(version);
+    const expectedContent = output.endsWith(".mjs")
+      ? versionModuleImports(rendered, version)
+      : rendered;
+    const expected = `${expectedContent}\n`;
     const actual = await readFile(path.join(buildRoot, output), "utf8");
     if (actual !== expected) throw new Error(`${output} differs from its declared source`);
   }
@@ -375,9 +390,7 @@ async function verifyArtifactGolden() {
     "js/libs.js.map",
     "js/main.js",
     "js/main.js.map",
-    "js/bootstrap.mjs",
-    "js/modules/featureRegistry.mjs",
-    "js/modules/imageImportFeature.mjs",
+    ...moduleFiles,
     "js/features/image-import.js",
     "js/features/image-import.js.map",
     "js/html/htmlcache.js",
@@ -559,7 +572,11 @@ if (typeof version !== "string" || version.trim() === "") {
 }
 
 await verifyBuildGraph();
-const moduleVerification = await verifyModuleBoundaries();
+console.log(formatModuleDependencyReport(moduleVerification));
+console.log(
+  `Legacy graph policy: ${legacyGraphVerification.inputs} inputs ` +
+    `(${legacyGraphVerification.exceptions} temporary exceptions)`,
+);
 await verifySourceEntry();
 await verifySourceMaps();
 await verifyC64Metadata();
@@ -612,6 +629,39 @@ if (!c64Runtime.includes(`c64.wasm?v=${version}`)) {
 }
 
 const indexHtml = await readFile(path.join(buildRoot, "index.html"), "utf8");
+const disabledProviderReferences = [
+  "api.github.com",
+  "githubApi.js",
+  "githubClient.js",
+  "google-api/api.js",
+  "googleapis.com",
+  "gstatic.com/firebasejs",
+];
+const providerBoundaryFiles = (await listCacheFiles(buildRoot))
+  .map((filename) => path.relative(buildRoot, filename).split(path.sep).join("/"))
+  .filter((filename) => /\.(?:html|js|mjs)$/.test(filename));
+for (const filename of providerBoundaryFiles) {
+  const contents = await readFile(path.join(buildRoot, filename), "utf8");
+  for (const forbiddenReference of disabledProviderReferences) {
+    if (contents.includes(forbiddenReference)) {
+      throw new Error(
+        `Disabled provider reference remains in ${filename}: ${forbiddenReference}`,
+      );
+    }
+  }
+}
+for (const forbiddenArtifact of [
+  "js/githubApi.js",
+  "js/githubClient.js",
+  "lib/google-api/api.js",
+]) {
+  try {
+    await access(path.join(buildRoot, forbiddenArtifact));
+    throw new Error(`Disabled provider artifact remains in the build: ${forbiddenArtifact}`);
+  } catch (error) {
+    if (error?.code !== "ENOENT") throw error;
+  }
+}
 const browserVerification = await verifyBrowserPolicy();
 const performanceVerification = await verifyPerformanceBudgets(indexHtml);
 const ca65Scripts = [

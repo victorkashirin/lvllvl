@@ -87,11 +87,6 @@ BuildControls.prototype = {
     html += '<img src="icons/svg/glyphicons-basic-199-save.svg">&nbsp;';
     html += 'Build and Download</div>';
 
-    if(this.prefix == 'c64debugger') {
-      html += '<div style="margin-right: 6px" class="ui-button ui-button-secondary" id="' + this.prefix + 'assemblerShare"><img src="icons/material/share-24px.svg">&nbsp;Share</div>';
-    }
-
-
     /*
 
     html += '<div class="ui-button ui-button-secondary" style="margin: 0px 5px"  id="assemblerSettings">';
@@ -347,12 +342,6 @@ console.log(g_app.doc);
 
     $('#' + this.prefix + 'assemblerBuildAndDownload').on('click', function() {
       _this.runBuildAndDownload();
-    });
-
-    $('#' + this.prefix + 'assemblerShare').on('click', function() {
-      if(g_app.c64Debugger) {
-        g_app.c64Debugger.share({ "type": 'assembly' });
-      }                      
     });
 
     /*

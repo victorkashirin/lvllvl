@@ -58,7 +58,6 @@ var Editor = function() {
 
   this.spriteEditor = null;
   this.textModeEditor = null;
-  this.projectShare = null;
   this.music = null;
   this.assemblerEditor = null;
   this.colorPaletteEditor = null;
@@ -81,6 +80,7 @@ var Editor = function() {
 
   this.features = {};
   this.featureRegistry = null;
+  this.services = null;
 
   this.projectNavigator = null;
   this.projectNavigatorMobile = null;
@@ -117,8 +117,6 @@ var Editor = function() {
 
 }
 
-var firestoreDb = null;
-
 Editor.prototype = {
 
 
@@ -129,6 +127,9 @@ Editor.prototype = {
     if(typeof args != 'undefined') {
       if(typeof args.features != 'undefined') {
         this.featureRegistry = args.features;
+      }
+      if(typeof args.services != 'undefined') {
+        this.services = args.services;
       }
       if(typeof args.type != 'undefined') {
         this.isElectron = args.type == 'electron';
@@ -141,40 +142,31 @@ Editor.prototype = {
       this.deviceType = 'desktop';
     }
 
-    var _this = this;
-    this.githubClient = new GitHubClient();
-    this.githubClient.on('login', function() {
-      _this.displayUserDetails();
-    });
-
-
-    this.githubClient.on('logout', function() {
-      _this.confirmLogout();
-      _this.displayUserDetails();
-    });
-    this.github = new GitHubUI();
-    this.github.init(this.githubClient);
-
-    this.gist = new GistUI();
-    this.gist.init(this.githubClient);
-
-    this.gdrive = new GDrive();
-    this.gdrive.init();
-    this.gdrive.handleClientLoad();
-
-    this.initFirebase();
+    if(!this.services || !this.services.remoteProviderFacades) {
+      throw new Error('Remote provider facades are not configured');
+    }
+    this.githubClient = this.services.remoteProviderFacades.githubClient;
+    this.github = this.services.remoteProviderFacades.github;
+    this.gist = this.services.remoteProviderFacades.gist;
+    this.gdrive = this.services.remoteProviderFacades.googleDrive;
 
     this.loadGlobalPrefs();
 
     this.buildInterface();
 
-    this.fileManager = new FileManager();
+    this.fileManager = new FileManager({ persistence: this.services.persistence });
     this.fileManager.init(this);
 
     this.textDialog = new TextDialog();
 
     this.startPage.processURL();
     
+  },
+
+  createDocument: function() {
+    var doc = new Document({ documentSession: this.services.createDocumentSession() });
+    doc.init(this);
+    return doc;
   },
 
 
@@ -196,7 +188,13 @@ Editor.prototype = {
   },
 
   isOnline: function() {
-    return typeof firebase !== 'undefined';
+    return typeof navigator == 'undefined' || navigator.onLine !== false;
+
+  },
+
+  isRemoteProviderEnabled: function(providerId) {
+    return Boolean(this.services && this.services.remoteProviders &&
+      this.services.remoteProviders.isEnabled(providerId));
 
   },
 
@@ -229,21 +227,9 @@ Editor.prototype = {
   },
 
   setUser: function(user) {
-    var state = this.state;
-    
-
-    if(user == null) {
-      state.isLoggedIn = false;
-      this.displayUserDetails();
-    } else {
-
-      state.isLoggedIn = true;
-      state.user.id = user.uid;
-      state.user.name = user.displayName;
-
-
-      firestoreDb.collection('users').doc(state.user.id).set(state.user, { merge: true });
-    }
+    this.state.isLoggedIn = false;
+    this.state.user = {};
+    this.displayUserDetails();
   },
 
 
@@ -259,8 +245,7 @@ Editor.prototype = {
 //    var githubCheck = args.githubCheck;
     this.openingProject = true;
 
-    this.doc = new Document();
-    this.doc.init(this);
+    this.doc = this.createDocument();
     this.createDocumentStructure(this.doc);
 
     var _this = this;
@@ -320,313 +305,31 @@ Editor.prototype = {
   },
 
   confirmLogout: function() {
-    var dialogCreated = false;
-    if(this.githubLogoutDialog == null) {
-      var width = 300;
-      height = 190;
-      if(UI.isMobile.any()) {
-        height = 240;
-      }
-
-      this.githubLogoutDialog = UI.create("UI.Dialog", { "id": "githubLogutDialog", "title": "Logged Out", "width": width, "height": height });
-
-      var html = '';
-      html = '<div>';
-      html += '<p>You have signed out of lvllvl</p>';
-      html += '<p>You may still be signed into GitHub</p>';
-      html += '<p>Click the button below if you would also like to sign out of GitHub</p>';
-      html += '</div>';
-
-      html += '<div>';
-      html += '<div class="ui-button ui-button-nextaction" id="signOutOfGitHub">Sign out of GitHub</div>';
-      html += '</div>';
-
-      var htmlComponent = UI.create("UI.HTMLPanel", { "html": html });
-      this.githubLogoutDialog.add(htmlComponent);
-
-      var closeButton = UI.create('UI.Button', { "text": "Close", color: "secondary" });
-      this.githubLogoutDialog.addButton(closeButton);
-      closeButton.on('click', function(event) {
-        UI.closeDialog();
-      });
-      dialogCreated = true;
-    }
-
-    
-    UI.showDialog("githubLogutDialog");
-    if(dialogCreated) {
-      $('#signOutOfGitHub').on('click', function(event) {
-        window.open('https://github.com/logout');
-        UI.closeDialog();
-      });
-    }
+    this.reportRemoteProviderError('github', new Error('GitHub is disabled.'));
   },
 
   displayUserDetails: function() {
-    function createUserIcon() {
-      var icon = document.createElement('img');
-      icon.src = 'icons/svg/glyphicons-halflings-1-user.svg';
-      icon.height = 16;
-      icon.style.filter = 'invert(65%)';
-      return icon;
-    }
-
-    function setUserLine(id, text) {
-      var target = document.getElementById(id);
-      if(!target) {
-        return false;
+    var ids = ['start-username', 'start-user-info', 'menuUserInfo', 'mobileMenuUserInfo'];
+    for(var i = 0; i < ids.length; i++) {
+      var target = document.getElementById(ids[i]);
+      if(target) {
+        target.replaceChildren();
       }
-      target.replaceChildren(createUserIcon(), document.createTextNode(' ' + text));
-      return true;
     }
-
-    if(this.githubClient.isLoggedIn()) {
-      var username = this.githubClient.getLoginName();
-      setUserLine('start-username', username);
-      setUserLine('start-user-info', 'Signed in as ' + username);
-
-      var menuUserInfo = document.getElementById('menuUserInfo');
-      if(menuUserInfo) {
-        var menuDetails = document.createElement('div');
-        menuDetails.style.textAlign = 'right';
-        menuDetails.style.marginRight = '10px';
-        var menuSignOut = document.createElement('a');
-        menuSignOut.href = '#';
-        menuSignOut.id = 'menuSignOut';
-        menuSignOut.style.color = 'white';
-        menuSignOut.style.cursor = 'pointer';
-        menuSignOut.textContent = 'Sign Out';
-        menuDetails.appendChild(createUserIcon());
-        menuDetails.appendChild(document.createTextNode(' ' + username + ' ('));
-        menuDetails.appendChild(menuSignOut);
-        menuDetails.appendChild(document.createTextNode(')'));
-        menuUserInfo.replaceChildren(menuDetails);
-      }
-
-      var _this = this;
-      $('#menuSignOut').on('click', function(e) {
-        e.preventDefault();
-        g_app.githubClient.logout();
-      });
-
-
-      var mobileUserInfo = document.getElementById('mobileMenuUserInfo');
-      if(mobileUserInfo) {
-        var mobileDetails = document.createElement('div');
-        mobileDetails.style.padding = '10px';
-        mobileDetails.style.marginBottom = '20px';
-        mobileDetails.style.backgroundColor = '#222222';
-        mobileDetails.style.position = 'relative';
-        var mobileName = document.createElement('div');
-        mobileName.style.fontSize = '20px';
-        mobileName.style.display = 'inline-block';
-        mobileName.style.width = '200px';
-        mobileName.style.lineHeight = '36px';
-        mobileName.style.overflow = 'hidden';
-        mobileName.appendChild(createUserIcon());
-        mobileName.appendChild(document.createTextNode(' ' + username));
-        var mobileSignOut = document.createElement('div');
-        mobileSignOut.className = 'ui-button';
-        mobileSignOut.id = 'mobileMenuSignOut';
-        mobileSignOut.style.position = 'absolute';
-        mobileSignOut.style.right = '10px';
-        mobileSignOut.style.top = '10px';
-        mobileSignOut.textContent = 'Sign Out';
-        mobileDetails.appendChild(mobileName);
-        mobileDetails.appendChild(mobileSignOut);
-        mobileUserInfo.replaceChildren(mobileDetails);
-      }
-
-      $('#mobileMenuSignOut').on('click', function(e) {
-        e.preventDefault();
-        g_app.githubClient.logout();
-      });
-    } else {
-
-      $('#start-username').html('');
-      setUserLine('start-user-info', 'You are not signed in');
-
-      var userHTML = '<div style="text-align: right; margin-right: 10px; margin-top: 4px">';
-      //userHTML += 'You are not signed in.<br/>';
-      userHTML += '<div class="ui-button ui-button-info" id="menuSignIn">';
-//      userHTML += '<img src="icons/svg/glyphicons-halflings-185-log-in.svg">';
-      userHTML += '<img src="icons/GitHub-Mark-32px.png"/>';
-      userHTML += '&nbsp;&nbsp;Sign In With GitHub...</div>';
-//<img src="icons/svg/glyphicons-halflings-185-log-in.svg">
-//      userHTML += '(<a href="#"  style="color: white; cursor: pointer" id="menuSignIn">';
-//      userHTML += 'Sign In With GitHub';  
-//      userHTML += '</a>)';
-      userHTML += '</div>';
-      $('#menuUserInfo').html(userHTML);
-
-      $('#menuSignIn').on('click', function(e) {
-        e.preventDefault();
-        g_app.githubClient.login();
-      });
-
-      var userHTML = '<div style="padding: 10px">';
-
-//      userHTML += '<div style="font-size: 20px; margin-bottom: 10px">You are not signed in. Sign in to save projects online</div>';
-      userHTML += '<div style="font-size: 20px; margin-bottom: 10px">You are not signed in.</div>';
-      userHTML += '<div>';
-
-      //userHTML += '<div class="ui-button ui-button-info" id="mobileMenuSignIn"> <img src="icons/svg/glyphicons-halflings-185-log-in.svg">&nbsp;Sign In With GitHub...</div>';
-
-//      userHTML += '<div class="ui-button" id="mobileMenuSignIn">';
-//      userHTML += 'Sign In With GitHub';  
-//      userHTML += '</div>';
-      userHTML += '</div>';
-      userHTML += '</div>';
-      $('#mobileMenuUserInfo').html(userHTML);
-
-      $('#mobileMenuSignIn').on('click', function(e) {
-        e.preventDefault();
-        g_app.githubClient.login();
-      });
-
-    }
-  },
-
-
-
-
-  initFirebase: function() {
-
-    var _this = this;
-
-    if(typeof firebase != 'undefined') {
-    /*
-      // Initialize Firebase
-      var config = {
-        apiKey: "AIzaSyCn0uJ7rBn1a5pU7Y-1Wzpo688s6JJRqA4",
-        authDomain: "level-3-editor.firebaseapp.com",
-        databaseURL: "https://level-3-editor.firebaseio.com",
-        projectId: "level-3-editor",
-        storageBucket: "level-3-editor.appspot.com",
-        messagingSenderId: "552000131546"
-      };
-
-      firebase.initializeApp(config);
-*/
-//google-site-verification=DJ7-lh_nFpBn1_42gPYwbkYQzUaGCqWEdUhLWNW85Q4
-/*
-      var firebaseConfig = {
-        apiKey: "AIzaSyAuSjHOq2_3RYn4fwBRRMqXSOON2SxjxCY",
-        authDomain: "lvllvl.firebaseapp.com",
-        databaseURL: "https://lvllvl.firebaseio.com",
-        projectId: "lvllvl",
-        storageBucket: "",
-        messagingSenderId: "673634360731",
-        appId: "1:673634360731:web:3cfe4f051e2e98ed"
-      };
-*/      
-
-var firebaseConfig = {
-  apiKey: "AIzaSyAuSjHOq2_3RYn4fwBRRMqXSOON2SxjxCY",
-  authDomain: "lvllvl.firebaseapp.com",
-  databaseURL: "https://lvllvl.firebaseio.com",
-  projectId: "lvllvl",
-  storageBucket: "lvllvl.appspot.com",
-  messagingSenderId: "673634360731",
-  appId: "1:673634360731:web:3cfe4f051e2e98ed",
-  measurementId: "G-0ENX7VSE20"
-};
-
-      // Initialize Firebase
-      var app = firebase.initializeApp(firebaseConfig);
-      //firebase.getAnalytics(app);
-      
-      
-      firebase.auth().onAuthStateChanged(function(user) {
-        if (user) {
-          // User is signed in.
-          _this.setUser(user);
-          _this.getRepositoryList();
-
-          $('#login').hide();
-          $('#start-login-mobile').hide();
-
-          $('#logout').show();
-          $('#start-logout-mobile').show();
-
-          try {
-            _this.githubClient.setUser(user, function() {
-              _this.startPage.userLoginStatusUpdated();
-            });
-            
-          } catch (e) {
-            console.log('login exception');
-            console.log(e);
-            // something went wrong, try to login again..
-            // maybe token expired?
-            _this.githubClient.login();
-
-          }
-        } else {
-//          g_app.fileManager.clearRepositoriesCache(function() {
-
-            _this.setUser(null);
-            _this.githubClient.setUser(null);
-            _this.getRepositoryList();
-
-            _this.startPage.userLoginStatusUpdated();
-//          });
-
-          $('#login').show();
-          $('#start-login-mobile').show();
-          $('#logout').hide();
-          $('#start-logout-mobile').hide();
-        }
-      });
-
-      firestoreDb = firebase.firestore();
-      // Disable deprecated features
-      /*
-      firestoreDb.settings({
-        timestampsInSnapshots: true
-      });    
-*/
-    }
-
   },
 
   removeRepository: function(owner, repository, callback) {
-    var user = firebase.auth().currentUser;
-    if(user == null) {
-      return;
+    this.reportRemoteProviderError('github', new Error('GitHub is disabled.'));
+    if(typeof callback == 'function') {
+      callback({ success: false });
     }
-
-    var repositoryId = owner + '-' + repository;
-
-    firestoreDb.collection('users/' + user.uid + '/repositories').doc(repositoryId).delete().then(function() {
-      callback();
-    }).catch(function(error) {
-      console.log(error);
-
-    })
-
   },
 
   getRepositoryList: function() {
-    
-    var user = firebase.auth().currentUser;
-    if(user == null) {
-      this.repositories = [];
+    this.repositories = [];
+    if(this.startPage) {
       this.startPage.updateRepositories();
-      return;
     }
-
-    var _this = this;
-    
-    firestoreDb.collection('users/' + user.uid + '/repositories').get().then(function(querySnapshot) {
-      _this.repositories = [];
-      querySnapshot.forEach(function(doc) {
-        var data = doc.data();
-        _this.repositories.push(data);          
-        _this.startPage.updateRepositories();
-        
-      });
-    });
   },
 
   setEnabled: function(feature, enabled) {
@@ -649,11 +352,15 @@ var firebaseConfig = {
     return this.featureRegistry.activate(feature, context);
   },
 
-  getFeatureFacade: function(feature, context) {
-    if(this.featureRegistry == null) {
-      throw new Error('No feature registry is configured');
+  closeImageImport: function() {
+    if(!this.services || !this.services.imageImportCoordinator) {
+      return Promise.resolve(false);
     }
-    return this.featureRegistry.createFacade(feature, context);
+    return this.services.imageImportCoordinator.close();
+  },
+
+  openImageImport: function(args, source) {
+    return this.services.imageImportCoordinator.open(args);
   },
 
   reportFeatureError: function(feature, error) {
@@ -668,6 +375,19 @@ var firebaseConfig = {
       document.body.appendChild(message);
     }
     message.textContent = 'Could not load ' + feature + '. Check your connection and try again.';
+  },
+
+  reportRemoteProviderError: function(providerId, error) {
+    console.warn('Remote provider unavailable: ' + providerId, error);
+    var message = document.getElementById('remoteProviderError');
+    if(message == null) {
+      message = document.createElement('div');
+      message.id = 'remoteProviderError';
+      message.style.cssText = 'position:fixed;left:16px;right:16px;bottom:16px;' +
+        'z-index:100000;padding:12px;background:#5f4b18;color:#fff;border-radius:3px';
+      document.body.appendChild(message);
+    }
+    message.textContent = 'GitHub, Gist, and Google Drive are temporarily disabled while secure credential handling is prepared.';
   },
 
   clearFeatureError: function() {
@@ -706,10 +426,6 @@ var firebaseConfig = {
 
       
       _this.keyPress(event);
-    });
-
-    $('#shareButton').on('click', function() {
-      _this.share();
     });
 
 
@@ -876,6 +592,10 @@ var firebaseConfig = {
 
 
   setMode: function(mode) {
+    if(this.services && this.services.imageImportCoordinator &&
+        this.services.imageImportCoordinator.isActive()) {
+      void this.closeImageImport();
+    }
     this.mode = mode;
 
     if(g_app.isMobile()) {
@@ -1270,10 +990,7 @@ main split panel north is menu
 
       _this.menuSplit = UI.create("UI.SplitPanel", { "id": "menuSplit", "visible": !menuBarHidden })
 
-      var html = '<div style="text-align: right">';
-      html += '<div id="menuUserInfo" style="display: inline-block"></div>';
-      html += '<div class="ui-button" id="shareButton" style="margin-left: 4px"><img src="icons/material/share-24px.svg">&nbsp;Share</div>';
-      html += '</div>';
+      var html = '<div id="menuUserInfo" style="text-align: right"></div>';
       _this.userInfoPanel = UI.create("UI.HTMLPanel", { "html": html});
       _this.menuSplit.addEast(_this.userInfoPanel, 280, false);
 
@@ -1313,10 +1030,6 @@ main split panel north is menu
       menu.addItem({ "label": "Save", "id": "file-save", "shortcut": { "key": 'S', "cmd": true } });
       menu.addItem({ "label": "Save As...", "id": "file-saveas", "shortcut": { "key": 'S',  "cmd": true, "shift": true } });
 
-      menu.addItem({ "label": "Commit Project To GitHub...", "id": "file-commit", "shortcut": { "key": 'C',  "cmd": true, "shift": true } });
-      menu.addItem({ "label": "Commit Changes To GitHub...", "id": "project-commitchanges", "shortcut": { "key": 'C',  "cmd": true, "shift": true } });
-      menu.addItem({ "label": "Share Project...", "id": "project-share" }); //, "shortcut": { "key": 'C',  "cmd": true, "shift": true }
-
       menu.addItem({ "label": "Download Project...", "id": "file-download", "shortcut": { "key": 'D',  "shift": true, "cmd": true, "shift": true } });
       //menu.addItem({ "label": "NES", "id": "file-nes" });
       //menu.addItem({ "label": "X16", "id": "file-x16" });
@@ -1329,8 +1042,6 @@ main split panel north is menu
 //      menu.addItem({ "label": "Go To Home Screen", "id": "project-home" });
 
   //    menu.addItem({ "label": "Save As Template...", "id": "file-saveastemplate" });
-
-      UI('project-commitchanges').setVisible(false);
 
       menu = _this.menuBar.addMenu({"label": "Edit", "className": 'ui-menu-tilemode ui-menu-3d' });
  
@@ -1397,10 +1108,6 @@ main split panel north is menu
       menu.addItem({ "label": "Binary Data" + "...", "id": "export-binary" });
       menu.addItem({ "label": "TXT...", "id": "export-txt" });
 
-      menu.addSeparator({ "label": "Share" });
-      menu.addItem({ "label": "Share...", "id": "export-share", "shortcut": { "cmd": true, "key": "H" } });
-
-
       menu = _this.menuBar.addMenu({"label": "Export", "className": 'ui-menu-3d' });
       menu.addSeparator({ "label": "Visual Formats" });
       menu.addItem({ "label": "PNG...", "id": "export-3d-png" });
@@ -1448,7 +1155,11 @@ main split panel north is menu
 
       menu = _this.menuBar.addMenu({"label": "Import", "className": 'ui-menu-tilemode' });
       menu.addSeparator({ "label": "2d Formats" });
-      menu.addItem({ "label": "Image / Video" + "...", "id": "import-image" });
+      menu.addItem({
+        "label": "Image / Video" + "...",
+        "id": "import-image",
+        "shortcut": { "alt": true, "shift": true, "key": "I" }
+      });
 //      menu.addItem({ "label": "Video...", "id": "import-video" });
 
 //      menu.addItem({ "label": "ANSI File...", "id": "import-ansi" });
@@ -1812,7 +1523,6 @@ main split panel north is menu
 
       menu = _this.menuBar.addMenu({"label": "Share", "className": 'ui-menu-c64 ui-menu-c64-share' });
 
-      menu.addItem({ "label": "Create a Link to the Current PRG/D64/CRT...", "id": "c64-share-link" });
       menu.addItem({ "label": "Export PRG/D64/CRT as a HTML Page...", "id": "c64-export-html-page" });
 //      menu.addItem({ "label": "Download HTML Page", "id": "c64-share-html" });
 
@@ -1831,8 +1541,8 @@ main split panel north is menu
         menu.addItem({ "label": "Scripting API" + "...", "id": "help-scriptingapi" });
       }
 
-      _this.menuBar.on('itemclick', function(id) {          
-        _this.menuClick(id);
+      _this.menuBar.on('itemclick', function(id, source) {
+        _this.menuClick(id, source);
       });
 
 //      _this.setMode('start'); 
@@ -1895,7 +1605,7 @@ main split panel north is menu
 //    this.projectShare.init(this.githubClient);
 
     this.textModeEditor = new TextModeEditor();
-    this.textModeEditor.init();
+    this.textModeEditor.init(this.services);
     this.textModeEditor.buildInterface(this.contentPanel);
 
     this.colorPaletteEditor = new ColorPaletteEditor();
@@ -2005,7 +1715,7 @@ main split panel north is menu
 //    this.tabPanel.setTabLabel(0, docRecord.name);
   },
 
-  menuClick: function(menuItem) {
+  menuClick: function(menuItem, source) {
     var _this = this;
     switch(menuItem) {
       case 'file-new':
@@ -2035,18 +1745,6 @@ main split panel north is menu
       case 'file-saveas':
         this.fileManager.showSaveAs();
       break;
-
-      case 'file-commit':
-      case 'project-commitchanges':
-          
-        g_app.github.save();      
-      break;
-
-      case 'project-share':
-        this.share();
-//        this.projectShare.showShareDialog();
-//        this.github.shareProject();
-        break;
 
       case 'file-saveastemplate':
         this.fileManager.showSaveAsTemplate();
@@ -2263,7 +1961,6 @@ main split panel north is menu
       break;
 
       case 'export-svg':
-        
         this.textModeEditor.exportSvg();
       break;
 
@@ -2309,10 +2006,6 @@ main split panel north is menu
       case 'export-x16basic':
         this.textModeEditor.doExport('x16basic');
       break;
-
-      case 'export-share':
-        this.share();
-        break;
 
       case 'export-txt':
         this.textModeEditor.doExport('txt');
@@ -2364,7 +2057,7 @@ main split panel north is menu
 
 
       case 'import-image':
-        this.textModeEditor.importImage.start();
+        this.openImageImport(undefined, source || 'menu');
       break;
 
       case 'import-assembly':
@@ -2768,10 +2461,6 @@ main split panel north is menu
         c64.sound.setModel('8580');
         break;
 
-      case 'c64-share-link':
-        this.c64Debugger.share();
-        break;
-      
       case 'c64-export-html-page':
         this.c64Debugger.exportAsHTMLPage();
         break;
@@ -3091,18 +2780,6 @@ main split panel north is menu
     this.setFontSize(14);
   },
 
-  share: function() {
-    
-
-    if(this.mode == 'assembler') {
-      this.assemblerEditor.buildControls.showShare();
-    } else if(this.mode == 'c64') {
-      this.c64Debugger.share();
-    } else {
-      this.gist.startShare();  
-    }
-  },
-
   undo: function() {
 
     if(this.textModeEditor.colorPaletteEdit && this.textModeEditor.colorPaletteEdit.visible) {
@@ -3210,8 +2887,7 @@ main split panel north is menu
     }
 
 
-    this.doc = new Document();
-    this.doc.init(this);
+    this.doc = this.createDocument();
 
     // load the colour palette and tile set
     var colorPalettePresetId = 'c64_colodore';

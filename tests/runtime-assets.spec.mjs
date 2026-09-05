@@ -191,85 +191,6 @@ test("package-managed browser libraries preserve their legacy global APIs", asyn
   assertNoFailures();
 });
 
-test("GitHub API adapter preserves the legacy client contract", async ({ page }) => {
-  const assertNoFailures = await openHarness(page);
-  const requests = [];
-
-  await page.route("https://api.github.com/**", async (route) => {
-    const request = route.request();
-    const url = new URL(request.url());
-    const body = request.postDataJSON?.();
-    requests.push({
-      authorization: request.headers().authorization,
-      body,
-      method: request.method(),
-      path: `${url.pathname}${url.search}`,
-    });
-
-    let responseBody = {};
-    const responseHeaders = {
-      "access-control-expose-headers": "x-oauth-scopes",
-      "content-type": "application/json",
-    };
-    if (url.pathname === "/user") {
-      responseBody = { login: "test-user" };
-      responseHeaders["x-oauth-scopes"] = "repo, gist";
-    } else if (url.pathname.endsWith("/git/blobs") && request.method() === "POST") {
-      responseBody = { sha: "blob-sha" };
-    } else if (url.pathname.endsWith("/git/trees/tree-sha")) {
-      responseBody = { tree: [{ path: "hello.txt", type: "blob" }] };
-    } else if (url.pathname === "/gists" && request.method() === "POST") {
-      responseBody = { id: "gist-id" };
-    } else if (url.pathname === "/gists/gist-id") {
-      responseBody = { id: "gist-id", files: {} };
-    }
-
-    await route.fulfill({
-      body: JSON.stringify(responseBody),
-      headers: responseHeaders,
-      status: 200,
-    });
-  });
-
-  await loadScript(page, "/js/githubApi.js");
-  const result = await page.evaluate(async () => {
-    const github = new GitHub({ token: "test-token" });
-    const profile = await github.getUser().getProfile();
-    const repository = github.getRepo("owner", "project");
-    const blob = await repository.createBlob("hello ✓");
-    const tree = await repository.getTree("tree-sha?recursive=1");
-    const gist = github.getGist();
-    await gist.create({ description: "test", files: {} });
-    const reopenedGist = await gist.read();
-
-    return {
-      blobSha: blob.data.sha,
-      gistId: reopenedGist.data.id,
-      login: profile.data.login,
-      scopes: profile.headers["x-oauth-scopes"],
-      treePath: tree.data.tree[0].path,
-    };
-  });
-
-  expect(result).toEqual({
-    blobSha: "blob-sha",
-    gistId: "gist-id",
-    login: "test-user",
-    scopes: "repo, gist",
-    treePath: "hello.txt",
-  });
-  expect(requests.map((request) => request.path)).toEqual([
-    "/user",
-    "/repos/owner/project/git/blobs",
-    "/repos/owner/project/git/trees/tree-sha?recursive=1",
-    "/gists",
-    "/gists/gist-id",
-  ]);
-  expect(requests.every((request) => request.authorization === "Bearer test-token")).toBe(true);
-  expect(Buffer.from(requests[1].body.content, "base64").toString("utf8")).toBe("hello ✓");
-  assertNoFailures();
-});
-
 test("Ace loads its lazy themes and workers", async ({ page }) => {
   const assertNoFailures = await openHarness(
     page,
@@ -426,19 +347,6 @@ test("retained font parser preserves its split-script browser API", async ({ pag
     coordinates: [1, 2, 3, 4],
     parse: "function",
   });
-  assertNoFailures();
-});
-
-test("retained provider loader exposes the Google API bootstrap", async ({ page }) => {
-  const assertNoFailures = await openHarness(page);
-  await loadScript(page, "/lib/google-api/api.js");
-
-  const result = await page.evaluate(() => ({
-    bootstrapState: typeof window.___jsl,
-    load: typeof window.gapi?.load,
-  }));
-
-  expect(result).toEqual({ bootstrapState: "object", load: "function" });
   assertNoFailures();
 });
 

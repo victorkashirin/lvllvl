@@ -3034,6 +3034,9 @@ TileSet.prototype = {
 
 
     var oldValue = this.getPixel(character, x, y);
+    if(Object.is(oldValue, set)) {
+      return false;
+    }
 
     var pos = x + y * this.charWidth;
     this.tileData[character].data[0][pos] = set;
@@ -3048,7 +3051,7 @@ TileSet.prototype = {
 //    this.setImageDataPixel(character, x, y, set);
 
     // record the action
-    var params = { 
+    var params = {
                    "c": character,
                    "x": x, "y": y,
                    "oldValue": oldValue,
@@ -3061,9 +3064,10 @@ TileSet.prototype = {
     if(updateCharacter) {
       this.updateCharacter(character);
     }
-    this.modified();    
+    this.modified();
 
     this.customCharacterset = true;
+    return true;
   },
 
   // call this when a character has been updated
