@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.497.3 - 2026-09-05
+
 ### Added
 
 - Add a phased P1.4 module-migration plan with necessity ratings, measurable
