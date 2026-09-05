@@ -361,6 +361,28 @@ Editor.prototype = {
     return this.featureRegistry.createFacade(feature, context);
   },
 
+  navigateRoute: function(route, options) {
+    if(!this.services || !this.services.uiRoutes) {
+      return Promise.reject(new Error('No UI route service is configured'));
+    }
+    return this.services.uiRoutes.navigate(route, options || {});
+  },
+
+  closeRoute: function(route) {
+    if(!this.services || !this.services.uiRoutes) {
+      return Promise.resolve(false);
+    }
+    return this.services.uiRoutes.dispose(route);
+  },
+
+  openImageImport: function(args, source) {
+    return this.navigateRoute('feature:image-import', {
+      context: this.textModeEditor,
+      parameters: args,
+      source: source || 'programmatic'
+    });
+  },
+
   reportFeatureError: function(feature, error) {
     console.error('Could not load ' + feature, error);
 
@@ -590,6 +612,14 @@ Editor.prototype = {
 
 
   setMode: function(mode) {
+    if(this.services && this.services.uiRoutes) {
+      return this.navigateRoute(mode, { context: this, source: 'legacy-mode' });
+    }
+    this.applyMode(mode);
+    return Promise.resolve(null);
+  },
+
+  applyMode: function(mode) {
     this.mode = mode;
 
     if(g_app.isMobile()) {
@@ -1149,7 +1179,11 @@ main split panel north is menu
 
       menu = _this.menuBar.addMenu({"label": "Import", "className": 'ui-menu-tilemode' });
       menu.addSeparator({ "label": "2d Formats" });
-      menu.addItem({ "label": "Image / Video" + "...", "id": "import-image" });
+      menu.addItem({
+        "label": "Image / Video" + "...",
+        "id": "import-image",
+        "shortcut": { "alt": true, "shift": true, "key": "I" }
+      });
 //      menu.addItem({ "label": "Video...", "id": "import-video" });
 
 //      menu.addItem({ "label": "ANSI File...", "id": "import-ansi" });
@@ -1531,8 +1565,8 @@ main split panel north is menu
         menu.addItem({ "label": "Scripting API" + "...", "id": "help-scriptingapi" });
       }
 
-      _this.menuBar.on('itemclick', function(id) {          
-        _this.menuClick(id);
+      _this.menuBar.on('itemclick', function(id, source) {
+        _this.menuClick(id, source);
       });
 
 //      _this.setMode('start'); 
@@ -1705,7 +1739,7 @@ main split panel north is menu
 //    this.tabPanel.setTabLabel(0, docRecord.name);
   },
 
-  menuClick: function(menuItem) {
+  menuClick: function(menuItem, source) {
     var _this = this;
     switch(menuItem) {
       case 'file-new':
@@ -2048,7 +2082,7 @@ main split panel north is menu
 
 
       case 'import-image':
-        this.textModeEditor.importImage.start();
+        this.openImageImport(undefined, source || 'menu');
       break;
 
       case 'import-assembly':

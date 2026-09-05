@@ -1,6 +1,7 @@
 var ImportImage = function() {
 
   this.editor = null;
+  this.routeClosed = null;
   this.importColorUtils = null;
 
   this.importSource = 'image';
@@ -406,6 +407,35 @@ ImportImage.prototype = {
 
     this.imageLib = new ImageLib();
 
+  },
+
+  close: function() {
+    var routeDialog = null;
+    var closePromise = this.importImageMobile
+      ? this.importImageMobile.whenClosed()
+      : null;
+    if(this.importImageMobile && this.importImageMobile.uiComponent &&
+        UI.dialogStack.indexOf(this.importImageMobile.uiComponent) !== -1) {
+      routeDialog = this.importImageMobile.uiComponent;
+    } else if(this.uiComponent && UI.dialogStack.indexOf(this.uiComponent) !== -1) {
+      routeDialog = this.uiComponent;
+    }
+
+    if(routeDialog) {
+      var dialogIndex = UI.dialogStack.indexOf(routeDialog);
+      while(UI.dialogStack.length > dialogIndex) {
+        UI.closeDialog();
+      }
+      if(this.importImageMobile && routeDialog === this.importImageMobile.uiComponent) {
+        closePromise = this.importImageMobile.whenClosed();
+      }
+    } else {
+      this.visible = false;
+      if(this.importImageMobile) {
+        this.importImageMobile.visible = false;
+      }
+    }
+    return closePromise;
   },
 
   effectsHTML : function() {
@@ -1022,13 +1052,13 @@ ImportImage.prototype = {
       }
     }
 
-    // stop play
-    this.editor.frames.stop();
-
     var layer = this.editor.layers.getSelectedLayerObject();
     if(!layer || layer.getType() != 'grid') {
-      return;
+      return false;
     }
+
+    // stop play only after confirming that this route can open.
+    this.editor.frames.stop();
 
     var tileSet = layer.getTileSet();
 
@@ -1075,8 +1105,11 @@ ImportImage.prototype = {
         this.importImageMobile.init(this.editor, this);
       }
 
-      this.importImageMobile.show();
-      return;
+      var mobileShown = this.importImageMobile.show();
+      if(mobileShown && typeof mobileShown.then == 'function') {
+        return mobileShown.then(function() { return true; });
+      }
+      return true;
     }
 
     var _this = this;
@@ -1167,6 +1200,9 @@ ImportImage.prototype = {
       this.uiComponent.on('close', function() {
 //        alert('close');
         _this.visible = false;
+        if(_this.routeClosed) {
+          _this.routeClosed();
+        }
       });
 
     } else {
@@ -1180,6 +1216,7 @@ ImportImage.prototype = {
       UI.showDialog("importImageDialog");
     }
     this.visible = true;
+    return true;
 
   },
 

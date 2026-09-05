@@ -20,6 +20,9 @@ var ImportImageMobile = function() {
   this.touchCount = 0;
   this.doImport = false;
   this.visible = false;
+  this.closePromise = null;
+  this.resolveClose = null;
+  this.closingRouteClosed = null;
 
 
   this.frameCount = 24;
@@ -501,6 +504,11 @@ ImportImageMobile.prototype = {
 
   show: function() {
     var _this = this;
+    if(this.closePromise) {
+      return this.closePromise.then(function() {
+        return _this.show();
+      });
+    }
 //    this.callback = args.colorPickedCallback;
     if(this.uiComponent == null) {
       this.uiComponent = UI.create("UI.MobilePanel", { "id": "importImageMobile", "title": "Import Image", "fullScreen": true, "maxWidth": 640, "maxHeight": 800 });
@@ -524,14 +532,34 @@ ImportImageMobile.prototype = {
 
       });
 
+      this.uiComponent.on('closing', function() {
+        _this.closingRouteClosed = _this.importer.routeClosed;
+        if(_this.closePromise == null) {
+          _this.closePromise = new Promise(function(resolve) {
+            _this.resolveClose = resolve;
+          });
+        }
+      });
+
       this.uiComponent.on('close', function() {
+        var routeClosed = _this.closingRouteClosed;
+        var resolveClose = _this.resolveClose;
+        _this.closingRouteClosed = null;
+        _this.resolveClose = null;
+        _this.closePromise = null;
         _this.visible = false;
         _this.importer.visible = false;
+        if(routeClosed) {
+          routeClosed();
+        }
         if(_this.doImport) {
           _this.showProgress();
           setTimeout(function() {
             _this.startImport();
           }, 10);
+        }
+        if(resolveClose) {
+          resolveClose();
         }
       });
 
@@ -549,10 +577,16 @@ ImportImageMobile.prototype = {
       this.initContent();
     }
 
-    UI.showDialog("importImageMobile");
+    if(!this.visible) {
+      UI.showDialog("importImageMobile");
+    }
     this.visible = true;
     this.importer.visible = true;
 
+  },
+
+  whenClosed: function() {
+    return this.closePromise;
   },
 
   initContent: function() {

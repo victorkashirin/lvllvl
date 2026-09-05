@@ -1,6 +1,10 @@
 import {
   FeatureRegistry,
 } from "./modules/application/featureRegistry.mjs";
+import {
+  UiRouteId,
+  UiRouteService,
+} from "./modules/application/uiRouteService.mjs";
 import { DocumentSession } from "./modules/application/documentSession.mjs";
 import { EditorCommandService } from "./modules/application/editorCommandService.mjs";
 import { PersistenceService } from "./modules/application/persistenceService.mjs";
@@ -14,6 +18,11 @@ import {
   imageImportFeatureName,
 } from "./modules/feature-adapters/imageImportFeature.mjs";
 import {
+  createImageImportRoute,
+  createLegacyUiRouteAdapter,
+  registerLegacyModeRoutes,
+} from "./modules/feature-adapters/legacyUiRoutes.mjs";
+import {
   createLegacyTextModeHistoryCapabilities,
   createTextModeHistoryReplay,
 } from "./modules/feature-adapters/textModeHistoryAdapter.mjs";
@@ -26,7 +35,7 @@ const featureRegistry = new FeatureRegistry();
 const featureScriptUrl = new URL("./features/image-import.js", import.meta.url);
 featureScriptUrl.search = new URL(import.meta.url).search;
 
-featureRegistry.register(
+const imageImportFeature = featureRegistry.register(
   imageImportFeatureName,
   createImageImportFeature({
     legacyGlobal: /** @type {any} */ (globalThis),
@@ -42,6 +51,23 @@ featureRegistry.register(
 );
 
 const app = new globalThis.Editor();
+const uiRoutes = new UiRouteService({
+  ui: createLegacyUiRouteAdapter({
+    document,
+    schedule(callback) {
+      globalThis.setTimeout(callback, 0);
+    },
+    logError(message, error) {
+      console.error(message, error);
+    },
+  }),
+});
+registerLegacyModeRoutes(uiRoutes, (mode) => app.applyMode(mode));
+uiRoutes.register(
+  UiRouteId.IMAGE_IMPORT,
+  createImageImportRoute(imageImportFeature, () => /** @type {any} */ (app.textModeEditor)),
+  { aliases: ["image-import"] },
+);
 const clock = () => Date.now();
 const createId = () => globalThis.generateUUID();
 const persistence = new PersistenceService({
@@ -110,6 +136,7 @@ const services = {
   remoteProviderFacades,
   remoteProviders,
   remoteProviderUi,
+  uiRoutes,
   createTextModeCommandService,
   createDocumentSession() {
     return new DocumentSession({

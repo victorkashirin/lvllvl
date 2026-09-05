@@ -62,6 +62,28 @@ The image importer is context-scoped. Disposal releases an optional importer
 cleanup hook and restores the editor's compatibility facade, allowing later
 reactivation without reloading its code.
 
+## UI routing and activation
+
+`modules/application/uiRouteService.mjs` owns stable route identifiers and the
+loading, ready, failed, retrying, and disposed lifecycle. Navigation is
+single-flight for repeated loading requests to the same route and context. A ready
+route cleans up before reactivation unless its definition explicitly guarantees
+that the same scoped instance can safely transfer ownership. Changing routes
+aborts an in-flight activation, ignores stale completion, and runs the registered
+route cleanup. Replacement activation waits for asynchronous teardown, while
+overlay routes preserve and restore their underlying ready route. Route definitions
+receive an abort signal and an idempotent close action instead of reaching into
+global UI state.
+
+The composition root registers legacy editor modes and the context-scoped image
+importer through `modules/feature-adapters/legacyUiRoutes.mjs`. Menu selection,
+the keyboard shortcut, mobile menu, drag-and-drop, start-page action, and direct
+`?route=feature:image-import` startup all call that same route contract. The
+adapter alone creates loading and error DOM, owns the retry control, moves focus
+to the visible chooser in a ready route, and restores the invoking element when
+the route closes. Image-import activation rolls back partial dialog creation, and
+cleanup closes any nested dialogs above the importer before closing the importer.
+
 ## Boundary contracts
 
 Public module ports use checked JSDoc contracts. `tsc -p jsconfig.modules.json`
@@ -241,11 +263,12 @@ the initial chunk table remains limited to unique JavaScript and CSS chunks.
 ## First migrated feature
 
 The image importer is emitted as `js/features/image-import.js` instead of being part
-of the initial `js/main.js` payload. Existing menu, mobile, drag-and-drop, frame
-animation, and tile-palette callers use a compatibility facade. The first call to
-`start()` loads the feature code once, creates an `ImportImage` for that text-mode
-editor, initializes it, and replaces the facade. A failed request remains retryable
-and displays a persistent error message.
+of the initial `js/main.js` payload. User-facing menu, keyboard, mobile,
+drag-and-drop, start-page, and deep-link callers enter through the UI route
+service. The first activation loads the feature code once and creates one
+`ImportImage` for that text-mode editor. A narrow compatibility facade remains
+only for legacy update paths that inspect importer state. Failed activation is
+retryable through the central route adapter.
 
 Use the same sequence for later migrations: identify one host interface, add a
 layered module adapter, keep the legacy surface narrow, split the ordered

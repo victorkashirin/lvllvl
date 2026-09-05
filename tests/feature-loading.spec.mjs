@@ -29,12 +29,14 @@ test("image import is loaded once on first activation", async ({ page }) => {
 
   const before = await page.evaluate(() => ({
     active: g_app.featureRegistry.isActive("imageImport"),
+    route: g_app.services.uiRoutes.getState("feature:image-import").status,
     constructorType: typeof ImportImage,
     importInProgress: g_app.textModeEditor.importImage.importInProgress,
     visible: g_app.textModeEditor.importImage.visible,
   }));
   expect(before).toEqual({
     active: false,
+    route: "disposed",
     constructorType: "undefined",
     importInProgress: false,
     visible: false,
@@ -79,7 +81,7 @@ test("image import is loaded once on first activation", async ({ page }) => {
   expect(failures, failures.join("\n")).toEqual([]);
 });
 
-test("a failed image-import request is reported and can be retried", async ({ page }) => {
+test("a failed image-import route shows a retry action and restores focus", async ({ page }) => {
   let attempts = 0;
   let failRequest = true;
 
@@ -94,18 +96,39 @@ test("a failed image-import request is reported and can be retried", async ({ pa
 
   await page.goto("/", { waitUntil: "domcontentloaded" });
   await expect(page.locator("#startPage")).toBeVisible();
-  await page.evaluate(() => g_app.textModeEditor.importImage.start());
+  await page.locator("#start2D").click();
+  await page.getByText("OK", { exact: true }).last().click();
+  await expect(page.locator("#startPage")).toBeHidden();
+  await page.evaluate(() => {
+    const trigger = document.createElement("button");
+    trigger.id = "routeTestTrigger";
+    trigger.textContent = "Open import";
+    document.body.appendChild(trigger);
+    trigger.focus();
+  });
+  await page.evaluate(() => g_app.openImageImport(undefined, "test"));
 
-  await expect(page.locator("#featureLoadError")).toHaveText(
+  await expect(page.locator("#featureLoadError .feature-load-error-message")).toHaveText(
     "Could not load image import. Check your connection and try again.",
   );
+  await expect(page.locator("#featureLoadError .feature-load-retry")).toBeFocused();
   expect(await page.evaluate(() => g_app.featureRegistry.isActive("imageImport"))).toBe(false);
+  expect(await page.evaluate(() =>
+    g_app.services.uiRoutes.getState("feature:image-import").status,
+  )).toBe("failed");
 
   failRequest = false;
-  await page.evaluate(() => g_app.textModeEditor.importImage.start());
+  await page.locator("#featureLoadError .feature-load-retry").click();
 
-  expect(await page.evaluate(() => g_app.featureRegistry.isActive("imageImport"))).toBe(true);
+  await expect.poll(() => page.evaluate(() =>
+    g_app.featureRegistry.isActive("imageImport"),
+  )).toBe(true);
   await expect(page.locator("#featureLoadError")).toHaveCount(0);
+  expect(await page.evaluate(() =>
+    g_app.services.uiRoutes.getState("feature:image-import").status,
+  )).toBe("ready");
+  await page.evaluate(() => g_app.closeRoute("feature:image-import"));
+  await expect(page.locator("#routeTestTrigger")).toBeFocused();
   expect(attempts).toBe(2);
 });
 
@@ -142,7 +165,9 @@ test("the image-import dialog keeps application typography and valid icons", asy
 
   const imageImportItem = page
     .locator(".ui-menu-item:visible")
-    .filter({ hasText: /^Image \/ Video\.\.\.$/ });
+    .filter({
+      has: page.locator(".ui-menu-item-label", { hasText: /^Image \/ Video\.\.\.$/ }),
+    });
   await expect(imageImportItem).toBeVisible();
   await imageImportItem.click();
 

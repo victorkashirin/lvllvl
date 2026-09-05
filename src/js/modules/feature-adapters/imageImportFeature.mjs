@@ -1,4 +1,4 @@
-import { FeatureScope } from "../application/featureRegistry.mjs";
+import { FeatureId, FeatureScope } from "../application/featureRegistry.mjs";
 
 /**
  * @typedef {import("../application/featureRegistry.mjs").FeatureDefinition<
@@ -38,7 +38,7 @@ import { FeatureScope } from "../application/featureRegistry.mjs";
  * @property {() => void} [clearError]
  */
 
-export const imageImportFeatureName = "imageImport";
+export const imageImportFeatureName = FeatureId.IMAGE_IMPORT;
 
 /** @param {{ ImportImage?: new () => ImageImporter }} legacyGlobal */
 function imageImporterConstructor(legacyGlobal) {

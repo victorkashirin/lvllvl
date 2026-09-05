@@ -49,6 +49,10 @@ export const FeatureScope = Object.freeze({
   PER_USE: "per-use",
 });
 
+export const FeatureId = Object.freeze({
+  IMAGE_IMPORT: "imageImport",
+});
+
 const featureScopeValues = new Set(Object.values(FeatureScope));
 
 /** @param {string} name */

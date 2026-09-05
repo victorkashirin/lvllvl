@@ -69,11 +69,11 @@ DropImage.prototype = {
     var _this = this;
 
     if(action == 'import') {
-      g_app.textModeEditor.importImage.start({
+      g_app.openImageImport({
         dialogReadyCallback: function() {
           g_app.textModeEditor.importImage.setImportImage(_this.file);
         }
-      });
+      }, 'drag-and-drop');
     }
 
     if(action == 'background') {
@@ -176,5 +176,4 @@ DropImage.prototype = {
 
   }
 }
-
 

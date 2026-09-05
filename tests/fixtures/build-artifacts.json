@@ -27,16 +27,16 @@
       "sha256": "f6e20ce93d4c5e5a0fe109bd3a07dc51e482ba8700c4ef7468bbc0839d2872b8"
     },
     "js/main.js": {
-      "bytes": 3230055,
-      "sha256": "1a9f814e749143f3763657618ebabe9de45de8103b089538697f5e063953e836"
+      "bytes": 3231431,
+      "sha256": "8eaec8128f724b8f429ed83e276036d48291d77e93cc12770fb679c6063e6d8a"
     },
     "js/main.js.map": {
-      "bytes": 10304259,
-      "sha256": "22b863892e6ace03b05b08994fe34598dd22d6837c1af9461c37133825c2bd0b"
+      "bytes": 10308580,
+      "sha256": "df2fc99bb0a9ca387d023bb251b0bd26f9e2d309818069faac031be5d9d6f86a"
     },
     "js/bootstrap.mjs": {
-      "bytes": 4568,
-      "sha256": "05a2ed52d810ebf05dc89b58bf0faef42b942b9c7f78aac0ef9b4006e696e3c4"
+      "bytes": 5354,
+      "sha256": "ddcadc468b29b80729795c8e237dc225842dc41e98d17c35ebe6c23606fd6ada"
     },
     "js/modules/application/documentSession.mjs": {
       "bytes": 4351,
@@ -51,8 +51,8 @@
       "sha256": "d9ac9a3addaf554c1fc8a22482daded760daa96048e4393a8387214b0bbed87a"
     },
     "js/modules/application/featureRegistry.mjs": {
-      "bytes": 15212,
-      "sha256": "2ee147ba392d34e298a7a8b8294ee1475cf89b2fc446ddbbc48d395868df6dd3"
+      "bytes": 15289,
+      "sha256": "0edf5a9737a4dd7bfe5adb157856ae2c9775f0e6824cdd0eafdb6a716c5ad175"
     },
     "js/modules/application/historyService.mjs": {
       "bytes": 2595,
@@ -65,6 +65,10 @@
     "js/modules/application/remoteProviderService.mjs": {
       "bytes": 15572,
       "sha256": "76b357065e6944a92f5bb46434d40ef193cd32b8320e95d058de8019a79e3914"
+    },
+    "js/modules/application/uiRouteService.mjs": {
+      "bytes": 17249,
+      "sha256": "ae2771622801ad093e2bf590a15ea179306c9fc9ef899cc4958e03e6c93867c4"
     },
     "js/modules/domain/documentRevisionState.mjs": {
       "bytes": 1677,
@@ -79,12 +83,16 @@
       "sha256": "3ff625c95759ac518f0ed6dba46174804de7d4d9cf20bbb6f722210a32605e7a"
     },
     "js/modules/feature-adapters/imageImportFeature.mjs": {
-      "bytes": 3627,
-      "sha256": "ac80e51dd3e720a585847a08f9c2f68742a64a3c1ff9bf31cc3ea10b6794ccdd"
+      "bytes": 3647,
+      "sha256": "064e98c6467e306aa3b38180a361385d10673a442e38c4c4753092aac26821f6"
     },
     "js/modules/feature-adapters/legacyRemoteProviderFacades.mjs": {
       "bytes": 8297,
       "sha256": "4a409582a19499b153e9de3134ca5dd9c45fc44d4f3ec1c0361b2582c0fadf69"
+    },
+    "js/modules/feature-adapters/legacyUiRoutes.mjs": {
+      "bytes": 9100,
+      "sha256": "486693b9be5764ce0c23dd9f1dbc3dc95e5afbaa81f56016dc8d64d33935104d"
     },
     "js/modules/feature-adapters/textModeHistoryAdapter.mjs": {
       "bytes": 10255,
@@ -103,16 +111,16 @@
       "sha256": "0951567df38317fd9903c8e4fd39626f9d7ab81b769a5a44945ee53259af069f"
     },
     "js/features/image-import.js": {
-      "bytes": 145329,
-      "sha256": "2ada1b70194e433533e2500dafe67324055756c0adeb6cd61728d3ce0a3daf24"
+      "bytes": 146660,
+      "sha256": "0ff4caf8ebc888913fc7d4260055b58c718203f4913db5e4b9de0c3416f1fff8"
     },
     "js/features/image-import.js.map": {
-      "bytes": 543296,
-      "sha256": "31f5ff73265af60fea868ffa942125689b8ae619f96b6b7b364d84642636ec2c"
+      "bytes": 547209,
+      "sha256": "036aeac4ae9d36173156afdc74ff013ac7e6554f783f69a58dd206bba316ffad"
     },
     "js/html/htmlcache.js": {
-      "bytes": 363390,
-      "sha256": "95facc6642a9a0da391670ad3c64753f8583c589e6033e74f0614e43a068b0a5"
+      "bytes": 364097,
+      "sha256": "080106fb0639669156aae45964cbfa8f5bd77be759d4ddc2d4dbf3a523ccea5c"
     }
   }
 }

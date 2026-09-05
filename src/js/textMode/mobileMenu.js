@@ -494,7 +494,7 @@ MobileMenu.prototype = {
         this.editor.exportTileset();
       break;      
       case 'importimage':
-        this.editor.importImage.start();
+        g_app.openImageImport(undefined, 'mobile-menu');
       break;
       case 'togglegrid':
 //        this.editor.grid.toggleGrid();

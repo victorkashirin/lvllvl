@@ -21,6 +21,8 @@
   reproducible desktop and minimum-mobile performance baseline reporting.
 - Add application, context, and per-use feature scopes with independent
   single-flight code loading, targeted disposal, bulk disposal, and retry coverage.
+- Add stable application and feature route identifiers with observable loading,
+  ready, failed, retrying, and disposed lifecycle states.
 
 ### Changed
 
@@ -43,6 +45,9 @@
   identifiers and timestamps through composition-root dependencies.
 - Make image import context-scoped and restore its compatibility facade after
   disposal so separate editors cannot share importer state.
+- Route editor modes and every image-import entry point through one activation
+  service with cancellation, cleanup, retry UI, and focus restoration owned by a
+  DOM adapter.
 
 ### Fixed
 
@@ -76,6 +81,13 @@
   fixture cannot bypass reviewed exceptions.
 - Count every activation resource and repeated transfer in performance request
   byte totals.
+- Keep modal route ownership transactional by rolling back incomplete image-import
+  opens, closing nested dialogs in stack order, serializing asynchronous teardown,
+  preserving the underlying editor route, and focusing the visible chooser.
+- Ignore image-import shortcuts while their menu is hidden, and keep the mobile
+  import action from blocking adjacent start-page controls.
+- Serialize animated mobile image-import teardown, keep repeated opens idempotent,
+  and prevent stale or differently scoped route owners from closing active UI.
 
 ## 0.497.3 - 2026-09-05
 

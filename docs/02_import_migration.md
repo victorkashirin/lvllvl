@@ -385,6 +385,15 @@ documented in `01_probems.md`.
 
 Overall score: **Necessary**
 
+Status: **Completed 2026-09-05.** Stable route and feature identifiers now feed a
+single activation service with observable lifecycle states, single-flight repeat
+navigation, stale-activation cancellation, cleanup, and retry. A UI adapter owns
+load/error DOM and focus behavior. Editor modes plus image-import menu, keyboard,
+mobile, drag-and-drop, start-page, and deep-link entry points use the same route
+contract. Modal routes retain their underlying editor route, serialize teardown,
+and roll back partial activation. Unit and desktop/touch browser coverage exercises
+the production entry-point handlers and nested-dialog cleanup.
+
 ### Work
 
 - Define stable route and feature identifiers rather than dispatching through

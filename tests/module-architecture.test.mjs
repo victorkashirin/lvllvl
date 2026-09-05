@@ -367,7 +367,7 @@ test("the image-import facade survives context disposal and reactivation", async
 
 test("the production ES-module graph is discovered and obeys its boundaries", async () => {
   const result = await verifyModuleBoundaries();
-  assert.equal(result.files, 17);
+  assert.equal(result.files, 19);
   assert.deepEqual(result.modules, [
     "js/bootstrap.mjs",
     "js/modules/application/documentSession.mjs",
@@ -377,17 +377,19 @@ test("the production ES-module graph is discovered and obeys its boundaries", as
     "js/modules/application/historyService.mjs",
     "js/modules/application/persistenceService.mjs",
     "js/modules/application/remoteProviderService.mjs",
+    "js/modules/application/uiRouteService.mjs",
     "js/modules/domain/documentRevisionState.mjs",
     "js/modules/domain/githubRepositoryAddress.mjs",
     "js/modules/domain/historyState.mjs",
     "js/modules/feature-adapters/imageImportFeature.mjs",
     "js/modules/feature-adapters/legacyRemoteProviderFacades.mjs",
+    "js/modules/feature-adapters/legacyUiRoutes.mjs",
     "js/modules/feature-adapters/textModeHistoryAdapter.mjs",
     "js/modules/infrastructure/browserStorageAdapter.mjs",
     "js/modules/infrastructure/classicScriptLoader.mjs",
     "js/modules/infrastructure/disabledRemoteProviderAdapter.mjs",
   ]);
-  assert.equal(result.edges.length, 19);
+  assert.equal(result.edges.length, 22);
 });
 
 test("module discovery rejects an unreachable file under a governed root", async (context) => {

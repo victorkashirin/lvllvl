@@ -297,6 +297,8 @@ TextModeEditor.prototype = {
   init: function(services) {
     var _this = this;
 
+    // Temporary compatibility state for legacy update paths. All user-facing
+    // launchers enter through the UI route service.
     this.importImage = g_app.getFeatureFacade('imageImport', this);
     this.commands = services.createTextModeCommandService(this);
     this.editorState = this.commands.state;
