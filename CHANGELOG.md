@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.497.5 - 2026-09-05
+
 ### Documentation
 
 - Rewrite the README around the fork's visitor-facing improvements and move build,

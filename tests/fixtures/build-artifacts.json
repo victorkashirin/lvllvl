@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
-  "releaseVersion": "0.497.4",
+  "releaseVersion": "0.497.5",
   "artifacts": {
     "index.html": {
       "bytes": 1961,
-      "sha256": "22a34d695868f7b56cfe42b7c3724e88f87c52f0de015e33bc7eec69092f0f81"
+      "sha256": "959d6ecc1ede39e70872f94002e2e5c7a6428db30b29af60d27852dc38d0b3ba"
     },
     "c64/index.html": {
       "bytes": 1978,
-      "sha256": "88274b9a34f9dc3e2431cae3b3b5705fbebd5aefd2af98409f78513fa23db5dc"
+      "sha256": "829f31c3db420d81e94440aad5526af5a9870ef8af39404871af3c7752411a03"
     },
     "css/style.css": {
       "bytes": 136310,
@@ -28,19 +28,19 @@
     },
     "js/main.js": {
       "bytes": 3246089,
-      "sha256": "a34ea12f401242256f41a2064b5d087864db10bbf902967e3d934df9e97a9ded"
+      "sha256": "4a9328a1705ce29f3c09fafbfcc93610c9d6182f889c9936a817a0905be42b67"
     },
     "js/main.js.map": {
       "bytes": 10359342,
-      "sha256": "92ae21c884399bb848535510031a7b76f6a29dc6b0191923aa7b744725510bf9"
+      "sha256": "22c3ecf60018698ffb3857bf3a6895bb38699dda2e35355598bb4d44bde0c890"
     },
     "js/bootstrap.mjs": {
       "bytes": 3299,
-      "sha256": "fabf3deee513ad922e8bf4ae302d290de8bbb0863dcbfe85e94cf2f3c97c166a"
+      "sha256": "2d28f579742938243337122c49af5f5b9a907411023989852559b732632a5f0f"
     },
     "js/modules/application/documentSession.mjs": {
       "bytes": 4351,
-      "sha256": "b30fe20b9c01da9d4e380bc08aa068a24efbb119903f4c8155131ddfb0368ced"
+      "sha256": "24198f23c370e5d8d5bcd1ffad8b982d7473e0d9fa6b11a4492e4d313cced8a0"
     },
     "js/modules/application/featureRegistry.mjs": {
       "bytes": 7766,
@@ -64,7 +64,7 @@
     },
     "js/modules/feature-adapters/imageImportFeature.mjs": {
       "bytes": 3935,
-      "sha256": "bb5d90f9c93ab41d39ee0ec1e87f8d09faa5a7e06519e02541a31f0fb47e30c1"
+      "sha256": "8f2ef3707e021e4bbf55fd8637e839a0ec525458debfd155ee74452a7f899ef2"
     },
     "js/modules/feature-adapters/legacyRemoteProviderFacades.mjs": {
       "bytes": 4551,
@@ -72,7 +72,7 @@
     },
     "js/modules/feature-adapters/legacySvgExportAdapter.mjs": {
       "bytes": 7123,
-      "sha256": "6c1b3ed0a33263efe511c4a263cb112625f3df7c91725c12720f7abbb04e340c"
+      "sha256": "952af76fe467e25f0fbc00884140ae168c65d1e551aea025d5d1c96ca99dcd73"
     },
     "js/modules/infrastructure/browserStorageAdapter.mjs": {
       "bytes": 3463,
