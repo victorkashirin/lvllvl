@@ -23,7 +23,6 @@ var Graphic = function() {
   // used by drawFrame
   this.tempCanvas = null;
   this.shapesCanvas = null;
-  this.lastDrawnPrevFrame = false;
 
   this.drawEnabled = true;
 
@@ -1307,7 +1306,7 @@ Graphic.prototype = {
           }
           context.globalAlpha = 0.3;
 
-          // should only need to redraw if frame has changed...
+          // Each layer owns its previous-frame raster and dependency cache.
 
           var prevFrameCanvas = layerObject.getPrevFrameCanvas();
 
@@ -1353,9 +1352,8 @@ Graphic.prototype = {
               draw: 'prevgrid'
             };
 
-            var offset = layerObject.drawVector(drawArgs);
+            var offset = layerObject.drawPrevFrame(drawArgs);
 
-            
             drawPrevLayerOffsetX += offset.offsetX + dstX;
             drawPrevLayerOffsetY += offset.offsetY + dstY;
 
@@ -1370,15 +1368,11 @@ Graphic.prototype = {
 
           } else {
 
-            if(prevFrame !== this.lastDrawnPrevFrame) {
-              layerObject.draw({
-                canvas: prevFrameCanvas,
-                frame: prevFrame,
-                allCells: true,
-                shapes: false,
-                draw: 'prevgrid'
-              });
-            }
+            layerObject.drawPrevFrame({
+              canvas: prevFrameCanvas,
+              frame: prevFrame,
+              drawBackground: drawBackground
+            });
 
             drawImage(prevFrameCanvas,
               0, 0, layerWidth, layerHeight,
@@ -1625,11 +1619,6 @@ Graphic.prototype = {
         }
       } 
       
-      if(drawPreviousFrame) {
-        this.lastDrawnPrevFrame = false;// prevFrame;
-      } else {
-        this.lastDrawnPrevFrame = false;
-      }
     }    
   }
 

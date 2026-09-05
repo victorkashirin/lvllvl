@@ -118,6 +118,17 @@ viewport uses `Graphic.drawFrame`.
 
 ### R1 — P1: the onion-skin cache is explicitly disabled
 
+**Status: fixed.** `LayerGrid.drawPrevFrame()` now retains one raster per layer,
+keyed by frame/data identity, shared tile/palette/block revisions, background and
+render settings, and (for vectors) viewport/scale. Targeted cell edits invalidate
+only the cached frame; bulk legacy invalidation remains conservative. Previous
+frame rendering no longer consumes vector dirty state or current selections.
+Source regression tests cover dependency invalidation and layer/frame switching;
+Chromium and Firefox browser tests check zero `prevgrid` draws for warm
+current-frame edits and pixel equivalence against a forced fresh composite for
+bitmap and vector layers. The observations below describe the original bug,
+not new timing measurements.
+
 **Location:** [graphic.js:1374–1383](../../src/js/textMode/graphic.js#L1374-L1383),
 [1634–1638](../../src/js/textMode/graphic.js#L1634-L1638).
 

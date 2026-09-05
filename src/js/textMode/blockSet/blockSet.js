@@ -1,5 +1,6 @@
 var BlockSet = function() {
   this.blockSetId = null;
+  this.renderRevision = 0;
   this.name = '';
   this.editor = null;
 
@@ -83,6 +84,7 @@ BlockSet.prototype = {
     if(this.docRecord) {
       var blockId = this.docRecord.data.blocks.length;
       this.docRecord.data.blocks.push(block);
+      this.renderRevision++;
 
       return blockId;
     }
@@ -103,6 +105,7 @@ BlockSet.prototype = {
   setBlockCount: function(blockCount) {
     if(blockCount < this.docRecord.data.blocks.length) {
       this.docRecord.data.blocks.length = blockCount;
+      this.renderRevision++;
     }
 
   },
@@ -123,6 +126,7 @@ BlockSet.prototype = {
     }
 */
     var block = this.docRecord.data.blocks[blockId];
+    this.renderRevision++;
 
 
     if(typeof args != 'undefined') {
@@ -171,6 +175,7 @@ BlockSet.prototype = {
                  };
 
     data[y][x].t = character;
+    this.renderRevision++;
 
     this.editor.history.addAction("setBlockCell", params);
 
@@ -209,6 +214,7 @@ BlockSet.prototype = {
     }
 
     this.docRecord.data.blocks[blockId].data = newCells;
+    this.renderRevision++;
   },
 
   getCharacterInBlock: function(blockId, x, y) {
@@ -245,6 +251,7 @@ BlockSet.prototype = {
     }
 
     this.docRecord.data.blocks[blockId].fc = color;
+    this.renderRevision++;
 
   },
 
@@ -281,6 +288,7 @@ BlockSet.prototype = {
     }
 
     this.docRecord.data.blocks = [];
+    this.renderRevision++;
   },
 
 

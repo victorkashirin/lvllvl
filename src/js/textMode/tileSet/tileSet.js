@@ -21,6 +21,7 @@ if (!HTMLCanvasElement.prototype.toBlob) {
 
 var TileSet = function() {
   this.tileSetId = null;
+  this.renderRevision = 0;
   this.name = '';
   this.label = '';
   this.type = 'petscii';
@@ -340,6 +341,7 @@ TileSet.prototype = {
 
 
   modified: function() {
+    this.renderRevision++;
     if(g_app.openingProject) {
       return;
     }
@@ -681,6 +683,7 @@ TileSet.prototype = {
 
   // current character data has the current frame for each character
   updateCharacterCurrentData: function(character) {
+    this.renderRevision++;
     if(character >= this.tileData.length) {
       return;
     }
@@ -3072,6 +3075,8 @@ TileSet.prototype = {
 
   // call this when a character has been updated
   updateCharacter: function(character) {
+    // Also covers animation frames and legacy callers writing tile data directly.
+    this.renderRevision++;
 
     // update the geometry if used in 3d
     if(character < this.characterGeometries.length) {

@@ -4,6 +4,12 @@
 
 ### Fixed
 
+- Cache onion-skin rasters per layer so current-frame cell edits no longer redraw
+  the unchanged previous frame. Refresh on frame/content, shared tile animation,
+  palette/block, background, dimension, and render-option changes; key vector
+  caches by viewport/scale without consuming current-frame dirty state.
+- Keep current-frame selections out of onion-skin rasters and use the previous
+  frame's C64 ECM background colors when rendering it.
 - Stop fractional-zoom glyph jitter with a shared, deterministic pixel-centre
   sampler for bitmap artwork and previews, including Firefox at 225%, odd-sized
   tiles during dirty redraws, and Chromium cursor previews below 100% zoom.

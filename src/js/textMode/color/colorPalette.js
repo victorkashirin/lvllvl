@@ -10,6 +10,7 @@ var ColorPalette = function() {
   this.defaultBackgroundColor = 6;
   this.defaultBorderColor = 14;
 
+  this.renderRevision = 0;
   this.colors = [];
   this.materials = [];
 
@@ -574,6 +575,8 @@ ColorPalette.prototype = {
   },
 
   createColorMeta: function(colorIndex) {
+    // Includes palette loads and edits with persistence tracking disabled.
+    this.renderRevision++;
     var colorHex = 0;
     if(this.docRecord) {
       colorHex = this.docRecord.data.colors[colorIndex];

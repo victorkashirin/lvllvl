@@ -47,6 +47,7 @@ var LayerGrid = function() {
 
   this.prevFrameCanvas = null;
   this.prevFrameContext = null;
+  this.prevFrameCache = null;
 
   this.refImage = null;
 
@@ -136,6 +137,7 @@ LayerGrid.prototype = {
     }
 
     if(updateTiles) {
+      this.invalidatePrevFrame();
       var frames = this.frames
       var frameCount = this.getFrameCount();
       var gridWidth = this.getGridWidth();
@@ -157,6 +159,7 @@ LayerGrid.prototype = {
   },
 
   setToBlank: function() {
+    this.invalidatePrevFrame();
     var frames = this.frames
     var frameCount = this.getFrameCount();
     var gridWidth = this.getGridWidth();
@@ -339,6 +342,7 @@ LayerGrid.prototype = {
   },
 
   setReferenceImage: function(args) {
+    this.invalidatePrevFrame();
 
 
     this.refImage = args.image;
@@ -576,6 +580,76 @@ LayerGrid.prototype = {
   },
 
 
+
+  // One bounded cache per layer, never a global frame-number cache. Cell edits
+  // invalidate only the cached frame; bulk legacy mutations may invalidate all.
+  invalidatePrevFrame: function(frame) {
+    if(typeof frame === 'undefined' || (this.prevFrameCache
+        && this.prevFrameCache.frame === this.frames[frame])) {
+      this.prevFrameCache = null;
+    }
+  },
+
+  drawPrevFrame: function(args) {
+    var frame = this.frames[args.frame];
+    if(!frame || !frame.data) {
+      this.invalidatePrevFrame();
+      return { offsetX: 0, offsetY: 0 };
+    }
+
+    var tileSet = this.getTileSet();
+    var palette = this.getColorPalette();
+    var mode = this.getMode();
+    var vector = mode === TextModeEditor.Mode.VECTOR;
+    var blockSet = this.getBlockModeEnabled() ? this.getBlockSet() : null;
+    var canvas = args.canvas;
+    var drawBackground = typeof args.drawBackground === 'undefined'
+      ? this.editor.layers.isBackgroundVisible() : args.drawBackground;
+    // Fixed-size metadata/revisions: do not scan cells or tile pixels on hits.
+    // NES has only four small subpalettes, which can also be edited in-place.
+    var state = [
+      this.doc, frame, frame.data, tileSet, tileSet.renderRevision,
+      tileSet.tileData, tileSet.currentTileData, tileSet.vectorData,
+      tileSet.getTileWidth(), tileSet.getTileHeight(),
+      palette, palette.renderRevision, palette.colors,
+      blockSet, blockSet && blockSet.renderRevision,
+      blockSet && blockSet.getDocRecord(),
+      this.getGridWidth(), this.getGridHeight(), this.getWidth(), this.getHeight(),
+      mode, this.getColorPerMode(), this.getBlockModeEnabled(),
+      this.getBlockWidth(), this.getBlockHeight(),
+      this.getHasTileFlip(), this.getHasTileRotate(), this.getTransparentColorIndex(),
+      this.blankTileId, this.editor.graphic.getType(), drawBackground,
+      this.getBackgroundColor(args.frame), frame.c64Multi1Color, frame.c64Multi2Color,
+      frame.c64ECMColor1, frame.c64ECMColor2, frame.c64ECMColor3,
+      this.refImageCanvas, this.doc.refImageData,
+      mode === TextModeEditor.Mode.NES
+        ? JSON.stringify(this.editor.colorPaletteManager.colorSubPalettes.subPalettes) : null,
+      mode === TextModeEditor.Mode.C64MULTICOLOR ? this.editor.currentTile.color : null
+    ];
+    if(vector) {
+      state.push(args.scale, args.drawFromX, args.drawFromY, args.drawToX, args.drawToY,
+        tileSet.getFontScale(), tileSet.getFontAscent());
+    }
+
+    var cache = this.prevFrameCache;
+    if(cache && cache.canvas === canvas && cache.width === canvas.width
+        && cache.height === canvas.height && state.length === cache.state.length
+        && state.every(function(value, index) { return value === cache.state[index]; })) {
+      return cache.offset;
+    }
+
+    this.prevFrameCache = null;
+    var drawArgs = Object.assign({}, args, {
+      allCells: true, draw: 'prevgrid', drawBackground: drawBackground,
+      shapes: false, cursor: false
+    });
+    var offset = vector ? this.drawVector(drawArgs) : this.draw(drawArgs);
+    this.prevFrameCache = {
+      frame: frame, state: state, canvas: canvas,
+      width: canvas.width, height: canvas.height, offset: offset
+    };
+    return offset;
+  },
 
   getPreviewCanvas: function() {
     return this.previewCanvas;
@@ -830,6 +904,7 @@ LayerGrid.prototype = {
   },
 
   initFrameBlocks: function(blockId) {
+    this.invalidatePrevFrame();
     for(var i = 0; i < this.frames.length; i++) {
       var gridData = this.frames[i].data;
       if(gridData) {
@@ -1809,6 +1884,7 @@ LayerGrid.prototype = {
   },
 
   updateTilesFromBlocks: function() {
+    this.invalidatePrevFrame();
 
 
     var colorPerMode = this.getColorPerMode();
@@ -1854,6 +1930,7 @@ LayerGrid.prototype = {
       return;
     }
 
+    this.invalidatePrevFrame();
     var tileSet = this.getTileSet();
 
     for(var frame = 0; frame < this.frames.length; frame++) {
@@ -1876,6 +1953,7 @@ LayerGrid.prototype = {
   },
 
   invalidateAllCells: function() {
+    this.invalidatePrevFrame();
     var doc = this.doc;
 
     this.updatedCellRanges.minX = 0;
@@ -2207,6 +2285,8 @@ LayerGrid.prototype = {
     }
 
 
+
+    this.invalidatePrevFrame(frame);
 
     // if its the current frame, mark range for redraw.
     if(frame === this.currentFrame) {
@@ -2595,6 +2675,7 @@ LayerGrid.prototype = {
   },
 
   replaceColor: function(oldColor, newColor) {
+    this.invalidatePrevFrame();
     var gridWidth = this.getGridWidth();
     var gridHeight = this.getGridHeight();
 
@@ -2755,7 +2836,7 @@ LayerGrid.prototype = {
        || scale != this.lastDrawScale) {
          allCells = true;    
          
-      if(!bgOnly) {
+      if(!bgOnly && draw !== 'prevgrid') {
         if(!cursor && !eraseCursor && !dragPaste && !eraseDragPaste && !typingCursor && !eraseTypingCursor) {
           // only save these if drawing the graphic
           this.lastDrawFromGridX = drawFromGridX;
@@ -3230,7 +3311,7 @@ LayerGrid.prototype = {
               flipH = gridData[y][x].fh;
               rotZ = gridData[y][x].rz;
 
-              if(x >= selectionX + selectionOffsetX && x < selectionX + selectionOffsetX + selectionWidth
+              if(draw !== 'prevgrid' && x >= selectionX + selectionOffsetX && x < selectionX + selectionOffsetX + selectionWidth
                 && y >= selectionY + selectionOffsetY && y < selectionY + selectionOffsetY + selectionHeight) {
                   var sX = x - selectionOffsetX;
                   var sY = y - selectionOffsetY;
@@ -3392,7 +3473,7 @@ LayerGrid.prototype = {
     // everything has been drawn if not drawing cursor/drag paste area..
     // so invalidate updated cell ranges
     
-    if(!eraseCursor && !cursor && !eraseDragPaste && !dragPaste && !typingCursor && !eraseTypingCursor) {
+    if(draw !== 'prevgrid' && !eraseCursor && !cursor && !eraseDragPaste && !dragPaste && !typingCursor && !eraseTypingCursor) {
 
       if(!bgOnly) {
         this.updatedCellRanges.minX = this.doc.gridWidth;
@@ -3647,10 +3728,10 @@ LayerGrid.prototype = {
     // get the ecm colours
     var ecmColors = [];
     if(this.getScreenMode() == TextModeEditor.Mode.C64ECM) {
-      ecmColors[0] = this.getC64ECMColor(0);
-      ecmColors[1] = this.getC64ECMColor(1);
-      ecmColors[2] = this.getC64ECMColor(2);
-      ecmColors[3] = this.getC64ECMColor(3);
+      ecmColors[0] = this.getC64ECMColor(0, frameIndex);
+      ecmColors[1] = this.getC64ECMColor(1, frameIndex);
+      ecmColors[2] = this.getC64ECMColor(2, frameIndex);
+      ecmColors[3] = this.getC64ECMColor(3, frameIndex);
     }
 
 
@@ -3807,7 +3888,7 @@ LayerGrid.prototype = {
 
     var blankCharacter = this.blankTileId;
     var screenMode = this.getMode();
-    var dontDrawSelected = this.isCurrentLayer()
+    var dontDrawSelected = draw !== 'prevgrid' && this.isCurrentLayer()
       && this.editor.tools.drawTools.select.isActive()
       && this.editor.tools.drawTools.select.isMovingSelectionContents()
       && !this.editor.tools.drawTools.select.isInPasteMove();

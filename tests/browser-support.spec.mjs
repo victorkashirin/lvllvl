@@ -89,6 +89,96 @@ async function open2DProject(page, testInfo, { vector = false } = {}) {
   )).toBe(true);
 }
 
+for (const vector of [false, true]) {
+  test(`2D ${vector ? "vector" : "bitmap"} onion skin reuses unchanged rasters and matches a fresh composite`, async ({ page }, testInfo) => {
+    test.skip(!isDesktop2DRendererProject(testInfo));
+    await open2DProject(page, testInfo, { vector });
+    const result = await page.evaluate((vector) => {
+      const editor = g_app.textModeEditor;
+      const graphic = editor.graphic;
+      const view = editor.gridView2d;
+      const layer = editor.layers.getSelectedLayerObject();
+      const tileSet = layer.getTileSet();
+      const palette = layer.getColorPalette();
+      if (vector) {
+        // Self-contained glyphs: the new-project vector choice need not have
+        // loaded a font yet, and an empty font would make equivalence vacuous.
+        tileSet.unitsPerEm = tileSet.ascent = 8;
+        tileSet.vectorData = Array.from({ length: 256 }, (_, i) => ({
+          path: i === 65 ? "M1 1H7V7H1Z" : i === 66 ? "M1 1H7L4 7Z" : "",
+          path2d: null,
+        }));
+        tileSet.modified();
+      }
+      editor.setGridVisible(false);
+      editor.grid.grid2d.setCursorEnabled(false);
+      view.setScale(2.25, false);
+      const tile = vector ? 65 : 1;
+      for (let x = 10; x < 16; x++) layer.setCell({ x, y: 10, t: tile, fc: 1, bc: -1 });
+      graphic.duplicateFrame(0);
+      for (let x = 10; x < 16; x++) layer.setCell({ x, y: 10, t: tileSet.getBlankCharacter(), fc: 1, bc: -1 });
+      editor.frames.setShowPrevFrame(true);
+      graphic.redraw({ allCells: true });
+      const method = vector ? "drawVector" : "draw";
+      const original = layer[method];
+      let rasters = 0;
+      layer[method] = function(args) {
+        if (args.draw === "prevgrid") rasters++;
+        return original.call(this, args);
+      };
+      const pixels = () => view.context.getImageData(0, 0, view.canvas.width, view.canvas.height).data;
+      const compareFresh = () => {
+        const cached = pixels();
+        layer.invalidatePrevFrame();
+        graphic.redraw({ allCells: true });
+        const fresh = pixels();
+        return cached.every((value, i) => value === fresh[i]);
+      };
+      const steps = [];
+      try {
+        for (let i = 0; i < 8; i++) {
+          layer.setCell({ x: 20, y: 12, t: i % 2 + tile, fc: 1, bc: -1 });
+          editor.grid.grid2d.redrawUpdatedCells(layer);
+        }
+        steps.push({ name: "current-frame edits", rasters, equal: compareFresh() });
+        const changes = [
+          ["previous cell", () => layer.setCell({ frame: 0, x: 10, y: 10, t: tile + 1, fc: 2, bc: -1 })],
+          ["palette", () => palette.setColorRGB(1, 0x12ab34)],
+          ["previous background", () => layer.setBackgroundColor(3, 0)],
+          ["zoom", () => view.setScale(3.5, false)],
+          ["pan", () => view.setCameraPosition(13, 15)],
+        ];
+        if (!vector) changes.push(["shared tile pixels", () => tileSet.setPixel(1, 0, 0, tileSet.getPixel(1, 0, 0) ? 0 : 1, false)]);
+        for (const [name, change] of changes) {
+          rasters = 0;
+          change();
+          graphic.redraw({ allCells: true });
+          const refreshed = rasters;
+          rasters = 0;
+          graphic.redraw({ allCells: true });
+          steps.push({ name, refreshed, rasters, equal: compareFresh() });
+        }
+        const withOnion = pixels();
+        editor.frames.setShowPrevFrame(false);
+        graphic.redraw({ allCells: true });
+        const withoutOnion = pixels();
+        return { steps, visible: withOnion.some((value, i) => value !== withoutOnion[i]) };
+      } finally {
+        layer[method] = original;
+      }
+    }, vector);
+    expect(result.visible, JSON.stringify(result)).toBe(true);
+    for (const step of result.steps) {
+      expect(step.rasters, step.name).toBe(0);
+      expect(step.equal, step.name).toBe(true);
+      // Bitmap pan/zoom may reuse the full-resolution cached raster.
+      if (step.refreshed !== undefined && (vector || !["pan", "zoom"].includes(step.name))) {
+        expect(step.refreshed, step.name).toBeGreaterThan(0);
+      }
+    }
+  });
+}
+
 test("first-party production startup stays within budget", async ({ page }, testInfo) => {
   const localFailures = observeLocalFailures(page, testInfo.project.use.baseURL);
 
