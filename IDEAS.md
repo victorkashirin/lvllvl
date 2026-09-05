@@ -1,7 +1,6 @@
 - Performance optimisation
 - Memory leaks tracking
 - custom keyboard shortcuts
-- fix browser errors
 - shift + swipe to move around
 - filter/search tilesets and palettes
 - favorites in tilesets and palettes
@@ -9,3 +8,9 @@
 - magic wand
 - zen mode
 - fix mobile mode
+- fix modal windows
+- finish R4-R8, performance
+- escape from text input with esc to pencil or something else
+- add quick zoom out toggle
+- hide all toolbars toggle
+- svg export doesn't populate name with project name
