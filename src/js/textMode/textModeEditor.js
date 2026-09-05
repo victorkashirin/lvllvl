@@ -121,7 +121,9 @@ var TextModeEditor = function() {
 
 
   this.editorMode = 'tile';
-  this.histories = {};
+  this.commands = null;
+  this.editorState = null;
+  this.history = null;
   this.openingDoc = false;
 }
 
@@ -292,10 +294,13 @@ TextModeEditor.prototype = {
     }
   },
 
-  init: function() {
+  init: function(services) {
     var _this = this;
 
     this.importImage = g_app.getFeatureFacade('imageImport', this);
+    this.commands = services.createTextModeCommandService(this);
+    this.editorState = this.commands.state;
+    this.history = this.commands;
 
     this.colorPaletteManager = new ColorPaletteManager();
     this.colorPaletteManager.init(this);
@@ -547,15 +552,8 @@ TextModeEditor.prototype = {
   setupHistory: function() {
 
     var id = this.doc.id;
-
-    // setup/restore the history
-    if(this.histories.hasOwnProperty(id)) {
-      this.history = this.histories[id];
-    } else {
-      this.history = new History();
-      this.history.init(this);
-      this.histories[id] = this.history;
-    }
+    this.commands.activateDocument(id);
+    this.history = this.commands;
   },
 
   open3d: function(path, settings) {
@@ -582,6 +580,7 @@ TextModeEditor.prototype = {
 
     this.path = path;
     this.doc = g_app.doc.getDocRecord(path);
+    this.setupHistory();
 
     this.grid3d.connectToDoc();
     this.tools.drawTools.setDrawTool('pen');
@@ -594,9 +593,6 @@ TextModeEditor.prototype = {
     }
 
 //    var currentColor = this.currentTile.getColor();
-    this.setupHistory();
-
-
     if(tilePaletteDisplay) {
       // reenable draw tile palette and draw all the tiles
       tilePaletteDisplay.setDrawEnabled(drawTilePaletteEnabledSave);
@@ -1697,6 +1693,9 @@ TextModeEditor.prototype = {
   setEditorMode: function(editorMode) {
 
     this.editorMode = editorMode;
+    if(this.commands) {
+      this.commands.setMode(editorMode);
+    }
 
     if(editorMode == 'pixel') {
       this.tools.pixelDrawTools.setDrawTool('pen');

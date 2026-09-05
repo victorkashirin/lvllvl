@@ -130,6 +130,38 @@ remains a direct local export and therefore stays available when persistence is
 unavailable. Contract coverage lives in `tests/persistence-services.test.mjs`
 and `tests/persistence.spec.mjs`.
 
+## Commands, history, and editor state
+
+Text-mode commands are an eager, per-editor service assembled in
+`src/js/bootstrap.mjs`. `modules/application/editorCommandService.mjs` selects a
+separate `HistoryService` timeline for each active document, so changing frame,
+layer, tool, or mode cannot redirect undo or redo to another document. The
+timeline and its grouping rules live in `modules/domain/historyState.mjs`; it
+retains the existing entry and action object shapes and the legacy
+`startEntry`, `addAction`, `endEntry`, `undo`, and `redo` surface.
+
+History no longer stores the broad text-mode editor. At the composition root,
+`modules/feature-adapters/textModeHistoryAdapter.mjs` converts the legacy editor
+into the narrow replay capabilities and maps stable action names onto cell, tile,
+selection, frame, layer, cursor, color, and invalidation operations. Rendering
+remains outside the history service and is requested through replay callbacks.
+The former global `History` constructor and its ordered build entry have been
+removed.
+
+`modules/application/editorStateService.mjs` is the minimal DOM-free state
+boundary for active document, selection, frame, layer, tool, and mode. State is
+kept per document and snapshots clone selection values, preventing callers from
+mutating stored state by reference.
+
+Character-pixel changes are the first complete mutation slice. Every pointer,
+keyboard, desktop-menu, and mobile-menu operation that reaches
+`TileSet.setPixel()` uses `EditorCommandService.executeTilePixelEdit()` for the
+mutation, stable `setCharPixel` history action, selected pixel state, document
+dirty revision, and render invalidation. Undo and redo come back through the same
+tile mutation path with history recording disabled. Focused contract coverage is
+in `tests/editor-commands.test.mjs`; existing browser routes continue to converge
+on `Editor.undo()` and `Editor.redo()`.
+
 ## Legacy graph non-growth
 
 `tests/fixtures/legacy-main-graph.json` records the current ordered `js/main.js`

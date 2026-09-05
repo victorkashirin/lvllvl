@@ -391,6 +391,15 @@ Select.prototype = {
       return;
     }
 
+    if(this.editor.commands) {
+      this.editor.commands.setSelection({
+        kind: 'cells',
+        from: from,
+        to: to,
+        enabled: enabled
+      });
+    }
+
 
 
     if(saveInHistory) {

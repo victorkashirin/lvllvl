@@ -27,24 +27,36 @@
       "sha256": "f6e20ce93d4c5e5a0fe109bd3a07dc51e482ba8700c4ef7468bbc0839d2872b8"
     },
     "js/main.js": {
-      "bytes": 3300649,
-      "sha256": "1b7661ef6933ed31669b30e4f237cbdabe1e50cf0cb1de9a9e66ca1a64d3b3fd"
+      "bytes": 3294817,
+      "sha256": "de2d630dd175901c2cf797e614f08bac4751284a8fc2c57476d13c9b740cfbb9"
     },
     "js/main.js.map": {
-      "bytes": 10508972,
-      "sha256": "39529235d0d11b41eb6800ea569ae19b6f42dcb59edebb83d39b54d45ccb7053"
+      "bytes": 10488363,
+      "sha256": "2fc9916c28033b542f40668ed7619a214c6e84d2a286c1fc2ca9b626bba3c8d4"
     },
     "js/bootstrap.mjs": {
-      "bytes": 1923,
-      "sha256": "cf0e9891f99695dcfc91fa034f6c57d7cffd4183bfb28f208de5624bcb8b0f66"
+      "bytes": 2531,
+      "sha256": "260d31422f1d541a480ee80d209932ce4f5b7d6d6f1812bc257f60e9ce372bd6"
     },
     "js/modules/application/documentSession.mjs": {
       "bytes": 4351,
       "sha256": "0a5488bceb01fa945b84e56c67ad78745afbdfa34c509acec0c6f8d6fcb4d2a0"
     },
+    "js/modules/application/editorCommandService.mjs": {
+      "bytes": 3613,
+      "sha256": "375a27424369159c9be733e912ebc584e187842a89781c75b701edb1bc42a3ef"
+    },
+    "js/modules/application/editorStateService.mjs": {
+      "bytes": 4355,
+      "sha256": "d9ac9a3addaf554c1fc8a22482daded760daa96048e4393a8387214b0bbed87a"
+    },
     "js/modules/application/featureRegistry.mjs": {
       "bytes": 15212,
       "sha256": "2ee147ba392d34e298a7a8b8294ee1475cf89b2fc446ddbbc48d395868df6dd3"
+    },
+    "js/modules/application/historyService.mjs": {
+      "bytes": 2595,
+      "sha256": "94f034dcee19d824d9d8378bbc93830f0d8dd7c2a1bba78363494d4b285e9114"
     },
     "js/modules/application/persistenceService.mjs": {
       "bytes": 15728,
@@ -54,9 +66,17 @@
       "bytes": 1677,
       "sha256": "edf8e490574850373e5e2f3b305c4420e5b1ad9ef032158103e708cf1ed3130d"
     },
+    "js/modules/domain/historyState.mjs": {
+      "bytes": 2583,
+      "sha256": "3ff625c95759ac518f0ed6dba46174804de7d4d9cf20bbb6f722210a32605e7a"
+    },
     "js/modules/feature-adapters/imageImportFeature.mjs": {
       "bytes": 3627,
       "sha256": "ac80e51dd3e720a585847a08f9c2f68742a64a3c1ff9bf31cc3ea10b6794ccdd"
+    },
+    "js/modules/feature-adapters/textModeHistoryAdapter.mjs": {
+      "bytes": 10255,
+      "sha256": "4ba7ee81988bab3b6bc3fdaee3026f4325aec01b597a92d38e86fc63fb5d16d2"
     },
     "js/modules/infrastructure/browserStorageAdapter.mjs": {
       "bytes": 3463,

@@ -2,11 +2,16 @@ import {
   FeatureRegistry,
 } from "./modules/application/featureRegistry.mjs";
 import { DocumentSession } from "./modules/application/documentSession.mjs";
+import { EditorCommandService } from "./modules/application/editorCommandService.mjs";
 import { PersistenceService } from "./modules/application/persistenceService.mjs";
 import {
   createImageImportFeature,
   imageImportFeatureName,
 } from "./modules/feature-adapters/imageImportFeature.mjs";
+import {
+  createLegacyTextModeHistoryCapabilities,
+  createTextModeHistoryReplay,
+} from "./modules/feature-adapters/textModeHistoryAdapter.mjs";
 import { createClassicScriptLoader } from "./modules/infrastructure/classicScriptLoader.mjs";
 import { createBrowserStorageAdapter } from "./modules/infrastructure/browserStorageAdapter.mjs";
 
@@ -37,9 +42,21 @@ const persistence = new PersistenceService({
   clock,
   createId,
 });
+
+/** @param {any} editor */
+function createTextModeCommandService(editor) {
+  const capabilities = createLegacyTextModeHistoryCapabilities(editor, {
+    isNewSystem: () => Boolean(globalThis.g_newSystem),
+  });
+  const replay = createTextModeHistoryReplay(capabilities);
+
+  return new EditorCommandService({ replay });
+}
+
 const services = {
   clock,
   persistence,
+  createTextModeCommandService,
   createDocumentSession() {
     return new DocumentSession({
       persistence,

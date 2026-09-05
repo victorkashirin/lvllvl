@@ -39,6 +39,7 @@ declare global {
   var Editor: new () => LegacyEditor;
   function generateUUID(): string;
   var g_app: LegacyEditor | undefined;
+  var g_newSystem: boolean;
 }
 
 export {};

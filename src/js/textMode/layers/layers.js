@@ -1788,6 +1788,10 @@ Layers.prototype = {
       this.selectedLayerId = layerId;
     }
 
+    if(this.editor.commands) {
+      this.editor.commands.setLayer(this.selectedLayerId);
+    }
+
     var settings = g_app.doc.getDocRecord('/settings');
     settings.data.selectedLayerId = this.selectedLayerId;
 

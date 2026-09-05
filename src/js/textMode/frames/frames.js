@@ -988,6 +988,10 @@ Frames.prototype = {
       return false;
     }
 
+    if(this.editor.commands) {
+      this.editor.commands.setFrame(frame);
+    }
+
     this.currentFrame = parseInt(frame, 10);
 
 /*

@@ -357,6 +357,10 @@ PixelDrawTools.prototype = {
 
     }
 
+    if(this.editor.commands) {
+      this.editor.commands.setTool(tool);
+    }
+
     $('.pixelDrawTool').removeClass('pixelDrawToolSelected');
     $('#pixelDrawTool_' + tool).addClass('pixelDrawToolSelected');
 

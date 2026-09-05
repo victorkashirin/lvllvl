@@ -4,6 +4,9 @@
 
 ### Added
 
+- Add document-scoped command history, DOM-free editor state, and narrow
+  text-mode replay capability contracts with grouped, no-op, redo invalidation,
+  document isolation, dirty-revision, and action-family coverage.
 - Add injected persistence and document-session contracts for immutable blobs,
   versioned manifests, journals, catalog metadata, active revisions, dirty state,
   and save-in-flight publication, with lifecycle and per-stage failure coverage.
@@ -15,6 +18,11 @@
 
 ### Changed
 
+- Route character-pixel mutations through one command path for selection state,
+  history recording, dirty notification, and redraw invalidation, regardless of
+  whether pointer, keyboard, desktop-menu, or mobile-menu UI initiated the edit.
+- Replace the text-mode history object's broad editor dependency with injected
+  replay capabilities and remove its classic-script entry from the startup graph.
 - Route project open, ordinary save, autosave, Save As, recovery, catalog and
   repository metadata, delete, and cache persistence through the eager
   application service and its browser-storage adapter.
@@ -25,6 +33,12 @@
 
 ### Fixed
 
+- Keep text-mode undo and redo isolated per document while frame, layer, tool,
+  mode, and selection state changes are tracked independently, and avoid
+  recording unchanged character-pixel edits.
+- Preserve pre-edit cursor locations during undo without rewinding them on redo,
+  and keep editor-state frame values synchronized through every central frame
+  setter, including initial document loading.
 - Serialize project save, recovery, and catalog mutations so a second session or
   project listing cannot mistake a live transaction for an interrupted save.
 - Journal browser-project deletion, remove its catalog entry before data cleanup,

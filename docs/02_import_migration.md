@@ -268,6 +268,15 @@ the intentional browser-storage boundary.
 
 Overall score: **Necessary**
 
+Status: **Completed 2026-09-05.** History stack ownership and grouping now live
+in a document-scoped native command service, while the composition root injects
+the narrow capabilities needed to replay the unchanged legacy action shapes. A
+DOM-free editor-state service tracks active document, selection, frame, layer,
+tool, and mode. Character-pixel edits provide the representative vertical slice
+through state selection, dirty revision, history, mutation, and invalidation,
+and every existing text-mode action family replays through the same adapter. See
+`docs/architecture.md` for the command and replay boundary.
+
 The goal is to make state mutation discoverable and testable without requiring a
 complete rewrite of rendering or input handling.
 

@@ -69,7 +69,6 @@
     "js/textMode/textModeEditor.js",
     "js/textMode/textModeEditorLayout.js",
     "js/textMode/textModeFile.js",
-    "js/textMode/history.js",
     "js/textMode/info.js",
     "js/textMode/gridInfo.js",
     "js/textMode/mobileMenu.js",

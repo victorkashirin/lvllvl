@@ -1904,7 +1904,7 @@ main split panel north is menu
 //    this.projectShare.init(this.githubClient);
 
     this.textModeEditor = new TextModeEditor();
-    this.textModeEditor.init();
+    this.textModeEditor.init(this.services);
     this.textModeEditor.buildInterface(this.contentPanel);
 
     this.colorPaletteEditor = new ColorPaletteEditor();
