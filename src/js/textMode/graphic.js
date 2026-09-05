@@ -857,6 +857,150 @@ Graphic.prototype = {
 
   },
 
+  // Return an exact, non-overlapping union. Damage from separate visible
+  // layers may cover the same pixels; drawing those rectangles independently
+  // would composite translucent layers more than once.
+  mergePixelRegions: function(regions) {
+    if(!regions || regions.length < 2) { return regions || []; }
+    var yEdges = [];
+    var edgeSeen = Object.create(null);
+    var starts = Object.create(null), ends = Object.create(null);
+    for(var i = 0; i < regions.length; i++) {
+      if(regions[i].minX >= regions[i].maxX || regions[i].minY >= regions[i].maxY) { continue; }
+      var startKey = String(regions[i].minY), endKey = String(regions[i].maxY);
+      if(!edgeSeen[startKey]) { edgeSeen[startKey] = true; yEdges.push(regions[i].minY); }
+      if(!edgeSeen[endKey]) { edgeSeen[endKey] = true; yEdges.push(regions[i].maxY); }
+      if(!starts[startKey]) { starts[startKey] = []; }
+      if(!ends[endKey]) { ends[endKey] = []; }
+      starts[startKey].push(i);
+      ends[endKey].push(i);
+    }
+    yEdges.sort(function(a, b) { return a - b; });
+
+    var merged = [];
+    var active = Object.create(null);
+    var activeRegions = [], activePositions = Object.create(null);
+    for(var edgeIndex = 0; edgeIndex < yEdges.length - 1; edgeIndex++) {
+      var minY = yEdges[edgeIndex], maxY = yEdges[edgeIndex + 1];
+      var edgeKey = String(minY);
+      var ending = ends[edgeKey] || [];
+      for(var endingIndex = 0; endingIndex < ending.length; endingIndex++) {
+        var endingRegion = ending[endingIndex];
+        var position = activePositions[endingRegion];
+        if(typeof position === 'undefined') { continue; }
+        var lastActive = activeRegions.pop();
+        if(position < activeRegions.length) {
+          activeRegions[position] = lastActive;
+          activePositions[lastActive] = position;
+        }
+        delete activePositions[endingRegion];
+      }
+      var starting = starts[edgeKey] || [];
+      for(var startingIndex = 0; startingIndex < starting.length; startingIndex++) {
+        var startingRegion = starting[startingIndex];
+        activePositions[startingRegion] = activeRegions.length;
+        activeRegions.push(startingRegion);
+      }
+      var intervals = [];
+      for(var regionIndex = 0; regionIndex < activeRegions.length; regionIndex++) {
+        var region = regions[activeRegions[regionIndex]];
+        intervals.push({ minX: region.minX, maxX: region.maxX });
+      }
+      intervals.sort(function(a, b) { return a.minX - b.minX || a.maxX - b.maxX; });
+      var horizontal = [];
+      for(var intervalIndex = 0; intervalIndex < intervals.length; intervalIndex++) {
+        var interval = intervals[intervalIndex];
+        var last = horizontal.length ? horizontal[horizontal.length - 1] : false;
+        if(last && interval.minX <= last.maxX) {
+          last.maxX = Math.max(last.maxX, interval.maxX);
+        } else {
+          horizontal.push({ minX: interval.minX, maxX: interval.maxX });
+        }
+      }
+
+      var nextActive = Object.create(null);
+      for(var horizontalIndex = 0; horizontalIndex < horizontal.length; horizontalIndex++) {
+        var span = horizontal[horizontalIndex];
+        var key = span.minX + ':' + span.maxX;
+        var rectangle = active[key];
+        if(rectangle && rectangle.maxY === minY) {
+          rectangle.maxY = maxY;
+        } else {
+          rectangle = { minX: span.minX, minY: minY, maxX: span.maxX, maxY: maxY };
+          merged.push(rectangle);
+        }
+        nextActive[key] = rectangle;
+      }
+      active = nextActive;
+    }
+    return merged;
+  },
+
+  // Invalidate only cells whose rendered glyph depends on one of tileIds.
+  // Pixel bounds are returned because layers may use different cell sizes.
+  invalidateTiles: function(tileIds, tileSet) {
+    if(!tileIds || tileIds.length === 0) { return false; }
+    var dirtyPixels = false;
+    var previewDirty = false;
+    var layers = this.editor.layers.layers;
+    for(var i = 0; i < layers.length; i++) {
+      if(layers[i].type !== 'grid') { continue; }
+      var layerGrid = this.editor.layers.getLayerObject(layers[i].layerId);
+      if(!layerGrid || !layerGrid.invalidateTiles
+          || (tileSet && layerGrid.getTileSet() !== tileSet)) {
+        continue;
+      }
+      var bounds = layerGrid.invalidateTiles(tileIds);
+      if(!bounds) { continue; }
+      if(bounds.currentRegions && bounds.currentRegions.length) {
+        previewDirty = true;
+      }
+      if(!layers[i].visible) { continue; }
+      var cellWidth = layerGrid.getCellWidth();
+      var cellHeight = layerGrid.getCellHeight();
+      var cellRegions = bounds.regions || [bounds];
+      if(!dirtyPixels) {
+        dirtyPixels = {
+          minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity,
+          regions: [], layerRegions: Object.create(null)
+        };
+      }
+      if(bounds.currentRegions && bounds.currentRegions.length) {
+        dirtyPixels.layerRegions[layers[i].layerId] = bounds.currentRegions;
+      }
+      for(var regionIndex = 0; regionIndex < cellRegions.length; regionIndex++) {
+        var region = cellRegions[regionIndex];
+        // Vector paths may extend halfway into adjacent cells. LayerGrid uses
+        // the same padding for its internal clip, so keep the outer viewport
+        // damage clip from cutting those repaired pixels back off.
+        var vector = layerGrid.getMode && layerGrid.getMode() === TextModeEditor.Mode.VECTOR;
+        var paddingX = vector ? cellWidth / 2 : 0;
+        var paddingY = vector ? cellHeight / 2 : 0;
+        var pixels = {
+          minX: Math.max(0, region.minX * cellWidth - paddingX),
+          minY: Math.max(0, region.minY * cellHeight - paddingY),
+          maxX: Math.min(layerGrid.getWidth(), region.maxX * cellWidth + paddingX),
+          maxY: Math.min(layerGrid.getHeight(), region.maxY * cellHeight + paddingY)
+        };
+        dirtyPixels.regions.push(pixels);
+      }
+    }
+    if(dirtyPixels) {
+      dirtyPixels.regions = this.mergePixelRegions(dirtyPixels.regions);
+      for(var dirtyIndex = 0; dirtyIndex < dirtyPixels.regions.length; dirtyIndex++) {
+        var dirtyRegion = dirtyPixels.regions[dirtyIndex];
+        dirtyPixels.minX = Math.min(dirtyPixels.minX, dirtyRegion.minX);
+        dirtyPixels.minY = Math.min(dirtyPixels.minY, dirtyRegion.minY);
+        dirtyPixels.maxX = Math.max(dirtyPixels.maxX, dirtyRegion.maxX);
+        dirtyPixels.maxY = Math.max(dirtyPixels.maxY, dirtyRegion.maxY);
+      }
+    }
+    if(previewDirty && this.editor.layers.requestLayerPreviewUpdate) {
+      this.editor.layers.requestLayerPreviewUpdate();
+    }
+    return dirtyPixels;
+  },
+
   // either set for screen and all layers or just the current selected layer.
   initFrameBlocks: function(blockId) {
     var layers = this.editor.layers.layers;
@@ -1015,12 +1159,6 @@ Graphic.prototype = {
       this.tempContext = this.tempCanvas.getContext('2d');
     }
     
-    // just update animated tiles?
-    var animatedTilesOnly = false;
-    if(typeof args.animatedTilesOnly != 'undefined') {
-      animatedTilesOnly = args.animatedTilesOnly;
-    }
-
     if(typeof args.layers != 'undefined') {
       whichLayers = args.layers;
     }
@@ -1121,6 +1259,13 @@ Graphic.prototype = {
         var drawLayerHeight = 0;
 
         layerObject = this.editor.layers.getLayerObject(layer.layerId);
+        var tileRegions = false;
+        if(updateLayerCanvas && !allCells) {
+          if(args.dirtyPixels && args.dirtyPixels.layerRegions
+              && args.dirtyPixels.layerRegions[layer.layerId]) {
+            tileRegions = args.dirtyPixels.layerRegions[layer.layerId];
+          }
+        }
 
         var layerWidth = layerObject.getWidth();
         var layerHeight = layerObject.getHeight();
@@ -1223,14 +1368,27 @@ Graphic.prototype = {
               
               offset = layerObject.drawVector(drawArgs2);
             } else {
-
               drawArgs2.bgOnly = true;
               drawArgs2.fgOnly = false;
-              offset = layerObject.drawVector(drawArgs2);
+              offset = tileRegions && layerObject.drawTileRegions
+                ? layerObject.drawTileRegions(drawArgs2, tileRegions, false)
+                : layerObject.drawVector(drawArgs2);
 
               drawArgs2.bgOnly = false;
               drawArgs2.fgOnly = true;
-              offset = layerObject.drawVector(drawArgs2);
+              offset = tileRegions && layerObject.drawTileRegions
+                ? layerObject.drawTileRegions(drawArgs2, tileRegions, true)
+                : layerObject.drawVector(drawArgs2);
+              if(!tileRegions && layerObject.getTileDirtyRegions
+                  && layerObject.getTileDirtyRegions().length
+                  && layerObject.drawTileRegions) {
+                drawArgs2.bgOnly = true;
+                drawArgs2.fgOnly = false;
+                layerObject.drawTileRegions(drawArgs2, layerObject.getTileDirtyRegions(), false);
+                drawArgs2.bgOnly = false;
+                drawArgs2.fgOnly = true;
+                offset = layerObject.drawTileRegions(drawArgs2, layerObject.getTileDirtyRegions(), true);
+              }
             }
 
             if(!graphicOnly && layerObject.isCurrentLayer()) {
@@ -1267,12 +1425,23 @@ Graphic.prototype = {
             // non vector
 
             // tell the layer to draw itself
-            layerObject.draw({ 
-                    canvas: layerCanvas,  
-                    frame: frame, 
-                    allCells: allCells,
-                    drawBackground: drawLayerBackground,
-            });
+            var bitmapDrawArgs = {
+              canvas: layerCanvas,
+              frame: frame,
+              allCells: allCells,
+              drawBackground: drawLayerBackground
+            };
+            if(tileRegions && layerObject.drawTileRegions) {
+              layerObject.drawTileRegions(bitmapDrawArgs, tileRegions, true);
+            } else {
+              layerObject.draw(bitmapDrawArgs);
+              if(layerObject.getTileDirtyRegions
+                  && layerObject.getTileDirtyRegions().length
+                  && layerObject.drawTileRegions) {
+                layerObject.drawTileRegions(bitmapDrawArgs,
+                  layerObject.getTileDirtyRegions(), true);
+              }
+            }
           }
         }                  
 

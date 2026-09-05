@@ -4,6 +4,13 @@
 
 ### Fixed
 
+- Limit animated-tile and pixel-edit redraws to layers and cell regions that use
+  the changed tiles. Reuse per-frame usage indexes, retain disconnected and
+  offscreen damage, patch affected onion-skin regions, refresh hidden-layer
+  thumbnails, preserve unrelated caches, and batch animation and pixel-shape
+  updates without advancing the global tile-set render revision. Normalize C64
+  ECM aliases, invalidate scripting placement caches, and union scaled damage
+  before blended compositing.
 - Keep dialogs centred and within the current viewport without permanently
   shrinking them, make image/video import use the available height, and keep
   tile-set and colour-palette metadata from displacing visible controls.

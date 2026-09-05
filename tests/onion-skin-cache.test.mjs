@@ -167,7 +167,10 @@ test("frame identity, content, shared dependencies, dimensions and render option
   const f = fixture();
   const changes = [
     () => f.layer.setCell({ frame: 0, x: 0, y: 0, t: 0, fc: 2 }),
-    () => f.tileSet.setPixel(0, 0, 0, 0, false),
+    () => {
+      f.tileSet.setPixel(0, 0, 0, 0, false);
+      f.tileSet.updateCharacters([0], true);
+    },
     () => f.tileSet.invertPixels(0, true),
     () => f.tileSet.setCharacterFrame(0, 0),
     () => { f.palette.noDocColors[1] = 0xffff0000; f.palette.createColorMeta(1); },

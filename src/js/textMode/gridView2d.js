@@ -3422,6 +3422,48 @@ GridView2d.prototype = {
     context.drawImage(this.rasterCanvas, left - translateX, top - translateY);
   },
 
+  drawRasterRegions: function(context, regions, image, sx, sy, sw, sh, dx, dy, dw, dh) {
+    if(!regions) {
+      this.drawRasterImage(context, false, image, sx, sy, sw, sh, dx, dy, dw, dh);
+      return;
+    }
+    for(var i = 0; i < regions.length; i++) {
+      var region = regions[i];
+      context.save();
+      context.beginPath();
+      context.rect(region.x, region.y, region.width, region.height);
+      context.clip();
+      this.drawRasterImage(context, region, image, sx, sy, sw, sh, dx, dy, dw, dh);
+      context.restore();
+    }
+  },
+
+  mergeRasterRegions: function(regions) {
+    if(!regions || regions.length < 2) {
+      return regions || [];
+    }
+    var pixelRegions = [];
+    for(var i = 0; i < regions.length; i++) {
+      pixelRegions.push({
+        minX: regions[i].x,
+        minY: regions[i].y,
+        maxX: regions[i].x + regions[i].width,
+        maxY: regions[i].y + regions[i].height
+      });
+    }
+    var merged = this.editor.graphic.mergePixelRegions(pixelRegions);
+    var rasterRegions = [];
+    for(var mergedIndex = 0; mergedIndex < merged.length; mergedIndex++) {
+      rasterRegions.push({
+        x: merged[mergedIndex].minX,
+        y: merged[mergedIndex].minY,
+        width: merged[mergedIndex].maxX - merged[mergedIndex].minX,
+        height: merged[mergedIndex].maxY - merged[mergedIndex].minY
+      });
+    }
+    return rasterRegions;
+  },
+
   // Keep cursor previews out of the cached artwork canvas.
   drawCursor: function(args) {
 
@@ -3837,46 +3879,93 @@ GridView2d.prototype = {
     }
 
     var dirtyArtworkBounds = false;
+    var dirtyArtworkRegions = false;
+    var selectiveArtworkRequested = false;
     if(redrawLayers) {
       if(!this.backBufferNeedsRedraw && !baseCanvasResized
         && typeof args != 'undefined'
-        && typeof args.dirtyCells != 'undefined'
+        && (typeof args.dirtyPixels != 'undefined' || typeof args.dirtyCells != 'undefined')
         && !this.editor.tools.drawTools.pixelSelect.isActive()) {
-        var selectedLayerObject = this.editor.layers.getSelectedLayerObject();
-        if(selectedLayerObject && selectedLayerObject.getType() == 'grid') {
-          var tileSet = selectedLayerObject.getTileSet();
-          var tileWidth = tileSet.getTileWidth();
-          var tileHeight = tileSet.getTileHeight();
-          var dirtyCells = args.dirtyCells;
-          var dirtySrcX = Math.max(srcX, dirtyCells.minX * tileWidth);
-          var dirtySrcY = Math.max(srcY, dirtyCells.minY * tileHeight);
-          var dirtySrcRight = Math.min(srcX + srcWidth, dirtyCells.maxX * tileWidth);
-          var dirtySrcBottom = Math.min(srcY + srcHeight, dirtyCells.maxY * tileHeight);
-
-          if(dirtySrcX < dirtySrcRight && dirtySrcY < dirtySrcBottom) {
-            var dirtyDstX = dstX + (dirtySrcX - srcX) * scale;
-            var dirtyDstY = dstY + (dirtySrcY - srcY) * scale;
-            var dirtyDstRight = dstX + (dirtySrcRight - srcX) * scale;
-            var dirtyDstBottom = dstY + (dirtySrcBottom - srcY) * scale;
-            dirtyArtworkBounds = {
-              x: Math.floor(dirtyDstX),
-              y: Math.floor(dirtyDstY),
-              width: Math.ceil(dirtyDstRight) - Math.floor(dirtyDstX),
-              height: Math.ceil(dirtyDstBottom) - Math.floor(dirtyDstY)
-            };
+        var sourceRegions = [];
+        if(typeof args.dirtyPixels != 'undefined') {
+          var dirtyPixels = args.dirtyPixels;
+          sourceRegions = dirtyPixels.regions && dirtyPixels.regions.length
+            ? dirtyPixels.regions : [dirtyPixels];
+          selectiveArtworkRequested = true;
+        } else {
+          var selectedLayerObject = this.editor.layers.getSelectedLayerObject();
+          if(selectedLayerObject && selectedLayerObject.getType() == 'grid') {
+            var tileSet = selectedLayerObject.getTileSet();
+            var tileWidth = tileSet.getTileWidth();
+            var tileHeight = tileSet.getTileHeight();
+            var dirtyCells = args.dirtyCells;
+            sourceRegions = [{
+              minX: dirtyCells.minX * tileWidth,
+              minY: dirtyCells.minY * tileHeight,
+              maxX: dirtyCells.maxX * tileWidth,
+              maxY: dirtyCells.maxY * tileHeight
+            }];
+            selectiveArtworkRequested = true;
           }
         }
+
+        dirtyArtworkRegions = [];
+        for(var dirtyIndex = 0; dirtyIndex < sourceRegions.length; dirtyIndex++) {
+          var sourceRegion = sourceRegions[dirtyIndex];
+          var dirtySrcX = Math.max(srcX, sourceRegion.minX);
+          var dirtySrcY = Math.max(srcY, sourceRegion.minY);
+          var dirtySrcRight = Math.min(srcX + srcWidth, sourceRegion.maxX);
+          var dirtySrcBottom = Math.min(srcY + srcHeight, sourceRegion.maxY);
+          if(dirtySrcX >= dirtySrcRight || dirtySrcY >= dirtySrcBottom) { continue; }
+          var dirtyDstX = dstX + (dirtySrcX - srcX) * scale;
+          var dirtyDstY = dstY + (dirtySrcY - srcY) * scale;
+          var dirtyDstRight = dstX + (dirtySrcRight - srcX) * scale;
+          var dirtyDstBottom = dstY + (dirtySrcBottom - srcY) * scale;
+          var artworkRegion = {
+            x: Math.floor(dirtyDstX),
+            y: Math.floor(dirtyDstY),
+            width: Math.ceil(dirtyDstRight) - Math.floor(dirtyDstX),
+            height: Math.ceil(dirtyDstBottom) - Math.floor(dirtyDstY)
+          };
+          dirtyArtworkRegions.push(artworkRegion);
+          if(!dirtyArtworkBounds) {
+            dirtyArtworkBounds = {
+              x: artworkRegion.x, y: artworkRegion.y,
+              width: artworkRegion.width, height: artworkRegion.height
+            };
+          } else {
+            var artworkRight = Math.max(dirtyArtworkBounds.x + dirtyArtworkBounds.width,
+              artworkRegion.x + artworkRegion.width);
+            var artworkBottom = Math.max(dirtyArtworkBounds.y + dirtyArtworkBounds.height,
+              artworkRegion.y + artworkRegion.height);
+            dirtyArtworkBounds.x = Math.min(dirtyArtworkBounds.x, artworkRegion.x);
+            dirtyArtworkBounds.y = Math.min(dirtyArtworkBounds.y, artworkRegion.y);
+            dirtyArtworkBounds.width = artworkRight - dirtyArtworkBounds.x;
+            dirtyArtworkBounds.height = artworkBottom - dirtyArtworkBounds.y;
+          }
+        }
+        // Source-space damage is disjoint, but floor/ceil at fractional zoom can
+        // make the resulting raster clips overlap. Union them before layers are
+        // composited so translucent pixels are never drawn more than once.
+        dirtyArtworkRegions = this.mergeRasterRegions(dirtyArtworkRegions);
       }
 
+      if(selectiveArtworkRequested && dirtyArtworkRegions.length === 0) {
+        // The changed cells are outside this viewport. Keep their layer-canvas
+        // damage pending for a later pan, but do no visible artwork work now.
+        redrawLayers = false;
+      }
+    }
+
+    if(redrawLayers) {
       this.backBufferContext.save();
-      if(dirtyArtworkBounds) {
+      if(dirtyArtworkRegions) {
         this.backBufferContext.beginPath();
-        this.backBufferContext.rect(
-          dirtyArtworkBounds.x,
-          dirtyArtworkBounds.y,
-          dirtyArtworkBounds.width,
-          dirtyArtworkBounds.height
-        );
+        for(var regionIndex = 0; regionIndex < dirtyArtworkRegions.length; regionIndex++) {
+          var clipRegion = dirtyArtworkRegions[regionIndex];
+          this.backBufferContext.rect(clipRegion.x, clipRegion.y,
+            clipRegion.width, clipRegion.height);
+        }
         this.backBufferContext.clip();
       }
       this.backBufferContext.globalAlpha = 1;
@@ -3945,7 +4034,6 @@ GridView2d.prototype = {
     var allCells = false;
     var drawBackground = this.editor.layers.isBackgroundVisible();
     var drawPreviousFrame = this.editor.frames.getShowPrevFrame();
-    var animatedTilesOnly = false;
     var tool = this.editor.tools.drawTools.tool;
     var shapes = tool == 'line' || tool == 'rect' || tool == 'oval';
 
@@ -3966,7 +4054,11 @@ GridView2d.prototype = {
       this.editor.graphic.drawFrame({
         canvas: this.backBufferCanvas,
         context: this.backBufferContext,
-        drawImage: this.drawRasterImage.bind(this, this.backBufferContext, dirtyArtworkBounds),
+        drawImage: this.drawRasterRegions.bind(this, this.backBufferContext, dirtyArtworkRegions),
+        // Only constrain layer rasterization when this draw also retained the
+        // existing viewport buffers. Resizes, pans, and forced back-buffer
+        // redraws must let each layer rebuild its normal visible extent.
+        dirtyPixels: dirtyArtworkRegions && args && args.dirtyPixels,
         frame: frame,
         srcX: srcX,
         srcY: srcY,
@@ -3983,7 +4075,6 @@ GridView2d.prototype = {
         drawBackground: drawBackground,
         drawPreviousFrame: drawPreviousFrame,
 //        previousFrameCanvas: previousFrameCanvas,
-        animatedTilesOnly: animatedTilesOnly,
         shapes: shapes
       });
       this.backBufferContext.restore();
@@ -4002,31 +4093,27 @@ GridView2d.prototype = {
     // and then presents the cell in one write. This avoids both translucent grid
     // accumulation and a second full-size grid backing store.
     if(redrawComposite) {
-      var compositeBounds = false;
+      var compositeRegions = false;
       this.baseContext.save();
       this.baseContext.setTransform(1, 0, 0, 1, 0, 0);
       if(!redrawFullComposite) {
-        var compositeX = Math.floor(dirtyArtworkBounds.x * canvasScale);
-        var compositeY = Math.floor(dirtyArtworkBounds.y * canvasScale);
-        var compositeRight = Math.ceil(
-          (dirtyArtworkBounds.x + dirtyArtworkBounds.width) * canvasScale
-        );
-        var compositeBottom = Math.ceil(
-          (dirtyArtworkBounds.y + dirtyArtworkBounds.height) * canvasScale
-        );
-        compositeBounds = {
-          x: compositeX,
-          y: compositeY,
-          width: compositeRight - compositeX,
-          height: compositeBottom - compositeY
-        };
+        compositeRegions = [];
         this.baseContext.beginPath();
-        this.baseContext.rect(
-          compositeBounds.x,
-          compositeBounds.y,
-          compositeBounds.width,
-          compositeBounds.height
-        );
+        for(var compositeIndex = 0; compositeIndex < dirtyArtworkRegions.length; compositeIndex++) {
+          var dirtyRegion = dirtyArtworkRegions[compositeIndex];
+          var compositeX = Math.floor(dirtyRegion.x * canvasScale);
+          var compositeY = Math.floor(dirtyRegion.y * canvasScale);
+          var compositeRight = Math.ceil((dirtyRegion.x + dirtyRegion.width) * canvasScale);
+          var compositeBottom = Math.ceil((dirtyRegion.y + dirtyRegion.height) * canvasScale);
+          var compositeRegion = {
+            x: compositeX, y: compositeY,
+            width: compositeRight - compositeX,
+            height: compositeBottom - compositeY
+          };
+          compositeRegions.push(compositeRegion);
+          this.baseContext.rect(compositeRegion.x, compositeRegion.y,
+            compositeRegion.width, compositeRegion.height);
+        }
         this.baseContext.clip();
       }
 
@@ -4050,18 +4137,21 @@ GridView2d.prototype = {
       frontContext.setTransform(1, 0, 0, 1, 0, 0);
       frontContext.globalAlpha = 1;
       frontContext.globalCompositeOperation = 'source-over';
-      if(compositeBounds) {
-        frontContext.drawImage(
-          this.baseCanvas,
-          compositeBounds.x,
-          compositeBounds.y,
-          compositeBounds.width,
-          compositeBounds.height,
-          compositeBounds.x,
-          compositeBounds.y,
-          compositeBounds.width,
-          compositeBounds.height
-        );
+      if(compositeRegions) {
+        for(var presentIndex = 0; presentIndex < compositeRegions.length; presentIndex++) {
+          var presentRegion = compositeRegions[presentIndex];
+          frontContext.drawImage(
+            this.baseCanvas,
+            presentRegion.x,
+            presentRegion.y,
+            presentRegion.width,
+            presentRegion.height,
+            presentRegion.x,
+            presentRegion.y,
+            presentRegion.width,
+            presentRegion.height
+          );
+        }
       } else {
         frontContext.drawImage(this.baseCanvas, 0, 0);
       }

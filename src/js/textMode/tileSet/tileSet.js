@@ -340,8 +340,8 @@ TileSet.prototype = {
   },
 
 
-  modified: function() {
-    this.renderRevision++;
+  modified: function(renderChanged) {
+    if(renderChanged !== false) { this.renderRevision++; }
     if(g_app.openingProject) {
       return;
     }
@@ -682,8 +682,8 @@ TileSet.prototype = {
   },
 
   // current character data has the current frame for each character
-  updateCharacterCurrentData: function(character) {
-    this.renderRevision++;
+  updateCharacterCurrentData: function(character, renderChanged) {
+    if(renderChanged !== false) { this.renderRevision++; }
     if(character >= this.tileData.length) {
       return;
     }
@@ -3019,7 +3019,7 @@ TileSet.prototype = {
 
       this.tileData[character].data[frame][x + y * this.charWidth] = set;
 //      if(updateCharacter) {
-      this.updateCharacterCurrentData(character);
+      this.updateCharacterCurrentData(character, updateCharacter !== false);
 
 //      }
 
@@ -3045,7 +3045,7 @@ TileSet.prototype = {
     this.tileData[character].data[0][pos] = set;
 
 //    if(updateCharacter) {
-    this.updateCharacterCurrentData(character);
+    this.updateCharacterCurrentData(character, false);
 
 //    }
 
@@ -3065,9 +3065,12 @@ TileSet.prototype = {
 
 
     if(updateCharacter) {
-      this.updateCharacter(character);
+      this.updateCharacters([character], true);
     }
-    this.modified();
+    // `updateCharacter === false` is the batching contract used by pixel tools:
+    // record document modification now, publish selective render dependencies
+    // once through updateCharacters() after the batch.
+    this.modified(updateCharacter !== false);
 
     this.customCharacterset = true;
     return true;
@@ -3075,13 +3078,29 @@ TileSet.prototype = {
 
   // call this when a character has been updated
   updateCharacter: function(character) {
+    return this.updateCharacters([character]);
+  },
+
+  // Publish a set of changed glyphs once. Animation can update several tiles in
+  // one tick without redrawing each palette or invalidating the document once
+  // per tile.
+  updateCharacters: function(characters, selective) {
+    var unique = [];
+    for(var i = 0; i < characters.length; i++) {
+      if(unique.indexOf(characters[i]) === -1) { unique.push(characters[i]); }
+    }
+    if(unique.length === 0) { return false; }
+
     // Also covers animation frames and legacy callers writing tile data directly.
-    this.renderRevision++;
+    if(selective !== true) { this.renderRevision++; }
 
     // update the geometry if used in 3d
-    if(character < this.characterGeometries.length) {
-      this.generateTileGeometry(character);
-      this.generateTileBackgroundGeometry(character);    
+    for(var i = 0; i < unique.length; i++) {
+      var character = unique[i];
+      if(character < this.characterGeometries.length) {
+        this.generateTileGeometry(character);
+        this.generateTileBackgroundGeometry(character);
+      }
     }
 
     /*
@@ -3100,9 +3119,14 @@ TileSet.prototype = {
     // TODO: need better way of doing this.. dont want to need to redisplay the whole character set
     // to update one character
 
-    this.editor.tools.drawTools.tilePalette.drawTilePalette({ redrawTiles: true, tiles: [character] });
-    this.editor.sideTilePalette.drawTilePalette({ redrawTiles: true, tiles: [character] });
+    this.editor.tools.drawTools.tilePalette.drawTilePalette({ redrawTiles: true, tiles: unique });
+    this.editor.sideTilePalette.drawTilePalette({ redrawTiles: true, tiles: unique });
 //    this.editor.selectTileSet(this.editor.currentTileSetID, false);
+
+    if(this.editor.graphic && this.editor.graphic.invalidateTiles) {
+      return this.editor.graphic.invalidateTiles(unique, this);
+    }
+    return false;
 
   },
 
@@ -3873,7 +3897,7 @@ TileSet.prototype = {
 
 
 
-  invertPixels: function(character, invert) {
+  invertPixels: function(character, invert, updateCharacter) {
     for(var y = 0; y < this.charHeight; y++) {
       for(var x = 0; x < this.charWidth; x++) {
         var dst = x + y * this.charWidth;
@@ -3892,14 +3916,14 @@ TileSet.prototype = {
         }
       }
     }
-    this.updateCharacter(character);
-    this.modified();    
+    if(updateCharacter !== false) { this.updateCharacter(character); }
+    this.modified(updateCharacter !== false);
 
   },
 
 
   // copy the rotated character into the current character data
-  rotatePixels: function(character, h, v) {
+  rotatePixels: function(character, h, v, updateCharacter) {
 
     var temp = [];
     for(var y = 0; y < this.charHeight; y++) {
@@ -3921,14 +3945,14 @@ TileSet.prototype = {
 //        this.setPixel(character, x, y, temp[srcY][srcX], false);
       }
     }
-    this.updateCharacter(character);
-    this.modified();    
+    if(updateCharacter !== false) { this.updateCharacter(character); }
+    this.modified(updateCharacter !== false);
 
   },
 
 
   // copy the character frame into the current character data
-  setCharacterFrame: function(character, frame) {
+  setCharacterFrame: function(character, frame, updateCharacter) {
 
     if(frame >= this.tileData[character].data.length) {
       return;
@@ -3945,7 +3969,7 @@ TileSet.prototype = {
       }
     }
     */
-    this.updateCharacter(character);
+    if(updateCharacter !== false) { this.updateCharacter(character); }
   },
 
   getAnimatedCharacterTicks: function() {
@@ -4000,23 +4024,23 @@ TileSet.prototype = {
 //          this.characterProperties[i].frame = (this.characterProperties[i].frame + 1) % frameCount;
           switch(this.tileData[i].props.animated) {
             case 'right':
-              this.rotatePixels(i, -frame, 0);
+              this.rotatePixels(i, -frame, 0, false);
               break;
             case 'up':
-              this.rotatePixels(i, 0, frame);
+              this.rotatePixels(i, 0, frame, false);
               break;
             case 'down':
-              this.rotatePixels(i, 0, -frame);
+              this.rotatePixels(i, 0, -frame, false);
               break;
             case 'blink':
-              this.invertPixels(i, frame);
+              this.invertPixels(i, frame, false);
               break;
             default:
             case 'left':
-              this.rotatePixels(i, frame, 0);
+              this.rotatePixels(i, frame, 0, false);
               break;
             case 'frames':
-              this.setCharacterFrame(i, frame);
+              this.setCharacterFrame(i, frame, false);
               break;
 
           }
@@ -4031,10 +4055,12 @@ TileSet.prototype = {
     }
 
     if(updatedCharacters.length > 0) {
+      var dirtyPixels = this.updateCharacters(updatedCharacters, true);
       if(this.editor.type == '2d') {
         this.editor.currentTile.canvasDrawCharacters();
-        this.editor.graphic.invalidateAllCells();
-        this.editor.graphic.redraw({ animatedTilesOnly: true });//{ allCells: true });
+        if(dirtyPixels) {
+          this.editor.graphic.redraw({ dirtyPixels: dirtyPixels });
+        }
       }
       return true;
     }

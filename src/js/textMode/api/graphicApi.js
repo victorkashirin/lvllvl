@@ -601,7 +601,10 @@ GraphicAPI.frameDone = function() {
   editor.tools.drawTools.tilePalette.drawTilePalette();
   editor.sideTilePalette.drawTilePalette();
 
+  // Scripted setCell calls mutate frame data in place. Drop the per-frame tile
+  // usage indexes before the full redraw so later selective tile updates see
+  // the new placements.
+  editor.graphic.invalidateAllCells();
   editor.graphic.redraw({ allCells: true });
 
 }
-

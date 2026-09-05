@@ -281,10 +281,35 @@ thumbnail update, with a correct final thumbnail after drawing/undo/frame change
 
 ### R4 — P1: tile animation discards the changed-tile information
 
-**Location:** [tileSet.js:3969–4023](../../src/js/textMode/tileSet/tileSet.js#L3969-L4023);
-[gridView2d.js:3848–3887](../../src/js/textMode/gridView2d.js#L3848-L3887);
-[graphic.js:1021–1024](../../src/js/textMode/graphic.js#L1021-L1024),
-[1276–1282](../../src/js/textMode/graphic.js#L1276-L1282).
+**Status: fixed.** Each grid layer now keeps a lazy tile-to-cell region index per
+frame, resolved through block definitions and C64 ECM glyph banks. Cell, frame,
+dimension, blank-tile, mode, and block-revision changes invalidate the relevant
+index. Disconnected uses remain separate coalesced regions. An animation tick
+publishes its complete changed-tile set once, then invalidates only matching
+current/onion-frame regions in layers that share the tile set. Offscreen-only
+damage remains pending without repainting the visible canvas. Unused tiles cause
+no artwork redraw. Per-frame tile revisions keep unrelated onion rasters and
+layer thumbnails valid, while affected onion rasters are patched in place and
+hidden-layer thumbnails are still scheduled. Pixel drawing, fills, and provisional
+shape replacement use the same batched, targeted invalidation path.
+
+Tile palettes, geometry, and the current brush are updated once for the full tick
+rather than once per animated tile. Source regressions cover unused/used tiles,
+separate layers/tile sets, usage-cache rebuilds, onion skin, block and ECM
+resolution, cache-key changes, local and hidden preview dependencies, disconnected
+regions, restored shape tiles, onion patching, and batching. Chromium and Firefox
+tests instrument the real artwork canvas and verify zero artwork work for unused
+and offscreen-only tiles plus separate one-cell raster/clip regions for distant
+uses. The observations below describe the original bug, not new timing measurements.
+
+**Location:** [tileSet.js:2991–3131](../../src/js/textMode/tileSet/tileSet.js#L2991-L3131),
+[4009–4068](../../src/js/textMode/tileSet/tileSet.js#L4009-L4068);
+[layerGrid.js:628–1068](../../src/js/textMode/layers/layerGrid.js#L628-L1068);
+[graphic.js:863–1002](../../src/js/textMode/graphic.js#L863-L1002),
+[1262–1443](../../src/js/textMode/graphic.js#L1262-L1443);
+[gridView2d.js:3425–3439](../../src/js/textMode/gridView2d.js#L3425-L3439),
+[3855–4051](../../src/js/textMode/gridView2d.js#L3855-L4051);
+[pixelDraw.js:282–367](../../src/js/textMode/tools/pixelDraw.js#L282-L367).
 
 `TileSet.update()` knows exactly which characters changed, but calls
 `invalidateAllCells()` for all grid layers and
@@ -303,8 +328,8 @@ that every animation tick rasterizes the entire offscreen document.
 changed tile IDs to invalidate only dependent visible regions and relevant
 previews. An unused tile should not invalidate artwork. Batch all tile changes
 for a tick before drawing palettes or the current brush; see R7. The pixel-drawing
-path has the same broad invalidation at
-[pixelDraw.js:1223–1224](../../src/js/textMode/tools/pixelDraw.js#L1223-L1224).
+path formerly had the same broad invalidation and now publishes restored and new
+shape tiles through one targeted batch.
 
 The tile update loop also scans the complete tile set on each animation tick,
 even when no tiles are animated. An active-animation set is a secondary, simpler

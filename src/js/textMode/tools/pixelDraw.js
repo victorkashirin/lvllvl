@@ -8,6 +8,8 @@ var PixelDraw = function() {
   this.c64MultiColorType = 'cell';
 
   this.alteredCharacters = [];
+  this.pendingCharacters = [];
+  this.restoredCharacters = [];
   this.lastX = false;
   this.lastY = false;
 
@@ -277,17 +279,68 @@ PixelDraw.prototype = {
   },
 
 
-  addToAlteredCharacters: function(c) {
-    if(this.alteredCharacters.indexOf(c) !== -1) {
-      return;
+  getAlteredCharacterIndex: function(c) {
+    if(typeof c != 'number') {
+      return c;
     }
-    this.alteredCharacters.push(c);
+    var layer = this.editor && this.editor.layers
+      && typeof this.editor.layers.getSelectedLayerObject == 'function'
+      ? this.editor.layers.getSelectedLayerObject() : false;
+    if(layer && typeof layer.getType == 'function' && layer.getType() == 'grid'
+        && typeof layer.getScreenMode == 'function'
+        && layer.getScreenMode() == TextModeEditor.Mode.C64ECM) {
+      var ecmGroup = Math.floor(c / 256);
+      return (c % 64) + ecmGroup * 256;
+    }
+    return c;
+  },
+
+  addToAlteredCharacters: function(c) {
+    // ECM cell values include two background-selection bits. TileSet.setPixel
+    // strips those bits before editing, so publish and restore that same glyph.
+    c = this.getAlteredCharacterIndex(c);
+    if(this.alteredCharacters.indexOf(c) === -1) {
+      this.alteredCharacters.push(c);
+    }
+    if(this.pendingCharacters.indexOf(c) === -1) {
+      this.pendingCharacters.push(c);
+    }
 
   },
 
   resetAlteredCharacters: function() {
     this.alteredCharacters = [];
+    this.pendingCharacters = [];
+    this.restoredCharacters = [];
 
+  },
+
+  redrawTileDamage: function(dirtyPixels) {
+    this.editor.graphic.redraw(dirtyPixels
+      ? { dirtyPixels: dirtyPixels }
+      : { redrawLayers: false });
+  },
+
+  redrawAlteredTiles: function(tileSet) {
+    if(!this.editor.graphic.invalidateTiles) {
+      this.pendingCharacters = [];
+      this.restoredCharacters = [];
+      this.editor.graphic.invalidateAllCells();
+      this.editor.graphic.redraw();
+      return;
+    }
+    var changed = this.pendingCharacters.slice();
+    for(var i = 0; i < this.restoredCharacters.length; i++) {
+      if(changed.indexOf(this.restoredCharacters[i]) === -1) {
+        changed.push(this.restoredCharacters[i]);
+      }
+    }
+    this.pendingCharacters = [];
+    this.restoredCharacters = [];
+    var dirtyPixels = tileSet.updateCharacters
+      ? tileSet.updateCharacters(changed, true)
+      : this.editor.graphic.invalidateTiles(changed, tileSet);
+    this.redrawTileDamage(dirtyPixels);
   },
 
   startShape: function() {
@@ -306,14 +359,16 @@ PixelDraw.prototype = {
   updateShape: function(gridView, pixel) {
     // set changed characters from saved character set
     var tileSet = this.editor.tileSetManager.getCurrentTileSet();    
-    tileSet.restoreCharacterDataFor(this.characterDataCopy, this.alteredCharacters);
+    var restoredCharacters = this.alteredCharacters.slice();
+    tileSet.restoreCharacterDataFor(this.characterDataCopy, restoredCharacters);
 
-    for(var i = 0; i < this.alteredCharacters.length; i++) {
-      tileSet.updateCharacterCurrentData(this.alteredCharacters[i]);
+    for(var i = 0; i < restoredCharacters.length; i++) {
+      tileSet.updateCharacterCurrentData(restoredCharacters[i], false);
     }
 
 
     this.resetAlteredCharacters();
+    this.restoredCharacters = restoredCharacters;
 
     if(this.toolType == 'line') {
       this.drawLine(gridView, this.mouseDownAtX, this.mouseDownAtY, pixel.x, pixel.y);
@@ -321,6 +376,12 @@ PixelDraw.prototype = {
       this.drawRect(gridView, this.mouseDownAtX, this.mouseDownAtY, pixel.x, pixel.y);
     } else if(this.toolType == 'oval') {
       this.drawOval(gridView, this.mouseDownAtX, this.mouseDownAtY, pixel.x, pixel.y);    
+    }
+    // Zero-size shapes return before their draw routine publishes anything.
+    // The previous provisional glyphs were still restored above, so publish
+    // that restoration even when the replacement shape touches no pixels.
+    if(this.restoredCharacters.length) {
+      this.redrawAlteredTiles(tileSet);
     }
   },
 
@@ -647,8 +708,9 @@ PixelDraw.prototype = {
       }
     }
 
-    tileSet.updateCharacterCurrentData(tile);
-    this.editor.graphic.redraw({ allCells: true });
+    this.addToAlteredCharacters(tile);
+    tileSet.updateCharacterCurrentData(tile, false);
+    this.redrawAlteredTiles(tileSet);
   },
 
 
@@ -704,11 +766,7 @@ PixelDraw.prototype = {
         this.drawPixelTextmode(cell);
       }
 
-      tileSet.updateCharacter(tile);
-
-      this.editor.graphic.invalidateAllCells();
-
-      this.editor.graphic.redraw();
+      this.redrawAlteredTiles(tileSet);
 
 
 
@@ -812,8 +870,7 @@ PixelDraw.prototype = {
       }
     }
 
-    this.editor.graphic.invalidateAllCells();
-    this.editor.graphic.redraw();
+    this.redrawAlteredTiles(tileSet);
     
 
     if(this.editor.tileEditor.visible) {
@@ -1009,8 +1066,7 @@ PixelDraw.prototype = {
       }
 
     }
-    this.editor.graphic.invalidateAllCells();
-    this.editor.graphic.redraw();
+    this.redrawAlteredTiles(tileSet);
 
 
     if(this.editor.tileEditor.visible) {
@@ -1220,8 +1276,7 @@ PixelDraw.prototype = {
     for(var i = 0; i < this.alteredCharacters.length; i++) {
 //      tileSet.updateCharacter(this.alteredCharacters[i]);
     }
-    this.editor.graphic.invalidateAllCells();
-    this.editor.graphic.redraw();
+    this.redrawAlteredTiles(tileSet);
   
 
     if(this.editor.tileEditor.visible) {

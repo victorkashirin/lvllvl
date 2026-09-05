@@ -48,6 +48,14 @@ var LayerGrid = function() {
   this.prevFrameCanvas = null;
   this.prevFrameContext = null;
   this.prevFrameCache = null;
+  this.prevFrameDirtyFrame = null;
+  this.prevFrameDirtyRegions = [];
+
+  // Lazily built per-frame tile-to-cell regions. Animation ticks reuse this
+  // index instead of scanning the document or invalidating every grid layer.
+  this.tileUsageByFrame = [];
+  this.tileFrameRevisions = [];
+  this.tileDirtyRegions = [];
 
   this.refImage = null;
 
@@ -133,6 +141,7 @@ LayerGrid.prototype = {
     if(this.blankTileId === false) {
       // blank tile hasn't been set yet
       this.blankTileId = blankTileId;
+      this.invalidateTileUsage();
       return;
     }
 
@@ -161,10 +170,12 @@ LayerGrid.prototype = {
     }
 
     this.blankTileId = blankTileId;
+    this.invalidateTileUsage();
   },
 
   setToBlank: function() {
     this.invalidatePrevFrame();
+    this.invalidateTileUsage();
     var frames = this.frames
     var frameCount = this.getFrameCount();
     var gridWidth = this.getGridWidth();
@@ -284,6 +295,11 @@ LayerGrid.prototype = {
         this.frames = layers[i].frames;
         this.doc = layers[i];
         this.frameCount = this.frames.length;
+        this.tileUsageByFrame = [];
+        this.tileFrameRevisions = [];
+        this.tileDirtyRegions = [];
+        this.prevFrameDirtyFrame = null;
+        this.prevFrameDirtyRegions = [];
 
         // defaults
         if(typeof this.doc.colorPerMode == 'undefined') {
@@ -604,7 +620,349 @@ LayerGrid.prototype = {
     if(typeof frame === 'undefined' || (this.prevFrameCache
         && this.prevFrameCache.frame === this.frames[frame])) {
       this.prevFrameCache = null;
+      this.prevFrameDirtyFrame = null;
+      this.prevFrameDirtyRegions = [];
     }
+  },
+
+  invalidateTileUsage: function(frame) {
+    if(typeof frame === 'undefined') {
+      this.tileUsageByFrame = [];
+      return;
+    }
+    this.tileUsageByFrame[frame] = null;
+  },
+
+  getTileUsage: function(frameIndex) {
+    var frame = this.frames[frameIndex];
+    if(!frame || !frame.data) {
+      return null;
+    }
+
+    var width = this.getGridWidth();
+    var height = this.getGridHeight();
+    var blockMode = this.getBlockModeEnabled();
+    var blockSet = blockMode ? this.getBlockSet() : null;
+    var blockRevision = blockSet && blockSet.renderRevision;
+    var blockWidth = this.getBlockWidth();
+    var blockHeight = this.getBlockHeight();
+    var mode = this.getMode();
+    var usage = this.tileUsageByFrame[frameIndex];
+    if(usage && usage.frame === frame && usage.data === frame.data
+        && usage.width === width && usage.height === height
+        && usage.blockMode === blockMode && usage.blockSet === blockSet
+        && usage.blockRevision === blockRevision
+        && usage.blockWidth === blockWidth && usage.blockHeight === blockHeight
+        && usage.blankTileId === this.blankTileId && usage.mode === mode) {
+      return usage.tiles;
+    }
+
+    var tiles = Object.create(null);
+    var add = function(tile, x, y) {
+      if(tile === false || typeof tile === 'undefined' || tile === null) {
+        return;
+      }
+      var key = String(tile);
+      var regions = tiles[key];
+      if(!regions) {
+        tiles[key] = [{ minX: x, minY: y, maxX: x + 1, maxY: y + 1 }];
+        return;
+      }
+      var last = regions[regions.length - 1];
+      if(last.minY === y && last.maxY === y + 1 && last.maxX === x) {
+        last.maxX = x + 1;
+      } else {
+        regions.push({ minX: x, minY: y, maxX: x + 1, maxY: y + 1 });
+      }
+    };
+
+    for(var y = 0; y < height; y++) {
+      var row = frame.data[y];
+      if(!row) { continue; }
+      for(var x = 0; x < width; x++) {
+        var cell = row[x];
+        if(!cell) { continue; }
+        var tile = cell.t;
+        if(blockMode) {
+          var block = cell.b;
+          tile = blockSet && typeof block !== 'undefined'
+            ? blockSet.getCharacterInBlock(block, this.getXOffsetInBlock(x), this.getYOffsetInBlock(y))
+            : false;
+          if(tile === false) { tile = this.blankTileId; }
+        }
+        // ECM cells select a background with the upper bits but rasterize the
+        // corresponding glyph from the 64-character bank.
+        if(mode === TextModeEditor.Mode.C64ECM && tile !== false) {
+          var ecmGroup = Math.floor(tile / 256);
+          tile = (tile % 64) + ecmGroup * 256;
+        }
+        add(tile, x, y);
+      }
+    }
+
+    // Merge identical horizontal runs on consecutive rows. Disconnected uses
+    // remain separate, so one animated corner tile cannot dirty the space
+    // between it and another occurrence at the opposite corner.
+    for(var tileKey in tiles) {
+      var source = tiles[tileKey];
+      var merged = [];
+      var active = Object.create(null);
+      for(var regionIndex = 0; regionIndex < source.length; regionIndex++) {
+        var region = source[regionIndex];
+        var spanKey = region.minX + ':' + region.maxX;
+        var previous = active[spanKey];
+        if(previous && previous.maxY === region.minY) {
+          previous.maxY = region.maxY;
+        } else {
+          merged.push(region);
+          active[spanKey] = region;
+        }
+      }
+      tiles[tileKey] = merged;
+    }
+
+    this.tileUsageByFrame[frameIndex] = {
+      frame: frame, data: frame.data, width: width, height: height,
+      blockMode: blockMode, blockSet: blockSet,
+      blockRevision: blockRevision, blockWidth: blockWidth,
+      blockHeight: blockHeight, blankTileId: this.blankTileId,
+      mode: mode, tiles: tiles
+    };
+    return tiles;
+  },
+
+  mergeCellRegions: function(regions) {
+    if(!regions || regions.length === 0) { return []; }
+    var sorted = regions.map(function(region) {
+      return { minX: region.minX, minY: region.minY,
+        maxX: region.maxX, maxY: region.maxY };
+    }).sort(function(a, b) {
+      return a.minY - b.minY || a.maxY - b.maxY || a.minX - b.minX || a.maxX - b.maxX;
+    });
+    var merged = [];
+    for(var i = 0; i < sorted.length; i++) {
+      var region = sorted[i];
+      var previous = merged[merged.length - 1];
+      if(previous && previous.minY === region.minY && previous.maxY === region.maxY
+          && region.minX <= previous.maxX) {
+        previous.maxX = Math.max(previous.maxX, region.maxX);
+      } else {
+        merged.push(region);
+      }
+    }
+    return merged;
+  },
+
+  intersectCellRegion: function(region, bounds) {
+    var intersection = {
+      minX: Math.max(region.minX, bounds.minX),
+      minY: Math.max(region.minY, bounds.minY),
+      maxX: Math.min(region.maxX, bounds.maxX),
+      maxY: Math.min(region.maxY, bounds.maxY)
+    };
+    return intersection.minX < intersection.maxX && intersection.minY < intersection.maxY
+      ? intersection : false;
+  },
+
+  subtractCellRegion: function(region, cut) {
+    var overlap = this.intersectCellRegion(region, cut);
+    if(!overlap) { return [region]; }
+    var pieces = [];
+    if(region.minY < overlap.minY) {
+      pieces.push({ minX: region.minX, minY: region.minY,
+        maxX: region.maxX, maxY: overlap.minY });
+    }
+    if(overlap.maxY < region.maxY) {
+      pieces.push({ minX: region.minX, minY: overlap.maxY,
+        maxX: region.maxX, maxY: region.maxY });
+    }
+    if(region.minX < overlap.minX) {
+      pieces.push({ minX: region.minX, minY: overlap.minY,
+        maxX: overlap.minX, maxY: overlap.maxY });
+    }
+    if(overlap.maxX < region.maxX) {
+      pieces.push({ minX: overlap.maxX, minY: overlap.minY,
+        maxX: region.maxX, maxY: overlap.maxY });
+    }
+    return pieces;
+  },
+
+  consumeTileDirtyRegions: function(regions) {
+    var pending = this.tileDirtyRegions;
+    for(var i = 0; i < regions.length; i++) {
+      var remaining = [];
+      for(var j = 0; j < pending.length; j++) {
+        remaining = remaining.concat(this.subtractCellRegion(pending[j], regions[i]));
+      }
+      pending = remaining;
+    }
+    this.tileDirtyRegions = this.mergeCellRegions(pending);
+  },
+
+  getTileDirtyRegions: function() {
+    return this.tileDirtyRegions;
+  },
+
+  drawTileRegions: function(args, regions, consume) {
+    regions = regions && regions.length ? regions : this.tileDirtyRegions;
+    if(!regions || regions.length === 0) {
+      return { offsetX: 0, offsetY: 0 };
+    }
+    var visible = {
+      minX: this.viewMinX, minY: this.viewMinY,
+      maxX: this.viewMaxX, maxY: this.viewMaxY
+    };
+    var drawn = [];
+    var offset = { offsetX: 0, offsetY: 0 };
+    for(var i = 0; i < regions.length; i++) {
+      var region = this.intersectCellRegion(regions[i], visible);
+      if(!region) { continue; }
+      var drawArgs = Object.assign({}, args, {
+        allCells: false, partial: true, consumeDirtyState: false,
+        fromX: region.minX, fromY: region.minY,
+        toX: region.maxX, toY: region.maxY
+      });
+      offset = this.getMode() === TextModeEditor.Mode.VECTOR
+        ? this.drawVector(drawArgs) : this.draw(drawArgs);
+      drawn.push(region);
+    }
+    if(consume !== false && drawn.length) {
+      this.consumeTileDirtyRegions(drawn);
+    }
+    return offset || { offsetX: 0, offsetY: 0 };
+  },
+
+  getTileUsageRegions: function(frameIndex, tileIds) {
+    var usage = this.getTileUsage(frameIndex);
+    if(!usage) { return []; }
+    var regions = [];
+    for(var i = 0; i < tileIds.length; i++) {
+      var tileRegions = usage[String(tileIds[i])];
+      if(tileRegions) { regions = regions.concat(tileRegions); }
+    }
+    return this.mergeCellRegions(regions);
+  },
+
+  getTileUsageBounds: function(frameIndex, tileIds) {
+    var regions = this.getTileUsageRegions(frameIndex, tileIds);
+    var result = false;
+    for(var i = 0; i < regions.length; i++) {
+      var bounds = regions[i];
+      if(!result) {
+        result = { minX: bounds.minX, minY: bounds.minY,
+          maxX: bounds.maxX, maxY: bounds.maxY };
+      } else {
+        result.minX = Math.min(result.minX, bounds.minX);
+        result.minY = Math.min(result.minY, bounds.minY);
+        result.maxX = Math.max(result.maxX, bounds.maxX);
+        result.maxY = Math.max(result.maxY, bounds.maxY);
+      }
+    }
+    return result;
+  },
+
+  boundsForRegions: function(regions) {
+    if(!regions || regions.length === 0) { return false; }
+    var result = { minX: regions[0].minX, minY: regions[0].minY,
+      maxX: regions[0].maxX, maxY: regions[0].maxY };
+    for(var i = 1; i < regions.length; i++) {
+      result.minX = Math.min(result.minX, regions[i].minX);
+      result.minY = Math.min(result.minY, regions[i].minY);
+      result.maxX = Math.max(result.maxX, regions[i].maxX);
+      result.maxY = Math.max(result.maxY, regions[i].maxY);
+    }
+    return result;
+  },
+
+  markCellBoundsDirty: function(bounds) {
+    this.updatedCellRanges.minX = Math.min(this.updatedCellRanges.minX, bounds.minX);
+    this.updatedCellRanges.minY = Math.min(this.updatedCellRanges.minY, bounds.minY);
+    this.updatedCellRanges.maxX = Math.max(this.updatedCellRanges.maxX, bounds.maxX);
+    this.updatedCellRanges.maxY = Math.max(this.updatedCellRanges.maxY, bounds.maxY);
+    // A tile mutation may fall inside a viewport region retained while other
+    // cells stayed dirty offscreen. That retained region is no longer valid.
+    this.drawnBounds.fromX = 0;
+    this.drawnBounds.fromY = 0;
+    this.drawnBounds.toX = 0;
+    this.drawnBounds.toY = 0;
+  },
+
+  markTileRegionsDirty: function(regions) {
+    if(!regions || regions.length === 0) { return; }
+    this.tileDirtyRegions = this.mergeCellRegions(this.tileDirtyRegions.concat(regions));
+    this.drawnBounds.fromX = 0;
+    this.drawnBounds.fromY = 0;
+    this.drawnBounds.toX = 0;
+    this.drawnBounds.toY = 0;
+  },
+
+  queuePrevFrameDamage: function(frameIndex, regions) {
+    if(!this.prevFrameCache || this.prevFrameCache.frame !== this.frames[frameIndex]
+        || !regions || regions.length === 0) { return; }
+    if(this.prevFrameDirtyFrame !== this.frames[frameIndex]) {
+      this.prevFrameDirtyFrame = this.frames[frameIndex];
+      this.prevFrameDirtyRegions = [];
+    }
+    this.prevFrameDirtyRegions = this.mergeCellRegions(this.prevFrameDirtyRegions.concat(regions));
+  },
+
+  invalidateTiles: function(tileIds) {
+    if(!tileIds || tileIds.length === 0) { return false; }
+
+    var currentRegions = this.getTileUsageRegions(this.currentFrame, tileIds);
+    var currentBounds = this.boundsForRegions(currentRegions);
+    var previousRegions = [];
+    var previousFrame = this.currentFrame - 1;
+    if(previousFrame < 0) { previousFrame += this.getFrameCount(); }
+    var showPrevious = this.isCurrentLayer() && previousFrame !== this.currentFrame
+      && this.editor.frames && this.editor.frames.getShowPrevFrame
+      && this.editor.frames.getShowPrevFrame();
+    if(showPrevious) {
+      previousRegions = this.getTileUsageRegions(previousFrame, tileIds);
+    }
+    var previousBounds = this.boundsForRegions(previousRegions);
+
+    var cachedFrame = -1;
+    var cachedRegions = [];
+    if(this.prevFrameCache) {
+      cachedFrame = this.frames.indexOf(this.prevFrameCache.frame);
+      if(cachedFrame >= 0 && (!showPrevious || cachedFrame !== previousFrame)) {
+        cachedRegions = this.getTileUsageRegions(cachedFrame, tileIds);
+      }
+    }
+
+    if(currentBounds) {
+      this.markTileRegionsDirty(currentRegions);
+      this.previewRevision++;
+      if(this.previewDirtyBounds !== null) {
+        this.previewDirtyBounds.minX = Math.min(this.previewDirtyBounds.minX, currentBounds.minX);
+        this.previewDirtyBounds.minY = Math.min(this.previewDirtyBounds.minY, currentBounds.minY);
+        this.previewDirtyBounds.maxX = Math.max(this.previewDirtyBounds.maxX, currentBounds.maxX);
+        this.previewDirtyBounds.maxY = Math.max(this.previewDirtyBounds.maxY, currentBounds.maxY);
+      }
+      this.tileFrameRevisions[this.currentFrame] =
+        (this.tileFrameRevisions[this.currentFrame] || 0) + 1;
+    }
+
+    if(previousBounds) {
+      this.queuePrevFrameDamage(previousFrame, previousRegions);
+      this.tileFrameRevisions[previousFrame] =
+        (this.tileFrameRevisions[previousFrame] || 0) + 1;
+    }
+
+    if(cachedRegions.length) {
+      this.queuePrevFrameDamage(cachedFrame, cachedRegions);
+      this.tileFrameRevisions[cachedFrame] =
+        (this.tileFrameRevisions[cachedFrame] || 0) + 1;
+    }
+
+    var regions = this.mergeCellRegions(currentRegions.concat(previousRegions));
+    var bounds = this.boundsForRegions(regions);
+    if(!bounds) { return false; }
+    bounds.regions = regions;
+    bounds.currentRegions = currentRegions;
+    bounds.previousRegions = previousRegions;
+    return bounds;
   },
 
   getFrameRenderState: function(frameIndex, drawBackground) {
@@ -617,6 +975,7 @@ LayerGrid.prototype = {
     // NES has only four small subpalettes, which can also be edited in-place.
     var state = [
       this.doc, frame, frame.data, tileSet, tileSet.renderRevision,
+      this.tileFrameRevisions[frameIndex] || 0,
       tileSet.tileData, tileSet.currentTileData, tileSet.vectorData,
       tileSet.getTileWidth(), tileSet.getTileHeight(),
       palette, palette.renderRevision, palette.colors,
@@ -662,7 +1021,38 @@ LayerGrid.prototype = {
       return cache.offset;
     }
 
+    // A selective glyph mutation changes only the per-frame tile revision
+    // (index 5). Patch those cells into the existing onion raster and advance
+    // its state instead of rebuilding the complete previous frame.
+    var canPatch = cache && cache.frame === frame && cache.canvas === canvas
+      && cache.width === canvas.width && cache.height === canvas.height
+      && this.prevFrameDirtyFrame === frame && this.prevFrameDirtyRegions.length
+      && state.length === cache.state.length
+      && state.every(function(value, index) {
+        return index === 5 || value === cache.state[index];
+      });
+    if(canPatch) {
+      for(var i = 0; i < this.prevFrameDirtyRegions.length; i++) {
+        var region = this.prevFrameDirtyRegions[i];
+        var patchArgs = Object.assign({}, args, {
+          allCells: false, partial: true,
+          fromX: region.minX, fromY: region.minY,
+          toX: region.maxX, toY: region.maxY,
+          draw: 'prevgrid', drawBackground: drawBackground,
+          shapes: false, cursor: false
+        });
+        if(vector) { this.drawVector(patchArgs); }
+        else { this.draw(patchArgs); }
+      }
+      cache.state = state;
+      this.prevFrameDirtyFrame = null;
+      this.prevFrameDirtyRegions = [];
+      return cache.offset;
+    }
+
     this.prevFrameCache = null;
+    this.prevFrameDirtyFrame = null;
+    this.prevFrameDirtyRegions = [];
     var drawArgs = Object.assign({}, args, {
       allCells: true, draw: 'prevgrid', drawBackground: drawBackground,
       shapes: false, cursor: false
@@ -930,6 +1320,7 @@ LayerGrid.prototype = {
 
   initFrameBlocks: function(blockId) {
     this.invalidatePrevFrame();
+    this.invalidateTileUsage();
     for(var i = 0; i < this.frames.length; i++) {
       var gridData = this.frames[i].data;
       if(gridData) {
@@ -954,6 +1345,7 @@ LayerGrid.prototype = {
     // need to make sure current block set is compatible..
     this.doc.blockWidth = parseInt(width, 10);
     this.doc.blockHeight = parseInt(height, 10);
+    this.invalidateTileUsage();
     this.editor.modified();
   },
 
@@ -1910,6 +2302,7 @@ LayerGrid.prototype = {
 
   updateTilesFromBlocks: function() {
     this.invalidatePrevFrame();
+    this.invalidateTileUsage();
 
 
     var colorPerMode = this.getColorPerMode();
@@ -1979,6 +2372,11 @@ LayerGrid.prototype = {
 
   invalidateAllCells: function() {
     this.invalidatePrevFrame();
+    this.invalidateTileUsage();
+    this.tileDirtyRegions = [];
+    for(var frame = 0; frame < this.frames.length; frame++) {
+      this.tileFrameRevisions[frame] = (this.tileFrameRevisions[frame] || 0) + 1;
+    }
     var doc = this.doc;
 
     this.updatedCellRanges.minX = 0;
@@ -2379,6 +2777,7 @@ LayerGrid.prototype = {
       this.editor.history.addAction("setCell", params);
     }
 
+    var tileChanged = cell.t !== t;
     cell.t = t;
     cell.fc = fc;
     cell.bc = bc;
@@ -2404,6 +2803,10 @@ LayerGrid.prototype = {
           blockSet.setCharacterInBlock(b, xBlockOffset, yBlockOffset, t);
         }
       }
+    }
+
+    if(tileChanged || this.getBlockModeEnabled()) {
+      this.invalidateTileUsage(frame);
     }
 
     /*
@@ -2901,8 +3304,9 @@ LayerGrid.prototype = {
     var frameIndex = typeof args.frame !== 'undefined' ? args.frame : this.currentFrame;
     // Only the current frame's owned canvas can consume viewport invalidation.
     // Animation/export scratch renders must neither borrow nor update it.
-    var useDirtyState = draw == 'grid' && canvas === this.canvas && frameIndex === this.currentFrame;
-    if(!useDirtyState) { allCells = true; }
+    var ownsDirtyState = draw == 'grid' && canvas === this.canvas && frameIndex === this.currentFrame;
+    var useDirtyState = ownsDirtyState && args.consumeDirtyState !== false;
+    if(!ownsDirtyState && args.partial !== true) { allCells = true; }
 
     //the offset the grid is drawn at
     var offsetX = 0;
@@ -3305,6 +3709,15 @@ LayerGrid.prototype = {
       dstY = (fromY - drawFromGridY) * tileHeight;
     }
 
+    if(args.partial === true && typeof args.fromX != 'undefined') {
+      fromX = Math.max(drawFromGridX, args.fromX);
+      fromY = Math.max(drawFromGridY, args.fromY);
+      toX = Math.min(drawToGridX, args.toX);
+      toY = Math.min(drawToGridY, args.toY);
+      dstX = (fromX - drawFromGridX) * tileWidth;
+      dstY = (fromY - drawFromGridY) * tileHeight;
+    }
+
     // need to calculate this properly..
     var fromPixelX = 0;
     var fromPixelY = 0;
@@ -3603,6 +4016,9 @@ LayerGrid.prototype = {
         this.updatedCellRanges.maxY = 0;
       }
     }
+    if(ownsDirtyState && allCells && !bgOnly) {
+      this.tileDirtyRegions = [];
+    }
 
     
     return {
@@ -3659,7 +4075,8 @@ LayerGrid.prototype = {
 
     // Auxiliary canvases do not contain the main viewport's cached pixels,
     // even when rendering the same frame. Keep their reads and writes isolated.
-    var useDirtyState = draw == 'grid' && canvas === this.canvas && frameIndex === this.currentFrame;
+    var ownsDirtyState = draw == 'grid' && canvas === this.canvas && frameIndex === this.currentFrame;
+    var useDirtyState = ownsDirtyState && args.consumeDirtyState !== false;
     var useDrawnBounds = useDirtyState && !allCells;
 
 //    var hasTileOrientation = this.editor.graphic.hasTileOrientation();
@@ -4515,6 +4932,9 @@ LayerGrid.prototype = {
           this.drawnBounds.toY = toY;        
 
       }
+    }
+    if(ownsDirtyState && allCells) {
+      this.tileDirtyRegions = [];
     }
 
   },  

@@ -1477,6 +1477,137 @@ test("2D editor reuses cached artwork while a marquee animates", async ({ page }
   });
 });
 
+test("2D tile animation redraws only artwork that uses the changed tile", async ({ page }, testInfo) => {
+  test.skip(!isDesktop2DRendererProject(testInfo));
+
+  await open2DProject(page, testInfo);
+  const result = await page.evaluate(() => {
+    const editor = g_app.textModeEditor;
+    const { graphic, gridView2d: view, layers } = editor;
+    const layer = layers.getSelectedLayerObject();
+    const tileSet = layer.getTileSet();
+    const width = 40;
+    const height = 25;
+    graphic.setGridDimensions({ width, height });
+    view.setScale(3.5, false);
+    view.setCameraPosition(0, 0);
+    editor.frames.setShowPrevFrame(false);
+    editor.history.setEnabled(false);
+    for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+      layer.setCell({ x, y, t: 0, fc: 1, bc: -1, update: false });
+    }
+    editor.history.setEnabled(true);
+    graphic.invalidateAllCells();
+    graphic.redraw({ allCells: true });
+
+    const visible = {
+      minX: Math.max(0, layer.viewMinX), minY: Math.max(0, layer.viewMinY),
+      maxX: Math.min(width, layer.viewMaxX), maxY: Math.min(height, layer.viewMaxY),
+    };
+    const usedCells = [
+      { x: visible.minX + 1, y: visible.minY + 1 },
+      { x: visible.maxX - 2, y: visible.maxY - 2 },
+    ];
+    let offscreenCell = null;
+    for (let y = 0; y < height && !offscreenCell; y++) for (let x = 0; x < width; x++) {
+      if (x < visible.minX || x >= visible.maxX || y < visible.minY || y >= visible.maxY) {
+        offscreenCell = { x, y };
+        break;
+      }
+    }
+    for (const cell of usedCells) {
+      layer.setCell({ ...cell, t: 2, fc: 1, bc: -1, update: false });
+    }
+    layer.setCell({ ...offscreenCell, t: 254, fc: 1, bc: -1, update: false });
+    graphic.invalidateAllCells();
+    graphic.redraw({ allCells: true });
+    layers.updateAllLayerPreviews();
+
+    for (const tile of tileSet.tileData) tile.props.animated = false;
+    const animate = (tile) => Object.assign(tileSet.tileData[tile].props, {
+      animated: "blink", frame: 0, lastTick: 0, ticksPerFrame: 1,
+    });
+    const originalRead = CanvasRenderingContext2D.prototype.getImageData;
+    const originalRedraw = graphic.redraw;
+    const originalDrawFrame = graphic.drawFrame;
+    const originalRaster = view.drawRasterImage;
+    const reads = [];
+    const redraws = [];
+    const clips = [];
+    let frameDraws = 0;
+    CanvasRenderingContext2D.prototype.getImageData = function (...args) {
+      if (this.canvas === layer.canvas) reads.push(args.slice(0, 4));
+      return originalRead.apply(this, args);
+    };
+    graphic.redraw = function (args) {
+      redraws.push(args);
+      return originalRedraw.call(this, args);
+    };
+    graphic.drawFrame = function (args) {
+      frameDraws++;
+      return originalDrawFrame.call(this, args);
+    };
+    view.drawRasterImage = function (context, bounds, ...args) {
+      if (bounds) clips.push({ ...bounds });
+      return originalRaster.call(this, context, bounds, ...args);
+    };
+
+    try {
+      animate(255);
+      tileSet.update(1);
+      const unused = {
+        reads: reads.splice(0), redraws: redraws.splice(0), clips: clips.splice(0),
+        frameDraws: frameDraws,
+      };
+      frameDraws = 0;
+      tileSet.tileData[255].props.animated = false;
+      animate(254);
+      tileSet.update(1);
+      const offscreen = {
+        reads: reads.splice(0), redraws: redraws.splice(0), clips: clips.splice(0),
+        frameDraws: frameDraws,
+      };
+      frameDraws = 0;
+      tileSet.tileData[254].props.animated = false;
+      animate(2);
+      tileSet.update(1);
+      const used = {
+        reads: reads.splice(0), redraws: redraws.splice(0), clips: clips.splice(0),
+        frameDraws: frameDraws,
+      };
+      return {
+        unused, offscreen, used, usedCells, offscreenCell,
+        tileWidth: layer.getCellWidth(), tileHeight: layer.getCellHeight(),
+      };
+    } finally {
+      CanvasRenderingContext2D.prototype.getImageData = originalRead;
+      graphic.redraw = originalRedraw;
+      graphic.drawFrame = originalDrawFrame;
+      view.drawRasterImage = originalRaster;
+    }
+  });
+
+  expect(result.unused).toEqual({ reads: [], redraws: [], clips: [], frameDraws: 0 });
+  expect(result.offscreen.redraws).toHaveLength(1);
+  expect(result.offscreen.frameDraws).toBe(0);
+  expect(result.offscreen.reads).toEqual([]);
+  expect(result.offscreen.clips).toEqual([]);
+  expect(result.used.redraws).toHaveLength(1);
+  expect(result.used.frameDraws).toBe(1);
+  expect(result.used.redraws[0].dirtyPixels.regions).toHaveLength(2);
+  for (const cell of result.usedCells) {
+    expect(result.used.reads).toContainEqual([
+      cell.x * result.tileWidth, cell.y * result.tileHeight,
+      result.tileWidth, result.tileHeight,
+    ]);
+  }
+  expect(result.used.clips).toHaveLength(2);
+  expect(result.used.clips.every(({ width, height }) =>
+    width <= Math.ceil(result.tileWidth * 3.5) + 1
+    && height <= Math.ceil(result.tileHeight * 3.5) + 1
+  )).toBe(true);
+});
+
 test("2D editor confines pencil rasterization and repaint to edited cells", async ({ page }, testInfo) => {
   test.skip(!isDesktop2DRendererProject(testInfo));
 

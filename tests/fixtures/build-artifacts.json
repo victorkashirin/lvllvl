@@ -27,12 +27,12 @@
       "sha256": "f6e20ce93d4c5e5a0fe109bd3a07dc51e482ba8700c4ef7468bbc0839d2872b8"
     },
     "js/main.js": {
-      "bytes": 3247777,
-      "sha256": "9b2289df8522488e6b9b084a04bc2d180cbde3438b52c82a4bd7cfef34597757"
+      "bytes": 3261973,
+      "sha256": "16f639fe8ad47b98736e599aa8b4da753e1e9f4bbfbe402147f115ecb2c39379"
     },
     "js/main.js.map": {
-      "bytes": 10364767,
-      "sha256": "8c4522c635308a61a1fb9e079431bc5369d37590cd4e818a14ce94cb1e8a4e7e"
+      "bytes": 10418496,
+      "sha256": "ccdbd56d329ccbdfb5add70bd310145f6493a32af9e3427b6f027e5e2f3b8f14"
     },
     "js/bootstrap.mjs": {
       "bytes": 3299,

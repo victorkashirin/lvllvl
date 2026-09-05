@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import vm from "node:vm";
 
+const graphicSource = readFileSync(new URL("../src/js/textMode/graphic.js", import.meta.url), "utf8");
 const source = readFileSync(new URL("../src/js/textMode/gridView2d.js", import.meta.url), "utf8");
 const pixelAt = (x, y) => (0xff000000 | ((y + 1) << 12) | (x + 1)) >>> 0;
 
@@ -24,6 +25,7 @@ function fixture({ width = 37, height = 29, sourceWidth = 127, sourceHeight = 19
     document: { createElement: makeCanvas },
     UI: { getContextNoSmoothing: (canvas) => canvas.getContext("2d") },
   });
+  vm.runInContext(graphicSource, sandbox);
   vm.runInContext(source, sandbox);
   const view = new sandbox.GridView2d();
   view.width = width;
@@ -61,7 +63,7 @@ function fixture({ width = 37, height = 29, sourceWidth = 127, sourceHeight = 19
       }
     },
   };
-  return { view, image, context, pixels, reads, writes };
+  return { view, image, context, pixels, reads, writes, graphic: new sandbox.Graphic() };
 }
 
 test("fractional bitmap sampling matches a pixel-centre oracle across clips, offsets and device ratios", () => {
@@ -157,4 +159,18 @@ test("offscreen images preserve native compositing without raster work; empty im
   assert.equal(f.reads.length, 0);
   assert.equal(f.writes.length, 1);
   assert.equal(f.writes[0].length, 9);
+});
+
+test("overlapping raster clips are unioned after fractional-zoom rounding", () => {
+  const f = fixture();
+  f.view.editor = { graphic: f.graphic };
+  const regions = f.view.mergeRasterRegions([
+    { x: 0, y: 0, width: 1, height: 1 },
+    { x: 0, y: 0, width: 2, height: 1 },
+    { x: 4, y: 0, width: 1, height: 1 },
+  ]);
+  assert.deepEqual(Array.from(regions, (region) => ({ ...region })), [
+    { x: 0, y: 0, width: 2, height: 1 },
+    { x: 4, y: 0, width: 1, height: 1 },
+  ]);
 });
