@@ -26,6 +26,10 @@
 
 ### Changed
 
+- Define the current P1.4 implementation target as import/export boundary
+  containment plus immediate legacy cleanup, move that cleanup ahead of the
+  specialized subsystem phase, and explicitly defer payload optimization,
+  wholesale module conversion, Worker redesign, and subsystem migration.
 - Temporarily disable GitHub, Gist, and Google Drive, remove their provider-facing
   controls and runtime artifacts, and tighten CSP to the remaining Lospec network
   dependency until a reviewed server-side credential design is available.

@@ -18,8 +18,8 @@ the objective. The target state is:
 - new application code cannot introduce undeclared global coupling;
 - persistence, document state, history, providers, and feature activation have
   explicit contracts and focused behavioral tests;
-- optional features and their exclusive dependencies are absent from the initial
-  payload;
+- optional-feature dependencies are reachable only through declared public
+  boundaries, whether they remain eager or become lazy;
 - legacy globals exist only in documented composition adapters; and
 - each migrated seam removes at least as much compatibility code as it adds once
   all callers have moved.
@@ -30,6 +30,50 @@ Drive and removing their browser credential implementations. This is the selecte
 release posture until a reviewed server-side, short-lived, least-privilege design
 exists. Historical token revocation and Firestore cleanup remain deployment-owner
 actions; module boundaries alone would not have made the former design safe.
+
+## Current implementation target
+
+The current implementation tranche covers **Phase 5 and Phase 6 only**: contain
+the remaining import/export systems behind explicit document contracts and remove
+the legacy paths made obsolete by each completed slice. It is a maintainability
+and stability change. It has no payload-size, chunk-count, or startup-time target,
+and it should preserve the current eager or lazy loading behavior unless changing
+that behavior is required to remove a superseded path safely.
+
+Deliver the tranche as a sequence of format-family vertical slices rather than as
+one pull request. Across those slices, the target is:
+
+- import code receives validated bytes or text and a narrow set of destination
+  document operations instead of a mutable editor or `g_app`;
+- export code receives an immutable document snapshot and returns a generated
+  artifact instead of owning file pickers, downloads, or arbitrary DOM access;
+- pure parsers and encoders are ordinary stateless module functions, stateful
+  conversion operations are `per-use`, UI controllers are `context` scoped, and
+  shared application services hold no per-operation mutable state;
+- characterization and golden fixtures preserve successful, malformed-input,
+  cancellation, timeout, and retry behavior before old paths are removed;
+- the image-import seam stops publishing a global constructor once its remaining
+  callers can use the module entry point; and
+- every completed slice performs the applicable Phase 6 cleanup immediately,
+  including build-graph, facade, global, test, architecture, and changelog cleanup.
+
+Completing this tranche does **not** by itself close P1.4. The specialized subsystem
+boundaries in Phase 7 remain necessary for that overall finding.
+
+### Deferred from the current implementation
+
+- Music, emulator, debugger, and assembler containment in Phase 7.
+- New lazy loading, dependency relocation for payload reduction, prefetching,
+  chunk tuning, or startup-size budgets.
+- Wholesale conversion of stable legacy internals to native modules or TypeScript.
+- Worker migration or changes to existing Worker, sandbox, emulator, or execution
+  models unless required to fix a separately demonstrated correctness or security
+  defect.
+- Redesign of formats, document data structures, command semantics, or UI flows.
+- Removal of every remaining historical global after it has been confined to a
+  documented, non-growing composition adapter.
+- Live remote-provider work, which remains subject to the separate P0.3 security
+  re-enable gate.
 
 ## Necessity scale
 
@@ -427,30 +471,35 @@ Overall score: **Mixed**
 
 - Containing imports and exports behind narrow document boundaries is
   **Necessary** to close P1.4.
-- Converting every implementation file to native modules and lazy-loading feature
-  code or exclusive dependencies is **Good to have**.
+- Converting implementation files to native modules is **Good to have** only when
+  it removes a global boundary, makes dependencies enforceable, or materially
+  simplifies the migrated format family.
+- Introducing new lazy loading or moving dependencies for payload reduction is
+  **Deferred** from the current implementation.
 - Moving conversion work into Workers is **Optional** unless measurements show an
   existing responsiveness problem.
 
-This is a high-value source of isolated features and potential payload savings,
-but it should follow the core lifecycle contracts that imports and exports consume.
+This phase is valuable because it prevents format implementations from reaching
+through broad mutable editor state. Payload savings are not an objective of the
+current implementation.
 
 ### Work
 
 - Define import contracts around validated bytes/text plus explicit destination
   document operations. Define export contracts around immutable snapshots and
   generated artifacts.
-- Where further conversion is justified, keep each format or closely related
-  format family as a separate feature when independent loading is practical.
+- Keep each format or closely related format family as a separate vertical slice.
+  Do not turn stateless parsers or encoders into registry features merely to move
+  files; use `per-use` scope only for stateful operations and `context` scope for
+  editor- or document-owned UI controllers.
 - Optionally move CPU-heavy conversion into Workers where measurements show UI
   stalls and the message boundary can remain small and deterministic.
 - Use transferable buffers for large binary payloads when Worker migration is
   selected.
 - Preserve existing progress, cancellation, timeout, malformed-input, and failure
   behavior at the new boundary.
-- Move feature-exclusive parsers, encoders, and rendering libraries out of the
-  initial library bundle. Do not duplicate a shared dependency across many chunks
-  without measuring the result.
+- Keep current loading behavior during this tranche. Dependency relocation and
+  chunk changes require a separate measured proposal.
 - Finish the image-import seam by replacing its global constructor with module
   exports and removing the compatibility facade after all callers migrate.
 
@@ -462,54 +511,97 @@ but it should follow the core lifecycle contracts that imports and exports consu
 - When Worker migration is selected: Worker unavailable/crashed, cancellation,
   and repeated invocation.
 - Pixel or byte equality for deterministic outputs.
-- When lazy loading is selected: absence from startup requests and successful cold
-  activation in production.
 
 Necessary exit criterion: migrated format families access document state only
-through their explicit import/export contracts. If full module conversion or lazy
-loading is selected, global constructors must also be removed, exclusive
-dependencies must be absent from startup, and first-use latency must stay within
-its recorded budget.
+through their explicit import/export contracts. Stable legacy internals may remain
+behind an adapter, but the adapter must expose only the narrow contract, must be
+the sole legacy access path for that family, and must not permit new callers to
+depend on its globals.
 
-## Phase 6: migrate music, emulator, debugger, and assembler integrations
+## Phase 6: retire import/export adapters and tighten the default path
 
-Overall score: **Mixed**
+Overall score: **Necessary** for the current implementation tranche
+
+Phase 6 follows Phase 5 directly. Its cleanup is performed after every completed
+format-family slice rather than being postponed until all importers and exporters
+have moved. The same cleanup pattern continues during Phase 7 later.
+
+### Work
+
+- Remove global constructors and facade properties when their last caller moves.
+- Remove migrated files from `js/main.js` and its manually ordered graph when no
+  stable legacy implementation still requires them.
+- Delete unused compatibility methods from `Editor` instead of retaining permanent
+  aliases.
+- Make module boundaries the default for all new application code; require an
+  explicit expiring exception for additions to the legacy graph.
+- Confine any remaining `g_app` access for a migrated format family to its named
+  composition adapter and document every exposed operation.
+- Re-run global-reference and build-graph inventories after each slice and require
+  the counts to move downward or have an explained exception. Payload measurements
+  are required only when loading behavior changes.
+- Update `docs/architecture.md` and `CHANGELOG.md` to describe the actual state
+  delivered by the slice.
+
+### Current implementation exit criteria
+
+The Phase 5–6 tranche is complete when:
+
+- every remaining import/export format family reaches document state through its
+  explicit import or export contract;
+- stateful operations and context-owned UI have explicit lifetime and disposal,
+  with no mutable operation state shared accidentally between invocations;
+- stable classic-script internals that remain are accessible only through named,
+  documented adapters and cannot gain new direct callers;
+- the image-import global constructor and compatibility facade are removed after
+  their last callers migrate;
+- superseded globals, facade methods, ordered build entries, and duplicate paths
+  have been removed; and
+- focused contract, fixture, and production-browser coverage passes without an
+  intentional change to current user-visible behavior.
+
+Passing these criteria completes the current implementation tranche, but P1.4
+remains open until the Phase 7 specialized subsystem boundaries are complete.
+
+## Phase 7: migrate music, emulator, debugger, and assembler integrations
+
+Overall score: **Mixed** and **deferred from the current implementation**
 
 - Containing these subsystems behind narrow editor capabilities is **Necessary**
   to close P1.4.
-- Converting all internals to native modules and lazy-loading optional resources is
-  **Good to have**.
+- Converting internals to native modules is **Good to have** when it improves
+  enforceable ownership or removes a global boundary.
+- New lazy loading and payload-oriented resource movement are **Deferred** unless
+  separately approved from measurements.
 - Reworking existing Worker, sandbox, or execution models is **Optional** unless
   required to preserve security or correct a demonstrated defect.
 
-These are large, specialized subsystems with good isolation and performance
-potential, but also high regression risk. Migrate them only with subsystem owners
-or strong characterization coverage.
+These are large, specialized subsystems with high regression risk. They form a
+separate implementation milestone after Phase 5–6 and should be migrated only
+with subsystem owners or strong characterization coverage.
 
 ### Work
 
 - Define capability interfaces for emulator control, memory/register inspection,
   assembly, build output, audio, and music scripting.
 - Keep ROMs, WASM, workers, editor modes, and subsystem-exclusive libraries behind
-  their owning feature boundary.
+  their owning feature boundary without changing their current loading behavior
+  solely for this migration.
 - Preserve the opaque music-script sandbox and restrictive CSP. Do not reintroduce
   main-origin evaluation to simplify module loading.
 - Normalize worker/sandbox messages and validate every message at the boundary.
 - Separate emulator lifecycle from debugger UI lifecycle so opening or closing a
   panel does not implicitly recreate machine state.
-- Lazy-load only resources not needed for the user's selected startup route. A C64
-  deep link may legitimately make the emulator an initial dependency for that
-  route.
 
 ### Suggested order
 
-1. Assembler facade and worker/resource loading.
+1. Assembler facade and worker/resource boundary.
 2. Emulator lifecycle and machine control.
 3. Debugger panels and inspection services.
 4. Music editor support and sandbox client.
 
-Choose the actual order from usage data, defect history, and available fixtures,
-not source size alone.
+Choose the actual order from defect history, available fixtures, and subsystem
+ownership, not source size.
 
 ### Required tests
 
@@ -522,31 +614,8 @@ not source size alone.
 - CSP and sandbox security regressions.
 
 Necessary exit criterion: editor and UI code use explicit capabilities and no
-migrated subsystem obtains application state through `g_app`. If lazy loading is
-selected, optional resources must also be route-aware and satisfy their activation
-budgets.
-
-## Phase 7: retire legacy adapters and tighten the default path
-
-Overall score: **Necessary** to close P1.4
-
-This phase occurs continuously after each slice and finishes after the major seams
-are migrated.
-
-### Work
-
-- Remove global constructors and facade properties when their last caller moves.
-- Remove migrated files from `js/main.js` and its manually ordered graph.
-- Delete unused compatibility methods from `Editor` instead of retaining permanent
-  aliases.
-- Make module boundaries the default for all new application code; require an
-  explicit expiring exception for additions to the legacy graph.
-- Confine the remaining `g_app` access to a named legacy adapter at the composition
-  root and document every exposed operation.
-- Re-run global-reference and bundle inventories after every phase and require the
-  counts to move downward or have an explained exception.
-- Update `docs/architecture.md` to describe the actual current state, not the
-  intended end state.
+migrated subsystem obtains application state through `g_app`. Stable internals may
+remain behind named adapters that cannot acquire new direct callers.
 
 ### P1.4 completion criteria
 
@@ -556,14 +625,15 @@ P1.4 can be marked fixed when all of the following are true:
   activation are governed by explicit tested module contracts;
 - import/export and emulator/assembler boundaries no longer expose broad mutable
   editor state, even if some stable legacy internals remain behind adapters;
-- optional feature code and exclusive dependencies are not in the default startup
-  payload;
+- optional-feature dependencies are reachable only through declared public
+  boundaries, regardless of whether loading remains eager or becomes lazy;
 - new modules and new application source cannot bypass dependency enforcement;
 - `g_app` and legacy constructors are confined to documented composition adapters;
-- the ordered legacy graph is materially smaller and cannot grow silently; and
-- startup and cold-activation budgets pass on the supported browser/device matrix.
+  and
+- the ordered legacy graph is materially smaller and cannot grow silently.
 
-Eliminating every historical global is not required to close P1.4. Confining and
+Eliminating every historical global, meeting a particular payload size, or
+converting every implementation file is not required to close P1.4. Confining and
 freezing the remaining compatibility surface is sufficient if new code cannot
 depend on it.
 
@@ -593,16 +663,19 @@ Perform these only when telemetry or local measurements justify them:
 | Explicit feature scope and disposal | **Necessary** | Prevents shared-state and lifecycle defects. |
 | Layer-specific dependency rules | **Necessary** | Keeps the future module graph understandable. |
 | Boundary type checking | **Good to have** | Detects contract drift earlier. |
-| Performance and activation baselines | **Necessary** | Makes lazy-loading decisions evidence-based. |
+| Performance and activation baselines | **Completed prerequisite** | Supports any later, separately approved loading change. |
 | Persistence/document lifecycle isolation | **Necessary** | Protects user data and makes save behavior testable. |
 | Command/history/editor-state isolation | **Necessary** | Gives state mutation one auditable path. |
 | Secure provider/authentication boundary | **Necessary** | Prevents credentials and provider details leaking into editor code. |
 | Central UI routing and activation lifecycle | **Necessary** | Unifies desktop, mobile, menu, keyboard, and deep-link behavior. |
 | Import/export boundary containment | **Necessary** | Prevents broad document-state coupling. |
-| Full import/export module conversion and lazy loading | **Good to have** | Provides payload and internal-clarity opportunities. |
+| Selective import/export module conversion | **Good to have** | Removes global boundaries and makes useful dependencies enforceable. |
+| New import/export lazy loading | **Deferred** | Payload optimization is outside the current implementation target. |
 | Import/export Worker migration | **Optional** | Helps only when measured conversion work stalls the UI. |
 | Music/emulator/debugger/assembler boundary containment | **Necessary** | Contains specialized access to editor state. |
-| Full specialized-subsystem conversion and lazy loading | **Good to have** | May reduce startup work and global internals. |
+| Specialized-subsystem implementation | **Deferred Phase 7** | Required later, after the Phase 5–6 tranche. |
+| Full specialized-subsystem conversion | **Good to have** | Useful only where it clarifies ownership or removes globals. |
+| New specialized-subsystem lazy loading | **Deferred** | Requires a separate performance proposal. |
 | Worker, sandbox, or execution-model redesign | **Optional** | Not required merely to introduce a module boundary. |
 | Legacy adapter removal and non-growth enforcement | **Necessary** | Converts temporary seams into lasting simplification. |
 | Intent prefetching and chunk tuning | **Optional** | Improves first-use latency after measurement. |
@@ -625,10 +698,10 @@ vertical slice. It should include:
 Phase 0 is the shared prerequisite. After it passes, bounded migrations may proceed
 independently when their direct dependencies are ready: Phase 2 builds on the
 document boundary from Phase 1; Phase 5 needs the relevant document and activation
-contracts from Phases 1 and 4; and Phase 6 needs the activation contract from Phase
-4. Phase 3's disabled-provider slice is complete. A future live-provider slice is
-blocked on the P0.3 re-enable gate. Phase 7 cleanup happens after every completed
-slice rather than waiting for all other phases.
+contracts from Phases 1 and 4; Phase 6 cleanup accompanies every Phase 5 slice; and
+the deferred Phase 7 needs the activation contract from Phase 4. Phase 3's
+disabled-provider slice is complete. A future live-provider slice is blocked on
+the P0.3 re-enable gate.
 
 Do not advance a particular slice merely because files were moved. Its exit
 criteria must pass in CI and its compatibility adapter must have a named removal
@@ -640,9 +713,10 @@ Pause a slice and revisit its boundary if any of these occurs:
 
 - the adapter needs most of `g_app` rather than a narrow capability set;
 - the new and old implementations must both mutate the same state;
-- cold activation noticeably harms a common workflow without a viable prefetch or
-  eager-loading fallback;
-- a shared dependency becomes duplicated across multiple large chunks;
+- a separately approved loading change noticeably harms a common workflow without
+  a viable prefetch or eager-loading fallback;
+- a separately approved chunk change duplicates a shared dependency across
+  multiple large chunks;
 - browser or recovery behavior cannot be characterized before movement; or
 - compatibility code grows for several changes without a credible deletion point.
 

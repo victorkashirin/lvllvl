@@ -7,3 +7,5 @@
 - favorites in tilesets and palettes
 - update dependencies
 - magic wand
+- zen mode
+- fix mobile mode
