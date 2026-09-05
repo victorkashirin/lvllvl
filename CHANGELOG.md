@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.497.4 - 2026-09-05
+
 ### Added
 
 - Add a rendering performance review with prioritized bottlenecks and summarized
