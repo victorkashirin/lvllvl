@@ -4,6 +4,9 @@
 
 ### Fixed
 
+- Bound pixel, tile, and block-grid line selection to the artwork/viewport/
+  dirty-region intersection, preserving world alignment and clipped stroke edges
+  at fractional zoom and device ratios instead of visiting offscreen grid lines.
 - Cache animation-preview composites in a bounded three-frame LRU keyed by cell,
   used-tile, palette, block, layer, background, dimension, and reference-image
   dependencies. Skip unchanged one-frame ticks, keep preview rendering isolated

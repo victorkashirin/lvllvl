@@ -388,8 +388,21 @@ or size resets after warmup; changing a dependency refreshes the preview.
 
 ### R6 — P2: clipped grid painting still constructs offscreen grid paths
 
-**Location:** [gridView2d.js:2428–2598](../../src/js/textMode/gridView2d.js#L2428-L2598),
-[3913–3945](../../src/js/textMode/gridView2d.js#L3913-L3945).
+**Status: fixed.** Grid line selection and command counts are now bounded by the
+intersection of the artwork, viewport, and dirty presentation regions. Selected
+lines retain their full visible span for stable rasterization. Line indices are
+resolved from the original world-aligned lattice, with half-stroke plus
+one-device-pixel padding for clipped antialiasing. Dirty bounds follow the
+composite's device-pixel-rounded clip, so fractional zoom and device scales
+retain grid coverage and phase. Pixel, tile, C64 multicolor, and block grids
+share the bounded path builder. Source regressions
+keep command counts fixed as offscreen document dimensions grow and verify world
+alignment at fractional zoom. Browser coverage bounds real grid commands and
+checks clipped/full pixel equivalence at a fractional device scale. The observations
+below describe the original bug, not new timing measurements.
+
+**Location:** [gridView2d.js:2432–2639](../../src/js/textMode/gridView2d.js#L2432-L2639),
+[4128–4174](../../src/js/textMode/gridView2d.js#L4128-L4174).
 
 The composite is clipped for pencil edits, but `drawGrid()` still loops over grid
 lines for the document, not the clip. Its negative-origin adjustment has the

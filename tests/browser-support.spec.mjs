@@ -1816,7 +1816,9 @@ test("2D editor redraws the clipped grid without a full-size grid cache", async 
     const baseContext = gridView.baseContext;
     const originalRect = baseContext.rect;
     const originalClip = baseContext.clip;
+    const originalLineTo = baseContext.lineTo;
     let gridRasterizations = 0;
+    let gridLineCommands = 0;
     let pendingRect = false;
     const baseClipRects = [];
     gridView.drawGrid = function (...args) {
@@ -1832,6 +1834,10 @@ test("2D editor redraws the clipped grid without a full-size grid cache", async 
       pendingRect = false;
       return originalClip.apply(this, args);
     };
+    baseContext.lineTo = function (...args) {
+      gridLineCommands++;
+      return originalLineTo.apply(this, args);
+    };
 
     const tile = layer.getCell({ x: 12, y: 12 }).t === 1 ? 2 : 1;
     editor.setSelectedTiles([[tile]]);
@@ -1842,12 +1848,14 @@ test("2D editor redraws the clipped grid without a full-size grid cache", async 
     gridView.drawGrid = originalDrawGrid;
     baseContext.rect = originalRect;
     baseContext.clip = originalClip;
+    baseContext.lineTo = originalLineTo;
 
     return {
       baseClipRects,
       baseMatchesFront: gridView.baseCanvas.width === gridView.canvas.width
         && gridView.baseCanvas.height === gridView.canvas.height,
       displayScale: gridView.displayScale,
+      gridLineCommands,
       gridRasterizations,
       hasFullSizeGridCache: "gridCanvas" in gridView,
       pixelRatio: gridView.uiComponent.getScale(),
@@ -1865,6 +1873,8 @@ test("2D editor redraws the clipped grid without a full-size grid cache", async 
   expect(result.baseMatchesFront).toBe(true);
   expect(result.hasFullSizeGridCache).toBe(false);
   expect(result.gridRasterizations).toBeGreaterThan(0);
+  expect(result.gridLineCommands).toBeGreaterThan(0);
+  expect(result.gridLineCommands).toBeLessThanOrEqual(16);
   expect(result.baseClipRects.length).toBeGreaterThan(0);
   expect(
     result.baseClipRects.some(([, , width, height]) =>
@@ -1872,6 +1882,73 @@ test("2D editor redraws the clipped grid without a full-size grid cache", async 
       && height <= Math.ceil(result.tileHeight * result.displayScale * result.pixelRatio) + 2),
   ).toBe(true);
   expect(result.drawnCells).toEqual(Array(7).fill(result.tile));
+});
+
+test("2D editor preserves clipped grid pixels at fractional device scale", async ({ page }, testInfo) => {
+  test.skip(!isDesktop2DRendererProject(testInfo));
+
+  await open2DProject(page, testInfo);
+  const result = await page.evaluate(() => {
+    const editor = g_app.textModeEditor;
+    const layer = editor.layers.getSelectedLayerObject();
+    const grid2d = editor.grid.grid2d;
+    const gridView = editor.gridView2d;
+
+    UI.devicePixelRatio = 1.25;
+    gridView.uiComponent.resize({ force: true });
+    gridView.setScale(0.1, false);
+    grid2d.setCursorEnabled(false);
+    editor.graphic.invalidateAllCells();
+    editor.graphic.redraw({ allCells: true });
+
+    const target = { x: 2, y: 12 };
+    const tile = layer.getCell(target).t === 1 ? 2 : 1;
+    editor.setSelectedTiles([[tile]]);
+    grid2d.setCursor(target.x, target.y, 0,
+      editor.currentTile.color, editor.currentTile.bgColor);
+    grid2d.setCursorEnabled(true);
+    grid2d.setCursorCells();
+
+    const context = gridView.context;
+    const bounded = context.getImageData(
+      0, 0, gridView.canvas.width, gridView.canvas.height).data;
+    editor.graphic.invalidateAllCells();
+    editor.graphic.redraw({ allCells: true });
+    const fresh = context.getImageData(
+      0, 0, gridView.canvas.width, gridView.canvas.height).data;
+    let differences = 0;
+    const differenceSamples = [];
+    for (let index = 0; index < bounded.length; index++) {
+      if (bounded[index] !== fresh[index]) {
+        differences++;
+        if (differenceSamples.length < 20) {
+          const pixel = Math.floor(index / 4);
+          differenceSamples.push({
+            bounded: bounded[index],
+            channel: index % 4,
+            fresh: fresh[index],
+            x: pixel % gridView.canvas.width,
+            y: Math.floor(pixel / gridView.canvas.width),
+          });
+        }
+      }
+    }
+
+    return {
+      differenceSamples,
+      differences,
+      displayScale: gridView.displayScale,
+      gridVisible: editor.getGridVisible(),
+      pixelRatio: gridView.uiComponent.getScale(),
+      tileWasDrawn: layer.getCell(target).t === tile,
+    };
+  });
+
+  expect(result.pixelRatio).toBe(1.25);
+  expect(result.displayScale).toBe(0.1);
+  expect(result.gridVisible).toBe(true);
+  expect(result.tileWasDrawn).toBe(true);
+  expect(result.differences, JSON.stringify(result.differenceSamples)).toBe(0);
 });
 
 test("2D editor keeps a real 350% pencil hold and drag stable", async ({ page }, testInfo) => {

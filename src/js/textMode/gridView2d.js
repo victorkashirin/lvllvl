@@ -2429,7 +2429,99 @@ GridView2d.prototype = {
 
   },
 
-  drawGrid: function(x, y, width, height, context) {
+  getGridDrawRegions: function(x, y, width, height, clipRegions) {
+    var scale = this.displayScale;
+    var artworkLeft = x;
+    var artworkTop = y;
+    var artworkRight = x + width * scale;
+    var artworkBottom = y + height * scale;
+    var viewportRight = this.width;
+    var viewportBottom = this.height;
+    var regions = clipRegions || [{
+      x: 0,
+      y: 0,
+      width: viewportRight,
+      height: viewportBottom
+    }];
+    var drawRegions = [];
+
+    for(var i = 0; i < regions.length; i++) {
+      var region = regions[i];
+      var left = Math.max(0, artworkLeft, region.x);
+      var top = Math.max(0, artworkTop, region.y);
+      var right = Math.min(viewportRight, artworkRight, region.x + region.width);
+      var bottom = Math.min(viewportBottom, artworkBottom, region.y + region.height);
+      if(left < right && top < bottom) {
+        drawRegions.push({
+          x: left,
+          y: top,
+          width: right - left,
+          height: bottom - top
+        });
+      }
+    }
+
+    return drawRegions;
+  },
+
+  addGridPath: function(context, regions, artworkLeft, artworkTop,
+    artworkRight, artworkBottom, xSpacing, ySpacing, lineWidth) {
+    if(xSpacing <= 0 || ySpacing <= 0) {
+      return;
+    }
+
+    // Canvas antialiasing can cover the neighbouring device pixel beyond the
+    // mathematical half-stroke. Include that pixel when selecting lines, while
+    // the caller's clip still limits actual painting to the dirty region. Keep
+    // selected lines at their full visible length so short dirty regions
+    // rasterize exactly like a full grid path at fractional device scales.
+    var transform = typeof context.getTransform == 'function'
+      ? context.getTransform() : false;
+    var xDeviceScale = transform
+      ? Math.sqrt(transform.a * transform.a + transform.b * transform.b) : 1;
+    var yDeviceScale = transform
+      ? Math.sqrt(transform.c * transform.c + transform.d * transform.d) : 1;
+    xDeviceScale = xDeviceScale > 0 ? xDeviceScale : 1;
+    yDeviceScale = yDeviceScale > 0 ? yDeviceScale : 1;
+    var xPadding = Math.max(0, lineWidth / 2) + 1 / xDeviceScale;
+    var yPadding = Math.max(0, lineWidth / 2) + 1 / yDeviceScale;
+    var verticalTop = Math.max(artworkTop, -yPadding);
+    var verticalBottom = Math.min(artworkBottom, this.height + yPadding);
+    var horizontalLeft = Math.max(artworkLeft, -xPadding);
+    var horizontalRight = Math.min(artworkRight, this.width + xPadding);
+    for(var regionIndex = 0; regionIndex < regions.length; regionIndex++) {
+      var region = regions[regionIndex];
+      var regionRight = region.x + region.width;
+      var regionBottom = region.y + region.height;
+      var firstX = Math.max(0,
+        Math.ceil((region.x - xPadding - artworkLeft) / xSpacing));
+      var lastX = Math.floor((regionRight + xPadding - artworkLeft) / xSpacing);
+
+      for(var xIndex = firstX; xIndex <= lastX; xIndex++) {
+        var xPosition = artworkLeft + xIndex * xSpacing;
+        if(xPosition >= artworkRight) {
+          break;
+        }
+        context.moveTo(xPosition, verticalTop);
+        context.lineTo(xPosition, verticalBottom);
+      }
+
+      var firstY = Math.max(0,
+        Math.ceil((region.y - yPadding - artworkTop) / ySpacing));
+      var lastY = Math.floor((regionBottom + yPadding - artworkTop) / ySpacing);
+
+      for(var yIndex = firstY; yIndex <= lastY; yIndex++) {
+        var yPosition = artworkTop + yIndex * ySpacing;
+        if(yPosition >= artworkBottom) {
+          break;
+        }
+        context.moveTo(horizontalLeft, yPosition);
+        context.lineTo(horizontalRight, yPosition);
+      }
+    }
+  },
+
+  drawGrid: function(x, y, width, height, context, clipRegions) {
 
     var scale = this.displayScale;
     context = context || this.context;
@@ -2460,22 +2552,12 @@ GridView2d.prototype = {
 
 
       var gridXStart = x;
-      var gridXEnd =  x + width * scale;
-
+      var gridXEnd = x + width * scale;
       var gridYStart = y;
-      gridYEnd = y + height * scale;
-
-      var gridCellWidth = cellWidth * scale;
-      var gridCellHeight = cellHeight * scale;
-
-      if(gridXStart < 0) {
-        var offset = -  Math.ceil((-gridXStart) / gridCellWidth);
-        gridXStart += offset * gridCellWidth;
-      }
-
-      if(gridYStart < 0) {
-        var offset = -  Math.ceil((-gridYStart) / gridCellHeight);
-        gridYStart += offset * gridCellHeight;
+      var gridYEnd = y + height * scale;
+      var drawRegions = this.getGridDrawRegions(x, y, width, height, clipRegions);
+      if(drawRegions.length === 0) {
+        return;
       }
 
       // pixel grid
@@ -2485,36 +2567,24 @@ GridView2d.prototype = {
         // Otherwise Firefox re-strokes the previous tile grid in the pixel-grid style.
         context.beginPath();
 
-        if(this.editor.graphic.getType() == 'sprite' && this.editor.getScreenMode() == TextModeEditor.Mode.C64MULTICOLOR) {
-          for(var gridX = gridXStart; gridX < gridXEnd; gridX += scale * 2) {
-            var xPosition = gridX;
-
-            context.moveTo(xPosition, gridYStart);
-            context.lineTo(xPosition, gridYEnd);
-          }
-
-        } else {
-          for(var gridX = gridXStart; gridX < gridXEnd; gridX += scale) {
-            var xPosition = gridX;
-
-            context.moveTo(xPosition, gridYStart);
-            context.lineTo(xPosition, gridYEnd);
-          }
-        }
-
-        for(var gridY = gridYStart; gridY < gridYEnd; gridY += scale) {
-          var yPosition = gridY;
-
-          context.moveTo(x, yPosition);
-          context.lineTo(gridXEnd, yPosition);
-        }
-
-        context.strokeStyle = styles.textMode.gridView2dPixelGridLine;
-        context.lineWidth = styles.textMode.gridView2dPixelGridLineWidth;
+        var pixelGridLineWidth = styles.textMode.gridView2dPixelGridLineWidth;
 
         if(this.editor.getEditorMode() == 'pixel') {
+          pixelGridLineWidth = 0.4;
+        }
+
+        var pixelXSpacing = scale;
+        if(this.editor.graphic.getType() == 'sprite'
+          && this.editor.getScreenMode() == TextModeEditor.Mode.C64MULTICOLOR) {
+          pixelXSpacing = scale * 2;
+        }
+        this.addGridPath(context, drawRegions, gridXStart, gridYStart,
+          gridXEnd, gridYEnd, pixelXSpacing, scale, pixelGridLineWidth);
+
+        context.strokeStyle = styles.textMode.gridView2dPixelGridLine;
+        context.lineWidth = pixelGridLineWidth;
+        if(this.editor.getEditorMode() == 'pixel') {
           context.strokeStyle = '#999999';//styles.textMode.gridView2dPixelGridLine;
-          context.lineWidth = 0.4;//styles.textMode.gridView2dPixelGridLineWidth;
         }
 
         context.stroke();
@@ -2523,28 +2593,21 @@ GridView2d.prototype = {
       // tile grid
       context.beginPath();
 
-      for(var gridX = gridXStart; gridX < gridXEnd; gridX += cellWidth * scale) {
-        var xPosition = gridX;
-
-        context.moveTo(xPosition, gridYStart);
-        context.lineTo(xPosition, gridYEnd);
-      }
-
-      for(var gridY = gridYStart; gridY < gridYEnd; gridY += cellHeight * scale) {
-        var yPosition = gridY;
-
-        context.moveTo(x, yPosition);
-        context.lineTo(gridXEnd, yPosition);
-      }
-
-      context.strokeStyle = styles.textMode.gridView2dGridLine;
-
-      context.lineWidth = styles.textMode.gridView2dGridLineWidth;
+      var tileGridLineWidth = styles.textMode.gridView2dGridLineWidth;
 
       if(this.editor.getEditorMode() == 'pixel') {
-        context.strokeStyle = '#888888';//styles.textMode.gridView2dPixelGridLine;
-        context.lineWidth = 0.6;//styles.textMode.gridView2dPixelGridLineWidth;
+        tileGridLineWidth = 0.6;
 //        this.context.lineWidth = styles.textMode.gridView2dGridBlockLineWidth * 1;
+      }
+
+      this.addGridPath(context, drawRegions, gridXStart, gridYStart,
+        gridXEnd, gridYEnd, cellWidth * scale, cellHeight * scale,
+        tileGridLineWidth);
+
+      context.strokeStyle = styles.textMode.gridView2dGridLine;
+      context.lineWidth = tileGridLineWidth;
+      if(this.editor.getEditorMode() == 'pixel') {
+        context.strokeStyle = '#888888';//styles.textMode.gridView2dPixelGridLine;
       }
     
 
@@ -2560,41 +2623,11 @@ GridView2d.prototype = {
         var blockHeight = layerObject.getBlockHeight();
 
 
-        var gridXStart = x;
-        var gridXEnd =  x + width * scale;
-
-        var gridYStart = y;
-        gridYEnd = y + height * scale;
-
-        var gridCellWidth = cellWidth * scale;
-        var gridCellHeight = cellHeight * scale;
-
-        if(gridXStart < 0) {
-          var offset = -  Math.ceil((-gridXStart) / (gridCellWidth * blockWidth) );
-          gridXStart += offset * (gridCellWidth * blockWidth);
-        }
-
-        if(gridYStart < 0) {
-          var offset = -  Math.ceil((-gridYStart) / (gridCellHeight * blockHeight));
-          gridYStart += offset * (gridCellHeight * blockHeight);
-        }
-
-
         context.beginPath();
-
-        for(var gridX = gridXStart; gridX < gridXEnd; gridX += cellWidth * scale * blockWidth) {
-          var xPosition = gridX;
-
-          context.moveTo(xPosition, gridYStart);
-          context.lineTo(xPosition, gridYEnd);
-        }
-
-        for(var gridY = gridYStart; gridY < gridYEnd; gridY += cellHeight * scale * blockHeight) {
-          var yPosition = gridY;
-
-          context.moveTo(x, yPosition);
-          context.lineTo(gridXEnd, yPosition);
-        }
+        this.addGridPath(context, drawRegions, gridXStart, gridYStart,
+          gridXEnd, gridYEnd, cellWidth * scale * blockWidth,
+          cellHeight * scale * blockHeight,
+          styles.textMode.gridView2dGridBlockLineWidth);
 
         context.strokeStyle = styles.textMode.gridView2dGridBlockLine;
         context.lineWidth = styles.textMode.gridView2dGridBlockLineWidth * 1;
@@ -4094,10 +4127,12 @@ GridView2d.prototype = {
     // accumulation and a second full-size grid backing store.
     if(redrawComposite) {
       var compositeRegions = false;
+      var gridDrawRegions = false;
       this.baseContext.save();
       this.baseContext.setTransform(1, 0, 0, 1, 0, 0);
       if(!redrawFullComposite) {
         compositeRegions = [];
+        gridDrawRegions = [];
         this.baseContext.beginPath();
         for(var compositeIndex = 0; compositeIndex < dirtyArtworkRegions.length; compositeIndex++) {
           var dirtyRegion = dirtyArtworkRegions[compositeIndex];
@@ -4111,6 +4146,12 @@ GridView2d.prototype = {
             height: compositeBottom - compositeY
           };
           compositeRegions.push(compositeRegion);
+          gridDrawRegions.push({
+            x: compositeRegion.x / canvasScale,
+            y: compositeRegion.y / canvasScale,
+            width: compositeRegion.width / canvasScale,
+            height: compositeRegion.height / canvasScale
+          });
           this.baseContext.rect(compositeRegion.x, compositeRegion.y,
             compositeRegion.width, compositeRegion.height);
         }
@@ -4129,7 +4170,8 @@ GridView2d.prototype = {
       this.baseContext.globalCompositeOperation = 'source-over';
       this.baseContext.drawImage(this.backBufferCanvas, 0, 0);
       this.baseContext.setLineDash([]);
-      this.drawGrid(x, y, graphicWidth, graphicHeight, this.baseContext);
+      this.drawGrid(x, y, graphicWidth, graphicHeight, this.baseContext,
+        gridDrawRegions);
       this.baseContext.restore();
       this.gridNeedsRedraw = false;
 
