@@ -47,19 +47,33 @@ test("image import is loaded once on first activation", async ({ page }) => {
       g_app.activateFeature("imageImport", editor),
       g_app.activateFeature("imageImport", editor),
     ]);
+    const otherEditor = {};
+    const otherInstance = await g_app.activateFeature("imageImport", otherEditor);
+    const contextsAreIsolated = otherInstance !== first && otherInstance.editor === otherEditor;
+    await g_app.featureRegistry.dispose("imageImport", otherEditor);
+    await g_app.featureRegistry.dispose("imageImport", editor);
+    const facadeWasRestored = editor.importImage !== first &&
+      typeof editor.importImage.start === "function";
+    const reactivated = await g_app.activateFeature("imageImport", editor);
     return {
       active: g_app.featureRegistry.isActive("imageImport"),
       constructorType: typeof ImportImage,
+      contextsAreIsolated,
+      facadeWasRestored,
       initialized: first.editor === editor,
-      sameInstance: first === second && first === editor.importImage,
+      reactivatedWithNewInstance: reactivated !== first && reactivated === editor.importImage,
+      sameConcurrentInstance: first === second,
     };
   });
 
   expect(after).toEqual({
     active: true,
     constructorType: "function",
+    contextsAreIsolated: true,
+    facadeWasRestored: true,
     initialized: true,
-    sameInstance: true,
+    reactivatedWithNewInstance: true,
+    sameConcurrentInstance: true,
   });
   expect(featureRequests).toHaveLength(1);
   expect(failures, failures.join("\n")).toEqual([]);

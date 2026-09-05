@@ -21,7 +21,10 @@ import { rollup } from "rollup";
 import { minify as minifyJavaScript } from "terser";
 
 import { browserPolicy } from "./browser-policy.mjs";
-import { buildGraph, copiedScripts, moduleGraph } from "./build-graph.mjs";
+import { buildGraph, copiedScripts } from "./build-graph.mjs";
+import { verifyProductionLegacyGraph } from "./legacy-graph-policy.mjs";
+import { verifyModuleBoundaries } from "./module-boundaries.mjs";
+import { versionModuleImports } from "./module-versioning.mjs";
 import {
   assetDirectories,
   buildDirectory,
@@ -348,7 +351,8 @@ async function copyRuntimeAssets() {
 
 async function copyDeclaredScripts(scripts) {
   for (const [output, source] of Object.entries(scripts)) {
-    const content = renderVersion(await readFile(path.join(sourceRoot, source), "utf8"));
+    let content = renderVersion(await readFile(path.join(sourceRoot, source), "utf8"));
+    if (output.endsWith(".mjs")) content = versionModuleImports(content, version);
     await mkdir(path.join(buildRoot, path.posix.dirname(output)), { recursive: true });
     await writeFile(path.join(buildRoot, output), `${content}\n`);
   }
@@ -430,6 +434,12 @@ async function build() {
     throw new Error("package.json must contain a release version");
   }
 
+  await verifyProductionLegacyGraph();
+  const moduleVerification = await verifyModuleBoundaries();
+  const moduleScripts = Object.fromEntries(
+    moduleVerification.modules.map((filename) => [filename, filename]),
+  );
+
   console.log(`Building lvllvl ${version} in a temporary directory`);
   const stagedBuildRoot = await mkdtemp(path.join(projectRoot, `.${buildDirectory}-build-`));
   buildRoot = stagedBuildRoot;
@@ -444,7 +454,7 @@ async function build() {
     await buildHtmlCache();
     await buildDeclaredGraph();
     await copyDeclaredScripts(copiedScripts);
-    await copyDeclaredScripts(moduleGraph.files);
+    await copyDeclaredScripts(moduleScripts);
 
     await cp(path.join(sourceRoot, "manifest.json"), path.join(buildRoot, "manifest.json"), {
       force: true,

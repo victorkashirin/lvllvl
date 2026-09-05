@@ -107,6 +107,14 @@ be justified independently.
 
 Overall score: **Necessary**
 
+Status: **Completed 2026-09-05.** Module coverage is source-root driven, the
+ordered legacy graph has a non-growth baseline and expiring exception policy,
+feature loading is separated from application/context/per-use instances and
+disposal, layer/public-entry/cycle rules are enforced, module ports are checked
+from JSDoc, and desktop/minimum-mobile measurements are recorded in
+`docs/performance-baseline.json`. See `docs/architecture.md` for the operational
+contracts and commands.
+
 The current foundation is suitable for one application-wide singleton feature,
 but it should be hardened before many features depend on it.
 

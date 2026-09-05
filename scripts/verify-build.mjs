@@ -9,8 +9,13 @@ import { parse, tokenizer } from "acorn";
 import browserslist from "browserslist";
 
 import { browserPolicy } from "./browser-policy.mjs";
-import { buildGraph, copiedScripts, moduleGraph } from "./build-graph.mjs";
-import { verifyModuleBoundaries } from "./module-boundaries.mjs";
+import { buildGraph, copiedScripts } from "./build-graph.mjs";
+import { verifyProductionLegacyGraph } from "./legacy-graph-policy.mjs";
+import {
+  formatModuleDependencyReport,
+  verifyModuleBoundaries,
+} from "./module-boundaries.mjs";
+import { versionModuleImports } from "./module-versioning.mjs";
 
 import {
   buildDirectory,
@@ -32,6 +37,10 @@ const artifactGoldenFile = path.join(projectRoot, "tests/fixtures/build-artifact
 const packageJson = JSON.parse(await readFile(path.join(projectRoot, "package.json"), "utf8"));
 const version = packageJson.version;
 const embeddedPackageSourceMaps = new Set(packageSourceMapsWithEmbeddedSources);
+const legacyGraphVerification = await verifyProductionLegacyGraph();
+const moduleVerification = await verifyModuleBoundaries();
+const moduleFiles = moduleVerification.modules;
+const moduleScripts = Object.fromEntries(moduleFiles.map((filename) => [filename, filename]));
 
 function sourceFile(relativePath) {
   const packageAsset = packageAssetFiles[relativePath];
@@ -51,7 +60,7 @@ const coreFiles = [
   "js/libs.js",
   "js/libs.js.map",
   "js/html/htmlcache.js",
-  ...Object.keys(moduleGraph.files),
+  ...moduleFiles,
   "js/storageManager.js",
   "js/githubApi.js",
   "js/githubClient.js",
@@ -198,7 +207,7 @@ async function verifyPerformanceBudgets(indexHtml) {
     ...new Set([
       ...localStylesheetReferences(indexHtml),
       ...localScriptReferences(indexHtml),
-      ...Object.keys(moduleGraph.files),
+      ...moduleFiles,
       ...runtimeFeatureRequests.mobileStyles,
     ]),
   ];
@@ -250,7 +259,7 @@ async function verifyBuildGraph() {
     );
   }
 
-  const declaredScripts = { ...copiedScripts, ...moduleGraph.files };
+  const declaredScripts = { ...copiedScripts, ...moduleScripts };
   const copiedSources = new Set(Object.values(declaredScripts));
   for (const [output, graph] of Object.entries(buildGraph)) {
     if (!Array.isArray(graph.inputs) || graph.inputs.length === 0) {
@@ -272,7 +281,11 @@ async function verifyBuildGraph() {
 
   for (const [output, source] of Object.entries(declaredScripts)) {
     const sourceContent = await readFile(path.join(sourceRoot, source), "utf8");
-    const expected = `${sourceContent.split("{v}").join(version)}\n`;
+    const rendered = sourceContent.split("{v}").join(version);
+    const expectedContent = output.endsWith(".mjs")
+      ? versionModuleImports(rendered, version)
+      : rendered;
+    const expected = `${expectedContent}\n`;
     const actual = await readFile(path.join(buildRoot, output), "utf8");
     if (actual !== expected) throw new Error(`${output} differs from its declared source`);
   }
@@ -375,9 +388,7 @@ async function verifyArtifactGolden() {
     "js/libs.js.map",
     "js/main.js",
     "js/main.js.map",
-    "js/bootstrap.mjs",
-    "js/modules/featureRegistry.mjs",
-    "js/modules/imageImportFeature.mjs",
+    ...moduleFiles,
     "js/features/image-import.js",
     "js/features/image-import.js.map",
     "js/html/htmlcache.js",
@@ -559,7 +570,11 @@ if (typeof version !== "string" || version.trim() === "") {
 }
 
 await verifyBuildGraph();
-const moduleVerification = await verifyModuleBoundaries();
+console.log(formatModuleDependencyReport(moduleVerification));
+console.log(
+  `Legacy graph policy: ${legacyGraphVerification.inputs} inputs ` +
+    `(${legacyGraphVerification.exceptions} temporary exceptions)`,
+);
 await verifySourceEntry();
 await verifySourceMaps();
 await verifyC64Metadata();

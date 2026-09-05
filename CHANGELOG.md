@@ -2,6 +2,31 @@
 
 ## Unreleased
 
+### Added
+
+- Add automatic native-module discovery, layered public-entry and cycle checks,
+  a legacy ordered-graph non-growth policy, checked JSDoc boundary contracts, and
+  reproducible desktop and minimum-mobile performance baseline reporting.
+- Add application, context, and per-use feature scopes with independent
+  single-flight code loading, targeted disposal, bulk disposal, and retry coverage.
+
+### Changed
+
+- Make image import context-scoped and restore its compatibility facade after
+  disposal so separate editors cannot share importer state.
+
+### Fixed
+
+- Serialize feature activation with disposal, retain instances after failed
+  cleanup for retry, and preserve feature-specific types through registration
+  handles.
+- Prevent cache-version rewriting from modifying comments or string content, and
+  version valid imports containing comments through parsed source locations.
+- Enforce the legacy graph baseline against its Git predecessor so editing the
+  fixture cannot bypass reviewed exceptions.
+- Count every activation resource and repeated transfer in performance request
+  byte totals.
+
 ## 0.497.3 - 2026-09-05
 
 ### Added

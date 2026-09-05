@@ -418,22 +418,53 @@ export const buildGraph = {
   },
 };
 
-// These files form the first native ES-module dependency graph. The composition
-// root is the only module allowed to touch browser globals; feature adapters get
-// their legacy dependencies through explicit constructor parameters instead.
+// Native modules are discovered from these governed roots. The composition root
+// is the only module allowed to touch browser globals; every other dependency is
+// injected through a layer-specific public entry point.
 export const moduleGraph = {
   entry: "js/bootstrap.mjs",
-  files: {
-    "js/bootstrap.mjs": "js/bootstrap.mjs",
-    "js/modules/featureRegistry.mjs": "js/modules/featureRegistry.mjs",
-    "js/modules/imageImportFeature.mjs": "js/modules/imageImportFeature.mjs",
-  },
+  sourceRoots: ["js/bootstrap.mjs", "js/modules"],
   globalAccess: ["js/bootstrap.mjs"],
-  layers: {
-    "js/bootstrap.mjs": ["js/modules/"],
-    "js/modules/": ["js/modules/"],
-  },
+  layers: [
+    {
+      name: "bootstrap",
+      root: "js/bootstrap.mjs",
+      mayImport: ["feature-adapter", "application", "infrastructure", "domain"],
+    },
+    {
+      name: "feature-adapter",
+      root: "js/modules/feature-adapters/",
+      mayImport: ["application", "domain"],
+    },
+    {
+      name: "application",
+      root: "js/modules/application/",
+      mayImport: ["application", "domain"],
+    },
+    {
+      name: "infrastructure",
+      root: "js/modules/infrastructure/",
+      mayImport: ["infrastructure", "application", "domain"],
+    },
+    {
+      name: "domain",
+      root: "js/modules/domain/",
+      mayImport: ["domain"],
+    },
+  ],
+  publicEntries: [
+    "js/modules/application/featureRegistry.mjs",
+    "js/modules/feature-adapters/imageImportFeature.mjs",
+    "js/modules/infrastructure/classicScriptLoader.mjs",
+  ],
+  cycleExceptions: [],
 };
+
+// New files may enter the ordered legacy application graph only through a
+// temporary, reviewed exception. Keep this empty during normal module work.
+// Exception values require { reason, expires: "YYYY-MM-DD" } and are verified
+// against tests/fixtures/legacy-main-graph.json.
+export const legacyGraphExceptions = {};
 
 export const copiedScripts = {
   "js/htmlPolicy.js": "js/security/htmlPolicy.js",

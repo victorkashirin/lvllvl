@@ -1,11 +1,11 @@
 import {
   FeatureRegistry,
-  createClassicScriptLoader,
-} from "./modules/featureRegistry.mjs?v={v}";
+} from "./modules/application/featureRegistry.mjs";
 import {
   createImageImportFeature,
   imageImportFeatureName,
-} from "./modules/imageImportFeature.mjs?v={v}";
+} from "./modules/feature-adapters/imageImportFeature.mjs";
+import { createClassicScriptLoader } from "./modules/infrastructure/classicScriptLoader.mjs";
 
 const featureRegistry = new FeatureRegistry();
 const featureScriptUrl = new URL("./features/image-import.js", import.meta.url);
@@ -14,7 +14,7 @@ featureScriptUrl.search = new URL(import.meta.url).search;
 featureRegistry.register(
   imageImportFeatureName,
   createImageImportFeature({
-    legacyGlobal: globalThis,
+    legacyGlobal: /** @type {any} */ (globalThis),
     loadScript: createClassicScriptLoader(document),
     scriptUrl: featureScriptUrl.href,
     reportError(error) {

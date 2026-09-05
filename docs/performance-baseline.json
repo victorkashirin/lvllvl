@@ -1,0 +1,288 @@
+{
+  "environment": {
+    "architecture": "arm64",
+    "chromium": "151.0.7922.34",
+    "host": "darwin",
+    "node": "v24.18.0"
+  },
+  "measuredAt": "2026-09-05T00:54:54.216Z",
+  "profiles": {
+    "representative-desktop": {
+      "activation": {
+        "imageImport": {
+          "coldMilliseconds": 5.2,
+          "requestBytes": {
+            "gzipBytes": 29217,
+            "rawBytes": 145329
+          },
+          "requestCount": 1,
+          "requests": {
+            "js/features/image-import.js": {
+              "count": 1,
+              "gzipBytes": 29217,
+              "rawBytes": 145329
+            }
+          },
+          "warmMilliseconds": 0.1
+        }
+      },
+      "initial": {
+        "chunks": {
+          "c64/c64/c64.js": {
+            "gzipBytes": 10035,
+            "rawBytes": 43715
+          },
+          "css/style.css": {
+            "gzipBytes": 24386,
+            "rawBytes": 136310
+          },
+          "js/acmeAssembler.js": {
+            "gzipBytes": 2083,
+            "rawBytes": 7886
+          },
+          "js/bootstrap.mjs": {
+            "gzipBytes": 420,
+            "rawBytes": 1022
+          },
+          "js/c64/c64.js": {
+            "gzipBytes": 4714,
+            "rawBytes": 26001
+          },
+          "js/ca65Assembler.js": {
+            "gzipBytes": 2101,
+            "rawBytes": 9333
+          },
+          "js/githubApi.js": {
+            "gzipBytes": 2105,
+            "rawBytes": 8136
+          },
+          "js/githubClient.js": {
+            "gzipBytes": 7431,
+            "rawBytes": 33603
+          },
+          "js/html/htmlcache.js": {
+            "gzipBytes": 43423,
+            "rawBytes": 376266
+          },
+          "js/htmlPolicy.js": {
+            "gzipBytes": 2054,
+            "rawBytes": 6649
+          },
+          "js/libs.js": {
+            "gzipBytes": 1090359,
+            "rawBytes": 4443719
+          },
+          "js/main.js": {
+            "gzipBytes": 660212,
+            "rawBytes": 3306610
+          },
+          "js/modules/application/featureRegistry.mjs": {
+            "gzipBytes": 2687,
+            "rawBytes": 15212
+          },
+          "js/modules/feature-adapters/imageImportFeature.mjs": {
+            "gzipBytes": 1086,
+            "rawBytes": 3627
+          },
+          "js/modules/infrastructure/classicScriptLoader.mjs": {
+            "gzipBytes": 495,
+            "rawBytes": 1124
+          },
+          "js/startup.js": {
+            "gzipBytes": 246,
+            "rawBytes": 353
+          },
+          "js/storageManager.js": {
+            "gzipBytes": 2181,
+            "rawBytes": 7556
+          },
+          "lib/ace/src/theme-tomorrow_night.js": {
+            "gzipBytes": 1008,
+            "rawBytes": 3434
+          },
+          "lib/ca65/ca65.js": {
+            "gzipBytes": 24084,
+            "rawBytes": 93112
+          },
+          "lib/ca65/ld65.js": {
+            "gzipBytes": 24970,
+            "rawBytes": 95359
+          },
+          "lib/dompurify/purify.min.js": {
+            "gzipBytes": 10952,
+            "rawBytes": 29204
+          },
+          "lib/google-api/api.js": {
+            "gzipBytes": 5842,
+            "rawBytes": 14576
+          }
+        },
+        "requestBytes": {
+          "gzipBytes": 1922874,
+          "rawBytes": 8662807
+        },
+        "requestCount": 22
+      },
+      "memoryAfterClose": {
+        "reliability": "diagnostic-only",
+        "retainedBytes": 83348,
+        "usedBytesAfter": 20210180,
+        "usedBytesBefore": 20126832
+      },
+      "timings": {
+        "editorReadyMilliseconds": 1724.6,
+        "javaScriptExecutionMilliseconds": 379.01,
+        "javaScriptParseMilliseconds": 0.8,
+        "startPageVisibleMilliseconds": 850.1
+      },
+      "environment": {
+        "cpuSlowdownMultiplier": 1,
+        "viewport": {
+          "height": 800,
+          "width": 1280
+        }
+      }
+    },
+    "minimum-mobile": {
+      "activation": {
+        "imageImport": {
+          "coldMilliseconds": 11.3,
+          "requestBytes": {
+            "gzipBytes": 29217,
+            "rawBytes": 145329
+          },
+          "requestCount": 1,
+          "requests": {
+            "js/features/image-import.js": {
+              "count": 1,
+              "gzipBytes": 29217,
+              "rawBytes": 145329
+            }
+          },
+          "warmMilliseconds": 0
+        }
+      },
+      "initial": {
+        "chunks": {
+          "c64/c64/c64.js": {
+            "gzipBytes": 10035,
+            "rawBytes": 43715
+          },
+          "css/style.css": {
+            "gzipBytes": 24386,
+            "rawBytes": 136310
+          },
+          "css/ui-mobile.css": {
+            "gzipBytes": 3064,
+            "rawBytes": 16612
+          },
+          "js/acmeAssembler.js": {
+            "gzipBytes": 2083,
+            "rawBytes": 7886
+          },
+          "js/bootstrap.mjs": {
+            "gzipBytes": 420,
+            "rawBytes": 1022
+          },
+          "js/c64/c64.js": {
+            "gzipBytes": 4714,
+            "rawBytes": 26001
+          },
+          "js/ca65Assembler.js": {
+            "gzipBytes": 2101,
+            "rawBytes": 9333
+          },
+          "js/githubApi.js": {
+            "gzipBytes": 2105,
+            "rawBytes": 8136
+          },
+          "js/githubClient.js": {
+            "gzipBytes": 7431,
+            "rawBytes": 33603
+          },
+          "js/html/htmlcache.js": {
+            "gzipBytes": 43423,
+            "rawBytes": 376266
+          },
+          "js/htmlPolicy.js": {
+            "gzipBytes": 2054,
+            "rawBytes": 6649
+          },
+          "js/libs.js": {
+            "gzipBytes": 1090359,
+            "rawBytes": 4443719
+          },
+          "js/main.js": {
+            "gzipBytes": 660212,
+            "rawBytes": 3306610
+          },
+          "js/modules/application/featureRegistry.mjs": {
+            "gzipBytes": 2687,
+            "rawBytes": 15212
+          },
+          "js/modules/feature-adapters/imageImportFeature.mjs": {
+            "gzipBytes": 1086,
+            "rawBytes": 3627
+          },
+          "js/modules/infrastructure/classicScriptLoader.mjs": {
+            "gzipBytes": 495,
+            "rawBytes": 1124
+          },
+          "js/startup.js": {
+            "gzipBytes": 246,
+            "rawBytes": 353
+          },
+          "js/storageManager.js": {
+            "gzipBytes": 2181,
+            "rawBytes": 7556
+          },
+          "lib/ace/src/theme-tomorrow_night.js": {
+            "gzipBytes": 1008,
+            "rawBytes": 3434
+          },
+          "lib/ca65/ca65.js": {
+            "gzipBytes": 24084,
+            "rawBytes": 93112
+          },
+          "lib/ca65/ld65.js": {
+            "gzipBytes": 24970,
+            "rawBytes": 95359
+          },
+          "lib/dompurify/purify.min.js": {
+            "gzipBytes": 10952,
+            "rawBytes": 29204
+          },
+          "lib/google-api/api.js": {
+            "gzipBytes": 5842,
+            "rawBytes": 14576
+          }
+        },
+        "requestBytes": {
+          "gzipBytes": 1925938,
+          "rawBytes": 8679419
+        },
+        "requestCount": 23
+      },
+      "memoryAfterClose": {
+        "reliability": "diagnostic-only",
+        "retainedBytes": 83912,
+        "usedBytesAfter": 20060104,
+        "usedBytesBefore": 19976192
+      },
+      "timings": {
+        "editorReadyMilliseconds": 5043.7,
+        "javaScriptExecutionMilliseconds": 1769.09,
+        "javaScriptParseMilliseconds": 2.81,
+        "startPageVisibleMilliseconds": 2878.4
+      },
+      "environment": {
+        "cpuSlowdownMultiplier": 4,
+        "viewport": {
+          "height": 640,
+          "width": 360
+        }
+      }
+    }
+  },
+  "schemaVersion": 2
+}
