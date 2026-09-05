@@ -2,7 +2,7 @@ var ImportImage = function() {
 
   this.editor = null;
   this.host = null;
-  this.routeClosed = null;
+  this.closeCallback = null;
   this.importColorUtils = null;
 
   this.importSource = 'image';
@@ -1221,8 +1221,8 @@ ImportImage.prototype = {
       this.uiComponent.on('close', function() {
 //        alert('close');
         _this.visible = false;
-        if(_this.routeClosed) {
-          _this.routeClosed();
+        if(_this.closeCallback) {
+          _this.closeCallback();
         }
       });
 

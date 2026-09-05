@@ -8,9 +8,8 @@ var ExportSpriteBinaryData = function() {
 
 ExportSpriteBinaryData.prototype = {
 
-  init: function(editor, host) {
+  init: function(editor) {
     this.editor = editor;
-    this.host = host;
   },
 
 
@@ -52,7 +51,7 @@ ExportSpriteBinaryData.prototype = {
 
   initContent: function() {
 
-    $('#exportSpriteBinaryAs').val(this.host.fileManager.filename);
+    $('#exportSpriteBinaryAs').val(g_app.fileManager.filename);
 
     var frameCount = this.editor.graphic.getFrameCount();
 
@@ -70,7 +69,7 @@ ExportSpriteBinaryData.prototype = {
   exportBinaryDataAsMega65: function(args) {
     var layer = this.editor.layers.getSelectedLayerObject();
     var screenMode = layer.getScreenMode();
-    var filename = this.host.fileManager.filename;
+    var filename = g_app.fileManager.filename;
 
     if(typeof args.filename != 'undefined') {
       filename = args.filename;
@@ -203,7 +202,7 @@ ExportSpriteBinaryData.prototype = {
   },
   
   exportBinaryDataAsC64: function(args) {
-    var filename = this.host.fileManager.filename;
+    var filename = g_app.fileManager.filename;
 
     if(typeof args.filename != 'undefined') {
       filename = args.filename;
@@ -329,7 +328,7 @@ ExportSpriteBinaryData.prototype = {
       return;
     }    
 
-    var filename = this.host.fileManager.filename;
+    var filename = g_app.fileManager.filename;
 
     if(typeof args.filename != 'undefined') {
       filename = args.filename;

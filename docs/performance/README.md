@@ -63,10 +63,11 @@ js/modules/feature-adapters/legacySvgExportAdapter.mjs
 
 Rather than modify that unrelated work, the probes used the existing successful
 `dist` build. Its source map was checked **byte-for-byte against 12 rendering
-source files** before execution. Those checks, file hashes, and the served main
-bundle hash are recorded in [renderer-profile.json](renderer-profile.json).
-Other in-progress application changes were not necessarily present in that
-bundle; these measurements do not certify the entire current working tree.
+source files** before execution. The generated single-host probe and raw samples
+were removed during the module-migration consolidation because they represented
+that historical build, browser, and machine rather than a maintained release
+baseline. Other in-progress application changes were not necessarily present in
+that bundle; these measurements do not certify the current working tree.
 
 ### Measured results
 
@@ -446,10 +447,9 @@ marching ants, typing cursors, scripting, and active 3D camera motion.
    Moving wasteful full-frame work into a Worker does not remove the work or the
    transfer cost.
 
-Add rendering workloads to performance coverage. The existing
-[performance baseline](../performance-baseline.json) and
-[baseline script](../../scripts/performance-baseline.mjs) focus on startup, bundle
-bytes, and feature activation; they do not guard these drawing costs.
+Add rendering workloads to maintained performance coverage. Cross-profile browser
+tests currently guard user-visible startup time, but there is no committed
+single-host generated baseline for drawing costs.
 
 A useful follow-up matrix includes ordinary/diagonal pencil strokes, pixel edits,
 small/large shapes, onion skin, one/many animated tiles, preview playback, pan/zoom,
@@ -459,27 +459,12 @@ signal, not a substitute. Record p50/p95 input-to-paint, long tasks, buffer byte
 allocation/GC, and draw counts. Preserve undo/redo, transparency, layer blending,
 reference images, offscreen edits revealed by panning, and export equivalence.
 
-## Reproduce the browser probes
+## Revalidation
 
-```sh
-# Normally build first. Resolve unrelated build failures separately.
-npm run build
-npm run preview -- --port 4173
-
-# In another terminal; install Chromium first if needed:
-# npx playwright install chromium
-node docs/performance/profile-renderer.mjs http://127.0.0.1:4173/ \
-  > /tmp/renderer-profile.json
-```
-
-[profile-renderer.mjs](profile-renderer.mjs) checks the served source map against
-local rendering files and refuses a mismatch. It creates isolated browser
-contexts, generates throwaway projects, blocks external requests, exercises the
-real Canvas methods, and closes the browser. It does not edit application sources
-or existing user projects. The preview probe uses a detached 320×200 output canvas
-to avoid changing the artwork viewport; it still invokes `AnimationPreview.draw()`.
-
-The JSON includes all 25 samples per case and a separate operation-count sample.
-A disabled-thumbnail control still records invocation of the replaced no-op
-method; its two thumbnail `drawImage` operations disappear. These probes do not
-constitute the full test suite, a CPU flame graph, or a cross-browser benchmark.
+Recreate measurements against a fresh production build before using these
+historical numbers for a decision. A replacement harness should record its exact
+commit, browser, host, viewport, source-map verification, raw samples, and canvas
+operation counts. It should use isolated throwaway projects, block external
+requests, and keep diagnostic controls separate from correctness-preserving
+variants. Promote a result to a checked-in budget only when the environment and
+the decision it gates have a maintained owner.

@@ -7,7 +7,6 @@ declare global {
       showBrowserStorageError(operation: string, error: unknown): void;
     };
     clearFeatureError(): void;
-    applyMode(mode: string): void;
     textModeEditor?: unknown;
     init(options: { features: FeatureRegistry; services: unknown }): void;
     reportFeatureError(feature: string, error: unknown): void;

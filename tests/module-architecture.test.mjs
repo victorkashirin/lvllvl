@@ -16,14 +16,10 @@ import {
   FeatureScope,
 } from "../src/js/modules/application/featureRegistry.mjs";
 import {
+  createImageImportDestination,
   createImageImportFeature,
   imageImportFeatureName,
 } from "../src/js/modules/feature-adapters/imageImportFeature.mjs";
-import {
-  createLegacyExportDocumentPort,
-  createLegacyImportExportAdapter,
-  createLegacyImportDestination,
-} from "../src/js/modules/feature-adapters/legacyImportExportAdapter.mjs";
 
 function fixtureGraph(overrides = {}) {
   return {
@@ -58,39 +54,6 @@ async function moduleFixture(context) {
   context.after(() => rm(root, { force: true, recursive: true }));
   return root;
 }
-
-test("application feature activation is single-flight and returns one instance", async () => {
-  const registry = new FeatureRegistry();
-  let loads = 0;
-  let activations = 0;
-  const instance = {};
-
-  const feature = registry.register("example", {
-    scope: FeatureScope.APPLICATION,
-    async load() {
-      loads++;
-    },
-    activate(context) {
-      activations++;
-      assert.equal(context, "host");
-      return instance;
-    },
-  });
-
-  const [first, second] = await Promise.all([
-    feature.activate("host"),
-    registry.activate("example", "host"),
-  ]);
-
-  assert.equal(first, instance);
-  assert.equal(second, instance);
-  assert.equal(loads, 1);
-  assert.equal(activations, 1);
-  assert.equal(registry.isLoaded("example"), true);
-  assert.equal(registry.isActive("example"), true);
-  assert.equal(feature.isLoaded(), true);
-  assert.equal(feature.isActive(), true);
-});
 
 test("context features share loading without sharing instances", async () => {
   const registry = new FeatureRegistry();
@@ -131,62 +94,6 @@ test("context features share loading without sharing instances", async () => {
   assert.equal(second.context, secondContext);
   assert.equal(registry.isActive("scoped", firstContext), true);
   assert.equal(registry.isActive("scoped", secondContext), true);
-});
-
-test("per-use features create and dispose independent instances", async () => {
-  const registry = new FeatureRegistry();
-  const disposed = [];
-  let nextId = 0;
-
-  registry.register("transient", {
-    scope: FeatureScope.PER_USE,
-    load() {},
-    activate(context) {
-      return { context, id: ++nextId };
-    },
-    dispose(instance, context) {
-      disposed.push([instance.id, context]);
-    },
-  });
-
-  const [first, second] = await Promise.all([
-    registry.activate("transient", "host"),
-    registry.activate("transient", "host"),
-  ]);
-  assert.notEqual(first, second);
-  assert.equal(await registry.dispose("transient", first), true);
-  assert.equal(registry.isActive("transient", first), false);
-  assert.equal(await registry.disposeAll("transient"), 1);
-  assert.deepEqual(disposed, [[first.id, "host"], [second.id, "host"]]);
-});
-
-test("bulk disposal waits for pending per-use activation", async () => {
-  const registry = new FeatureRegistry();
-  let releaseActivation;
-  const activationGate = new Promise((resolve) => {
-    releaseActivation = resolve;
-  });
-  let disposals = 0;
-
-  registry.register("pending", {
-    scope: FeatureScope.PER_USE,
-    load() {},
-    async activate() {
-      await activationGate;
-      return {};
-    },
-    dispose() {
-      disposals++;
-    },
-  });
-
-  const activation = registry.activate("pending", {});
-  const disposal = registry.disposeAll("pending");
-  releaseActivation();
-  await activation;
-  assert.equal(await disposal, 1);
-  assert.equal(disposals, 1);
-  assert.equal(registry.isActive("pending"), false);
 });
 
 test("context disposal releases only the selected instance", async () => {
@@ -282,13 +189,36 @@ test("failed disposal retains the instance and can be retried", async () => {
   assert.equal(disposalAttempts, 2);
 });
 
+test("activation waits for bulk disposal before creating its replacement", async () => {
+  const registry = new FeatureRegistry();
+  let releaseDisposal;
+  const disposalGate = new Promise((resolve) => { releaseDisposal = resolve; });
+  registry.register("scoped", {
+    scope: FeatureScope.CONTEXT,
+    load() {},
+    activate: (context) => ({ context }),
+    dispose: () => disposalGate,
+  });
+
+  const context = {};
+  const first = await registry.activate("scoped", context);
+  const bulkDisposal = registry.disposeAll("scoped");
+  const activation = registry.activate("scoped", context);
+  releaseDisposal();
+
+  assert.equal(await bulkDisposal, 1);
+  const replacement = await activation;
+  assert.notEqual(replacement, first);
+  assert.equal(registry.getActive("scoped", context), replacement);
+});
+
 test("failed feature loading and activation can be retried", async () => {
   const registry = new FeatureRegistry();
   let loads = 0;
   let activations = 0;
 
   registry.register("retryable", {
-    scope: FeatureScope.APPLICATION,
+    scope: FeatureScope.CONTEXT,
     load() {
       loads++;
       if (loads === 1) throw new Error("temporary load failure");
@@ -298,6 +228,7 @@ test("failed feature loading and activation can be retried", async () => {
       if (activations === 1) throw new Error("temporary activation failure");
       return { ready: true };
     },
+    dispose() {},
   });
 
   await assert.rejects(registry.activate("retryable", {}), /temporary load failure/);
@@ -307,11 +238,11 @@ test("failed feature loading and activation can be retried", async () => {
   assert.equal(activations, 2);
 });
 
-test("feature definitions require explicit scope and scoped disposal", () => {
+test("feature definitions require the used context lifecycle", () => {
   const registry = new FeatureRegistry();
   assert.throws(
     () => registry.register("missing-scope", { load() {}, activate() {} }),
-    /scope, load, and activate/,
+    /Context features must define load, activate, and dispose/,
   );
   assert.throws(
     () => registry.register("missing-disposal", {
@@ -319,7 +250,7 @@ test("feature definitions require explicit scope and scoped disposal", () => {
       load() {},
       activate() {},
     }),
-    /must define disposal/,
+    /Context features must define load, activate, and dispose/,
   );
 });
 
@@ -382,121 +313,30 @@ test("image import is module-backed, context-scoped, and never installed on the 
   assert.deepEqual(starts, [{ source: "drop" }, { source: "menu" }]);
 });
 
-test("legacy import/export adapters expose only named document capabilities", () => {
-  const host = Object.freeze({ isMobile: () => false });
-  const layers = {
-    editor: null,
-    id: "layers",
-    selected: { editor: null, id: "selected", owner: null },
-    getSelectedLayerObject() { return this.selected; },
-    getEditor() { return this.editor; },
-  };
+test("the image importer receives only its named editor capabilities", () => {
   const editor = {
     colorPaletteManager: { id: "palette" },
-    getTileSet() { return layers.selected; },
-    graphic: { id: "graphic" },
-    layers,
-    secretUiState: { token: "hidden" },
+    hiddenApplicationState: { token: "hidden" },
+    setValue(value) { return value; },
   };
-  layers.editor = editor;
-  layers.selected.editor = editor;
-  layers.selected.owner = editor;
-  const initialized = [];
-  class Controller {
-    init(documentPort, receivedHost) {
-      initialized.push({ documentPort, receivedHost });
-    }
-  }
-  const adapter = createLegacyImportExportAdapter({
-    constructors: {
-      "import:spr": Controller,
-      "export:text": Controller,
-    },
-    host,
-  });
-
-  const destination = createLegacyImportDestination("spr", editor);
-  const documentPort = createLegacyExportDocumentPort("text", editor);
+  const destination = createImageImportDestination(editor);
   assert.equal(Object.isFrozen(destination), true);
-  assert.equal(Object.isFrozen(documentPort), true);
-  assert.deepEqual(Object.keys(destination).sort(), [
-    "colorPaletteManager", "graphic", "history", "layers",
-  ]);
-  assert.deepEqual(Object.keys(documentPort).sort(), ["graphic", "layers"]);
-  assert.equal(destination.secretUiState, undefined);
-  assert.equal(documentPort.secretUiState, undefined);
-  assert.equal(documentPort.layers.editor, undefined);
-  assert.equal("editor" in documentPort.layers, false);
-  assert.equal(documentPort.layers.getSelectedLayerObject().editor, undefined);
-  assert.equal(documentPort.layers.getSelectedLayerObject().owner, undefined);
-  assert.equal(documentPort.layers.getEditor(), undefined);
-  assert.equal(
-    createLegacyExportDocumentPort("to-prg", editor).getTileSet().owner,
-    undefined,
-  );
-  assert.equal(
-    Object.getOwnPropertyDescriptor(documentPort.layers, "selected").value.owner,
-    undefined,
-  );
-  assert.throws(() => { documentPort.layers.id = "changed"; }, /read-only/);
-  assert.throws(() => Object.setPrototypeOf(documentPort.layers, null), /read-only/);
-  assert.equal(layers.id, "layers");
-
-  adapter.createImportController("spr", editor);
-  adapter.createExportController("text", editor);
-  assert.equal(initialized.length, 2);
-  assert.equal(initialized[0].receivedHost, host);
-  assert.equal(initialized[1].receivedHost, host);
-  assert.equal(initialized[0].documentPort.secretUiState, undefined);
-  assert.equal(initialized[1].documentPort.secretUiState, undefined);
+  assert.equal(destination.colorPaletteManager, editor.colorPaletteManager);
+  assert.equal(destination.setValue("ok"), "ok");
+  assert.equal(destination.hiddenApplicationState, undefined);
+  assert.equal("hiddenApplicationState" in destination, false);
 });
 
-test("text-mode format families have one adapter entry and no application global access", async () => {
-  const containedPrefixes = [
-    "js/textMode/import/",
-    "js/textMode/import2d/",
-    "js/textMode/export/",
-    "js/textMode/export3d/",
-    "js/textMode/c64export/",
-  ];
-  const productionFiles = [...new Set(
-    Object.values(buildGraph)
-      .flatMap((entry) => entry.inputs)
-      .filter((filename) => filename.startsWith("js/")),
-  )];
-  for (const filename of productionFiles) {
-    const source = await readFile(new URL(`../src/${filename}`, import.meta.url), "utf8");
-    assert.doesNotMatch(
-      source,
-      /\b(?:this\.)?editor\.importImage\b|\btextModeEditor\.importImage\b/,
-      filename,
-    );
-  }
-
-  const directConstructionExceptions = [
-    "js/bootstrap.mjs",
-    "js/modules/",
-    "js/debugger/",
-    "js/music/",
-    ...containedPrefixes,
-  ];
-  for (const filename of productionFiles) {
-    if (directConstructionExceptions.some((entry) => filename.startsWith(entry))) continue;
-    const source = await readFile(new URL(`../src/${filename}`, import.meta.url), "utf8");
-    assert.doesNotMatch(
-      source,
-      /new\s+(?:Import(?!Old\b)[A-Z][A-Za-z0-9_]*|Export[A-Z][A-Za-z0-9_]*|ToPRG|C64ASM)\s*\(/,
-      filename,
-    );
-  }
-
-  const containedFiles = Object.values(buildGraph)
-    .flatMap((entry) => entry.inputs)
-    .filter((filename) => containedPrefixes.some((prefix) => filename.startsWith(prefix)));
-  for (const filename of containedFiles) {
-    const source = await readFile(new URL(`../src/${filename}`, import.meta.url), "utf8");
-    assert.doesNotMatch(source, /\bg_app\b/, filename);
-  }
+test("stable classic formats remain classic while image and SVG retain narrow module boundaries", async () => {
+  const bootstrap = await readFile(new URL("../src/js/bootstrap.mjs", import.meta.url), "utf8");
+  const textModeEditor = await readFile(
+    new URL("../src/js/textMode/textModeEditor.js", import.meta.url),
+    "utf8",
+  );
+  assert.doesNotMatch(bootstrap, /legacyImportExportAdapter|ImportExportService|UiRouteService/);
+  assert.match(textModeEditor, /new\s+ExportSvg\s*\(/);
+  assert.match(textModeEditor, /createSvgExportPort\(this\)/);
+  assert.equal(buildGraph["js/main.js"].inputs.includes("js/textMode/export/exportSvg.js"), true);
 });
 
 test("the generated image-import module has no sloppy-script global writes", async () => {
@@ -513,34 +353,22 @@ test("the generated image-import module has no sloppy-script global writes", asy
 
 test("the production ES-module graph is discovered and obeys its boundaries", async () => {
   const result = await verifyModuleBoundaries();
-  assert.equal(result.files, 24);
+  assert.equal(result.files, 12);
   assert.deepEqual(result.modules, [
     "js/bootstrap.mjs",
     "js/modules/application/documentSession.mjs",
-    "js/modules/application/editorCommandService.mjs",
-    "js/modules/application/editorStateService.mjs",
     "js/modules/application/featureRegistry.mjs",
-    "js/modules/application/historyService.mjs",
-    "js/modules/application/importExportService.mjs",
     "js/modules/application/persistenceService.mjs",
-    "js/modules/application/remoteProviderService.mjs",
-    "js/modules/application/uiRouteService.mjs",
     "js/modules/domain/documentRevisionState.mjs",
-    "js/modules/domain/githubRepositoryAddress.mjs",
-    "js/modules/domain/historyState.mjs",
-    "js/modules/domain/importExportValues.mjs",
     "js/modules/domain/svgExport.mjs",
+    "js/modules/feature-adapters/imageImportCoordinator.mjs",
     "js/modules/feature-adapters/imageImportFeature.mjs",
-    "js/modules/feature-adapters/legacyImportExportAdapter.mjs",
     "js/modules/feature-adapters/legacyRemoteProviderFacades.mjs",
     "js/modules/feature-adapters/legacySvgExportAdapter.mjs",
-    "js/modules/feature-adapters/legacyUiRoutes.mjs",
-    "js/modules/feature-adapters/textModeHistoryAdapter.mjs",
     "js/modules/infrastructure/browserStorageAdapter.mjs",
-    "js/modules/infrastructure/disabledRemoteProviderAdapter.mjs",
     "js/modules/infrastructure/imageImportModuleLoader.mjs",
   ]);
-  assert.equal(result.edges.length, 28);
+  assert.equal(result.edges.length, 13);
 });
 
 test("module discovery rejects an unreachable file under a governed root", async (context) => {

@@ -5,9 +5,8 @@ var ExportC64SpriteAssembly = function() {
 
 ExportC64SpriteAssembly.prototype = {
 
-  init: function(editor, host) {
+  init: function(editor) {
     this.editor = editor;
-    this.host = host;
   },
 
 
@@ -54,18 +53,17 @@ ExportC64SpriteAssembly.prototype = {
   },  
 
   initContent: function() {
-    var host = this.host;
     if(this.asmEditor == null) {
       this.asmEditor = ace.edit("exportC64SpriteAssemblySource");
       this.asmEditor.getSession().setTabSize(2);
       this.asmEditor.getSession().setUseSoftTabs(true);
       this.asmEditor.on('focus', function() {
-        host.setAllowKeyShortcuts(false);
+        g_app.setAllowKeyShortcuts(false);
         UI.setAllowBrowserEditOperations(true);
       });
 
       this.asmEditor.on('blur', function() {
-        host.setAllowKeyShortcuts(true);
+        g_app.setAllowKeyShortcuts(true);
         UI.setAllowBrowserEditOperations(false);
       });
       var mode = 'ace/mode/assembly_6502';
@@ -77,7 +75,7 @@ ExportC64SpriteAssembly.prototype = {
     }
 
 
-    $('#exportC64SpriteAssemblyAs').val(this.host.fileManager.filename);
+    $('#exportC64SpriteAssemblyAs').val(g_app.fileManager.filename);
 
     var frameCount = this.editor.graphic.getFrameCount();
 
@@ -393,8 +391,8 @@ ExportC64SpriteAssembly.prototype = {
     output = heading + output;
 
     if(typeof args.displayOnly != 'undefined' && args.displayOnly) {
-//      this.host.textDialog.setText(screenData);
-//      this.host.textDialog.show();
+//      g_app.textDialog.setText(screenData);
+//      g_app.textDialog.show();
 
       this.asmEditor.setValue(output, -1);
     } else {
@@ -406,7 +404,7 @@ ExportC64SpriteAssembly.prototype = {
   exportC64AssemblyAs: function(args) {
 
     if(typeof args.filename == 'undefined') {
-      args.filename = this.host.fileManager.filename;
+      args.filename = g_app.fileManager.filename;
     }
 
     if(typeof args.format == 'undefined') {

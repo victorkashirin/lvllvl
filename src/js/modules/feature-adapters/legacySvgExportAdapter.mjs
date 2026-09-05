@@ -1,3 +1,10 @@
+import { encodeSvgExport } from "../domain/svgExport.mjs";
+
+/**
+ * @typedef {{ error: string, supported: false } |
+ *   { filename: string, mediaType: string, text: string }} SvgPortArtifact
+ */
+
 const supportedScreenModes = new Set(["vector", "textmode", "c64standard", "c64ecm"]);
 
 /** @param {any} palette @param {unknown} index @param {unknown} noColor */
@@ -163,27 +170,33 @@ export function captureLegacySvgExportSnapshot(editor, filename = "Untitled") {
 /**
  * @param {{
  *   editor: object,
- *   operations: { export: (format: string, request: { snapshot: unknown }) => Promise<any> },
  *   host: {
- *     downloadArtifact: (artifact: object) => void,
+ *     downloadArtifact: (artifact: { filename: string, mediaType: string, text: string }) => void,
  *     reportError: (operation: string, error: unknown) => void,
  *     showAlert: (message: string) => void,
  *   },
  * }} dependencies
  */
-export function createLegacySvgExportPort({ editor, operations, host }) {
-  /** @param {string} filename */
+export function createLegacySvgExportPort({ editor, host }) {
+  /** @param {string} filename @returns {Promise<SvgPortArtifact>} */
   async function artifact(filename) {
     const snapshot = captureLegacySvgExportSnapshot(editor, filename);
-    if (!snapshot.supported) return snapshot;
-    return operations.export("svg", { snapshot });
+    if ("error" in snapshot) {
+      return Object.freeze({ error: snapshot.error, supported: /** @type {false} */ (false) });
+    }
+    const encoded = encodeSvgExport(snapshot);
+    return Object.freeze({
+      filename: encoded.filename,
+      mediaType: encoded.mediaType,
+      text: encoded.data,
+    });
   }
 
   return Object.freeze({
     /** @param {string} filename */
     async export(filename) {
       const result = await artifact(filename);
-      if (result.supported === false) {
+      if ("error" in result) {
         host.showAlert(result.error);
         return false;
       }
@@ -192,7 +205,7 @@ export function createLegacySvgExportPort({ editor, operations, host }) {
     },
     async getSVGData() {
       const result = await artifact("Untitled");
-      return result.supported === false ? false : result.text;
+      return "error" in result ? false : result.text;
     },
     reportError(/** @type {unknown} */ error) {
       host.reportError("SVG export", error);

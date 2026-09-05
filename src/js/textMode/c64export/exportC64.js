@@ -41,12 +41,11 @@ var ExportC64 = function() {
 }
 
 ExportC64.prototype = {
-  init: function(editor, host) {
+  init: function(editor) {
     this.editor = editor;
-    this.host = host;
 
     this.c64Asm = new C64ASM();
-    this.c64Asm.init(this.editor, this.host);
+    this.c64Asm.init(this.editor);
 
     this.sourceList = [
       'c64export/animatedbgcolors.asm',
@@ -2185,7 +2184,7 @@ ExportC64.prototype = {
 
     var filename = args.filename;
 
-    this.host.assemblerEditor.assemble(function(results) {
+    g_app.assemblerEditor.assemble(function(results) {
 //      console.log('done');
 //      console.log(results);
       var filename = 'output.prg';
@@ -2220,7 +2219,7 @@ ExportC64.prototype = {
     }
 
 
-    var assembler = this.host.assembler;
+    var assembler = g_app.assembler;
 
     var result = assembler.assemble(code, 0x801);
     if(result.success) {
@@ -2325,9 +2324,9 @@ ExportC64.prototype = {
     if(music != 'no' && music != 'sid') {
       var path = music;
 
-      if(this.host.doc.getDocRecord(path) != null) {
+      if(g_app.doc.getDocRecord(path) != null) {
 
-        this.host.music.show(path);
+        g_app.music.show(path);
 
         var sidStartAddress = 0x1000;
 
@@ -2335,13 +2334,13 @@ ExportC64.prototype = {
         this.sidLoadAddr = sidStartAddress;
         this.sidInitAddr = sidStartAddress;
         this.sidPlayAddr = sidStartAddress + 3; 
-        this.sidSpeed = this.host.music.sidSpeed;
+        this.sidSpeed = g_app.music.sidSpeed;
 
-        this.host.music.createSid();
-        if(typeof this.host.music.musicPlayer2.songData != 'undefined'
-          && typeof this.host.music.musicPlayer2.songData.getSIDData != 'undefined') {
+        g_app.music.createSid();
+        if(typeof g_app.music.musicPlayer2.songData != 'undefined'
+          && typeof g_app.music.musicPlayer2.songData.getSIDData != 'undefined') {
           
-          this.sidData = this.host.music.musicPlayer2.songData.getSIDData();
+          this.sidData = g_app.music.musicPlayer2.songData.getSIDData();
         } else {
           alert('sorry, the current music play does not support sid data export');
           this.sidData = null;

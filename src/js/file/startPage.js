@@ -150,12 +150,6 @@ StartPage.prototype = {
         editor = urlParams.get('editor');
       }
 
-      var requestedRoute = '';
-      if(urlParams.has('route')) {
-        requestedRoute = urlParams.get('route');
-      }
-
-
       if(url.indexOf('/c64/') !== -1) {
         editor = 'c64';
       }
@@ -261,21 +255,6 @@ StartPage.prototype = {
         }
         return;
       }
-
-      if(requestedRoute == 'feature:image-import' || requestedRoute == 'image-import') {
-        g_app.newProject({}, function() {
-          g_app.openImageImport(undefined, 'deep-link');
-        });
-
-        var routeUrl = window.location.href;
-        var routeQueryPos = routeUrl.indexOf('?');
-        if(routeQueryPos !== -1) {
-          routeUrl = routeUrl.substr(0, routeQueryPos);
-        }
-        UI.browserPushState({}, 'lvllvl', routeUrl);
-        return;
-      }
-
 
       if(charset != '' || palette != '' || editor != '') {
         var args = {};

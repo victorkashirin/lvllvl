@@ -5,7 +5,6 @@ import test from "node:test";
 import vm from "node:vm";
 import { fileURLToPath } from "node:url";
 
-import { ImportExportService } from "../src/js/modules/application/importExportService.mjs";
 import { encodeSvgExport } from "../src/js/modules/domain/svgExport.mjs";
 import {
   captureLegacySvgExportSnapshot,
@@ -178,11 +177,8 @@ test("SVG downloads use the standard MIME type and preserve an existing extensio
     colorPaletteManager: { noColor: -1 },
     layers: { getSelectedLayerObject: () => layer },
   };
-  const service = new ImportExportService();
-  service.registerExporter("svg", { encode: encodeSvgExport });
   const port = createLegacySvgExportPort({
     editor,
-    operations: service,
     host: {
       downloadArtifact: (artifact) => downloads.push(artifact),
       reportError: (operation, error) => assert.fail(`${operation}: ${error}`),

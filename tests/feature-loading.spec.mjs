@@ -1,8 +1,9 @@
 import { expect, test } from "@playwright/test";
 
-test("image import is loaded once on first activation", async ({ page }) => {
+test("image import is loaded once on first activation", async ({ page }, testInfo) => {
   const failures = [];
   const featureRequests = [];
+  const applicationOrigin = new URL(testInfo.project.use.baseURL).origin;
 
   page.on("pageerror", (error) => failures.push(`page error: ${error.message}`));
   page.on("request", (request) => {
@@ -11,12 +12,12 @@ test("image import is loaded once on first activation", async ({ page }) => {
     }
   });
   page.on("requestfailed", (request) => {
-    if (new URL(request.url()).origin === "http://127.0.0.1:4173") {
+    if (new URL(request.url()).origin === applicationOrigin) {
       failures.push(`request failed: ${request.url()}`);
     }
   });
   page.on("response", (response) => {
-    if (response.url().startsWith("http://127.0.0.1:4173") && response.status() >= 400) {
+    if (new URL(response.url()).origin === applicationOrigin && response.status() >= 400) {
       failures.push(`HTTP ${response.status()}: ${response.url()}`);
     }
   });
@@ -29,14 +30,14 @@ test("image import is loaded once on first activation", async ({ page }) => {
 
   const before = await page.evaluate(() => ({
     active: g_app.featureRegistry.isActive("imageImport"),
-    route: g_app.services.uiRoutes.getState("feature:image-import").status,
+    coordinator: g_app.services.imageImportCoordinator.getStatus(),
     constructorType: typeof ImportImage,
     activeInstance: g_app.services.imageImport.getActive(g_app.textModeEditor),
     ownsImportImage: Object.hasOwn(g_app.textModeEditor, "importImage"),
   }));
   expect(before).toEqual({
     active: false,
-    route: "disposed",
+    coordinator: "disposed",
     constructorType: "undefined",
     activeInstance: null,
     ownsImportImage: false,
@@ -83,7 +84,7 @@ test("image import is loaded once on first activation", async ({ page }) => {
   expect(failures, failures.join("\n")).toEqual([]);
 });
 
-test("a failed image-import route shows a retry action and restores focus", async ({ page }) => {
+test("a failed image import shows a retry action and restores focus", async ({ page }) => {
   let attempts = 0;
   let failRequest = true;
 
@@ -103,7 +104,7 @@ test("a failed image-import route shows a retry action and restores focus", asyn
   await expect(page.locator("#startPage")).toBeHidden();
   await page.evaluate(() => {
     const trigger = document.createElement("button");
-    trigger.id = "routeTestTrigger";
+    trigger.id = "imageImportTestTrigger";
     trigger.textContent = "Open import";
     document.body.appendChild(trigger);
     trigger.focus();
@@ -116,35 +117,116 @@ test("a failed image-import route shows a retry action and restores focus", asyn
   await expect(page.locator("#featureLoadError .feature-load-retry")).toBeFocused();
   expect(await page.evaluate(() => g_app.featureRegistry.isActive("imageImport"))).toBe(false);
   expect(await page.evaluate(() =>
-    g_app.services.uiRoutes.getState("feature:image-import").status,
+    g_app.services.imageImportCoordinator.getStatus(),
   )).toBe("failed");
 
   failRequest = false;
   await page.locator("#featureLoadError .feature-load-retry").click();
 
   await expect.poll(() => page.evaluate(() =>
-    g_app.featureRegistry.isActive("imageImport"),
-  )).toBe(true);
-  await expect(page.locator("#featureLoadError")).toHaveCount(0);
-  expect(await page.evaluate(() =>
-    g_app.services.uiRoutes.getState("feature:image-import").status,
+    g_app.services.imageImportCoordinator.getStatus(),
   )).toBe("ready");
-  await page.evaluate(() => g_app.closeRoute("feature:image-import"));
-  await expect(page.locator("#routeTestTrigger")).toBeFocused();
+  await expect(page.locator("#featureLoadError")).toHaveCount(0);
+  expect(await page.evaluate(() => g_app.featureRegistry.isActive("imageImport"))).toBe(true);
+  await page.evaluate(() => g_app.closeImageImport());
+  await expect(page.locator("#imageImportTestTrigger")).toBeFocused();
   expect(attempts).toBe(2);
 });
 
-test("the image-import dialog keeps application typography and valid icons", async ({ page }) => {
+test("a failed importer start is closed and retired on mode change", async ({ page }) => {
+  await page.route(/^https:\/\//, (route) =>
+    route.fulfill({ body: "", contentType: "application/javascript", status: 200 }),
+  );
+  await page.goto("/", { waitUntil: "domcontentloaded" });
+  await page.locator("#start2D").click();
+  await page.getByText("OK", { exact: true }).last().click();
+  await expect(page.locator("#startPage")).toBeHidden();
+
+  const failed = await page.evaluate(async () => {
+    const trigger = document.createElement("button");
+    trigger.id = "imageImportFailedStartTrigger";
+    trigger.textContent = "Open import";
+    document.body.appendChild(trigger);
+    trigger.focus();
+
+    const importer = await g_app.activateFeature("imageImport", g_app.textModeEditor);
+    let closeCalls = 0;
+    importer.start = async () => {
+      const partialUi = document.createElement("div");
+      partialUi.id = "partialImageImportUi";
+      document.body.appendChild(partialUi);
+      throw new Error("start failed after opening UI");
+    };
+    importer.close = async () => {
+      closeCalls++;
+      document.getElementById("partialImageImportUi")?.remove();
+    };
+
+    await g_app.openImageImport();
+    return {
+      activeImporter: g_app.services.imageImportCoordinator.getActive(),
+      closeCallback: importer.closeCallback,
+      closeCalls,
+      partialUi: Boolean(document.getElementById("partialImageImportUi")),
+      status: g_app.services.imageImportCoordinator.getStatus(),
+    };
+  });
+
+  expect(failed).toEqual({
+    activeImporter: null,
+    closeCallback: null,
+    closeCalls: 1,
+    partialUi: false,
+    status: "failed",
+  });
+  await expect(page.locator("#featureLoadError .feature-load-retry")).toBeFocused();
+
+  await page.evaluate(() => g_app.setMode("start"));
+  await expect.poll(() => page.evaluate(() =>
+    g_app.services.imageImportCoordinator.getStatus(),
+  )).toBe("disposed");
+  await expect(page.locator("#featureLoadError")).toHaveCount(0);
+  await expect(page.locator("#imageImportFailedStartTrigger")).toBeFocused();
+});
+
+test("an immediate close cancels an opening importer without deadlocking", async ({ page }) => {
+  await page.route(/^https:\/\//, (route) =>
+    route.fulfill({ body: "", contentType: "application/javascript", status: 200 }),
+  );
+  await page.goto("/", { waitUntil: "domcontentloaded" });
+  await page.locator("#start2D").click();
+  await page.getByText("OK", { exact: true }).last().click();
+  await expect(page.locator("#startPage")).toBeHidden();
+
+  const result = await page.evaluate(async () => {
+    const opening = g_app.openImageImport();
+    const closing = g_app.closeImageImport();
+    const completed = Promise.all([opening, closing]).then(() => "completed");
+    const timedOut = new Promise((resolve) => {
+      setTimeout(() => resolve("timed out"), 1000);
+    });
+    return Promise.race([completed, timedOut]);
+  });
+
+  expect(result).toBe("completed");
+  expect(await page.evaluate(() => ({
+    active: g_app.services.imageImportCoordinator.getActive(),
+    status: g_app.services.imageImportCoordinator.getStatus(),
+  }))).toEqual({ active: null, status: "disposed" });
+});
+
+test("the image-import dialog keeps application typography and valid icons", async ({ page }, testInfo) => {
   const failures = [];
+  const applicationOrigin = new URL(testInfo.project.use.baseURL).origin;
 
   page.on("pageerror", (error) => failures.push(`page error: ${error.message}`));
   page.on("requestfailed", (request) => {
-    if (new URL(request.url()).origin === "http://127.0.0.1:4173") {
+    if (new URL(request.url()).origin === applicationOrigin) {
       failures.push(`request failed: ${request.url()}`);
     }
   });
   page.on("response", (response) => {
-    if (response.url().startsWith("http://127.0.0.1:4173") && response.status() >= 400) {
+    if (new URL(response.url()).origin === applicationOrigin && response.status() >= 400) {
       failures.push(`HTTP ${response.status()}: ${response.url()}`);
     }
   });

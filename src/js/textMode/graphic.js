@@ -696,10 +696,6 @@ Graphic.prototype = {
 
   setCurrentFrame: function(frame) {
 
-    if(this.editor.commands) {
-      this.editor.commands.setFrame(frame);
-    }
-
     if(this.currentFrame === frame) {
       return;
     }

@@ -1,7 +1,6 @@
 var FileManager = function(dependencies) {
   this.editor = null;
   this.persistence = dependencies && dependencies.persistence ? dependencies.persistence : null;
-  this.importExportControllers = null;
 
 
   this.filename = 'Untitled';
@@ -36,7 +35,6 @@ FileManager.prototype = {
     if(!this.persistence && editor.services) {
       this.persistence = editor.services.persistence;
     }
-    this.importExportControllers = editor.services.importExportControllers;
 
     if(g_app.isDesktopApp()) {
       this.desktopFileManager = new DesktopFileManager(this.editor);
@@ -586,7 +584,8 @@ FileManager.prototype = {
       
   loadCFile: function(content) {
     if(this.importC == null) {
-      this.importC = this.importExportControllers.createImportController('c', g_app.textModeEditor);
+      this.importC = new ImportC();
+      this.importC.init(g_app.textModeEditor);
     }
     g_app.doc = g_app.createDocument();
 
@@ -609,7 +608,8 @@ FileManager.prototype = {
   loadCTMFile: function(byteArray) {
 
     if(this.importCharPad == null) {
-      this.importCharPad = this.importExportControllers.createImportController('charpad', g_app.textModeEditor);
+      this.importCharPad = new ImportCharPad();
+      this.importCharPad.init(g_app.textModeEditor);
     }
     g_app.doc = g_app.createDocument();
 
@@ -633,7 +633,8 @@ FileManager.prototype = {
   loadSPDFile: function(byteArray) {
 
     if(this.importSpritePad == null) {
-      this.importSpritePad = this.importExportControllers.createImportController('spritepad', g_app.textModeEditor);
+      this.importSpritePad = new ImportSpritePad();
+      this.importSpritePad.init(g_app.textModeEditor);
     }
     g_app.doc = g_app.createDocument();
 

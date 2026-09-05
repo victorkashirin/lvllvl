@@ -42,9 +42,8 @@ var ExportPng = function() {
 ExportPng.prototype = {
 
 
-  init: function(editor, host) {
+  init: function(editor) {
     this.editor = editor;
-    this.host = host;
   },
 
 
@@ -243,7 +242,7 @@ ExportPng.prototype = {
   initContent: function() {
     var _this = this;
 
-    $('#exportPNGAs').val(this.host.fileManager.filename);
+    $('#exportPNGAs').val(g_app.fileManager.filename);
 
     if(this.previewCanvas == null) {
       this.previewCanvas = document.getElementById('exportPngPreview');

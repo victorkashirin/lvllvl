@@ -29,6 +29,45 @@ import { FeatureId, FeatureScope } from "../application/featureRegistry.mjs";
 
 export const imageImportFeatureName = FeatureId.IMAGE_IMPORT;
 
+const imageImportCapabilities = Object.freeze([
+  "charsImageData", "checkerboardPattern", "chooseCharactersDialog", "chooseColorsDialog",
+  "colorPaletteManager", "colorPickerPopupMenu", "currentTile", "currentTileSetID", "frames",
+  "getC64ECMColor", "getColorPerMode", "getHasTileFlip", "getHasTileRotate",
+  "getScreenMode", "graphic", "grid", "history", "layers", "petscii",
+  "setBackgroundColor", "setBorderColor", "setC64ECMColor", "setC64Multi1Color",
+  "setC64Multi2Color", "setValue", "showTileEditor", "tileEditor", "tileEditorMobile",
+  "tileSetManager", "tileSets", "tools", "updateBackgroundColorPicker",
+]);
+
+/**
+ * Give the lazy image importer only the editor capabilities it uses. This is a
+ * deliberately local adapter, not a registry for every legacy file format.
+ *
+ * @param {Record<string, any>} editor
+ */
+export function createImageImportDestination(editor) {
+  if (!editor || typeof editor !== "object") {
+    throw new TypeError("Image import requires an editor context");
+  }
+  /** @type {Record<string, any>} */
+  const destination = {};
+  for (const name of imageImportCapabilities) {
+    const value = editor[name];
+    if (typeof value === "function") {
+      Object.defineProperty(destination, name, {
+        enumerable: true,
+        value: value.bind(editor),
+      });
+    } else {
+      Object.defineProperty(destination, name, {
+        enumerable: true,
+        get: () => editor[name],
+      });
+    }
+  }
+  return Object.freeze(destination);
+}
+
 /** @param {{ ImportImage?: new () => ImageImporter } | null} imageImportModule */
 function imageImporterConstructor(imageImportModule) {
   if (typeof imageImportModule?.ImportImage !== "function") {

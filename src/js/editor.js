@@ -193,9 +193,7 @@ Editor.prototype = {
   },
 
   isRemoteProviderEnabled: function(providerId) {
-    return Boolean(this.services && this.services.remoteProviderUi &&
-      this.services.remoteProviderUi.isEnabled(providerId) &&
-      this.services.remoteProviders &&
+    return Boolean(this.services && this.services.remoteProviders &&
       this.services.remoteProviders.isEnabled(providerId));
 
   },
@@ -354,26 +352,15 @@ Editor.prototype = {
     return this.featureRegistry.activate(feature, context);
   },
 
-  navigateRoute: function(route, options) {
-    if(!this.services || !this.services.uiRoutes) {
-      return Promise.reject(new Error('No UI route service is configured'));
-    }
-    return this.services.uiRoutes.navigate(route, options || {});
-  },
-
-  closeRoute: function(route) {
-    if(!this.services || !this.services.uiRoutes) {
+  closeImageImport: function() {
+    if(!this.services || !this.services.imageImportCoordinator) {
       return Promise.resolve(false);
     }
-    return this.services.uiRoutes.dispose(route);
+    return this.services.imageImportCoordinator.close();
   },
 
   openImageImport: function(args, source) {
-    return this.navigateRoute('feature:image-import', {
-      context: this.textModeEditor,
-      parameters: args,
-      source: source || 'programmatic'
-    });
+    return this.services.imageImportCoordinator.open(args);
   },
 
   reportFeatureError: function(feature, error) {
@@ -605,14 +592,10 @@ Editor.prototype = {
 
 
   setMode: function(mode) {
-    if(this.services && this.services.uiRoutes) {
-      return this.navigateRoute(mode, { context: this, source: 'legacy-mode' });
+    if(this.services && this.services.imageImportCoordinator &&
+        this.services.imageImportCoordinator.isActive()) {
+      void this.closeImageImport();
     }
-    this.applyMode(mode);
-    return Promise.resolve(null);
-  },
-
-  applyMode: function(mode) {
     this.mode = mode;
 
     if(g_app.isMobile()) {
@@ -1978,7 +1961,6 @@ main split panel north is menu
       break;
 
       case 'export-svg':
-        
         this.textModeEditor.exportSvg();
       break;
 

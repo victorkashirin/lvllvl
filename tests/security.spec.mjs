@@ -376,10 +376,6 @@ test("remote provider controls and credential SDK globals are absent", async ({ 
         providerId,
         !g_app.services.remoteProviders.isEnabled(providerId),
       ])),
-      uiDisabled: Object.fromEntries(providers.map((providerId) => [
-        providerId,
-        !g_app.services.remoteProviderUi.isEnabled(providerId),
-      ])),
       globals: {
         firebase: typeof window.firebase,
         gapi: typeof window.gapi,
@@ -411,7 +407,6 @@ test("remote provider controls and credential SDK globals are absent", async ({ 
 
   expect(result).toEqual({
     disabled: { github: true, gist: true, "google-drive": true },
-    uiDisabled: { github: true, gist: true, "google-drive": true },
     globals: {
       firebase: "undefined",
       gapi: "undefined",

@@ -44,9 +44,8 @@ var ExportGifMobile = function() {
 
 ExportGifMobile.prototype = {
 
-  init: function(editor, host) {
+  init: function(editor) {
     this.editor = editor;
-    this.host = host;
   },
 
 
@@ -180,7 +179,7 @@ ExportGifMobile.prototype = {
   initContent: function() {
     var _this = this;
 
-    $('#exportGIFMobileAs').val(this.host.fileManager.filename);
+    $('#exportGIFMobileAs').val(g_app.fileManager.filename);
 
     if(this.previewCanvas == null) {
       this.previewCanvas = document.getElementById('exportGIFMobilePreview');
@@ -617,10 +616,10 @@ ExportGifMobile.prototype = {
   },
 
   saveToGDrive: function() {
-// The provider host performs any enabled upload.
+//g_app.gdrive.doUpload(blob, filename);
     console.log('save to gdrive');
     var _this = this;
-    this.host.gdrive.handleAuthClick(function() {
+    g_app.gdrive.handleAuthClick(function() {
       _this.exportGif({ saveToGDrive: true });
     });
   },
@@ -871,7 +870,7 @@ ExportGifMobile.prototype = {
         html = '<div style="text-align: center; color: #aaaaaa; font-size: 24px; padding-top: ' + paddingTop + 'px">Uploading...</div>';
         $('#exportGIFMobileProgress').html(html);            
 
-        _this.host.gdrive.uploadToAppFolder(blob, filename, {
+        g_app.gdrive.uploadToAppFolder(blob, filename, {
           success: function(data) {
             UI.closeDialog();
           },

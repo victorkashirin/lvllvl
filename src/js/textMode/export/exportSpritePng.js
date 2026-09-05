@@ -35,9 +35,8 @@ var ExportSpritePng = function() {
 ExportSpritePng.prototype = {
 
 
-  init: function(editor, host) {
+  init: function(editor) {
     this.editor = editor;
-    this.host = host;
   },
 
   htmlComponentLoaded: function() {
@@ -212,7 +211,7 @@ ExportSpritePng.prototype = {
   initContent: function() {
     var _this = this;
 
-    $('#exportSpritePNGAs').val(this.host.fileManager.filename);
+    $('#exportSpritePNGAs').val(g_app.fileManager.filename);
 
     if(this.previewCanvas == null) {
       this.previewCanvas = document.getElementById('exportSpritePngPreview');
@@ -571,7 +570,7 @@ ExportSpritePng.prototype = {
   },
 
   exportPng: function() {
-    if(this.host.isDesktopApp()) {
+    if(g_app.isDesktopApp()) {
       this.savePng();
       return;
     }

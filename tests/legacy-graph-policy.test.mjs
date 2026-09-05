@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  comparisonReference,
   verifyLegacyBaselineEvolution,
   verifyLegacyGraphPolicy,
   verifyProductionLegacyGraph,
@@ -10,8 +11,8 @@ import {
 test("the production legacy graph matches its non-growth baseline", async () => {
   assert.deepEqual(await verifyProductionLegacyGraph(), {
     exceptions: 0,
-    grandfathered: 305,
-    inputs: 305,
+    grandfathered: 306,
+    inputs: 306,
   });
 });
 
@@ -61,6 +62,24 @@ test("the committed baseline may shrink but cannot grow or reorder", () => {
     }),
     /cannot reorder retained inputs/,
   );
+});
+
+test("push CI compares the complete pushed commit range", () => {
+  const before = "1234567890abcdef1234567890abcdef12345678";
+  assert.deepEqual(comparisonReference({
+    CI: "true",
+    GITHUB_EVENT_BEFORE: before,
+    GITHUB_EVENT_NAME: "push",
+  }), { reference: before, required: true });
+  assert.throws(() => comparisonReference({
+    CI: "true",
+    GITHUB_EVENT_NAME: "push",
+  }), /requires the event's before SHA/);
+  assert.throws(() => comparisonReference({
+    CI: "true",
+    GITHUB_EVENT_BEFORE: "0000000000000000000000000000000000000000",
+    GITHUB_EVENT_NAME: "push",
+  }), /requires the event's before SHA/);
 });
 
 test("legacy exceptions expire and removed inputs leave the baseline", () => {

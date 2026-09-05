@@ -81,9 +81,8 @@ var ExportImage = function() {
 
 
 ExportImage.prototype = {
-  init: function(editor, host) {
+  init: function(editor) {
     this.editor = editor;
-    this.host = host;
     this.shaderEffects = new ShaderEffects();
     this.shaderEffects.init();
 
@@ -332,7 +331,7 @@ ExportImage.prototype = {
 
   show: function() {
     this.lastTickTime = getTimestamp(); 
-    if(this.host.isMobile()) {
+    if(g_app.isMobile()) {
       this.showMobile();
       return;
     }
@@ -543,7 +542,7 @@ ExportImage.prototype = {
   initContent: function() {
     var _this = this;
 
-    $('#exportImageAs').val(this.host.fileManager.filename);
+    $('#exportImageAs').val(g_app.fileManager.filename);
 
     if(this.previewCanvas == null) {
       this.previewCanvas = document.getElementById('exportImagePreview');

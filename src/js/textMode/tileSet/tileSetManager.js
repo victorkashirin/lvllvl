@@ -416,10 +416,7 @@ TileSetManager.prototype = {
     }
 
     // currently importing an image?
-    var imageImporter = this.editor.imageImportFeature
-      ? this.editor.imageImportFeature.getActive(this.editor)
-      : null;
-    if(imageImporter && imageImporter.importImageMobile && imageImporter.importImageMobile.tilePaletteChooserMobile) {
+    if(this.editor.importImage && this.editor.importImage.importImageMobile && this.editor.importImage.importImageMobile.tilePaletteChooserMobile) {
       var selectedType = $('#charPaletteSortOrderMobileChoose').val();
 
       if(typeof selectedType == 'undefined' || !selectedType ) {
@@ -434,7 +431,7 @@ TileSetManager.prototype = {
           selectedType = 'similar';
         }
       }
-      imageImporter.importImageMobile.tilePaletteChooserMobile.setCharPaletteMapType(selectedType);
+      this.editor.importImage.importImageMobile.tilePaletteChooserMobile.setCharPaletteMapType(selectedType);
       $('#charPaletteSortOrderMobilePicker').val(selectedType);
 
     }

@@ -33,9 +33,7 @@ test("a text-mode project exports parseable SVG geometry", async ({ page }) => {
       update: false,
     });
 
-    const exporter = g_app.services.importExportControllers
-      .createExportController("svg", editor);
-    const svg = await exporter.getSVGData();
+    const svg = await g_app.services.createSvgExportPort(editor).getSVGData();
     const parsed = new DOMParser().parseFromString(SafeHTML.createSVG(svg), "image/svg+xml");
 
     return {
@@ -64,6 +62,27 @@ test("a text-mode project exports parseable SVG geometry", async ({ page }) => {
     pathCount: 1,
     tileFound: true,
   });
+});
+
+test("the export menu opens the classic dialog through the SVG module port", async ({ page }) => {
+  await startDefaultProject(page);
+
+  await page.evaluate(() => g_app.menuClick("export-svg"));
+  const filename = page.locator("#exportSVGAs");
+  await expect(filename).toBeVisible();
+  await expect(filename).toHaveValue("Untitled");
+  expect(await page.evaluate(() => ({
+    controllerReady: g_app.textModeEditor.exportSvgDialog instanceof ExportSvg,
+    constructorType: typeof globalThis.ExportSvg,
+    hasExportPort: Boolean(g_app.textModeEditor.exportSvgDialog.exportPort),
+  }))).toEqual({
+    controllerReady: true,
+    constructorType: "function",
+    hasExportPort: true,
+  });
+
+  await page.evaluate(() => UI.closeDialog());
+  await expect(filename).toBeHidden();
 });
 
 test("C64 monochrome SVG output matches the production renderer", async ({ page }) => {
@@ -166,9 +185,7 @@ test("C64 monochrome SVG output matches the production renderer", async ({ page 
       layer.draw({ canvas, allCells: true, drawBackground: true });
       const rendered = canvas.getContext("2d").getImageData(0, 0, width, height).data;
 
-      const exporter = g_app.services.importExportControllers
-        .createExportController("svg", editor);
-      const svg = await exporter.getSVGData();
+      const svg = await g_app.services.createSvgExportPort(editor).getSVGData();
       const exported = await renderSvg(svg, width, height);
       const parsed = new DOMParser().parseFromString(SafeHTML.createSVG(svg), "image/svg+xml");
       let mismatchedBytes = 0;

@@ -5,9 +5,8 @@ var ExportPet = function() {
 
 ExportPet.prototype = {
 
-  init: function(editor, host) {
+  init: function(editor) {
     this.editor = editor;
-    this.host = host;
   },
 
   start: function() {
@@ -45,7 +44,7 @@ ExportPet.prototype = {
 
   initContent: function() {
 
-    $('#exportPetAs').val(this.host.fileManager.filename);
+    $('#exportPetAs').val(g_app.fileManager.filename);
 
   },
 

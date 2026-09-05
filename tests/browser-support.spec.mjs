@@ -134,76 +134,35 @@ test("production starts offline without external provider requests", async ({ pa
   expect(localFailures, localFailures.join("\n")).toEqual([]);
 });
 
-test("direct image-import routes activate and clean up on desktop and touch profiles", async ({ page }, testInfo) => {
+test("image import opens, reuses its editor instance, and closes cleanly", async ({ page }, testInfo) => {
   const localFailures = observeLocalFailures(page, testInfo.project.use.baseURL);
-  await page.route(/^https:\/\//, (route) =>
-    route.fulfill({ body: "", contentType: "application/javascript", status: 200 }),
-  );
-
-  await page.goto("/?route=feature%3Aimage-import", { waitUntil: "domcontentloaded" });
-  const routeState = () => page.evaluate(() => ({
-    active: g_app.featureRegistry.isActive("imageImport", g_app.textModeEditor),
-    route: g_app.services.uiRoutes.getActiveRoute(),
-    source: g_app.services.uiRoutes.getState("feature:image-import").source,
-    status: g_app.services.uiRoutes.getState("feature:image-import").status,
-  }));
-  await expect.poll(routeState).toEqual({
-    active: true,
-    route: "feature:image-import",
-    source: "deep-link",
-    status: "ready",
-  });
+  await open2DProject(page, testInfo);
 
   const panel = page.locator(".ui-dialog:visible, .ui-mobilepanel:visible")
     .filter({ hasText: "Import Image" });
-  await expect(panel).toBeVisible();
-
-  if (testInfo.project.metadata.deviceClass === "desktop") {
-    const originalImporter = await page.evaluate(async () => {
-      const importer = g_app.services.imageImport.getActive(g_app.textModeEditor);
-      await g_app.closeRoute("feature:image-import");
-      globalThis.__routeTestImporter = importer;
-      return Boolean(importer);
-    });
-    expect(originalImporter).toBe(true);
-    await page.keyboard.press("Alt+Shift+I");
-    await expect.poll(routeState).toEqual({
-      active: true,
-      route: "feature:image-import",
-      source: "keyboard",
-      status: "ready",
-    });
-    expect(await page.evaluate(() =>
-      g_app.services.imageImport.getActive(g_app.textModeEditor) === globalThis.__routeTestImporter,
-    )).toBe(true);
-  }
-
-  const repeated = await page.evaluate(async () => {
-    const firstInstance = g_app.services.imageImport.getActive(g_app.textModeEditor);
-    const [first, second] = await Promise.all([
-      g_app.openImageImport(undefined, "keyboard"),
-      g_app.openImageImport(undefined, "menu"),
+  const opened = await page.evaluate(async () => {
+    const first = await g_app.openImageImport();
+    const [second, third] = await Promise.all([
+      g_app.openImageImport(),
+      g_app.openImageImport(),
     ]);
     return {
-      sameInstance: first === second && first === firstInstance,
-      status: g_app.services.uiRoutes.getState("feature:image-import").status,
+      active: g_app.featureRegistry.isActive("imageImport", g_app.textModeEditor),
+      sameInstance: first === second && second === third,
+      status: g_app.services.imageImportCoordinator.getStatus(),
     };
   });
-  expect(repeated).toEqual({ sameInstance: true, status: "ready" });
-  await expect(panel).toHaveCount(1);
+  expect(opened).toEqual({ active: true, sameInstance: true, status: "ready" });
+  await expect(panel).toBeVisible();
   expect(await page.evaluate(() => UI.dialogStack.filter((dialog) =>
     dialog.uiID === "importImageDialog" || dialog.uiID === "importImageMobile",
   ).length)).toBe(1);
 
-  await page.evaluate(() => g_app.closeRoute("feature:image-import"));
-  await expect.poll(routeState).toEqual({
-    active: true,
-    route: "editor:2d",
-    source: "keyboard",
-    status: "disposed",
-  });
+  await page.evaluate(() => g_app.closeImageImport());
+  await expect.poll(() => page.evaluate(() =>
+    g_app.services.imageImportCoordinator.getStatus(),
+  )).toBe("disposed");
   await expect(panel).toHaveCount(0);
-  await page.evaluate(() => { delete globalThis.__routeTestImporter; });
   expect(localFailures, localFailures.join("\n")).toEqual([]);
 });
 
@@ -211,73 +170,35 @@ test("mobile image import serializes rapid close and reopen", async ({ page }, t
   test.skip(testInfo.project.name !== "chromium-handheld");
 
   const localFailures = observeLocalFailures(page, testInfo.project.use.baseURL);
-  await page.route(/^https:\/\//, (route) =>
-    route.fulfill({ body: "", contentType: "application/javascript", status: 200 }),
-  );
-  await page.goto("/?route=feature%3Aimage-import", { waitUntil: "domcontentloaded" });
+  await open2DProject(page, testInfo);
+  await page.evaluate(() => g_app.openImageImport());
   await expect.poll(() => page.evaluate(() =>
-    g_app.services.uiRoutes.getState("feature:image-import").status,
+    g_app.services.imageImportCoordinator.getStatus(),
   )).toBe("ready");
-  await page.waitForTimeout(250);
 
   await page.evaluate(async () => {
-    const closing = g_app.closeRoute("feature:image-import");
-    const reopening = g_app.openImageImport(undefined, "rapid-reopen");
+    const closing = g_app.closeImageImport();
+    const reopening = g_app.openImageImport();
     await Promise.all([closing, reopening]);
   });
-  await page.waitForTimeout(300);
 
   expect(await page.evaluate(() => ({
-    active: g_app.services.uiRoutes.getActiveRoute(),
-    stackEntries: UI.dialogStack.filter((dialog) =>
-      dialog.uiID === "importImageMobile",
-    ).length,
-    status: g_app.services.uiRoutes.getState("feature:image-import").status,
+    stackEntries: UI.dialogStack.filter((dialog) => dialog.uiID === "importImageMobile").length,
+    status: g_app.services.imageImportCoordinator.getStatus(),
     visible: g_app.services.imageImport.getActive(g_app.textModeEditor)?.visible,
-  }))).toEqual({
-    active: "feature:image-import",
-    stackEntries: 1,
-    status: "ready",
-    visible: true,
-  });
+  }))).toEqual({ stackEntries: 1, status: "ready", visible: true });
   await expect(page.locator(".ui-mobilepanel:visible").filter({
     hasText: "Import Image",
   })).toBeVisible();
 
-  await page.evaluate(async () => {
-    UI.closeDialog();
-    await g_app.openImageImport(undefined, "panel-close-reopen");
+  const mode = await page.evaluate(() => {
+    g_app.setMode("start");
+    return g_app.getMode();
   });
-  await page.waitForTimeout(300);
-  expect(await page.evaluate(() => ({
-    active: g_app.services.uiRoutes.getActiveRoute(),
-    stackEntries: UI.dialogStack.filter((dialog) =>
-      dialog.uiID === "importImageMobile",
-    ).length,
-    status: g_app.services.uiRoutes.getState("feature:image-import").status,
-    visible: g_app.services.imageImport.getActive(g_app.textModeEditor)?.visible,
-  }))).toEqual({
-    active: "feature:image-import",
-    stackEntries: 1,
-    status: "ready",
-    visible: true,
-  });
-
-  expect(await page.evaluate(async () => {
-    UI.closeDialog();
-    const switching = g_app.setMode("start");
-    const modeDuringClose = g_app.getMode();
-    await switching;
-    return {
-      active: g_app.services.uiRoutes.getActiveRoute(),
-      modeAfterClose: g_app.getMode(),
-      modeDuringClose,
-    };
-  })).toEqual({
-    active: "app:start",
-    modeAfterClose: "start",
-    modeDuringClose: "2d",
-  });
+  expect(mode).toBe("start");
+  await expect.poll(() => page.evaluate(() =>
+    g_app.services.imageImportCoordinator.getStatus(),
+  )).toBe("disposed");
   await expect(page.locator(".ui-mobilepanel:visible").filter({
     hasText: "Import Image",
   })).toHaveCount(0);
@@ -298,11 +219,6 @@ test("production image-import entry points share their context-scoped instance",
     localFailures,
   );
 
-  const routeState = () => page.evaluate(() => ({
-    route: g_app.services.uiRoutes.getActiveRoute(),
-    source: g_app.services.uiRoutes.getState("feature:image-import").source,
-    status: g_app.services.uiRoutes.getState("feature:image-import").status,
-  }));
   const rememberInstance = () => page.evaluate(() => {
     if (!globalThis.__entrypointImporter) {
       globalThis.__entrypointImporter = g_app.services.imageImport.getActive(g_app.textModeEditor);
@@ -310,12 +226,10 @@ test("production image-import entry points share their context-scoped instance",
     return g_app.services.imageImport.getActive(g_app.textModeEditor) ===
       globalThis.__entrypointImporter;
   });
-  const waitForImport = async (source) => {
-    await expect.poll(routeState).toEqual({
-      route: "feature:image-import",
-      source,
-      status: "ready",
-    });
+  const waitForImport = async () => {
+    await expect.poll(() => page.evaluate(() =>
+      g_app.services.imageImportCoordinator.getStatus(),
+    )).toBe("ready");
     expect(await rememberInstance()).toBe(true);
     const focusTarget = testInfo.project.metadata.deviceClass === "desktop"
       ? page.locator("#importImageChooseFile")
@@ -323,20 +237,18 @@ test("production image-import entry points share their context-scoped instance",
     await expect(focusTarget).toBeFocused();
   };
   const closeImport = async () => {
-    await page.evaluate(() => g_app.closeRoute("feature:image-import"));
+    await page.evaluate(() => g_app.closeImageImport());
     await expect.poll(() => page.evaluate(() =>
-      g_app.services.uiRoutes.getActiveRoute(),
-    )).toBe("editor:2d");
+      g_app.services.imageImportCoordinator.getStatus(),
+    )).toBe("disposed");
   };
 
   if (testInfo.project.metadata.deviceClass === "desktop") {
     await page.keyboard.press("Alt+Shift+I");
-    expect(await page.evaluate(() => g_app.services.uiRoutes.getActiveRoute())).not.toBe(
-      "feature:image-import",
-    );
+    expect(await page.evaluate(() => g_app.services.imageImportCoordinator.isOpen())).toBe(false);
   }
   await page.locator("#startImportImage").click();
-  await waitForImport("start-page");
+  await waitForImport();
   await closeImport();
 
   if (testInfo.project.metadata.deviceClass === "desktop") {
@@ -345,11 +257,11 @@ test("production image-import entry points share their context-scoped instance",
     await page.locator(".ui-menu-item:visible").filter({
       has: page.locator(".ui-menu-item-label", { hasText: /^Image \/ Video\.\.\.$/ }),
     }).click();
-    await waitForImport("menu");
+    await waitForImport();
     await closeImport();
 
     await page.keyboard.press("Alt+Shift+I");
-    await waitForImport("keyboard");
+    await waitForImport();
     await closeImport();
 
     await page.evaluate(() => {
@@ -357,7 +269,7 @@ test("production image-import entry points share their context-scoped instance",
         Uint8Array.from(atob(
           "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M/wHwAFgAI/ScL3WQAAAABJRU5ErkJggg==",
         ), (character) => character.charCodeAt(0)),
-      ], "route-test.png", { type: "image/png" });
+      ], "import-test.png", { type: "image/png" });
       const event = new Event("drop", {
         bubbles: true,
         cancelable: true,
@@ -370,12 +282,12 @@ test("production image-import entry points share their context-scoped instance",
     });
     await expect(dropDialog).toBeVisible();
     await dropDialog.getByText("OK", { exact: true }).click();
-    await waitForImport("drag-and-drop");
+    await waitForImport();
 
     await page.evaluate(() => {
       const nested = UI.create("UI.Dialog", {
-        id: "routeNestedDialog",
-        title: "Nested route dialog",
+        id: "imageImportNestedDialog",
+        title: "Nested import dialog",
         width: 200,
         height: 100,
       });
@@ -386,19 +298,19 @@ test("production image-import entry points share their context-scoped instance",
     await expect.poll(() => page.evaluate(() => ({
       importVisible: g_app.services.imageImport.getActive(g_app.textModeEditor)?.visible,
       nestedClosed: globalThis.__nestedRouteDialogClosed === true,
-      route: g_app.services.uiRoutes.getActiveRoute(),
+      status: g_app.services.imageImportCoordinator.getStatus(),
       stackHasImporter: UI.dialogStack.some((dialog) =>
         dialog.uiID === "importImageDialog" || dialog.uiID === "importImageMobile"),
     }))).toEqual({
       importVisible: false,
       nestedClosed: true,
-      route: "app:start",
+      status: "disposed",
       stackHasImporter: false,
     });
   } else {
     await page.locator("#mobileMenuBarHamburger").click();
     await page.locator(".mobile-menu-item").filter({ hasText: "Import Image / Video" }).click();
-    await waitForImport("mobile-menu");
+    await waitForImport();
     await closeImport();
   }
 

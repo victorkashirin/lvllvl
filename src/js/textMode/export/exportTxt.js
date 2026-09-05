@@ -8,9 +8,8 @@ var ExportTxt = function() {
 
 ExportTxt.prototype = {
 
-  init: function(editor, host) {
+  init: function(editor) {
     this.editor = editor;
-    this.host = host;
   },
 
 
@@ -49,19 +48,18 @@ ExportTxt.prototype = {
   },  
 
   initContent: function() {
-    var host = this.host;
 
     if(this.asmEditor == null) {
       this.asmEditor = ace.edit("exportTxtSource");
       this.asmEditor.getSession().setTabSize(2);
       this.asmEditor.getSession().setUseSoftTabs(true);
       this.asmEditor.on('focus', function() {
-        host.setAllowKeyShortcuts(false);
+        g_app.setAllowKeyShortcuts(false);
         UI.setAllowBrowserEditOperations(true);
       });
 
       this.asmEditor.on('blur', function() {
-        host.setAllowKeyShortcuts(true);
+        g_app.setAllowKeyShortcuts(true);
         UI.setAllowBrowserEditOperations(false);
       });
       var mode = 'ace/mode/text';
@@ -71,7 +69,7 @@ ExportTxt.prototype = {
     }
 
 
-    $('#exportTxtAs').val(this.host.fileManager.filename);
+    $('#exportTxtAs').val(g_app.fileManager.filename);
 
     var frameCount = this.editor.graphic.getFrameCount();
 
@@ -168,7 +166,7 @@ ExportTxt.prototype = {
   exportTxtAs: function(args) {
 
     if(typeof args.filename == 'undefined') {
-      args.filename = this.host.fileManager.filename;
+      args.filename = g_app.fileManager.filename;
     }
 
     var currentFrame = this.editor.graphic.getCurrentFrame();

@@ -4,70 +4,48 @@
 
 ### Added
 
-- Add a rendering performance review with prioritized bottlenecks, reproducible
-  Chromium probes, and recorded operation counts and timings in `docs/performance`.
-- Add validated text/byte import sources, immutable export snapshots, generated
-  artifact values, and stateless import/export operations with cancellation,
-  timeout, retry, malformed-input, and deterministic-output coverage.
-- Add a named legacy import/export adapter with per-format document capabilities
-  and an injected application host for the remaining stable text-mode formats;
-  its recursive membrane hides editor backreferences and prevents direct export-
-  port mutation.
-- Migrate SVG export to a detached data snapshot, pure deterministic encoder, and
-  generated artifact downloaded through the composition host.
-- Add a credential-free remote-provider service with explicit capabilities,
-  content, progress, cancellation, disabled session state, normalized errors,
-  and separate GitHub, Gist, and Google Drive adapter registrations.
-- Add provider boundary coverage for request-envelope rejection, offline and cancelled
-  operations, authentication expiry, rate limits, disabled legacy callbacks,
-  missing provider UI/SDK globals, and CSP denial of retired provider endpoints.
-- Add document-scoped command history, DOM-free editor state, and narrow
-  text-mode replay capability contracts with grouped, no-op, redo invalidation,
-  document isolation, dirty-revision, and action-family coverage.
+- Add a rendering performance review with prioritized bottlenecks and summarized
+  Chromium observations in `docs/performance`.
+- Add detached SVG document snapshots and a pure deterministic encoder behind
+  the classic SVG export dialog.
 - Add injected persistence and document-session contracts for immutable blobs,
   versioned manifests, journals, catalog metadata, active revisions, dirty state,
   and save-in-flight publication, with lifecycle and per-stage failure coverage.
 - Add automatic native-module discovery, layered public-entry and cycle checks,
-  a legacy ordered-graph non-growth policy, checked JSDoc boundary contracts, and
-  reproducible desktop and minimum-mobile performance baseline reporting.
-- Add application, context, and per-use feature scopes with independent
-  single-flight code loading, targeted disposal, bulk disposal, and retry coverage.
-- Add stable application and feature route identifiers with observable loading,
-  ready, failed, retrying, and disposed lifecycle states.
+  a legacy ordered-graph non-growth policy, and checked JSDoc contracts for the
+  governed module graph.
+- Add context-scoped image-import loading with focused open/close coordination,
+  retry UI, stale-open cancellation, and focus restoration.
 
 ### Changed
 
-- Route every active text-mode import/export launcher through explicit capability
-  contracts, including file-manager and tile-set CharPad paths, and remove direct
-  `g_app` access from the contained format implementations.
+- Adopt a stable hybrid architecture: retain boundaries that improve data safety,
+  security, deterministic encoding, or lazy-feature lifetime while leaving stable
+  editor and format controllers in the classic ordered graph.
 - Emit image import as a retryable ESM feature entry and resolve its active
-  context instance through the feature handle instead of an editor facade.
-- Define the current P1.4 implementation target as import/export boundary
-  containment plus immediate legacy cleanup, move that cleanup ahead of the
-  specialized subsystem phase, and explicitly defer payload optimization,
-  wholesale module conversion, Worker redesign, and subsystem migration.
+  context instance through a feature handle instead of a global constructor or
+  editor-owned importer.
 - Temporarily disable GitHub, Gist, and Google Drive, remove their provider-facing
   controls and runtime artifacts, and tighten CSP to the remaining Lospec network
   dependency until a reviewed server-side credential design is available.
-- Require a separate provider-UI registration in addition to an enabled adapter,
-  preventing infrastructure configuration alone from restoring legacy controls.
-- Move strict GitHub repository-address parsing into a domain module and contain
-  dormant callback-era provider callers behind the provider-neutral service.
-- Route character-pixel mutations through one command path for selection state,
-  history recording, dirty notification, and redraw invalidation, regardless of
-  whether pointer, keyboard, desktop-menu, or mobile-menu UI initiated the edit.
-- Replace the text-mode history object's broad editor dependency with injected
-  replay capabilities and remove its classic-script entry from the startup graph.
+- Consolidate disabled-provider behavior into one hard-disabled policy plus
+  deterministic callback-era stubs instead of retaining a provider framework.
+- Keep text-mode mutations on the per-document classic `History` path and remove
+  the parallel command, replay, history-state, and editor-state abstractions.
+- Keep stable import/export formats on their direct classic construction paths;
+  remove the generic registry, values, capability membrane, and mass caller
+  rewiring.
 - Route project open, ordinary save, autosave, Save As, recovery, catalog and
   repository metadata, delete, and cache persistence through the eager
   application service and its browser-storage adapter.
 - Create every legacy `Document` with an isolated revision session and generate
   identifiers and timestamps through composition-root dependencies.
-- Make image import context-scoped with explicit disposal so separate editors
-  cannot share importer state.
-- Route editor modes and every image-import entry point through one activation
-  service with cancellation, cleanup, retry UI, and focus restoration owned by a
-  DOM adapter.
+- Keep ordinary editor mode changes synchronous and route only image-import entry
+  points through its narrow coordinator.
+- Replace the phase-by-phase extraction roadmap with the preserved hybrid endpoint
+  and criteria for any future boundary.
+- Allow local browser tests to select an unused preview port when another project
+  already owns the default port.
 
 ### Fixed
 
@@ -76,10 +54,6 @@
   module URL into an unsupported variable-import glob.
 - Require computed dynamic imports to retain an exact graph-declared module path,
   preventing a declared generated entry from masking unrelated runtime imports.
-- Keep import application as a synchronous atomic commit so cancellation or
-  timeout cannot reject while a late apply promise continues mutating a document.
-- Preserve own `__proto__` fields when copying immutable export snapshots without
-  changing the copied object's prototype.
 - Consume shader-import activation failures after showing the error banner,
   avoiding an unhandled promise rejection from the menu command.
 - Allow image-import retry to recover after a failed ESM request by giving each
@@ -87,21 +61,16 @@
   module-map entry.
 - Declare image-conversion loop state locally so the former classic-script code
   retains its behavior under the strict semantics of its new ESM entry.
-- Make retired GitHub, Gist, and Google Drive links return to the start page,
-  enforce provider capabilities per operation, validate a strict request envelope,
-  sanitize adapter session/error state, and keep every remaining callback-era
-  provider caller failure-safe without forwarding legacy callbacks.
+- Make retired GitHub, Gist, and Google Drive links return to the start page and
+  keep remaining callback-era provider callers failure-safe.
 - Prevent a failed or disabled Google Drive save from changing the project name,
   destination, or new-project state and then reporting success.
 - Stop requesting broad GitHub OAuth scopes or persisting reusable provider
   tokens as Firestore application data by removing the browser credential flow;
   historical deployed tokens still require operational revocation and deletion.
-- Keep text-mode undo and redo isolated per document while frame, layer, tool,
-  mode, and selection state changes are tracked independently, and avoid
-  recording unchanged character-pixel edits.
-- Preserve pre-edit cursor locations during undo without rewinding them on redo,
-  and keep editor-state frame values synchronized through every central frame
-  setter, including initial document loading.
+- Restore the prior history position and enabled state when classic undo or redo
+  replay fails, compensate earlier actions in a partially failed replay, and
+  avoid dirtying, redrawing, or recording unchanged tile pixels.
 - Serialize project save, recovery, and catalog mutations so a second session or
   project listing cannot mistake a live transaction for an interrupted save.
 - Journal browser-project deletion, remove its catalog entry before data cleanup,
@@ -115,15 +84,18 @@
   version valid imports containing comments through parsed source locations.
 - Enforce the legacy graph baseline against its Git predecessor so editing the
   fixture cannot bypass reviewed exceptions.
-- Count every activation resource and repeated transfer in performance request
-  byte totals.
-- Keep modal route ownership transactional by rolling back incomplete image-import
-  opens, closing nested dialogs in stack order, serializing asynchronous teardown,
-  preserving the underlying editor route, and focusing the visible chooser.
+- Roll back incomplete image-import opens, close nested dialogs safely, serialize
+  asynchronous teardown, and focus the visible chooser.
+- Close partially opened image-import UI when importer startup throws, and retire
+  failed import state when the editor changes mode.
+- Observe browser-test request failures on the configured preview origin instead
+  of assuming the default port.
+- Compare legacy-graph policy against the complete pre-push revision so a
+  multi-commit push cannot hide baseline growth.
 - Ignore image-import shortcuts while their menu is hidden, and keep the mobile
   import action from blocking adjacent start-page controls.
 - Serialize animated mobile image-import teardown, keep repeated opens idempotent,
-  and prevent stale or differently scoped route owners from closing active UI.
+  and prevent stale activations from replacing active UI.
 
 ## 0.497.3 - 2026-09-05
 

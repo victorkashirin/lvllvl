@@ -41,9 +41,8 @@ ExportSEQ.prototype = {
 
   },
 */
-  init: function(editor, host) {
+  init: function(editor) {
     this.editor = editor;
-    this.host = host;
 
   },
 
@@ -75,7 +74,7 @@ ExportSEQ.prototype = {
       });
 
       this.uiComponent.on('close', function() {
-        _this.host.setAllowKeyShortcuts(true);
+        g_app.setAllowKeyShortcuts(true);
         UI.setAllowBrowserEditOperations(false);
 
       });
@@ -85,13 +84,13 @@ ExportSEQ.prototype = {
     }
 
     UI.setAllowBrowserEditOperations(true);
-    this.host.setAllowKeyShortcuts(false);
+    g_app.setAllowKeyShortcuts(false);
     UI.showDialog("exportSEQDialog");
   },  
 
   initContent: function() {
 
-    $('#exportSEQAs').val(this.host.fileManager.filename);
+    $('#exportSEQAs').val(g_app.fileManager.filename);
 /*
     $('#exportAssemblyToFrame').val(this.editor.frames.frameCount);
     $('#exportAssemblyFromFrame').val(1);

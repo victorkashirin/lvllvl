@@ -27,116 +27,68 @@
       "sha256": "f6e20ce93d4c5e5a0fe109bd3a07dc51e482ba8700c4ef7468bbc0839d2872b8"
     },
     "js/main.js": {
-      "bytes": 3229821,
-      "sha256": "bb82435662cfd4b9285400090718f202d38087b2b9cb6d57309ca320f471cf1b"
+      "bytes": 3234527,
+      "sha256": "f9f89c10f098a7827e85b201889a8a2d2992e82777075cf4c9dd8c221d329bd2"
     },
     "js/main.js.map": {
-      "bytes": 10299535,
-      "sha256": "3ab6f441c197340afe9dc15be1ba648550ab3d1cb4cf356e49472e99363fad4e"
+      "bytes": 10318938,
+      "sha256": "9e6b30a3ddbd8a00333682477acd3fad9bb459c6aa9273ba36ff7c0871247bb4"
     },
     "js/bootstrap.mjs": {
-      "bytes": 8830,
-      "sha256": "5989ea349847b76ca2e817343b1b3a78a8d70a6e6f58483c86c258d373f3dbc8"
+      "bytes": 3299,
+      "sha256": "8564451df3d1c0c533bf2a49e1392a089b8e80d230550eda8e66df96e4e4bf07"
     },
     "js/modules/application/documentSession.mjs": {
       "bytes": 4351,
       "sha256": "0a5488bceb01fa945b84e56c67ad78745afbdfa34c509acec0c6f8d6fcb4d2a0"
     },
-    "js/modules/application/editorCommandService.mjs": {
-      "bytes": 3613,
-      "sha256": "375a27424369159c9be733e912ebc584e187842a89781c75b701edb1bc42a3ef"
-    },
-    "js/modules/application/editorStateService.mjs": {
-      "bytes": 4355,
-      "sha256": "d9ac9a3addaf554c1fc8a22482daded760daa96048e4393a8387214b0bbed87a"
-    },
     "js/modules/application/featureRegistry.mjs": {
-      "bytes": 15184,
-      "sha256": "81188643b0f9980f61a4f9acc14e39497ba9f271335daa0583607937e2f8fbdc"
-    },
-    "js/modules/application/historyService.mjs": {
-      "bytes": 2595,
-      "sha256": "94f034dcee19d824d9d8378bbc93830f0d8dd7c2a1bba78363494d4b285e9114"
-    },
-    "js/modules/application/importExportService.mjs": {
-      "bytes": 6484,
-      "sha256": "e4032e3cd47927866862dbac8bae72b935865a80fe91199ec97c5a1cd243a254"
+      "bytes": 7766,
+      "sha256": "a228c0b438c7b40a8b6dc62b5632ae7316f3de101b58172cd53d45698d156baf"
     },
     "js/modules/application/persistenceService.mjs": {
       "bytes": 15728,
       "sha256": "54d9267a78ea64f682fcc3ff0b50f689f5ee2738fcbac8554cfd2efcbdde8299"
     },
-    "js/modules/application/remoteProviderService.mjs": {
-      "bytes": 15572,
-      "sha256": "76b357065e6944a92f5bb46434d40ef193cd32b8320e95d058de8019a79e3914"
-    },
-    "js/modules/application/uiRouteService.mjs": {
-      "bytes": 17249,
-      "sha256": "ae2771622801ad093e2bf590a15ea179306c9fc9ef899cc4958e03e6c93867c4"
-    },
     "js/modules/domain/documentRevisionState.mjs": {
       "bytes": 1677,
       "sha256": "edf8e490574850373e5e2f3b305c4420e5b1ad9ef032158103e708cf1ed3130d"
-    },
-    "js/modules/domain/githubRepositoryAddress.mjs": {
-      "bytes": 1979,
-      "sha256": "42490da68352bfec59da6bb89bd87262b8a74b7095f387937226b971ba565ce6"
-    },
-    "js/modules/domain/historyState.mjs": {
-      "bytes": 2583,
-      "sha256": "3ff625c95759ac518f0ed6dba46174804de7d4d9cf20bbb6f722210a32605e7a"
-    },
-    "js/modules/domain/importExportValues.mjs": {
-      "bytes": 5473,
-      "sha256": "bece75330462361ce1f7fc4b39263688050920cc926635199f242213990a6638"
     },
     "js/modules/domain/svgExport.mjs": {
       "bytes": 3345,
       "sha256": "6de0cb177e5fb730c5a0b908d4362476930dac62b2594213636a730a4fd2aaef"
     },
-    "js/modules/feature-adapters/imageImportFeature.mjs": {
-      "bytes": 2447,
-      "sha256": "5d48d7c4a7f00bac6f8b059b5e007c6f177bd6a22c860d5b26a041e973d394b1"
+    "js/modules/feature-adapters/imageImportCoordinator.mjs": {
+      "bytes": 7530,
+      "sha256": "dafae4a4d651d5f2f68df02eebfff023bcd4eec0965dae774424de93c0021e22"
     },
-    "js/modules/feature-adapters/legacyImportExportAdapter.mjs": {
-      "bytes": 13799,
-      "sha256": "cea56196dfaab94aa913cb5983f61d2a8f11e81b8aed480cb9703f4de8839911"
+    "js/modules/feature-adapters/imageImportFeature.mjs": {
+      "bytes": 3935,
+      "sha256": "dcf152a10843c1103f1d651759b5ef4bb2c18438abb6afa75a2c88672d5ed2cb"
     },
     "js/modules/feature-adapters/legacyRemoteProviderFacades.mjs": {
-      "bytes": 8297,
-      "sha256": "4a409582a19499b153e9de3134ca5dd9c45fc44d4f3ec1c0361b2582c0fadf69"
+      "bytes": 4551,
+      "sha256": "78c08acafedd08a04cd1abc7f1d9a579911928472d47e5c153626fad1e8c242c"
     },
     "js/modules/feature-adapters/legacySvgExportAdapter.mjs": {
-      "bytes": 6745,
-      "sha256": "e6c4af6f31c5b8ab6c1c4f63fbb06dd1abf6adc84bc97daa4c7bfecc56890181"
-    },
-    "js/modules/feature-adapters/legacyUiRoutes.mjs": {
-      "bytes": 9100,
-      "sha256": "486693b9be5764ce0c23dd9f1dbc3dc95e5afbaa81f56016dc8d64d33935104d"
-    },
-    "js/modules/feature-adapters/textModeHistoryAdapter.mjs": {
-      "bytes": 10255,
-      "sha256": "4ba7ee81988bab3b6bc3fdaee3026f4325aec01b597a92d38e86fc63fb5d16d2"
+      "bytes": 7123,
+      "sha256": "f682f7d18676cf8dd00db313b5a2669147ae774c1c98b75ebf7b032a6357d3c0"
     },
     "js/modules/infrastructure/browserStorageAdapter.mjs": {
       "bytes": 3463,
       "sha256": "89678ab081ea86cda29f947650d779257347bc421eea78ebc31c42b0d73edd06"
-    },
-    "js/modules/infrastructure/disabledRemoteProviderAdapter.mjs": {
-      "bytes": 1337,
-      "sha256": "0951567df38317fd9903c8e4fd39626f9d7ab81b769a5a44945ee53259af069f"
     },
     "js/modules/infrastructure/imageImportModuleLoader.mjs": {
       "bytes": 509,
       "sha256": "1b3b8e5f9b2c10a23c24b096a7c8696a83e0ffcaa8bbd6fff6af473a40265141"
     },
     "js/features/image-import.js": {
-      "bytes": 147177,
-      "sha256": "f11761f27cc0507a759d2963a97c1dbd3c879ed43639ef6315ae59241681acc6"
+      "bytes": 147173,
+      "sha256": "22fd9f3e2f4c2a58a6c976333f96964139f58f26529709a1610f0ccce5338a0d"
     },
     "js/features/image-import.js.map": {
-      "bytes": 548994,
-      "sha256": "266155292e9838c1f1b45f253e5cdbc29f73189c8fac557c4c5c049969f451d0"
+      "bytes": 548998,
+      "sha256": "f5e9cfeb4dcf69d2378fcff0dd51e423d7b543939c0f49f592615ec2827e4fff"
     },
     "js/html/htmlcache.js": {
       "bytes": 364097,

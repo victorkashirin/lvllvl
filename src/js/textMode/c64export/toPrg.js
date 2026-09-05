@@ -21,9 +21,8 @@ var ToPRG = function() {
 }
 
 ToPRG.prototype = {
-  init: function(editor, host) {
+  init: function(editor) {
     this.editor = editor;
-    this.host = host;
   },
 
   start: function() {
@@ -33,7 +32,7 @@ ToPRG.prototype = {
 
     if(this.exportC64 == null) {
       this.exportC64 = new ExportC64();
-      this.exportC64.init(this.editor, this.host);
+      this.exportC64.init(this.editor);
 
     }
 
@@ -90,7 +89,7 @@ ToPRG.prototype = {
     }
 
 
-    $('#exportPRGAs').val(this.host.fileManager.filename);
+    $('#exportPRGAs').val(g_app.fileManager.filename);
 
     var frameCount = this.editor.graphic.getFrameCount();
 
@@ -107,7 +106,7 @@ ToPRG.prototype = {
       $('#exportPRGLoopType').val(playMode);
     } 
 
-    this.sidData = null;
+    this.editor.toPrg.sidData = null;
     clearInputFile(document.getElementById('exportPRGSIDFile'));
     $('#exportPRGSIDFileInfo').html('');
 
@@ -118,7 +117,7 @@ ToPRG.prototype = {
 
     // get the music..
     var musicHTML = '';
-    var musicDir = this.host.doc.dir('/music');
+    var musicDir = g_app.doc.dir('/music');
     var selectedMusic = $('#exportPRGMusic').val();
     if(typeof selectedMusic == 'undefined') {
       selectedMusic = false;

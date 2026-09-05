@@ -10,12 +10,12 @@ async function open2DProject(page) {
   await page.getByText("OK", { exact: true }).last().click();
   await expect(page.locator("#startPage")).toBeHidden();
   await expect.poll(() => page.evaluate(() => Boolean(
-    g_app.textModeEditor.commands.activeHistory &&
+    g_app.textModeEditor.history &&
     g_app.textModeEditor.tileSetManager.getCurrentTileSet(),
   ))).toBe(true);
 }
 
-test("tile-editor, keyboard, desktop-menu, and mobile-menu routes share command history", async ({ page }) => {
+test("tile editor, keyboard, desktop menu, and mobile menu share classic history", async ({ page }) => {
   await open2DProject(page);
 
   const before = await page.evaluate(() => {
@@ -25,17 +25,13 @@ test("tile-editor, keyboard, desktop-menu, and mobile-menu routes share command 
     tileEditor.setCharacters([[0]]);
     return {
       canvasScale: tileEditor.canvasScale,
-      currentFrame: editor.graphic.getCurrentFrame(),
-      historyLength: editor.commands.activeHistory.historyLength,
+      historyLength: editor.history.historyLength,
       pixelHeight: tileEditor.pixelHeight,
       pixelWidth: tileEditor.pixelWidth,
       revision: g_app.doc.modifiedRevision,
-      stateFrame: editor.editorState.frame,
       value: tileEditor.getPixel(0, 0),
     };
   });
-
-  expect(before.stateFrame).toBe(before.currentFrame);
 
   const canvas = page.locator("#tileEditorCanvas");
   await expect(canvas).toBeVisible();
@@ -50,8 +46,7 @@ test("tile-editor, keyboard, desktop-menu, and mobile-menu routes share command 
     const editor = g_app.textModeEditor;
     return {
       dirtyRevision: g_app.doc.modifiedRevision,
-      historyLength: editor.commands.activeHistory.historyLength,
-      selection: editor.editorState.selection,
+      historyLength: editor.history.historyLength,
       value: editor.tileEditor.tileEditorGrid.getPixel(0, 0),
     };
   });
@@ -59,7 +54,6 @@ test("tile-editor, keyboard, desktop-menu, and mobile-menu routes share command 
   expect(edit.value).toBe(expected);
   expect(edit.dirtyRevision).toBeGreaterThan(before.revision);
   expect(edit.historyLength).toBe(before.historyLength + 1);
-  expect(edit.selection).toMatchObject({ character: 0, kind: "tile-pixel", x: 0, y: 0 });
 
   const modifier = await page.evaluate(() => UI.os === "Mac OS" ? "Meta" : "Control");
   await page.keyboard.press(`${modifier}+z`);

@@ -988,10 +988,6 @@ Frames.prototype = {
       return false;
     }
 
-    if(this.editor.commands) {
-      this.editor.commands.setFrame(frame);
-    }
-
     this.currentFrame = parseInt(frame, 10);
 
 /*
@@ -1148,10 +1144,7 @@ return;
 
   play: function(forcePlay) {
 
-    var imageImporter = this.editor.imageImportFeature
-      ? this.editor.imageImportFeature.getActive(this.editor)
-      : null;
-    if(imageImporter && imageImporter.importInProgress) {
+    if(this.editor.importImage.importInProgress) {
       // don't play if import in progress
       return;
     }

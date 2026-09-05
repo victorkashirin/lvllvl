@@ -1,231 +1,134 @@
-import {
-  RemoteProviderId,
-} from "../application/remoteProviderService.mjs";
-import { parseGitHubRepositoryAddress } from "../domain/githubRepositoryAddress.mjs";
+export const disabledRemoteProviderReason =
+  "Remote providers are disabled until credential handling moves to a reviewed server-side flow.";
 
-/** @typedef {import("../application/remoteProviderService.mjs").RemoteProviderService} RemoteProviderService */
+const providerIds = Object.freeze(["github", "gist", "google-drive"]);
+
+/** @param {string} providerId */
+function disabledError(providerId) {
+  const error = /** @type {Error & { providerId: string }} */ (
+    new Error(disabledRemoteProviderReason)
+  );
+  error.name = "RemoteProviderDisabledError";
+  error.providerId = providerId;
+  return error;
+}
 
 /**
- * Keep dormant callback-era callers safe while provider UI is removed from the
- * production graph. Every attempted operation still crosses the application
- * service and receives the same normalized disabled error.
+ * Keep the few dormant callback-era references deterministic while the provider
+ * code, credentials, SDKs, controls, and network origins remain absent.
  *
- * @param {{remoteProviders: RemoteProviderService, reportError: (providerId: string, error: unknown) => void}} dependencies
+ * @param {{ reportError: (providerId: string, error: Error) => void }} dependencies
  */
-export function createLegacyRemoteProviderFacades({ remoteProviders, reportError }) {
-  const operations = /** @type {const} */ (
-    ["signIn", "signOut", "list", "load", "save", "publish"]
-  );
-  if (
-    !remoteProviders ||
-    operations.some((operation) => typeof remoteProviders[operation] !== "function") ||
-    typeof reportError !== "function"
-  ) {
-    throw new TypeError("Legacy provider facades require the provider service and error reporter");
-  }
-
-  /** @param {unknown} value @returns {import("../application/remoteProviderService.mjs").RemoteProviderRequest} */
-  function toProviderRequest(value) {
-    if (value === undefined) return {};
-    const prototype = value !== null && typeof value === "object"
-      ? Object.getPrototypeOf(value)
-      : null;
-    if (
-      value === null ||
-      typeof value !== "object" ||
-      Array.isArray(value) ||
-      (prototype !== Object.prototype && prototype !== null)
-    ) {
-      return { content: value };
-    }
-    const source = /** @type {Record<string, any>} */ (value);
-    const content = { ...source };
-    /** @type {import("../application/remoteProviderService.mjs").RemoteProviderRequest} */
-    const request = { content };
-    if (source.signal !== undefined) {
-      request.signal = source.signal;
-      delete content.signal;
-    }
-    if (source.onProgress !== undefined) {
-      request.onProgress = source.onProgress;
-      delete content.onProgress;
-    }
-    if (source.capabilities !== undefined) {
-      request.capabilities = source.capabilities;
-      delete content.capabilities;
-    }
-    // Callback-era control flow stays in this compatibility adapter; it must
-    // never become provider request content.
-    delete content.callback;
-    return request;
+export function createDisabledRemoteProviders({ reportError }) {
+  if (typeof reportError !== "function") {
+    throw new TypeError("Disabled remote providers require an error reporter");
   }
 
   /**
    * @param {string} providerId
-   * @param {"signIn" | "signOut" | "list" | "load" | "save" | "publish"} operation
-   * @param {object=} request
    * @param {((result: any) => void)=} callback
    * @param {any=} failureResult
    */
-  function unavailable(providerId, operation, request = {}, callback, failureResult) {
-    remoteProviders[operation](providerId, toProviderRequest(request)).catch((error) => {
+  function unavailable(providerId, callback, failureResult) {
+    const error = disabledError(providerId);
+    Promise.resolve().then(() => {
       reportError(providerId, error);
-      callback?.(failureResult ?? {
-        error,
-        message: error instanceof Error ? error.message : "Remote provider unavailable",
-        success: false,
-      });
+      callback?.(failureResult ?? { error, message: error.message, success: false });
     });
+    return false;
   }
 
-  /** @type {Map<string, (result?: any) => void>} */
-  const githubListeners = new Map();
-  /** @type {any} */
-  const githubClient = {
-    createGist(/** @type {any} */ args, /** @type {any} */ callback) {
-      unavailable(RemoteProviderId.GIST, "publish", args, callback);
+  /** @param {string} providerId @param {any=} failureResult */
+  function failWithCallback(providerId, failureResult) {
+    return (/** @type {any[]} */ ...args) => {
+      /** @type {((result: any) => void) | undefined} */
+      let callback;
+      for (let index = args.length - 1; index >= 0; index--) {
+        if (typeof args[index] === "function") {
+          callback = args[index];
+          break;
+        }
+      }
+      return unavailable(providerId, callback, failureResult);
+    };
+  }
+
+  const policy = Object.freeze({
+    getSession(/** @type {string} */ providerId) {
+      if (!providerIds.includes(providerId)) throw new Error(`Unknown remote provider: ${providerId}`);
+      return Object.freeze({
+        accountLabel: null,
+        capabilities: Object.freeze([]),
+        providerId,
+        reason: disabledRemoteProviderReason,
+        status: "disabled",
+      });
     },
-    createRepo(/** @type {any} */ args, /** @type {any} */ callback) {
-      unavailable(RemoteProviderId.GITHUB, "publish", args, callback);
-    },
-    getGist(/** @type {any} */ args, /** @type {any} */ callback) {
-      unavailable(RemoteProviderId.GIST, "load", args, callback);
-    },
+    isEnabled() { return false; },
+  });
+
+  const githubClient = Object.freeze({
+    createGist: failWithCallback("gist"),
+    createRepo: failWithCallback("github"),
+    getGist: failWithCallback("gist"),
     getLoginName() { return ""; },
-    getRepoDetails(/** @type {any} */ args, /** @type {any} */ callback) {
-      unavailable(RemoteProviderId.GITHUB, "list", args, callback);
-    },
+    getRepoDetails: failWithCallback("github"),
     getScopes() { return []; },
     hasScope() { return false; },
     isLoggedIn() { return false; },
-    load(/** @type {any} */ args, /** @type {any} */ callback) {
-      unavailable(RemoteProviderId.GITHUB, "load", args, callback);
-    },
-    login(/** @type {any} */ callback) {
-      unavailable(RemoteProviderId.GITHUB, "signIn");
-    },
-    loginWithRedirect(/** @type {any} */ callback) {
-      unavailable(RemoteProviderId.GITHUB, "signIn");
-    },
-    logout() {
-      unavailable(RemoteProviderId.GITHUB, "signOut", {}, githubListeners.get("logout"));
-    },
-    on(/** @type {any} */ eventName, /** @type {any} */ callback) {
-      if (typeof callback === "function") githubListeners.set(eventName, callback);
-    },
-    pull(/** @type {any} */ args, /** @type {any} */ callback) {
-      unavailable(
-        RemoteProviderId.GITHUB,
-        "load",
-        args,
-        callback,
-        { filesToPull: [], message: "GitHub is disabled.", success: false },
-      );
-    },
-    requestScope(/** @type {any} */ scope, /** @type {any} */ callback) {
-      unavailable(RemoteProviderId.GITHUB, "signIn", { capabilities: [scope] });
-    },
-    save(/** @type {any} */ args, /** @type {any} */ callback) {
-      unavailable(RemoteProviderId.GITHUB, "save", args, callback);
-    },
+    load: failWithCallback("github"),
+    login() { return unavailable("github"); },
+    loginWithRedirect() { return unavailable("github"); },
+    logout() { return unavailable("github"); },
+    on() {},
+    pull: failWithCallback("github", {
+      filesToPull: [],
+      message: disabledRemoteProviderReason,
+      success: false,
+    }),
+    requestScope() { return unavailable("github"); },
+    save: failWithCallback("github"),
     setRepositoryFolder() {},
-    setUser(/** @type {any} */ user, /** @type {any} */ callback) { callback?.(); },
-  };
-  Object.freeze(githubClient);
+    setUser() {},
+  });
 
-  /** @type {string | null} */
-  let repositoryOwner = null;
-  /** @type {string | null} */
-  let repositoryName = null;
-  /** @type {any} */
-  const github = {
-    doCheckForUpdatedFiles(/** @type {any} */ callback) {
-      unavailable(
-        RemoteProviderId.GITHUB,
-        "list",
-        { owner: repositoryOwner, repository: repositoryName },
-        () => callback?.(),
-      );
-    },
-    doPull(/** @type {any} */ callback) {
-      unavailable(
-        RemoteProviderId.GITHUB,
-        "load",
-        { owner: repositoryOwner, repository: repositoryName },
-        callback,
-      );
-    },
-    load(/** @type {any} */ args, /** @type {any} */ callback) {
-      unavailable(RemoteProviderId.GITHUB, "load", args, callback);
-    },
-    loadRepository(/** @type {any} */ args) {
-      unavailable(RemoteProviderId.GITHUB, "load", args, args?.callback);
-    },
-    openRepository(/** @type {any} */ args, /** @type {any} */ callback) {
-      unavailable(RemoteProviderId.GITHUB, "load", args, callback);
-    },
-    parseRepositoryAddress: parseGitHubRepositoryAddress,
-    save() {
-      unavailable(RemoteProviderId.GITHUB, "save");
-    },
-    setRepositoryDetails(/** @type {any} */ owner, /** @type {any} */ repository) {
-      repositoryOwner = owner || null;
-      repositoryName = repository || null;
-    },
-    showLoadFromRepositoryDialog() {
-      unavailable(RemoteProviderId.GITHUB, "load");
-    },
-  };
-  Object.freeze(github);
+  const github = Object.freeze({
+    doCheckForUpdatedFiles: failWithCallback("github"),
+    doPull: failWithCallback("github"),
+    load: failWithCallback("github"),
+    loadRepository(/** @type {any} */ args) { return unavailable("github", args?.callback); },
+    openRepository: failWithCallback("github"),
+    save: failWithCallback("github"),
+    setRepositoryDetails() {},
+    showLoadFromRepositoryDialog() { return unavailable("github"); },
+  });
 
-  /** @type {any} */
-  const gist = {
-    loadFromGist(/** @type {any} */ args) {
-      unavailable(RemoteProviderId.GIST, "load", args);
-    },
-    share(/** @type {any} */ args, /** @type {any} */ callback) {
-      unavailable(RemoteProviderId.GIST, "publish", args, callback);
-    },
-    startShare() {
-      unavailable(RemoteProviderId.GIST, "publish");
-    },
-  };
-  Object.freeze(gist);
+  const gist = Object.freeze({
+    loadFromGist(/** @type {any} */ args) { return unavailable("gist", args?.callback); },
+    share: failWithCallback("gist"),
+    startShare: failWithCallback("gist"),
+  });
 
-  /** @type {any} */
-  const googleDrive = {
+  const googleDrive = Object.freeze({
     checkIsSignedIn() { return false; },
-    handleAuthClick(/** @type {any} */ callback) {
-      unavailable(RemoteProviderId.GOOGLE_DRIVE, "signIn");
-    },
+    handleAuthClick() { return unavailable("google-drive"); },
     handleClientLoad() {},
-    handleSignoutClick() {
-      unavailable(RemoteProviderId.GOOGLE_DRIVE, "signOut");
-    },
+    handleSignoutClick() { return unavailable("google-drive"); },
     init() {},
-    listProjects(/** @type {any} */ args, /** @type {any} */ callback) {
-      unavailable(RemoteProviderId.GOOGLE_DRIVE, "list", args, callback, []);
-    },
-    openProject(/** @type {any} */ args, /** @type {any} */ callback) {
-      unavailable(RemoteProviderId.GOOGLE_DRIVE, "load", args, callback);
-    },
-    saveProject(/** @type {any} */ args, /** @type {any} */ callback) {
-      unavailable(RemoteProviderId.GOOGLE_DRIVE, "save", args, callback);
-    },
+    listProjects: failWithCallback("google-drive", []),
+    openProject: failWithCallback("google-drive"),
+    saveProject: failWithCallback("google-drive"),
     uploadToAppFolder(
-      /** @type {any} */ content,
-      /** @type {any} */ filename,
+      /** @type {any} */ _content,
+      /** @type {string} */ _filename,
       /** @type {any} */ callbacks = {},
     ) {
-      unavailable(
-        RemoteProviderId.GOOGLE_DRIVE,
-        "save",
-        { content, filename },
-        callbacks.error,
-      );
+      return unavailable("google-drive", callbacks.error);
     },
-  };
-  Object.freeze(googleDrive);
+  });
 
-  return Object.freeze({ gist, github, githubClient, googleDrive });
+  return Object.freeze({
+    facades: Object.freeze({ gist, github, githubClient, googleDrive }),
+    policy,
+  });
 }

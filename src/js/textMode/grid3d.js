@@ -702,17 +702,14 @@ Grid3d.prototype = {
 
 
   setCurrentFrame: function(frameIndex) {
+    if(frameIndex === this.currentFrame) {
+      return;
+    }
+
+
     if(frameIndex > this.frameCount || frameIndex < 0) {
       //console.log('not within frame count');
       return false;
-    }
-
-    if(this.editor.commands) {
-      this.editor.commands.setFrame(frameIndex);
-    }
-
-    if(frameIndex === this.currentFrame) {
-      return;
     }
 
     for(var i = 0; i < this.layers.length; i++) {

@@ -22,7 +22,7 @@ var ImportImageMobile = function() {
   this.visible = false;
   this.closePromise = null;
   this.resolveClose = null;
-  this.closingRouteClosed = null;
+  this.closingCallback = null;
 
 
   this.frameCount = 24;
@@ -533,7 +533,7 @@ ImportImageMobile.prototype = {
       });
 
       this.uiComponent.on('closing', function() {
-        _this.closingRouteClosed = _this.importer.routeClosed;
+        _this.closingCallback = _this.importer.closeCallback;
         if(_this.closePromise == null) {
           _this.closePromise = new Promise(function(resolve) {
             _this.resolveClose = resolve;
@@ -542,15 +542,15 @@ ImportImageMobile.prototype = {
       });
 
       this.uiComponent.on('close', function() {
-        var routeClosed = _this.closingRouteClosed;
+        var closeCallback = _this.closingCallback;
         var resolveClose = _this.resolveClose;
-        _this.closingRouteClosed = null;
+        _this.closingCallback = null;
         _this.resolveClose = null;
         _this.closePromise = null;
         _this.visible = false;
         _this.importer.visible = false;
-        if(routeClosed) {
-          routeClosed();
+        if(closeCallback) {
+          closeCallback();
         }
         if(_this.doImport) {
           _this.showProgress();

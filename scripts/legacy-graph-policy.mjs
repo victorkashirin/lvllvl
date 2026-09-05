@@ -37,21 +37,38 @@ export function verifyLegacyBaselineEvolution({ baselineInputs, previousInputs }
   }
 }
 
-function comparisonReference() {
-  if (process.env.LEGACY_GRAPH_BASE_REF) {
-    return { reference: process.env.LEGACY_GRAPH_BASE_REF, required: true };
+export function comparisonReference(environment = process.env) {
+  if (environment.LEGACY_GRAPH_BASE_REF) {
+    return { reference: environment.LEGACY_GRAPH_BASE_REF, required: true };
   }
-  if (process.env.GITHUB_BASE_REF) {
-    return { reference: `origin/${process.env.GITHUB_BASE_REF}`, required: true };
+  if (environment.GITHUB_BASE_REF) {
+    return { reference: `origin/${environment.GITHUB_BASE_REF}`, required: true };
   }
-  if (process.env.CI === "true" && process.env.GITHUB_EVENT_NAME === "push") {
-    return { reference: "HEAD^", required: true };
+  if (environment.CI === "true" && environment.GITHUB_EVENT_NAME === "push") {
+    const before = environment.GITHUB_EVENT_BEFORE;
+    if (!before || /^0+$/.test(before)) {
+      throw new Error("Push CI requires the event's before SHA for legacy graph comparison");
+    }
+    return { reference: before, required: true };
   }
   return { reference: "HEAD", required: false };
 }
 
 async function previousBaselineInputs() {
-  const { reference, required } = comparisonReference();
+  let { reference, required } = comparisonReference();
+  if (!required && reference === "HEAD") {
+    for (const candidate of ["main", "origin/main"]) {
+      try {
+        const { stdout } = await runFile("git", ["merge-base", "HEAD", candidate], {
+          cwd: projectRoot,
+        });
+        reference = stdout.trim();
+        break;
+      } catch {
+        // A local checkout is not required to expose either conventional main ref.
+      }
+    }
+  }
   try {
     await runFile("git", ["rev-parse", "--verify", `${reference}^{commit}`], {
       cwd: projectRoot,

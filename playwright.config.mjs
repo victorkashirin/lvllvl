@@ -13,6 +13,7 @@ const hasIncompatibleMacOS14WebKit =
 const configuredProjects = browserTestProjects.filter(
   (project) => !(hasIncompatibleMacOS14WebKit && project.browserName === "webkit"),
 );
+const testPort = Number(process.env.LVLLVL_TEST_PORT ?? 4173);
 
 if (hasIncompatibleMacOS14WebKit) {
   console.warn(
@@ -45,12 +46,12 @@ export default defineConfig({
     },
   })),
   use: {
-    baseURL: "http://127.0.0.1:4173",
+    baseURL: `http://127.0.0.1:${testPort}`,
     headless: true,
   },
   webServer: {
-    command: "npm run preview -- --port 4173",
-    port: 4173,
+    command: `npm run preview -- --port ${testPort}`,
+    port: testPort,
     reuseExistingServer: !process.env.CI,
     timeout: 30_000,
   },

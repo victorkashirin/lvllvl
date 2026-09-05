@@ -898,9 +898,6 @@ DrawTools.prototype = {
     }
     
     this.tool = tool;//$('input[name=drawTool]:checked').val();
-    if(this.editor.commands) {
-      this.editor.commands.setTool(tool);
-    }
 
     var graphicType = this.editor.graphic.getType();
 

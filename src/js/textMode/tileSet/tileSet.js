@@ -3034,29 +3034,40 @@ TileSet.prototype = {
 
 
     var oldValue = this.getPixel(character, x, y);
+    if(Object.is(oldValue, set)) {
+      return false;
+    }
+
     var pos = x + y * this.charWidth;
-    var _this = this;
-    return this.editor.commands.executeTilePixelEdit({
-      character: character,
-      x: x,
-      y: y,
-      frame: frame,
-      oldValue: oldValue,
-      newValue: set,
-      apply: function() {
-        _this.tileData[character].data[0][pos] = set;
-        _this.updateCharacterCurrentData(character);
-        _this.customCharacterset = true;
-      },
-      markDirty: function() {
-        _this.modified();
-      },
-      invalidate: function() {
-        if(updateCharacter) {
-          _this.updateCharacter(character);
-        }
-      }
-    });
+    this.tileData[character].data[0][pos] = set;
+
+//    if(updateCharacter) {
+    this.updateCharacterCurrentData(character);
+
+//    }
+
+
+
+//    this.setImageDataPixel(character, x, y, set);
+
+    // record the action
+    var params = {
+                   "c": character,
+                   "x": x, "y": y,
+                   "oldValue": oldValue,
+                   "newValue": set
+                  }
+
+    this.editor.history.addAction("setCharPixel", params);
+
+
+    if(updateCharacter) {
+      this.updateCharacter(character);
+    }
+    this.modified();
+
+    this.customCharacterset = true;
+    return true;
   },
 
   // call this when a character has been updated

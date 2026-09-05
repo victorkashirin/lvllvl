@@ -38,9 +38,8 @@ var ExportPngMobile = function() {
 
 ExportPngMobile.prototype = {
 
-  init: function(editor, host) {
+  init: function(editor) {
     this.editor = editor;
-    this.host = host;
   },
 
 
@@ -197,7 +196,7 @@ ExportPngMobile.prototype = {
     }
 
 
-    $('#exportPNGMobileAs').val(this.host.fileManager.filename);
+    $('#exportPNGMobileAs').val(g_app.fileManager.filename);
 
     if(this.previewCanvas == null) {
       this.previewCanvas = document.getElementById('exportPngMobilePreview');

@@ -7,8 +7,6 @@ import { fileURLToPath } from "node:url";
 
 import { parse } from "acorn";
 import { buildGraph, copiedScripts } from "../scripts/build-graph.mjs";
-import { parseGitHubRepositoryAddress } from
-  "../src/js/modules/domain/githubRepositoryAddress.mjs";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const sourceRoot = path.join(projectRoot, "src");
@@ -348,35 +346,6 @@ test("music sandbox bounds pending work and removes timed-out queued scripts", a
   assert.equal(results[1].success, false);
   assert.match(results[1].error, /did not respond/i);
   assert.deepEqual(clearedTimers, []);
-});
-
-test("GitHub repository addresses accept only exact GitHub identifier forms", async () => {
-  assert.deepEqual(
-    { ...parseGitHubRepositoryAddress("openai/codex") },
-    { owner: "openai", repository: "codex" },
-  );
-  assert.deepEqual(
-    { ...parseGitHubRepositoryAddress("https://github.com/openai/codex.git") },
-    { owner: "openai", repository: "codex" },
-  );
-  assert.deepEqual(
-    { ...parseGitHubRepositoryAddress("git@github.com:openai/codex.git") },
-    { owner: "openai", repository: "codex" },
-  );
-
-  for(const address of [
-    "javascript:alert(1)",
-    "https://evil.example/openai/codex",
-    "https://github.com/openai/codex/issues",
-    "https://github.com/openai/codex?tab=readme",
-    "https://github.com/openai/codex%2Fother",
-    "open--ai/codex",
-    "-openai/codex",
-    "openai/<img src=x onerror=alert(1)>",
-    "openai/codex/other",
-  ]) {
-    assert.equal(parseGitHubRepositoryAddress(address), null, address);
-  }
 });
 
 test("first-party application scripts contain no direct eval calls", async () => {

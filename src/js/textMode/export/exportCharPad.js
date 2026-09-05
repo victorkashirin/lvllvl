@@ -4,9 +4,8 @@ var ExportCharPad = function() {
 
 ExportCharPad.prototype = {
 
-  init: function(editor, host) {
+  init: function(editor) {
     this.editor = editor;
-    this.host = host;
   },
 
 
@@ -47,7 +46,7 @@ ExportCharPad.prototype = {
     this.colorPerMode = this.editor.getColorPerMode();
     this.blockModeEnabled = this.editor.getBlockModeEnabled();
 
-    $('#exportCharPadAs').val(this.host.fileManager.filename);
+    $('#exportCharPadAs').val(g_app.fileManager.filename);
 
   },
 
@@ -70,7 +69,7 @@ ExportCharPad.prototype = {
     var currentFrame = this.editor.graphic.getCurrentFrame();
 
     if(typeof args.filename == 'undefined') {
-      args.filename = this.host.fileManager.filename;
+      args.filename = g_app.fileManager.filename;
     }
 
     if(typeof args.format == 'undefined') {
