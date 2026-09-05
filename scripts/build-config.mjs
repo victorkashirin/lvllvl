@@ -17,6 +17,7 @@ export const assetDirectories = [
   "cursors",
   "fonts",
   "images",
+  "docs",
   "c64page",
   "c64",
 ];
@@ -179,9 +180,14 @@ export const runtimeAssetFiles = [
 ];
 
 // This is the reviewed closure of feature-specific requests. Some entries are
-// copied by runtimeAssetFiles; entries under c64/ and css/ are supplied by the
-// public asset directories above.
+// copied by runtimeAssetFiles; entries under c64/, css/, and docs/ are supplied
+// by the public asset directories above.
 export const runtimeFeatureRequests = {
+  helpDocumentation: [
+    "docs/api.html",
+    "docs/common-action-shortcuts.html",
+    "docs/keyboard-shortcuts.html",
+  ],
   aceEditor: [
     "lib/ace/src/theme-chrome.js",
     "lib/ace/src/theme-tomorrow_night.js",

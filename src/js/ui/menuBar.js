@@ -500,9 +500,9 @@ UI.MenuBar = function() {
       this.element.setAttribute("class", "ui-menubar-panel ui-mouseevents");    
       if(!this.visible) {
         this.element.setAttribute('style', 'display: none;');
-      }    
+      }
       this.homeLink = document.createElement("a");
-      this.homeLink.setAttribute("href", "/");
+      this.homeLink.setAttribute("href", "./");
       this.element.append(this.homeLink);
 
       this.logo = document.createElement("img");

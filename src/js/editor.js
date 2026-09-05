@@ -2440,13 +2440,13 @@ main split panel north is menu
         
         break;
       case 'help-commonactionshortcuts':
-        window.open('docs/common-action-shortcuts.html', 'common-action-shortcuts');
+        window.open('./docs/common-action-shortcuts.html', 'common-action-shortcuts');
         break;
       case 'help-keyboardshortcuts':
-        window.open('docs/keyboard-shortcuts.html', 'keyboard-shortcuts');
+        window.open('./docs/keyboard-shortcuts.html', 'keyboard-shortcuts');
       break;
       case 'help-scriptingapi':
-        window.open('docs/api.html', 'scripting-api');
+        window.open('./docs/api.html', 'scripting-api');
       break;
 
       case 'c64-sound':

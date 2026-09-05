@@ -702,6 +702,9 @@ await verifyNestedRuntimeRequests();
 await verifyHtmlReferences("index.html", "");
 await verifyHtmlReferences("c64/index.html", "");
 await verifyHtmlReferences("c64page/index.html", "c64page");
+for (const filename of runtimeFeatureRequests.helpDocumentation) {
+  await verifyHtmlReferences(filename, path.posix.dirname(filename));
+}
 await verifyStyleBundle();
 await verifyCssReferences("css/style.css");
 await verifyCssReferences("css/ui-mobile.css");

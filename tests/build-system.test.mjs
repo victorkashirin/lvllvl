@@ -19,6 +19,10 @@ import test from "node:test";
 import { stripVTControlCharacters } from "node:util";
 
 import { buildGraph } from "../scripts/build-graph.mjs";
+import {
+  assetDirectories,
+  runtimeFeatureRequests,
+} from "../scripts/build-config.mjs";
 import { assertCaseExactPath, publishDirectory } from "../scripts/build.mjs";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -68,6 +72,23 @@ test("source labels never declare an empty target", async () => {
     [],
     `Empty label targets can trigger Firefox getElementById warnings:\n${invalidTargets.join("\n")}`,
   );
+});
+
+test("home and help links stay inside a repository deployment path", async () => {
+  const menuBar = await readFile(path.join(projectRoot, "src/js/ui/menuBar.js"), "utf8");
+  const editor = await readFile(path.join(projectRoot, "src/js/editor.js"), "utf8");
+  const deploymentUrl = new URL("https://example.com/lvllvl/");
+
+  assert.match(menuBar, /homeLink\.setAttribute\("href", "\.\/"\)/);
+  assert.equal(new URL("./", deploymentUrl).pathname, "/lvllvl/");
+
+  for (const filename of runtimeFeatureRequests.helpDocumentation) {
+    const reference = `./${filename}`;
+    assert.ok(editor.includes(`window.open('${reference}'`), `${reference} is not linked`);
+    assert.equal(new URL(reference, deploymentUrl).pathname, `/lvllvl/${filename}`);
+  }
+
+  assert.ok(assetDirectories.includes("docs"), "help documents are not published");
 });
 
 test("first-party bundle sources contain no unreachable statements", async () => {

@@ -12,6 +12,8 @@
 
 ### Fixed
 
+- Keep the home logo and Help documentation within repository subdirectory
+  deployments, and publish the documentation pages and their assets.
 - Restore frame playback after the image importer became a lazy module, while
   continuing to prevent playback during an active image import.
 - Preserve full-image sampling when repairing cropped layer thumbnails. Apply
