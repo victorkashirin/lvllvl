@@ -4,6 +4,8 @@
 
 ### Added
 
+- Add a phased P1.4 module-migration plan with necessity ratings, measurable
+  phase gates, testing requirements, and legacy-removal criteria.
 - Add a centralized sanitized-HTML policy, Trusted Types enforcement, strict
   repository-address validation, and an opaque capability sandbox for music
   scripts.
