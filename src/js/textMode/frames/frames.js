@@ -1143,8 +1143,11 @@ return;
   },
 
   play: function(forcePlay) {
+    var imageImporter = this.editor.imageImportFeature
+      ? this.editor.imageImportFeature.getActive(this.editor)
+      : null;
 
-    if(this.editor.importImage.importInProgress) {
+    if(imageImporter && imageImporter.importInProgress) {
       // don't play if import in progress
       return;
     }

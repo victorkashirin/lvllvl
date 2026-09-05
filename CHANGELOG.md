@@ -12,6 +12,8 @@
 
 ### Fixed
 
+- Restore frame playback after the image importer became a lazy module, while
+  continuing to prevent playback during an active image import.
 - Preserve full-image sampling when repairing cropped layer thumbnails. Apply
   one world-aligned scale instead of independently scaling each crop rectangle,
   fixing small pixel discrepancies after onion-skin drawing in Chromium and
