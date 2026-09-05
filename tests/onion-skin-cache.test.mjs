@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import vm from "node:vm";
 
-function fixture({ vector = false } = {}) {
+function fixture({ vector = false, width = 2, height = 2 } = {}) {
   const context = {
     clearRect() {}, fillRect() {}, drawImage() {}, setTransform() {}, fill() {},
     save() {}, restore() {}, beginPath() {}, rect() {}, clip() {},
@@ -54,13 +54,14 @@ function fixture({ vector = false } = {}) {
   graphic.currentFrame = 1;
   graphic.frames = [{}, {}];
   graphic.frameCount = 2;
-  graphic.getGraphicWidth = graphic.getGraphicHeight = () => 4;
+  graphic.getGraphicWidth = () => width * 2;
+  graphic.getGraphicHeight = () => height * 2;
   const layer = new sandbox.LayerGrid();
   layer.editor = editor;
   layer.layerId = "a";
   layer.mode = vector ? "vector" : "textmode";
-  layer.doc = { gridWidth: 2, gridHeight: 2, cellWidth: 2, cellHeight: 2, blockWidth: 1, blockHeight: 1, blockMode: false };
-  layer.frames = Array.from({ length: 2 }, () => ({ bgColor: -1, data: Array.from({ length: 2 }, () => Array.from({ length: 2 }, () => ({ t: 0, fc: 1, bc: -1, rz: 0, fh: 0, fv: 0 }))) }));
+  layer.doc = { gridWidth: width, gridHeight: height, cellWidth: 2, cellHeight: 2, blockWidth: 1, blockHeight: 1, blockMode: false };
+  layer.frames = Array.from({ length: 2 }, () => ({ bgColor: -1, data: Array.from({ length: height }, () => Array.from({ length: width }, () => ({ t: 0, fc: 1, bc: -1, rz: 0, fh: 0, fv: 0 }))) }));
   layer.currentFrame = 1;
   layer.frameCount = 2;
   layer.getTileSet = () => tileSet;
@@ -312,3 +313,123 @@ test("moving a current-frame selection does not erase the previous-frame raster"
   f.draw();
   assert.deepEqual(f.context.pixels, pixels);
 });
+
+// Thumbnail caching shares the same dependency keys and isolated raster paths.
+for (const vector of [false, true]) {
+  test(`${vector ? "vector" : "bitmap"}: thumbnail caches dependencies, not viewport or selection state`, () => {
+    const f = fixture({ vector });
+    f.layer.previewCanvas = f.makeCanvas();
+    const scratch = f.makeCanvas();
+    let rasters = 0;
+    const draw = f.layer.draw;
+    f.layer.draw = function(args) { if (args.draw === "thumbnail") rasters++; return draw.call(this, args); };
+    const viewportState = () => JSON.stringify([f.layer.updatedCellRanges, f.layer.drawnBounds, f.layer.lastDrawScale]);
+    const before = viewportState();
+    f.layer.updatePreview(scratch);
+    assert.equal(rasters, 1);
+    assert.equal(f.layer.isPreviewDirty(), false);
+    assert.equal(viewportState(), before);
+    f.layer.setViewBounds(2, 2, 4, 4);
+    f.layer.lastDrawScale = 5;
+    f.editor.tools.drawTools.select.isActive = () => true;
+    f.editor.tools.drawTools.select.isMovingSelectionContents = () => true;
+    f.layer.updatePreview(scratch);
+    assert.equal(rasters, 1);
+    f.layer.setCell({ frame: 0, x: 0, y: 0, t: 0, fc: 2 });
+    f.layer.updatePreview(scratch);
+    assert.equal(rasters, 1, "editing another frame must not refresh the current thumbnail");
+    const changes = [
+      () => f.layer.setCell({ x: 1, y: 1, t: 0, fc: 2 }),
+      () => f.tileSet.modified(),
+      () => { f.palette.noDocColors[1] = 0xffabcdef; f.palette.createColorMeta(1); },
+      () => f.layer.setBackgroundColor(2),
+      () => { f.layer.frames[1].data = structuredClone(f.layer.frames[1].data); },
+      () => f.layer.setCurrentFrame(0),
+      () => { f.layer.doc.hasTileFlip = true; },
+      () => { f.editor.layers.isBackgroundVisible = () => false; },
+      () => { f.layer.previewCanvas = f.makeCanvas(); },
+    ];
+    for (const change of changes) {
+      change();
+      assert.equal(f.layer.isPreviewDirty(), true, change.toString());
+      const before = viewportState();
+      f.layer.updatePreview(scratch);
+      assert.equal(viewportState(), before, "thumbnail must not satisfy viewport invalidation");
+      assert.equal(f.layer.isPreviewDirty(), false);
+    }
+    assert.equal(rasters, 1 + changes.length);
+    f.layer.setCell({ x: 0, y: 0, t: 0, fc: 1 });
+    const render = f.layer.draw;
+    f.layer.draw = () => { throw new Error("failed thumbnail"); };
+    assert.throws(() => f.layer.updatePreview(scratch), /failed thumbnail/);
+    assert.equal(f.layer.isPreviewDirty(), true, "failure must leave thumbnail dirty");
+    f.layer.draw = render;
+    f.layer.updatePreview(scratch);
+    assert.equal(f.layer.isPreviewDirty(), false);
+  });
+}
+
+test("thumbnail sampling reuses only a complete current bitmap raster without selection/onion omissions", () => {
+  const f = fixture();
+  f.layer.previewCanvas = f.makeCanvas();
+  const canvas = f.layer.getCanvas();
+  let thumbnailRasters = 0;
+  const draw = f.layer.draw;
+  f.layer.draw = function(args) { if (args.draw === "thumbnail") thumbnailRasters++; return draw.call(this, args); };
+  f.layer.invalidateAllCells();
+  f.layer.draw({ canvas, allCells: true });
+  f.layer.updatePreview();
+  assert.equal(thumbnailRasters, 0);
+  f.layer.setCell({ x: 0, y: 0, t: 0, fc: 2 });
+  f.layer.draw({ canvas });
+  f.layer.updatePreview();
+  assert.equal(thumbnailRasters, 0, "a warm one-cell edit only needs deferred downsampling");
+  f.layer.setCell({ x: 1, y: 1, t: 0, fc: 2 });
+  f.layer.draw({ canvas });
+  f.layer.updatePreview();
+  assert.equal(thumbnailRasters, 1, "offscreen edits need an independent thumbnail patch");
+  f.layer.invalidateAllCells();
+  f.layer.draw({ canvas, allCells: true, drawBackground: false });
+  f.layer.updatePreview();
+  assert.equal(thumbnailRasters, 2, "onion skin's missing background cannot leak into the thumbnail");
+});
+
+for (const vector of [false, true]) {
+  test(`${vector ? "vector" : "bitmap"}: warm thumbnail repairs stay bounded and retain damage on failure`, () => {
+    const f = fixture({ vector, width: 320, height: 200 });
+    f.layer.previewCanvas = f.makeCanvas();
+    const scratch = f.makeCanvas();
+    f.layer.updatePreview(scratch);
+    const fullArea = scratch.width * scratch.height;
+    const viewport = () => JSON.stringify([f.layer.updatedCellRanges, f.layer.drawnBounds, f.layer.lastDrawScale]);
+    const damage = [];
+    const draw = f.layer.draw;
+    f.layer.draw = function(args) { damage.push({ ...args }); return draw.call(this, args); };
+    // All cells are offscreen in this fixture. Use separated edits in different
+    // batches to ensure the disposable scratch need not retain previous patches.
+    for (const [x, y] of [[150, 90], [319, 199], [1, 1], [151, 91]]) {
+      f.layer.setCell({ x, y, t: 0, fc: 2 });
+      const before = viewport();
+      f.layer.updatePreview(scratch);
+      assert.ok(scratch.width * scratch.height < fullArea / 8);
+      assert.equal(viewport(), before);
+      assert.equal(f.layer.isPreviewDirty(), false);
+    }
+    assert.equal(damage.length, 4);
+    assert.ok(damage[0].canvasFromX > 0 && damage[0].canvasFromY > 0);
+    f.layer.setCell({ x: 150, y: 90, t: 0, fc: 1 });
+    const pending = JSON.stringify(f.layer.previewDirtyBounds);
+    f.layer.draw = () => { throw new Error("patch failed"); };
+    assert.throws(() => f.layer.updatePreview(scratch), /patch failed/);
+    assert.equal(JSON.stringify(f.layer.previewDirtyBounds), pending);
+    assert.equal(f.layer.isPreviewDirty(), true);
+    f.layer.draw = draw;
+    f.layer.updatePreview(scratch);
+    assert.ok(scratch.width * scratch.height < fullArea / 8);
+    assert.equal(f.layer.isPreviewDirty(), false);
+    // Shared dependencies cannot be treated as local cell damage.
+    f.tileSet.modified();
+    f.layer.updatePreview(scratch);
+    assert.equal(scratch.width * scratch.height, fullArea);
+  });
+}

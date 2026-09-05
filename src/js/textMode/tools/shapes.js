@@ -297,14 +297,9 @@ Shapes.prototype = {
     if(updated.minX < updated.maxX && updated.minY < updated.maxY) {
       bounds = this.unionBounds(bounds, updated);
     }
-    // Thumbnails still sample the entire bitmap layer synchronously (R3).
-    // Flush offscreen dirtiness once on release, never on preview endpoints,
-    // so an offscreen/mirrored commit cannot leave the final thumbnail stale.
-    var offscreenDirty = layer.getMode() != TextModeEditor.Mode.VECTOR
-      && (updated.minX < layer.viewMinX || updated.minY < layer.viewMinY
-        || updated.maxX > layer.viewMaxX || updated.maxY > layer.viewMaxY);
-    if(layer.getBlockModeEnabled() || offscreenDirty) {
-      if(layer.getBlockModeEnabled()) { this.editor.graphic.invalidateAllCells(); }
+    // Thumbnail flushes render independently; offscreen artwork can stay dirty.
+    if(layer.getBlockModeEnabled()) {
+      this.editor.graphic.invalidateAllCells();
       this.editor.graphic.redraw({ allCells: true });
     } else {
       this.editor.graphic.redraw(bounds ? { dirtyCells: this.getPresentationBounds(bounds) } : {});

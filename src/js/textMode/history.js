@@ -180,6 +180,7 @@ History.prototype = {
             this.editor.grid.update({ allCells: true });
           }
 
+          this.editor.layers.updateAllLayerPreviews();
         } else if(gridCellsChanged) {
 
           if(g_newSystem) {
@@ -204,7 +205,7 @@ History.prototype = {
           } else {
             this.editor.grid.update({ allCells: true });
           }
-
+          this.editor.layers.updateAllLayerPreviews();
 
         }
       }
@@ -413,7 +414,7 @@ History.prototype = {
         }
 
 //        this.editor.grid.update({ allCells: true });
-
+        this.editor.layers.updateAllLayerPreviews();
       }
 
 

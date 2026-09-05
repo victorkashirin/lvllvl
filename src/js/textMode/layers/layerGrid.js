@@ -65,6 +65,11 @@ var LayerGrid = function() {
 
   this.previewCanvas = null;
   this.previewContext = null;
+  this.previewRevision = 0;
+  // null means a full refresh; otherwise cell damage since the last thumbnail.
+  this.previewDirtyBounds = null;
+  this.previewState = null;
+  this.previewSourceState = null;
 
   this.viewMinX = 0;
   this.viewMinY = 0;
@@ -583,28 +588,31 @@ LayerGrid.prototype = {
 
   // One bounded cache per layer, never a global frame-number cache. Cell edits
   // invalidate only the cached frame; bulk legacy mutations may invalidate all.
-  invalidatePrevFrame: function(frame) {
+  invalidatePrevFrame: function(frame, x, y) {
+    // Both caches depend on cell mutations, including legacy bulk mutations.
+    if(typeof frame === 'undefined' || frame === this.currentFrame) {
+      this.previewRevision++;
+      if(typeof x === 'undefined') {
+        this.previewDirtyBounds = null;
+      } else if(this.previewDirtyBounds !== null) {
+        this.previewDirtyBounds.minX = Math.min(this.previewDirtyBounds.minX, x);
+        this.previewDirtyBounds.minY = Math.min(this.previewDirtyBounds.minY, y);
+        this.previewDirtyBounds.maxX = Math.max(this.previewDirtyBounds.maxX, x + 1);
+        this.previewDirtyBounds.maxY = Math.max(this.previewDirtyBounds.maxY, y + 1);
+      }
+    }
     if(typeof frame === 'undefined' || (this.prevFrameCache
         && this.prevFrameCache.frame === this.frames[frame])) {
       this.prevFrameCache = null;
     }
   },
 
-  drawPrevFrame: function(args) {
-    var frame = this.frames[args.frame];
-    if(!frame || !frame.data) {
-      this.invalidatePrevFrame();
-      return { offsetX: 0, offsetY: 0 };
-    }
-
+  getFrameRenderState: function(frameIndex, drawBackground) {
+    var frame = this.frames[frameIndex];
     var tileSet = this.getTileSet();
     var palette = this.getColorPalette();
     var mode = this.getMode();
-    var vector = mode === TextModeEditor.Mode.VECTOR;
     var blockSet = this.getBlockModeEnabled() ? this.getBlockSet() : null;
-    var canvas = args.canvas;
-    var drawBackground = typeof args.drawBackground === 'undefined'
-      ? this.editor.layers.isBackgroundVisible() : args.drawBackground;
     // Fixed-size metadata/revisions: do not scan cells or tile pixels on hits.
     // NES has only four small subpalettes, which can also be edited in-place.
     var state = [
@@ -619,16 +627,32 @@ LayerGrid.prototype = {
       this.getBlockWidth(), this.getBlockHeight(),
       this.getHasTileFlip(), this.getHasTileRotate(), this.getTransparentColorIndex(),
       this.blankTileId, this.editor.graphic.getType(), drawBackground,
-      this.getBackgroundColor(args.frame), frame.c64Multi1Color, frame.c64Multi2Color,
+      this.getBackgroundColor(frameIndex), frame.c64Multi1Color, frame.c64Multi2Color,
       frame.c64ECMColor1, frame.c64ECMColor2, frame.c64ECMColor3,
       this.refImageCanvas, this.doc.refImageData,
       mode === TextModeEditor.Mode.NES
         ? JSON.stringify(this.editor.colorPaletteManager.colorSubPalettes.subPalettes) : null,
       mode === TextModeEditor.Mode.C64MULTICOLOR ? this.editor.currentTile.color : null
     ];
+    if(mode === TextModeEditor.Mode.VECTOR) {
+      state.push(tileSet.getFontScale(), tileSet.getFontAscent());
+    }
+    return state;
+  },
+
+  drawPrevFrame: function(args) {
+    var frame = this.frames[args.frame];
+    if(!frame || !frame.data) {
+      this.invalidatePrevFrame();
+      return { offsetX: 0, offsetY: 0 };
+    }
+    var vector = this.getMode() === TextModeEditor.Mode.VECTOR;
+    var canvas = args.canvas;
+    var drawBackground = typeof args.drawBackground === 'undefined'
+      ? this.editor.layers.isBackgroundVisible() : args.drawBackground;
+    var state = this.getFrameRenderState(args.frame, drawBackground);
     if(vector) {
-      state.push(args.scale, args.drawFromX, args.drawFromY, args.drawToX, args.drawToY,
-        tileSet.getFontScale(), tileSet.getFontAscent());
+      state.push(args.scale, args.drawFromX, args.drawFromY, args.drawToX, args.drawToY);
     }
 
     var cache = this.prevFrameCache;
@@ -652,6 +676,7 @@ LayerGrid.prototype = {
   },
 
   getPreviewCanvas: function() {
+    this.editor.layers.updateLayerPreview(this.layerId);
     return this.previewCanvas;
   },
 
@@ -2286,7 +2311,7 @@ LayerGrid.prototype = {
 
 
 
-    this.invalidatePrevFrame(frame);
+    this.invalidatePrevFrame(frame, x, y);
 
     // if its the current frame, mark range for redraw.
     if(frame === this.currentFrame) {
@@ -2400,8 +2425,91 @@ LayerGrid.prototype = {
 
 
 
-  updatePreview: function() {
+  getPreviewContentState: function() {
+    return this.getFrameRenderState(this.currentFrame, this.editor.layers.isBackgroundVisible())
+      .concat([this.previewRevision]);
+  },
 
+  getPreviewState: function() {
+    if(!this.previewCanvas || !this.frames[this.currentFrame]
+        || !this.frames[this.currentFrame].data) { return null; }
+    return this.getPreviewContentState()
+      .concat([this.previewCanvas, this.previewCanvas.width, this.previewCanvas.height]);
+  },
+
+  isPreviewDirty: function() {
+    var state = this.getPreviewState();
+    return state !== null && (!this.previewState || state.length !== this.previewState.length
+      || state.some(function(value, index) { return value !== this.previewState[index]; }, this));
+  },
+
+  // Replace whole thumbnail pixels, not fractional cell edges. Include the
+  // downsampling filter footprint (and vector glyph overhang), so a small edit
+  // cannot leave stale pixels along the edge of the repaired thumbnail region.
+  getPreviewDamage: function() {
+    var width = this.previewCanvas.width, height = this.previewCanvas.height;
+    var bounds = { minX: 0, minY: 0, maxX: width, maxY: height };
+    var state = this.getPreviewState();
+    // The cell revision precedes the canvas identity and its two dimensions.
+    var revisionIndex = state.length - 4;
+    if(this.previewDirtyBounds && this.previewState && state.length === this.previewState.length
+        && state.every(function(value, index) {
+          return index === revisionIndex || value === this.previewState[index];
+        }, this)) {
+      var cells = this.previewDirtyBounds;
+      var padding = this.getMode() === TextModeEditor.Mode.VECTOR ? 1 : 0;
+      var cellWidth = width / this.getGridWidth(), cellHeight = height / this.getGridHeight();
+      bounds.minX = Math.max(0, Math.floor((cells.minX - padding) * cellWidth) - 2);
+      bounds.minY = Math.max(0, Math.floor((cells.minY - padding) * cellHeight) - 2);
+      bounds.maxX = Math.min(width, Math.ceil((cells.maxX + padding) * cellWidth) + 2);
+      bounds.maxY = Math.min(height, Math.ceil((cells.maxY + padding) * cellHeight) + 2);
+    }
+    return bounds;
+  },
+
+  drawPreviewRegion: function(canvas, bounds) {
+    var state = this.getPreviewContentState();
+    var vector = this.getMode() === TextModeEditor.Mode.VECTOR;
+    // A complete bitmap raster may be sampled without any cell rasterization.
+    if(this.previewSourceState && !vector && state.length === this.previewSourceState.length
+        && state.every(function(value, index) { return value === this.previewSourceState[index]; }, this)) {
+      return { canvas: this.canvas, x: 0, y: 0 };
+    }
+    // Otherwise repair the thumbnail from a cropped, disposable raster. It need
+    // not retain the rest of the document between batches or between layers.
+    var tileSet = this.getTileSet();
+    var tileWidth = tileSet.getTileWidth(), tileHeight = tileSet.getTileHeight();
+    var scaleX = this.previewCanvas.width / this.getWidth();
+    var scaleY = this.previewCanvas.height / this.getHeight();
+    var padding = vector ? 1 : 0;
+    var minX = Math.max(0, Math.floor((bounds.minX - 2) / scaleX / tileWidth) - padding);
+    var minY = Math.max(0, Math.floor((bounds.minY - 2) / scaleY / tileHeight) - padding);
+    var maxX = Math.min(this.getGridWidth(), Math.ceil((bounds.maxX + 2) / scaleX / tileWidth) + padding);
+    var maxY = Math.min(this.getGridHeight(), Math.ceil((bounds.maxY + 2) / scaleY / tileHeight) + padding);
+    var width = (maxX - minX) * tileWidth, height = (maxY - minY) * tileHeight;
+    canvas = canvas || document.createElement('canvas');
+    if(canvas.width !== width) { canvas.width = width; }
+    if(canvas.height !== height) { canvas.height = height; }
+    var context = canvas.getContext('2d');
+    context.save();
+    try {
+      context.setTransform(1, 0, 0, 1, 0, 0);
+      this.draw({ canvas: canvas, frame: this.currentFrame, allCells: true,
+        draw: 'thumbnail', shapes: false, cursor: false,
+        fromX: minX, fromY: minY, toX: maxX, toY: maxY,
+        canvasFromX: minX, canvasFromY: minY,
+        drawBackground: this.editor.layers.isBackgroundVisible(),
+        scale: 1, drawFromX: minX * tileWidth, drawFromY: minY * tileHeight,
+        drawToX: maxX * tileWidth, drawToY: maxY * tileHeight });
+    } finally {
+      // A failed vector glyph must not leave a transform in the shared scratch.
+      context.restore();
+    }
+    return { canvas: canvas, x: minX * tileWidth, y: minY * tileHeight };
+  },
+
+  updatePreview: function(canvas) {
+    if(!this.isPreviewDirty()) { return; }
     var previewWidth = this.doc.gridWidth * this.doc.cellWidth;
     var previewHeight = this.doc.gridHeight * this.doc.cellHeight;
 
@@ -2460,20 +2568,25 @@ LayerGrid.prototype = {
       }
     }
 
-    this.previewContext.drawImage(this.backgroundCanvas, 0, 0, this.previewCanvas.width, this.previewCanvas.height);
-
-    // might need to draw background
-    if(this.isCurrentLayer() && this.editor.frames.getShowPrevFrame()) {
-      var colorPalette = this.getColorPalette();
-      var bgColor = this.getBackgroundColor();
-      if(bgColor !== this.editor.colorPaletteManager.noColor) {
-        this.previewContext.fillStyle = '#' + colorPalette.getHexString(bgColor);  
-        this.previewContext.fillRect(0, 0,this.previewCanvas.width, this.previewCanvas.height);
-      }
-
+    var damage = this.getPreviewDamage();
+    var region = this.drawPreviewRegion(canvas, damage);
+    var scaleX = previewWidth / this.getWidth(), scaleY = previewHeight / this.getHeight();
+    this.previewContext.save();
+    try {
+      this.previewContext.beginPath();
+      this.previewContext.rect(damage.minX, damage.minY, damage.maxX - damage.minX, damage.maxY - damage.minY);
+      this.previewContext.clip();
+      this.previewContext.drawImage(this.backgroundCanvas, 0, 0);
+      // Keep the full-image sampling phase, even though only a cropped source
+      // was rasterized. The source guard keeps filter taps away from crop edges.
+      this.previewContext.drawImage(region.canvas, region.x * scaleX, region.y * scaleY,
+        region.canvas.width * scaleX, region.canvas.height * scaleY);
+    } finally {
+      this.previewContext.restore();
     }
-
-    this.previewContext.drawImage(this.getCanvas(), 0, 0, this.previewCanvas.width, this.previewCanvas.height); 
+    // Publish/clear damage only after successful rendering. Failed patches retry.
+    this.previewState = this.getPreviewState();
+    this.previewDirtyBounds = { minX: this.getGridWidth(), minY: this.getGridHeight(), maxX: 0, maxY: 0 };
 
   },
 
@@ -3320,7 +3433,7 @@ LayerGrid.prototype = {
               flipH = gridData[y][x].fh;
               rotZ = gridData[y][x].rz;
 
-              if(draw !== 'prevgrid' && x >= selectionX + selectionOffsetX && x < selectionX + selectionOffsetX + selectionWidth
+              if(draw !== 'prevgrid' && draw !== 'thumbnail' && x >= selectionX + selectionOffsetX && x < selectionX + selectionOffsetX + selectionWidth
                 && y >= selectionY + selectionOffsetY && y < selectionY + selectionOffsetY + selectionHeight) {
                   var sX = x - selectionOffsetX;
                   var sY = y - selectionOffsetY;
@@ -3888,8 +4001,8 @@ LayerGrid.prototype = {
 
 
       if(this.refImageCanvas && draw != 'selection' && draw != 'shapes') {
-        context.drawImage(this.refImageCanvas, 
-          fromPixelX, fromPixelY, pixelWidth, pixelHeight,
+        context.drawImage(this.refImageCanvas,
+          fromPixelX + canvasFromX * tileWidth, fromPixelY + canvasFromY * tileHeight, pixelWidth, pixelHeight,
           fromPixelX, fromPixelY, pixelWidth, pixelHeight
         );
       }
@@ -3903,7 +4016,7 @@ LayerGrid.prototype = {
 
     var blankCharacter = this.blankTileId;
     var screenMode = this.getMode();
-    var dontDrawSelected = draw !== 'prevgrid' && this.isCurrentLayer()
+    var dontDrawSelected = draw !== 'prevgrid' && draw !== 'thumbnail' && this.isCurrentLayer()
       && this.editor.tools.drawTools.select.isActive()
       && this.editor.tools.drawTools.select.isMovingSelectionContents()
       && !this.editor.tools.drawTools.select.isInPasteMove();
@@ -4360,6 +4473,17 @@ LayerGrid.prototype = {
     
 
     if(useDirtyState) {
+      if(this.previewCanvas) {
+        var previewState = this.getPreviewContentState();
+        // A partial draw may extend a complete raster only when all non-cell
+        // dependencies match. Full invalidations must cover the whole document.
+        var complete = fromX === 0 && fromY === 0 && toX === gridWidth && toY === gridHeight;
+        var sameDependencies = this.previewSourceState && previewState.slice(0, -1).every(
+          function(value, index) { return value === this.previewSourceState[index]; }, this);
+        this.previewSourceState = !onlyViewBoundsUpdatedLayer && (complete || sameDependencies)
+          && !dontDrawSelected && !this.editor.tools.drawTools.pixelSelect.isActive()
+          && drawBackground === this.editor.layers.isBackgroundVisible() ? previewState : null;
+      }
       // Only the owned current-frame raster satisfies viewport invalidation.
       if(!onlyViewBoundsUpdatedLayer) {
 

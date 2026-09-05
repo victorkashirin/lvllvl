@@ -912,8 +912,8 @@ Graphic.prototype = {
         this.editor.gridView2d.draw(args);
       } else {
         this.editor.grid.grid2d.update(args);
+        this.editor.layers.requestLayerPreviewUpdate();
       }
-      this.editor.layers.updateLayerPreview();
     }
   },
 

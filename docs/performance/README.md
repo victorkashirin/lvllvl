@@ -169,9 +169,8 @@ pending offscreen updates. Vector compositing partitions whole destination pixel
 with identical blit origins, avoiding fractional-edge seams; full vector raster
 redraws clear complete touched pixels to prevent low-zoom alpha accumulation.
 Unchanged visible bitmap regions skip readbacks even when offscreen cells remain
-dirty. Release retains a conservative full bitmap
-flush when offscreen dirtiness would otherwise leave the final thumbnail stale;
-removing that once-per-commit work belongs with R3's thumbnail scheduling.
+dirty. R3's independent thumbnail rendering now also removes the former full
+bitmap artwork flush on release for offscreen thumbnail correctness.
 
 Source tests cover sparse work, batching, final commits, cancellation, mirrored
 cells, disabled drawing channels, and visible bounds. Chromium/Firefox tests
@@ -211,6 +210,41 @@ visible intersections, not total document area. Cover transparent backgrounds,
 shape shrink/move/cancel, vectors, and mirroring.
 
 ### R3 — P1: thumbnail generation dominates otherwise cheap pencil edits
+
+**Status: fixed.** `GridView2d.draw()` now requests a coalesced 100 ms thumbnail
+batch instead of synchronously resampling. This shared boundary covers both
+`Graphic.redraw()` and direct typing/palette-editor draws. Grid thumbnails are cached by current
+frame/content, shared tile/palette/block revisions, dimensions, reference images,
+and render settings; pan/zoom, selection overlays, and onion-skin presentation
+are not thumbnail dependencies. The batch checks all grid layers, including
+non-selected layers, without resampling unrelated reference-image layers.
+Pointer/touch release, undo/redo, and explicit display callers flush final state;
+frame changes enter the same scheduled batch. Document loading cancels pending
+work, and batches resolve live layer objects to avoid drawing deleted layers.
+
+A complete, current bitmap artwork raster can supply the thumbnail directly.
+Otherwise, thumbnail cell damage is tracked independently of viewport dirtiness.
+Warm edits repair whole thumbnail pixels using a cropped, shared scratch raster,
+with filter/glyph padding and a world-aligned sampling origin. Reference images
+also use the crop's world origin. Offscreen dirtiness, omitted backgrounds or
+selections, and viewport-sized vector artwork no longer force repeated full-layer
+thumbnail rasters. The fallback neither consumes viewport invalidation nor
+includes transient previews, and removes R2's thumbnail-driven full-artwork redraw
+on shape release. Only the small thumbnail is cached per layer. Cold caches,
+frame changes, and bulk/shared dependency invalidation can still require a full
+raster at the batch/flush boundary; ordinary cell edits do not.
+
+Source tests cover batching, explicit flushes, disabled drawing, replaced/deleted
+layers, dependency invalidation, cached-source reuse, scratch isolation, and
+bounded repairs/retries after failures. Chromium/Firefox tests verify that 64
+edits produce zero synchronous thumbnail updates and one scheduled update, with
+full-layer pixel equivalence after offscreen edits, pan/zoom, release, undo/redo,
+frame and shared-dependency changes. Real typing and palette-editor handlers
+publish without manual redraw/flush calls. Warm one-cell repairs at 40×25,
+160×100, and 320×200 cells count actual bitmap readback pixels/vector glyph visits
+and bound scratch area, including onion skin and cropped reference images;
+counting only thumbnail-update calls would miss full-raster regressions.
+The observations below describe the original bug, not new timing measurements.
 
 **Location:** [graphic.js:905–922](../../src/js/textMode/graphic.js#L905-L922);
 [layers.js:1915–1930](../../src/js/textMode/layers/layers.js#L1915-L1930);

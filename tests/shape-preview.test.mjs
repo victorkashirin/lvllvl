@@ -40,7 +40,7 @@ function fixture(width = 40, height = 25) {
     getHFlip: (t) => t + 10, getVFlip: (t) => t + 20,
   };
   const editor = {
-    layers: { getSelectedLayerObject: () => layer, getSelectedLayerType: () => "grid", updateLayerPreview() {} },
+    layers: { getSelectedLayerObject: () => layer, getSelectedLayerType: () => "grid", updateAllLayerPreviews() {} },
     currentTile: { character: 1, getCharacters: () => [[1]], color: 1, bgColor: -1,
       rotX: 0, rotY: 0, rotZ: 1, flipH: 0, flipV: 1 },
     tileSetManager: { blankCharacter: 0, getCurrentTileSet: () => tileSet },
@@ -171,7 +171,7 @@ for (const vector of [false, true]) {
   });
 }
 
-test("offscreen bitmap commits flush the final layer raster for thumbnail sampling", () => {
+test("offscreen bitmap commits no longer force a full artwork redraw for thumbnails", () => {
   const f = fixture(320, 200);
   Object.assign(f.layer, { viewMinX: 150, viewMinY: 90, viewMaxX: 170, viewMaxY: 110 });
   f.shapes.startShape("rect", 160, 100, 0);
@@ -179,7 +179,8 @@ test("offscreen bitmap commits flush the final layer raster for thumbnail sampli
   f.tick();
   assert.equal(f.draws[0].allCells, undefined, "preview stays bounded");
   f.shapes.endShape();
-  assert.equal(f.draws.at(-1).allCells, true, "release flushes offscreen artwork once");
+  assert.equal(f.draws.at(-1).allCells, undefined, "thumbnail flush owns its offscreen rendering");
+  assert.equal(f.draws.at(-1).dirtyCells.maxX, 181);
 });
 
 test("switching layers while dragging cancels rather than committing to the new layer", () => {

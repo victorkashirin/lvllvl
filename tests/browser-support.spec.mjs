@@ -90,6 +90,223 @@ async function open2DProject(page, testInfo, { vector = false } = {}) {
 }
 
 for (const vector of [false, true]) {
+  test(`2D ${vector ? "vector" : "bitmap"} thumbnails batch edits and retain correct full-layer final state`, async ({ page }, testInfo) => {
+    test.skip(!isDesktop2DRendererProject(testInfo));
+    await open2DProject(page, testInfo, { vector });
+    const errors = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    const result = await page.evaluate(async (vector) => {
+      const editor = g_app.textModeEditor;
+      const { graphic, layers, gridView2d: view } = editor;
+      const layer = layers.getSelectedLayerObject();
+      const tileSet = layer.getTileSet();
+      if (vector) {
+        tileSet.unitsPerEm = tileSet.ascent = 8;
+        tileSet.vectorData = Array.from({ length: 256 }, (_, i) => ({
+          path: i === 65 || i === 1 ? "M1 1H7V7H1Z" : "", path2d: null,
+        }));
+        tileSet.modified();
+      }
+      graphic.setGridDimensions({ width: 80, height: 50 });
+      view.setScale(8, false);
+      view.setCameraPosition(0, 0);
+      layer.setBackgroundColor(-1);
+      graphic.redraw({ allCells: true });
+      layers.updateAllLayerPreviews();
+      const pixels = () => layer.previewCanvas.getContext("2d").getImageData(
+        0, 0, layer.previewCanvas.width, layer.previewCanvas.height).data;
+      const equal = (a, b) => a.every((value, i) => value === b[i]);
+      const state = () => JSON.stringify([layer.updatedCellRanges, layer.drawnBounds,
+        layer.lastDrawScale, layer.lastDrawFromGridX, layer.lastDrawFromGridY]);
+      // Independent full-layer, scale-1 control, never the viewport canvas.
+      const freshEqual = () => {
+        const raster = document.createElement("canvas");
+        raster.width = layer.getWidth(); raster.height = layer.getHeight();
+        layer.draw({ canvas: raster, frame: layer.currentFrame, draw: "prevgrid", allCells: true,
+          drawBackground: layers.isBackgroundVisible(), scale: 1,
+          drawFromX: 0, drawFromY: 0, drawToX: raster.width, drawToY: raster.height });
+        const preview = document.createElement("canvas");
+        preview.width = layer.previewCanvas.width; preview.height = layer.previewCanvas.height;
+        const context = preview.getContext("2d");
+        context.drawImage(layer.backgroundCanvas, 0, 0);
+        context.drawImage(raster, 0, 0, preview.width, preview.height);
+        return equal(pixels(), context.getImageData(0, 0, preview.width, preview.height).data);
+      };
+      let updates = 0;
+      const original = layer.updatePreview;
+      layer.updatePreview = function(...args) { updates++; return original.apply(this, args); };
+      const checks = [];
+      const baseline = pixels();
+      try {
+        editor.history.startEntry("thumbnail stroke");
+        for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) {
+          layer.setCell({ x, y, t: vector ? 65 : 1, fc: 1, bc: -1 });
+          editor.grid.grid2d.redrawUpdatedCells(layer);
+        }
+        editor.history.endEntry();
+        const synchronousUpdates = updates;
+        const beforeBatch = state();
+        await new Promise((resolve) => setTimeout(resolve, 150));
+        const batchedUpdates = updates;
+        checks.push(["scheduled offscreen pixels", freshEqual()]);
+        checks.push(["scratch preserves dirtiness", state() === beforeBatch]);
+        checks.push(["nonvacuous edit", !equal(baseline, pixels())]);
+        updates = 0;
+        view.setScale(2.25, false);
+        view.setCameraPosition(19, 11);
+        graphic.redraw({ allCells: true });
+        layers.updateAllLayerPreviews();
+        checks.push(["view changes reuse thumbnail", updates === 0]);
+        checks.push(["view independent pixels", freshEqual()]);
+        editor.history.undo();
+        checks.push(["undo final state", equal(baseline, pixels()) && freshEqual()]);
+        editor.history.redo();
+        checks.push(["redo final state", !equal(baseline, pixels()) && freshEqual()]);
+        editor.history.startEntry("release before timer");
+        layer.setCell({ x: 1, y: 1, t: vector ? 65 : 1, fc: 2, bc: -1 });
+        graphic.redraw();
+        editor.tools.drawTools.tool = "pen";
+        view.toolEnd(false, {});
+        checks.push(["release flush", layers.previewTimer === null && freshEqual()]);
+        const releaseUpdates = updates;
+        await new Promise((resolve) => setTimeout(resolve, 150));
+        checks.push(["no trailing duplicate", releaseUpdates === updates]);
+        graphic.duplicateFrame(0);
+        layer.setBackgroundColor(3);
+        graphic.redraw();
+        await new Promise((resolve) => setTimeout(resolve, 150));
+        checks.push(["frame switch", freshEqual()]);
+        graphic.setCurrentFrame(0);
+        await new Promise((resolve) => setTimeout(resolve, 150));
+        checks.push(["return to frame", freshEqual()]);
+        // Dependency changes without a main raster must not sample stale artwork.
+        layer.getColorPalette().setColorRGB(1, 0x23abcd);
+        layers.updateAllLayerPreviews();
+        checks.push(["palette dependency", freshEqual()]);
+        if (!vector) {
+          tileSet.setPixel(1, 0, 0, tileSet.getPixel(1, 0, 0) ? 0 : 1, false);
+          layers.updateAllLayerPreviews();
+          checks.push(["tile dependency", freshEqual()]);
+        }
+        editor.frames.setShowPrevFrame(true);
+        graphic.redraw({ allCells: true });
+        layers.updateAllLayerPreviews();
+        checks.push(["onion independent", freshEqual()]);
+
+        // Exercise the real direct-draw mutation handlers, without a redraw or
+        // explicit thumbnail flush after the input. These bypass Graphic.redraw.
+        editor.tools.drawTools.setDrawTool("type");
+        const typing = editor.tools.drawTools.typing;
+        // Choose a cell whose glyph intersects the thumbnail's sample footprint.
+        editor.currentTile.setColor(1);
+        editor.currentTile.setBGColor(-1);
+        typing.setCursorPosition({ x: 20, y: 2, z: 0 });
+        layers.updateAllLayerPreviews();
+        updates = 0;
+        const beforeTyping = pixels();
+        typing.keyDown({ keyCode: 65, shiftKey: false, ctrlKey: false, altKey: false,
+          metaKey: false, getModifierState: () => false });
+        checks.push(["typing schedules without synchronous sampling", updates === 0 && layers.previewTimer !== null]);
+        await new Promise((resolve) => setTimeout(resolve, 150));
+        checks.push([`typing publishes once (${updates})`, updates === 1]);
+        checks.push(["typing changes pixels", !equal(beforeTyping, pixels())]);
+        checks.push(["typing pixels match full render", freshEqual()]);
+        updates = 0;
+        const beforePalette = pixels();
+        editor.colorEditor.colorIndex = 1;
+        editor.colorEditor.setRGB(0xabcdef);
+        editor.colorEditor.updatePaletteColor();
+        checks.push(["palette editor schedules without synchronous sampling", updates === 0 && layers.previewTimer !== null]);
+        await new Promise((resolve) => setTimeout(resolve, 150));
+        checks.push([`palette editor publishes once (${updates})`, updates === 1]);
+        checks.push(["palette editor changes pixels", !equal(beforePalette, pixels())]);
+        checks.push(["palette editor pixels match full render", freshEqual()]);
+
+        editor.tools.drawTools.setDrawTool("pen");
+        const work = [];
+        for (const [width, height] of [[40, 25], [160, 100], [320, 200]]) {
+          graphic.setGridDimensions({ width, height });
+          if (!vector) {
+            const image = document.createElement("canvas");
+            image.width = layer.getWidth(); image.height = layer.getHeight();
+            const context = image.getContext("2d");
+            context.fillStyle = "#254763"; context.fillRect(0, 0, image.width, image.height);
+            context.fillStyle = "#9a6123";
+            for (let x = 0; x < image.width; x += 27) context.fillRect(x, x % 17, 13, image.height);
+            layer.setReferenceImage({ image, imageData: image.toDataURL(), params: {} });
+          }
+          view.setScale(3.5, false);
+          view.setCameraPosition(0, 0);
+          // Deliberately keep offscreen artwork dirty. Onion skin also prevents
+          // the bitmap fast path from supplying a complete thumbnail source.
+          graphic.invalidateAllCells();
+          graphic.redraw();
+          layers.updateAllLayerPreviews();
+          const render = layer.draw;
+          const read = CanvasRenderingContext2D.prototype.getImageData;
+          const glyph = tileSet.getGlyphPath;
+          let active = false, readPixels = 0, glyphs = 0, rasters = 0;
+          layer.draw = function(args) {
+            const previous = active;
+            active = args.draw === "thumbnail";
+            if (active) rasters++;
+            try { return render.call(this, args); } finally { active = previous; }
+          };
+          CanvasRenderingContext2D.prototype.getImageData = function(x, y, w, h) {
+            if (active) readPixels += w * h;
+            return read.apply(this, arguments);
+          };
+          tileSet.getGlyphPath = function(...args) {
+            if (active) glyphs++;
+            return glyph.apply(this, args);
+          };
+          try {
+            const positions = [[Math.floor(width / 2), Math.floor(height / 2)], [1, 1], [width - 2, height - 2]];
+            for (let i = 0; i < 6; i++) {
+              readPixels = glyphs = rasters = 0;
+              const [x, y] = positions[i % positions.length];
+              const fc = layer.getCell({ x, y }).fc === 1 ? 2 : 1;
+              layer.setCell({ x, y, t: vector ? 65 : 1, fc, bc: -1 });
+              editor.grid.grid2d.redrawUpdatedCells(layer);
+              checks.push([`no synchronous thumbnail raster ${width}/${i}`, rasters === 0]);
+              const before = state();
+              if (i % 2) await new Promise((resolve) => setTimeout(resolve, 150));
+              else view.toolEnd(false, {});
+              work.push({ width, height, rasters, readPixels, glyphs,
+                scratchPixels: layers.previewScratchCanvas.width * layers.previewScratchCanvas.height,
+                documentPixels: layer.getWidth() * layer.getHeight() });
+              checks.push([`bounded repair pixels ${width}/${i}`, freshEqual()]);
+              checks.push([`bounded repair preserves artwork ${width}/${i}`, state() === before]);
+            }
+          } finally {
+            layer.draw = render;
+            CanvasRenderingContext2D.prototype.getImageData = read;
+            tileSet.getGlyphPath = glyph;
+          }
+        }
+        return { synchronousUpdates, batchedUpdates, checks, work };
+      } finally { layer.updatePreview = original; }
+    }, vector);
+    expect(result.synchronousUpdates).toBe(0);
+    expect(result.batchedUpdates).toBe(1);
+    expect(result.checks.filter(([, passed]) => !passed), JSON.stringify(result.work)).toEqual([]);
+    for (const work of result.work) {
+      const label = JSON.stringify(work);
+      expect(work.rasters, label).toBe(1);
+      expect(work.scratchPixels, label).toBeLessThan(work.documentPixels / 8);
+      if (vector) {
+        expect(work.glyphs, label).toBeGreaterThan(0);
+        expect(work.glyphs, label).toBeLessThan(work.width * work.height / 8);
+      } else {
+        expect(work.readPixels, label).toBeGreaterThan(0);
+        expect(work.readPixels, label).toBeLessThan(work.documentPixels / 8);
+      }
+    }
+    expect(errors).toEqual([]);
+  });
+}
+
+for (const vector of [false, true]) {
   test(`2D ${vector ? "vector" : "bitmap"} onion skin reuses unchanged rasters and matches a fresh composite`, async ({ page }, testInfo) => {
     test.skip(!isDesktop2DRendererProject(testInfo));
     await open2DProject(page, testInfo, { vector });

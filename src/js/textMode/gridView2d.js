@@ -1056,7 +1056,7 @@ GridView2d.prototype = {
 //    this.lastCursorX = false;
 //    this.lastCursorY = false;
 
-    this.editor.layers.updateLayerPreview();
+    this.editor.layers.updateAllLayerPreviews();
   },
 
   
@@ -3719,6 +3719,9 @@ GridView2d.prototype = {
 
 
   draw: function(args) {
+    // Typing and palette editors draw here directly, bypassing Graphic.redraw.
+    // Dependency checks also keep view/overlay-only draws free of thumbnail work.
+    this.editor.layers.requestLayerPreviewUpdate();
     var graphic = this.editor.graphic;
     var scale = this.displayScale;
     var redrawLayers = this.backBufferNeedsRedraw;

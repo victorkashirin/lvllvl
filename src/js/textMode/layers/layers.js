@@ -2,6 +2,8 @@ var Layers = function() {
   this.editor = null;
 
   this.backgroundLayerPreview = null;
+  this.previewTimer = null;
+  this.previewScratchCanvas = null;
 
   this.selectedLayerId = false;
 
@@ -359,6 +361,8 @@ Layers.prototype = {
 
   load: function() {
 
+    this.cancelLayerPreviewUpdate();
+    this.previewScratchCanvas = null;
     this.initMobileLayersDialog();
     this.layerObjects = Object.create(null);
     this.layerRefs = [];
@@ -1013,6 +1017,7 @@ Layers.prototype = {
     } else {
       var layerObject = this.getLayerObject(this.refLayerId);
       layerObject.setArgs({ imageData: refCanvas.toDataURL(), image: refCanvas, params: params });
+      this.updateLayerPreview(this.refLayerId);
       /*
       var layerIndex = this.getLayerIndex(this.refLayerId);
       this.layers[layerIndex].image = canvas;
@@ -1900,9 +1905,38 @@ Layers.prototype = {
 
   },
 
-  updateAllLayerPreviews: function() {
+  cancelLayerPreviewUpdate: function() {
+    if(this.previewTimer !== null) {
+      clearTimeout(this.previewTimer);
+      this.previewTimer = null;
+    }
+  },
+
+  requestLayerPreviewUpdate: function() {
+    if(this.previewTimer !== null || !this.editor.grid.getUpdateEnabled()) { return; }
+    // Check every grid layer: shared tiles/palettes and non-selected layer edits
+    // must refresh too. View-only redraws do not schedule any raster work.
+    for(var i = 0; i < this.layers.length; i++) {
+      var layer = this.getLayerObject(this.layers[i].layerId);
+      if(layer && layer.isPreviewDirty && layer.isPreviewDirty()) {
+        var layers = this;
+        this.previewTimer = setTimeout(function() {
+          layers.previewTimer = null;
+          layers.updateAllLayerPreviews(true);
+        }, 100);
+        return;
+      }
+    }
+  },
+
+  // Synchronous flush for release, history, and callers needing final output.
+  // Resolve live layer objects rather than retaining deleted/replaced documents.
+  updateAllLayerPreviews: function(dirtyOnly) {
+    this.cancelLayerPreviewUpdate();
     if(this.editor.grid.getUpdateEnabled()) {
       for(var i = 0; i < this.layers.length; i++) {
+        var layer = this.getLayerObject(this.layers[i].layerId);
+        if(dirtyOnly && (!layer || !layer.isPreviewDirty)) { continue; }
         this.updateLayerPreview(this.layers[i].layerId);
       }
     }
@@ -1922,7 +1956,16 @@ Layers.prototype = {
       return;
     }
 
-    layerObject.updatePreview();
+    if(layerObject.isPreviewDirty) {
+      if(!layerObject.isPreviewDirty()) { return; }
+      if(!this.previewScratchCanvas) {
+        this.previewScratchCanvas = document.createElement('canvas');
+      }
+      layerObject.updatePreview(this.previewScratchCanvas);
+    } else {
+      // Background/reference-image layers retain their explicit update paths.
+      layerObject.updatePreview();
+    }
   },
 
 

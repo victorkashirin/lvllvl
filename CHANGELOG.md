@@ -4,6 +4,13 @@
 
 ### Fixed
 
+- Batch dirty layer thumbnails on a 100 ms schedule instead of resampling on
+  every pencil redraw, with explicit release/history/display flushes. Cache by
+  content dependencies and skip view-only changes. Repair warm offscreen/vector
+  thumbnails from cropped cell damage, retaining sampling alignment and reference
+  images without consuming artwork dirtiness or rerasterizing the whole layer.
+  Schedule direct typing and palette-editor draws too. Remove the thumbnail-driven
+  full-artwork redraw on shape release.
 - Keep shape previews out of cached artwork, store only touched cells, and bound
   preview rasterization and dirty presentation to shape/viewport intersections.
   Batch endpoint presentation once per animation frame while preserving final

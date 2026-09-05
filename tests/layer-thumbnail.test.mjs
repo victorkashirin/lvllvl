@@ -11,6 +11,8 @@ function createCanvas() {
   const context = {
     drawImage() {},
     fillRect() {},
+    clearRect() {},
+    save() {}, restore() {}, beginPath() {}, rect() {}, clip() {},
   };
   let height = 0;
   let resizeCount = 0;
@@ -66,6 +68,13 @@ async function createLayerFixtures(width, height) {
   grid.canvas = createCanvas();
   grid.getCanvas = () => grid.canvas;
   grid.previewCanvas = createCanvas();
+  // Sizing tests isolate layout from the real raster/dependency tests below.
+  grid.isPreviewDirty = () => true;
+  grid.getPreviewState = () => [];
+  grid.getWidth = () => width;
+  grid.getHeight = () => height;
+  grid.getPreviewDamage = () => ({ minX: 0, minY: 0, maxX: grid.previewCanvas.width, maxY: grid.previewCanvas.height });
+  grid.drawPreviewRegion = () => ({ canvas: grid.canvas, x: 0, y: 0 });
 
   const referenceImage = new LayerRefImage();
   referenceImage.doc = { height, width };
