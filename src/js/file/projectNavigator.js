@@ -183,6 +183,9 @@ ProjectNavigator.prototype = {
 
 
   updateModifiedList: function() {
+    if(!g_app.isRemoteProviderEnabled('github')) {
+      return;
+    }
     this.modifiedRecords = g_app.doc.getModifiedRecordsList();
 
     var modifiedCount = this.modifiedRecords.length;
@@ -212,6 +215,9 @@ ProjectNavigator.prototype = {
   },
 
   setGithubRepositoryDetails: function(owner, repository) {
+    if(!g_app.isRemoteProviderEnabled('github')) {
+      return;
+    }
 
     if(owner === false && repository === false) {
 
@@ -254,7 +260,8 @@ ProjectNavigator.prototype = {
     var projectNavSplitPanel = UI.create("UI.SplitPanel", { "id": "projectNavigatorSplitPanel"});
     parentPanel.add(projectNavSplitPanel);
 
-    var githubPanel = UI.create("UI.Panel", { "id": "projectGithubPanel" });
+    if(g_app.isRemoteProviderEnabled('github')) {
+      var githubPanel = UI.create("UI.Panel", { "id": "projectGithubPanel" });
 
     /*
     var titleBarHTML = '';
@@ -319,7 +326,8 @@ ProjectNavigator.prototype = {
     githubHTML += '</div>';
     var githubHTMLPanel = UI.create("UI.HTMLPanel", { "html": githubHTML });
     githubPanel.add(githubHTMLPanel);
-    projectNavSplitPanel.addNorth(githubPanel, 160);
+      projectNavSplitPanel.addNorth(githubPanel, 160);
+    }
 
 
 

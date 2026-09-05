@@ -62,8 +62,6 @@ const coreFiles = [
   "js/html/htmlcache.js",
   ...moduleFiles,
   "js/storageManager.js",
-  "js/githubApi.js",
-  "js/githubClient.js",
   "js/acmeAssembler.js",
   "js/ca65Assembler.js",
   "js/c64/c64.js",
@@ -627,6 +625,39 @@ if (!c64Runtime.includes(`c64.wasm?v=${version}`)) {
 }
 
 const indexHtml = await readFile(path.join(buildRoot, "index.html"), "utf8");
+const disabledProviderReferences = [
+  "api.github.com",
+  "githubApi.js",
+  "githubClient.js",
+  "google-api/api.js",
+  "googleapis.com",
+  "gstatic.com/firebasejs",
+];
+const providerBoundaryFiles = (await listCacheFiles(buildRoot))
+  .map((filename) => path.relative(buildRoot, filename).split(path.sep).join("/"))
+  .filter((filename) => /\.(?:html|js|mjs)$/.test(filename));
+for (const filename of providerBoundaryFiles) {
+  const contents = await readFile(path.join(buildRoot, filename), "utf8");
+  for (const forbiddenReference of disabledProviderReferences) {
+    if (contents.includes(forbiddenReference)) {
+      throw new Error(
+        `Disabled provider reference remains in ${filename}: ${forbiddenReference}`,
+      );
+    }
+  }
+}
+for (const forbiddenArtifact of [
+  "js/githubApi.js",
+  "js/githubClient.js",
+  "lib/google-api/api.js",
+]) {
+  try {
+    await access(path.join(buildRoot, forbiddenArtifact));
+    throw new Error(`Disabled provider artifact remains in the build: ${forbiddenArtifact}`);
+  } catch (error) {
+    if (error?.code !== "ENOENT") throw error;
+  }
+}
 const browserVerification = await verifyBrowserPolicy();
 const performanceVerification = await verifyPerformanceBudgets(indexHtml);
 const ca65Scripts = [

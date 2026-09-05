@@ -9,6 +9,7 @@ declare global {
     clearFeatureError(): void;
     init(options: { features: FeatureRegistry; services: unknown }): void;
     reportFeatureError(feature: string, error: unknown): void;
+    reportRemoteProviderError(providerId: string, error: unknown): void;
   }
 
   interface LegacyBrowserStorage {

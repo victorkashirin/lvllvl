@@ -92,8 +92,8 @@ async function open2DProject(page, testInfo, { vector = false } = {}) {
 test("first-party production startup stays within budget", async ({ page }, testInfo) => {
   const localFailures = observeLocalFailures(page, testInfo.project.use.baseURL);
 
-  // Provider SDK latency is outside the first-party startup budget. Empty scripts
-  // isolate the local application while preserving successful script responses.
+  // Any unexpected external startup request is isolated from the first-party
+  // timing and is rejected by the dedicated no-external-request test below.
   await page.route(/^https:\/\//, (route) =>
     route.fulfill({ body: "", contentType: "application/javascript", status: 200 }),
   );
@@ -114,10 +114,14 @@ test("first-party production startup stays within budget", async ({ page }, test
   expect(localFailures, localFailures.join("\n")).toEqual([]);
 });
 
-test("production starts when external providers are offline", async ({ page }, testInfo) => {
+test("production starts offline without external provider requests", async ({ page }, testInfo) => {
   const localFailures = observeLocalFailures(page, testInfo.project.use.baseURL);
+  const externalRequests = [];
 
-  await page.route(/^https:\/\//, (route) => route.abort("internetdisconnected"));
+  await page.route(/^https:\/\//, (route) => {
+    externalRequests.push(route.request().url());
+    return route.abort("internetdisconnected");
+  });
   await page.goto("/", { waitUntil: "domcontentloaded" });
   await waitForStableStartPage(
     page,
@@ -126,6 +130,7 @@ test("production starts when external providers are offline", async ({ page }, t
   );
 
   await startupState(page, testInfo);
+  expect(externalRequests).toEqual([]);
   expect(localFailures, localFailures.join("\n")).toEqual([]);
 });
 

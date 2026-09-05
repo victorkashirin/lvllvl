@@ -130,6 +130,51 @@ remains a direct local export and therefore stays available when persistence is
 unavailable. Contract coverage lives in `tests/persistence-services.test.mjs`
 and `tests/persistence.spec.mjs`.
 
+## Authentication and remote providers
+
+GitHub, Gist, and Google Drive are disabled in production. The previous browser
+implementations, Firebase startup/authentication/Firestore code, retained Google
+API loader, provider HTML dialogs, and provider-facing controls have been removed.
+The CSP permits neither provider network endpoints nor provider frames, and the
+build verifier rejects the retired GitHub and Google runtime artifacts. This is a
+security posture, not a feature flag: a live provider cannot be enabled without a
+new reviewed infrastructure adapter, a separate provider-UI registration, and the
+operational revocation/cleanup gate recorded in `docs/01_probems.md`.
+
+`modules/application/remoteProviderService.mjs` is the provider-neutral contract.
+It exposes stable provider identifiers, credential-free session state, explicit
+capabilities, sign-in/out, list, load, save, and publish operations, progress and
+cancellation inputs, and normalized errors. The service owns the capability
+required by each operation and validates a strict request envelope before invoking
+an adapter. Opaque editor content is not classified by property name; reusable
+credentials are unavailable to this layer by construction and may exist only
+inside a future reviewed server-side adapter. Session objects are schema-checked,
+raw adapter errors are replaced by stable application errors, and the underlying
+adapter registry is not exposed to application callers. A future live adapter
+must add a reviewed application result contract rather than returning
+provider-specific response objects.
+
+At the composition root, GitHub, Gist, and Google Drive are registered separately
+through `modules/infrastructure/disabledRemoteProviderAdapter.mjs`. Each returns a
+frozen `disabled` session with its declared capabilities and fixed reason.
+Provider UI has a separate empty production registration, so replacing an
+infrastructure adapter alone cannot expose the dormant legacy controls.
+`modules/feature-adapters/legacyRemoteProviderFacades.mjs` keeps dormant
+callback-era paths failure-safe while callers are retired: every attempted
+operation still crosses the application service, reports the normalized error,
+and cannot start a successful login callback. The facade is a temporary migration
+adapter, not a location for future OAuth logic.
+
+Repository address validation remains independently testable in
+`modules/domain/githubRepositoryAddress.mjs`. Contract coverage in
+`tests/remote-providers.test.mjs` covers disabled sessions, request-envelope
+validation, operation-owned capabilities, cancellation, offline behavior,
+authentication expiry, rate limiting, sanitized session/error state, port
+validation, and every direct legacy-facade caller in the production graph.
+Production browser security tests verify disabled adapter and UI registrations,
+missing provider controls/SDK globals, retired-link fallback, fixed-text error
+presentation, and CSP denial of provider endpoints.
+
 ## Commands, history, and editor state
 
 Text-mode commands are an eager, per-editor service assembled in

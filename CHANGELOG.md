@@ -4,6 +4,12 @@
 
 ### Added
 
+- Add a credential-free remote-provider service with explicit capabilities,
+  content, progress, cancellation, disabled session state, normalized errors,
+  and separate GitHub, Gist, and Google Drive adapter registrations.
+- Add provider boundary coverage for request-envelope rejection, offline and cancelled
+  operations, authentication expiry, rate limits, disabled legacy callbacks,
+  missing provider UI/SDK globals, and CSP denial of retired provider endpoints.
 - Add document-scoped command history, DOM-free editor state, and narrow
   text-mode replay capability contracts with grouped, no-op, redo invalidation,
   document isolation, dirty-revision, and action-family coverage.
@@ -18,6 +24,13 @@
 
 ### Changed
 
+- Temporarily disable GitHub, Gist, and Google Drive, remove their provider-facing
+  controls and runtime artifacts, and tighten CSP to the remaining Lospec network
+  dependency until a reviewed server-side credential design is available.
+- Require a separate provider-UI registration in addition to an enabled adapter,
+  preventing infrastructure configuration alone from restoring legacy controls.
+- Move strict GitHub repository-address parsing into a domain module and contain
+  dormant callback-era provider callers behind the provider-neutral service.
 - Route character-pixel mutations through one command path for selection state,
   history recording, dirty notification, and redraw invalidation, regardless of
   whether pointer, keyboard, desktop-menu, or mobile-menu UI initiated the edit.
@@ -33,6 +46,15 @@
 
 ### Fixed
 
+- Make retired GitHub, Gist, and Google Drive links return to the start page,
+  enforce provider capabilities per operation, validate a strict request envelope,
+  sanitize adapter session/error state, and keep every remaining callback-era
+  provider caller failure-safe without forwarding legacy callbacks.
+- Prevent a failed or disabled Google Drive save from changing the project name,
+  destination, or new-project state and then reporting success.
+- Stop requesting broad GitHub OAuth scopes or persisting reusable provider
+  tokens as Firestore application data by removing the browser credential flow;
+  historical deployed tokens still require operational revocation and deletion.
 - Keep text-mode undo and redo isolated per document while frame, layer, tool,
   mode, and selection state changes are tracked independently, and avoid
   recording unchanged character-pixel edits.

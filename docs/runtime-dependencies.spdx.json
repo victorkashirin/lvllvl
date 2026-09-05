@@ -3,9 +3,9 @@
   "dataLicense": "CC0-1.0",
   "SPDXID": "SPDXRef-DOCUMENT",
   "name": "lvllvl-runtime-0.497.3",
-  "documentNamespace": "https://github.com/jaammees/lvllvl/sbom/0.497.3/0dfbba80e1b69a9af6172fbe88a73065662b7acf2fd0d1dfd2b4714152b0ad12",
+  "documentNamespace": "https://github.com/jaammees/lvllvl/sbom/0.497.3/35ce12aee0816af3d3ae2080c68824b373e5312955ae5ba1d62385866863371b",
   "creationInfo": {
-    "created": "2026-09-04T00:00:00Z",
+    "created": "2026-09-05T00:00:00Z",
     "creators": [
       "Tool: lvllvl dependency-inventory.mjs"
     ]
@@ -624,41 +624,6 @@
         {
           "algorithm": "SHA256",
           "checksumValue": "1720b32e2a7a02abae94a3ab4794fa15596f40e220dafa7c6a69f91200b657e0"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-firebase",
-      "name": "Firebase JavaScript SDK",
-      "versionInfo": "10.9.0",
-      "downloadLocation": "https://github.com/firebase/firebase-js-sdk",
-      "filesAnalyzed": false,
-      "licenseConcluded": "Apache-2.0",
-      "licenseDeclared": "Apache-2.0",
-      "copyrightText": "NOASSERTION",
-      "comment": "Production authentication and Firestore client. Delivery: external. Modification status: unmodified. Audit identity: pkg:npm/firebase@10.9.0. Reachable entry points: https://www.gstatic.com/firebasejs/10.9.0/firebase-app-compat.js, https://www.gstatic.com/firebasejs/10.9.0/firebase-auth-compat.js, https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore-compat.js.",
-      "externalRefs": [
-        {
-          "referenceCategory": "PACKAGE-MANAGER",
-          "referenceType": "purl",
-          "referenceLocator": "pkg:npm/firebase@10.9.0"
-        }
-      ]
-    },
-    {
-      "SPDXID": "SPDXRef-Package-google-api-loader",
-      "name": "Google API JavaScript loader",
-      "versionInfo": "snapshot-2026-09-03",
-      "downloadLocation": "https://github.com/jaammees/lvllvl/blob/3fc6dcf73e11d449fea06485bf08b360fb18d54f/src/lib/google-api/api.js",
-      "filesAnalyzed": false,
-      "licenseConcluded": "Apache-2.0",
-      "licenseDeclared": "Apache-2.0",
-      "copyrightText": "NOASSERTION",
-      "comment": "Loads the Google Drive API client. Delivery: retained: provider-snapshot. Modification status: unmodified. Audit identity: exempt until 2027-09-04. Retention: provider-snapshot, revision 3fc6dcf73e11d449fea06485bf08b360fb18d54f, owner lvllvl maintainers, review by 2027-09-04. Reachable entry points: lib/google-api/api.js.",
-      "checksums": [
-        {
-          "algorithm": "SHA256",
-          "checksumValue": "a94c69ac59a5a63c53c6605e138f2b8bbc6ac8eff51e8b750d3374667c9ad2aa"
         }
       ]
     },
@@ -1541,16 +1506,6 @@
       "spdxElementId": "SPDXRef-DOCUMENT",
       "relationshipType": "DESCRIBES",
       "relatedSpdxElement": "SPDXRef-Package-typr-js"
-    },
-    {
-      "spdxElementId": "SPDXRef-DOCUMENT",
-      "relationshipType": "DESCRIBES",
-      "relatedSpdxElement": "SPDXRef-Package-firebase"
-    },
-    {
-      "spdxElementId": "SPDXRef-DOCUMENT",
-      "relationshipType": "DESCRIBES",
-      "relatedSpdxElement": "SPDXRef-Package-google-api-loader"
     },
     {
       "spdxElementId": "SPDXRef-Package-chroma-js",

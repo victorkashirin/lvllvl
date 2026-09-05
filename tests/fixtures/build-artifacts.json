@@ -3,12 +3,12 @@
   "releaseVersion": "0.497.3",
   "artifacts": {
     "index.html": {
-      "bytes": 2810,
-      "sha256": "1721040f0c36187c6a75c485a3d6175843be9b1858e58b711585795b3d08d97a"
+      "bytes": 1961,
+      "sha256": "1dd6c039faba74629f3337a5e6354328cdab396e565132f9e87668c7110ded51"
     },
     "c64/index.html": {
-      "bytes": 2827,
-      "sha256": "4a2e84dd23638ca7b49ab7ae36d9466d685b007f4fe42cdf21cb234b161d9651"
+      "bytes": 1978,
+      "sha256": "a01c4ee3b960ae3911834a8d05793678ff8160bdda7e1ca75ad45a6a4123a846"
     },
     "css/style.css": {
       "bytes": 136310,
@@ -27,16 +27,16 @@
       "sha256": "f6e20ce93d4c5e5a0fe109bd3a07dc51e482ba8700c4ef7468bbc0839d2872b8"
     },
     "js/main.js": {
-      "bytes": 3294817,
-      "sha256": "de2d630dd175901c2cf797e614f08bac4751284a8fc2c57476d13c9b740cfbb9"
+      "bytes": 3230055,
+      "sha256": "1a9f814e749143f3763657618ebabe9de45de8103b089538697f5e063953e836"
     },
     "js/main.js.map": {
-      "bytes": 10488363,
-      "sha256": "2fc9916c28033b542f40668ed7619a214c6e84d2a286c1fc2ca9b626bba3c8d4"
+      "bytes": 10304259,
+      "sha256": "22b863892e6ace03b05b08994fe34598dd22d6837c1af9461c37133825c2bd0b"
     },
     "js/bootstrap.mjs": {
-      "bytes": 2531,
-      "sha256": "260d31422f1d541a480ee80d209932ce4f5b7d6d6f1812bc257f60e9ce372bd6"
+      "bytes": 4568,
+      "sha256": "05a2ed52d810ebf05dc89b58bf0faef42b942b9c7f78aac0ef9b4006e696e3c4"
     },
     "js/modules/application/documentSession.mjs": {
       "bytes": 4351,
@@ -62,9 +62,17 @@
       "bytes": 15728,
       "sha256": "54d9267a78ea64f682fcc3ff0b50f689f5ee2738fcbac8554cfd2efcbdde8299"
     },
+    "js/modules/application/remoteProviderService.mjs": {
+      "bytes": 15572,
+      "sha256": "76b357065e6944a92f5bb46434d40ef193cd32b8320e95d058de8019a79e3914"
+    },
     "js/modules/domain/documentRevisionState.mjs": {
       "bytes": 1677,
       "sha256": "edf8e490574850373e5e2f3b305c4420e5b1ad9ef032158103e708cf1ed3130d"
+    },
+    "js/modules/domain/githubRepositoryAddress.mjs": {
+      "bytes": 1979,
+      "sha256": "42490da68352bfec59da6bb89bd87262b8a74b7095f387937226b971ba565ce6"
     },
     "js/modules/domain/historyState.mjs": {
       "bytes": 2583,
@@ -73,6 +81,10 @@
     "js/modules/feature-adapters/imageImportFeature.mjs": {
       "bytes": 3627,
       "sha256": "ac80e51dd3e720a585847a08f9c2f68742a64a3c1ff9bf31cc3ea10b6794ccdd"
+    },
+    "js/modules/feature-adapters/legacyRemoteProviderFacades.mjs": {
+      "bytes": 8297,
+      "sha256": "4a409582a19499b153e9de3134ca5dd9c45fc44d4f3ec1c0361b2582c0fadf69"
     },
     "js/modules/feature-adapters/textModeHistoryAdapter.mjs": {
       "bytes": 10255,
@@ -86,6 +98,10 @@
       "bytes": 1124,
       "sha256": "f812dfda2a6984fe378addbfdf624bf8aec2f90a9f53b811efb9cae2bb4dacf1"
     },
+    "js/modules/infrastructure/disabledRemoteProviderAdapter.mjs": {
+      "bytes": 1337,
+      "sha256": "0951567df38317fd9903c8e4fd39626f9d7ab81b769a5a44945ee53259af069f"
+    },
     "js/features/image-import.js": {
       "bytes": 145329,
       "sha256": "2ada1b70194e433533e2500dafe67324055756c0adeb6cd61728d3ce0a3daf24"
@@ -95,8 +111,8 @@
       "sha256": "31f5ff73265af60fea868ffa942125689b8ae619f96b6b7b364d84642636ec2c"
     },
     "js/html/htmlcache.js": {
-      "bytes": 376266,
-      "sha256": "2bfbddec6c0636ab6a7f7f8647af0c0d329cfc0cee7da4df3ea42608d727882d"
+      "bytes": 363390,
+      "sha256": "95facc6642a9a0da391670ad3c64753f8583c589e6033e74f0614e43a068b0a5"
     }
   }
 }

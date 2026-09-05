@@ -24,15 +24,12 @@ the objective. The target state is:
 - each migrated seam removes at least as much compatibility code as it adds once
   all callers have moved.
 
-P0.3, the reusable GitHub credential stored as client-readable application data,
-remains a higher-priority security issue. Its remediation must happen before or as
-part of the remote-provider phase; module boundaries alone do not make the current
-credential design safe.
-
-The numbered phases below express architectural dependencies, not permission to
-defer P0.3. Schedule and complete the credential remediation before beginning the
-P1.4 migration campaign. Phase 3 later moves the already-safe provider design
-behind the new architectural boundary.
+P0.3, the reusable GitHub credential formerly stored as client-readable
+application data, was contained on 2026-09-05 by disabling GitHub, Gist, and Google
+Drive and removing their browser credential implementations. This is the selected
+release posture until a reviewed server-side, short-lived, least-privilege design
+exists. Historical token revocation and Firestore cleanup remain deployment-owner
+actions; module boundaries alone would not have made the former design safe.
 
 ## Necessity scale
 
@@ -316,36 +313,73 @@ without a DOM.
 
 Overall score: **Necessary**
 
-This phase depends on an approved P0.3 credential design. Moving the current token
-storage into a module would preserve the vulnerability and is not completion.
+Status: **Completed for the disabled-provider posture on 2026-09-05.** The unsafe
+credential flow was removed rather than moved. A provider-neutral application
+service now owns remote operation contracts, three independently registered
+infrastructure adapters report a credential-free disabled session, and callback-era
+callers are contained behind temporary facades. Provider UI, Firebase, the Google
+API loader, and the GitHub client/API implementations are absent from the startup
+graph and production artifact. The legacy graph shrank from 310 to 305 entries.
+The recorded representative-desktop startup payload fell by 66,333 raw bytes and
+14,808 gzip bytes versus the preceding baseline. Timing changes are retained as
+diagnostic measurements, not claimed as an improvement because of run-to-run noise.
+
+Re-enabling a provider is a new security-gated slice, not a configuration toggle.
+It requires historical token cleanup plus an approved server-side OAuth or
+provider-app design before a live adapter or provider UI can be registered.
 
 ### Work
 
-- Adopt the server-side OAuth or GitHub App design selected for P0.3, with
-  short-lived, least-privilege credentials unavailable to ordinary client storage.
-- Define provider-neutral ports for sign-in state, repository/file listing, load,
-  save/publish, progress, cancellation, and normalized errors.
-- Keep GitHub, Gist, and Google Drive implementations in separate infrastructure
-  adapters. Provider-specific response objects must not escape into editor code.
-- Separate eager identity/session state from optional provider UI and SDK code.
-- Lazy-load a provider adapter only when it is both optional and safe for offline
-  startup; otherwise keep it eager behind the same interface.
-- Pass document content and requested capabilities explicitly. Providers must not
-  locate mutable application state through `g_app`.
-- Preserve strict repository-address validation and sanitized error presentation.
+- The production composition root selects disabled GitHub, Gist, and Google Drive
+  adapters; no browser credential flow remains. A future live adapter must use a
+  reviewed server-side OAuth or provider-app design with short-lived,
+  least-privilege credentials unavailable to ordinary client storage.
+- Provider UI has its own empty production registration, so replacing a disabled
+  infrastructure adapter cannot reactivate dormant callback-era controls. A live
+  adapter and reviewed provider-neutral UI must be registered independently.
+- `RemoteProviderService` defines provider-neutral ports for sign-in state,
+  repository/file listing, load, save/publish, progress, cancellation, capabilities,
+  and normalized errors.
+- GitHub, Gist, and Google Drive have separate registrations and disabled session
+  state. Session metadata and errors are validated and sanitized before they
+  enter application code; raw adapter failures cannot expose response details.
+- Eager identity/session state is the small application service; optional provider
+  templates, controls, and SDK code are absent while providers are disabled.
+- Requests use a strict content/capability/progress/cancellation envelope, and the
+  service enforces the capability required by each operation. Opaque editor content
+  is not interpreted by key name; reusable credentials are unavailable to the
+  application layer by construction. Providers do not locate mutable state through
+  `g_app`.
+- A future live adapter must translate operation results into an explicitly
+  reviewed application result contract before registration; no provider-specific
+  response objects are accepted as session or error state.
+- Strict repository-address validation moved to a domain module, and the only
+  user-visible disabled-provider message is fixed text. Retired provider links
+  report that message and fall back to the usable start page.
+- Temporary callback facades keep dormant legacy paths failure-safe. Remove each
+  facade when its remaining caller family moves to a provider-neutral UI adapter.
 
 ### Required tests
 
-- No reusable provider token appears in Firestore, IndexedDB, localStorage,
-  sessionStorage, logs, URLs, or error markup.
-- Scope, repository selection, token expiry, revocation, cancellation, offline,
-  rate-limit, and provider-error behavior.
-- Contract tests shared by provider adapters.
-- Mocked provider browser tests by default, with separately controlled integration
-  coverage for real provider environments.
+- Source and production-browser tests verify that no credential SDK/global,
+  provider control, provider endpoint permission, or retired provider artifact is
+  present. The removed code can no longer write new tokens to Firestore or browser
+  storage; historical deployed data requires operational cleanup.
+- Focused contract tests cover operation-owned capability and request-envelope rejection,
+  authentication expiry, cancellation, offline, rate-limit, provider-error, and
+  disabled state behavior, including credential-bearing session and error data.
+- Disabled adapters share the same contract and return stable sessions without
+  credentials. Browser tests exercise the production-disabled registration and
+  every retired deep-link parameter, while a source test inventories every direct
+  legacy-facade caller in the production graph.
+- Real-provider integration coverage is deferred until a live provider design is
+  approved; it must be separately controlled and mocked by default when introduced.
 
-Exit criterion: remote operations use explicit provider ports, editor code does
-not handle provider credentials, and the P0.3 exit criteria are independently met.
+Disabled-posture exit criterion: remote operations use explicit provider ports,
+editor code does not handle credentials, production contains no active provider
+implementation or action, and the repository-side P0.3 criteria are met. Re-enable
+criteria remain the historical revocation/deletion and reviewed backend controls
+documented in `01_probems.md`.
 
 ## Phase 4: centralize UI routing and feature activation
 
@@ -583,8 +617,9 @@ Phase 0 is the shared prerequisite. After it passes, bounded migrations may proc
 independently when their direct dependencies are ready: Phase 2 builds on the
 document boundary from Phase 1; Phase 5 needs the relevant document and activation
 contracts from Phases 1 and 4; and Phase 6 needs the activation contract from Phase
-4. Phase 3 can proceed independently once P0.3 has been remediated. Phase 7 cleanup
-happens after every completed slice rather than waiting for all other phases.
+4. Phase 3's disabled-provider slice is complete. A future live-provider slice is
+blocked on the P0.3 re-enable gate. Phase 7 cleanup happens after every completed
+slice rather than waiting for all other phases.
 
 Do not advance a particular slice merely because files were moved. Its exit
 criteria must pass in CI and its compatibility adapter must have a named removal

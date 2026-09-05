@@ -140,10 +140,6 @@ FileManager.prototype = {
         _this.setSaveMethod(saveMethod);
       });
 
-      $('#saveAsConnectToGDriveButton').on('click', function() {
-        _this.connectToGDrive();
-      }); 
-
     });
 
     this.saveButton = UI.create('UI.Button', { "text": "Save", "color": "primary" });
@@ -164,7 +160,7 @@ FileManager.prototype = {
     var _this = this;
     var args = {};
     args.filename = $('#saveProjectAs').val(); 
-    args.saveMethod = $('input[name=saveMethod]:checked').val();
+    args.saveMethod = 'browserStorage';
 
     this.saveInProgress = true;
     this.saveButton.setEnabled(false);
@@ -180,34 +176,16 @@ FileManager.prototype = {
   },
 
   connectToGDrive: function() {
-    g_app.gdrive.handleAuthClick();
+    g_app.reportRemoteProviderError('google-drive', new Error('Google Drive is disabled.'));
   },
 
   checkGDriveAccess: function() {
-    if(this.saveMethod === 'googleDrive' && !g_app.gdrive.checkIsSignedIn()) {
-      $('#saveAsConnectToGDriveButtonSection').show();
-    } else {
-      $('#saveAsConnectToGDriveButtonSection').hide();
-    }
-
-    /*
-    if(this.saveMethod != 'googleDrive' || !g_app.gdrive.checkIsSignedIn()) {
-      $('#saveAsConnectToGDriveButtonSection').show();
-    } else {
-      $('#saveAsConnectToGDriveButtonSection').hide();
-    }
-    */
+    $('#saveAsConnectToGDriveButtonSection').hide();
   },
 
   setSaveMethod: function(saveMethod) {
-
-    this.saveMethod = saveMethod;
-
-    if(saveMethod == 'googleDrive') {
-      this.checkGDriveAccess();
-    } else {
-      $('#saveAsConnectToGDriveButtonSection').hide();
-    }
+    this.saveMethod = 'browserStorage';
+    $('#saveAsConnectToGDriveButtonSection').hide();
   },
 
   initDownloadAsDialog: function() {
@@ -1089,9 +1067,8 @@ FileManager.prototype = {
 
 
     $('#saveProjectAs').val(this.getFilename());
-    if(this.saveTo) {
-      $('#saveMethod_' + this.saveTo).prop('checked', true);
-    }
+    this.setSaveMethod('browserStorage');
+    $('#saveMethod_browserStorage').prop('checked', true);
 
     /*
     if(UI.isMobile.any()) {
@@ -1284,26 +1261,35 @@ FileManager.prototype = {
     }
 
 
-    this.filename = filename;
-    this.saveTo = saveTo;
-    this.setIsNew(false);
-
-    if(this.saveTo == 'googleDrive') {
+    if(saveTo == 'googleDrive') {
       var _this = this;
 
       if(this.gDriveSaveInProgress) {
-        console.log('save in progress!');
+        if(typeof callback !== 'undefined') {
+          callback({ success: false, error: new Error('Google Drive save already in progress') });
+        }
         return;
       }
       this.gDriveSaveInProgress = true;
       try {
         g_app.gdrive.saveProject({
           fileId: this.googleDriveFileId,
-          filename: this.filename,
+          filename: filename,
           showProgress: showProgress
         }, function(result) {
           _this.gDriveSaveInProgress = false;
+          if(!result || result.success === false || typeof result.name != 'string') {
+            if(typeof callback !== 'undefined') {
+              callback(result && result.success === false ? result : {
+                success: false,
+                error: result && result.error ? result.error : new Error('Google Drive save failed')
+              });
+            }
+            return;
+          }
           _this.filename = result.name;
+          _this.saveTo = saveTo;
+          _this.setIsNew(false);
           var dotPos = _this.filename.lastIndexOf('.');
           if(dotPos !== -1) {
             _this.filename.substr(0, dotPos);
@@ -1314,10 +1300,11 @@ FileManager.prototype = {
           }
         });
       } catch(err) {
-        alert('error encountered: ' + err.message);
         _this.gDriveSaveInProgress = false;
-        console.error("GDRIVE SAVE EXCEPTION CAUGHT!!!");
-        console.log(err);
+        console.warn('Google Drive save failed');
+        if(typeof callback !== 'undefined') {
+          callback({ success: false, error: new Error('Google Drive save failed') });
+        }
       }
     }
   },

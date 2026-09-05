@@ -100,14 +100,6 @@
 }
 
 
-#start-login-mobile .start-tile-image {
-  background-color: #117744;  
-}
-
-#start-logout-mobile .start-tile-image {
-  background-color: #117744;  
-
-}
 </style>
 
 
@@ -121,21 +113,11 @@
 
   </div>
 
-  <div id="repositoryMenu" style="display: none; position: absolute; width: auto; height: auto; z-index: 2000" class="ui-menu">
-    <div class="ui-menu-item"><div class="ui-menu-item-label repositoryMenuItem" data-action="viewongithub">View on GitHub...</div></div>
-    <div class="ui-menu-item"><div class="ui-menu-item-label repositoryMenuItem" data-action="remove">Remove</div></div>
-  </div>
-
-
     
   <div style="position: absolute; top: 0px; left: 0px; right: 0px; height: 230px; background-color: #131313; padding: 10px; border-bottom: 1px solid #222222">
     <h1 style="margin: 0px; font-weight: 200; font-size: 50px"><img src="images/logo40.png" style="width: 40px; height: 40px; filter: opacity(80%); "><span style="margin: 0 6px">lvllvl</span><span style="font-size: 12px">alpha</span></h1>
     <div style="margin-bottom: 4px">
       Create pictures using character sets
-    </div>
-
-    <div id="start-user-info">
-      Checking user status...
     </div>
 
     <!--
@@ -157,52 +139,12 @@
         <div class="start-tile-label">New</div>
       </div>
 
-      <div class="start-tile" id="start-login-mobile" style="display: none; ">
-        <div class="start-tile-image" style=" display: flex; justify-content: center;align-items: center; text-align: center">
-          <img src="icons/svg/glyphicons-halflings-185-log-in.svg" height="60" style="filter: invert(65%)"/>
-          <div class="rippleJS"></div>
-        </div>
-        <div class="start-tile-label">Sign In</div>
-      </div>
-
-      <div class="start-tile" id="start-logout-mobile" style="display: none;">
-        <div class="start-tile-image" style="display: flex; justify-content: center;align-items: center; text-align: center">
-          <img src="icons/svg/glyphicons-halflings-186-log-out.svg" height="60" style="filter: invert(65%)">
-          <div class="rippleJS"></div>
-        </div>
-        <div class="start-tile-label">Sign Out</div>
-      </div>
-                  
-<!--
-      <div id="startContinueLast" style="display: inline-block; width: 100px; height: 100px; overflow: hidden;  float: left">Continue Last</div>      
-        <div id="start2D" class="startBlock" style="cursor: pointer; margin-right: 4px">New...</div>
-
-        <div id="login" class="startBlock" style="cursor: pointer; margin-right: 4px">Login...</div>
-        <div id="logout" class="startBlock" style="cursor: pointer; margin-right: 4px">Logout</div>
-
--->
     </div>
   </div>
 
   <div id="startPageProjectHolderMobile" style="position: absolute; top: 252px; left: 0px; right: 0px; bottom: 60px; padding: 10px; overflow: auto">
-    <div id="github_repositories"></div>
     <div id="browserStorage_projects" ></div>
   </div>
 
-
-  <div id="startPageProjectFooterMobile" style="position: absolute; bottom: 0px; height: 40px; left: 0px; right: 0px;padding: 10px; overflow: hidden">
-    <div id="startGoogleDriveStatusMobile">
-        <div id="startGoogleDriveConnectedMobile" style="display: none">          
-          <div class="ui-button" id="disconnectFromGDriveButtonMobile">
-              <img src="icons/GoogleDriveIcon512.png" style="filter: none;margin-right: 6px" height="20"/>
-              Disconnect Google Drive</div>
-        </div>
-        <div id="startGoogleDriveNotConnectedMobile" style="display: none">
-          <div class="ui-button" id="connectToGDriveButtonMobile">
-              <img src="icons/GoogleDriveIcon512.png" style="filter: none;margin-right: 6px" height="20"/>
-              Connect To Google Drive</div>
-        </div>
-      </div>    
-  </div>
 
 </div>

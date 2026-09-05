@@ -15,8 +15,8 @@ The supported device classes are:
 Previous browser releases, Firefox ESR, other browsers, embedded webviews,
 game-console browsers, and smaller viewports may work, but are best-effort rather
 than release-gated. WebGL-dependent features also require working WebGL hardware
-acceleration. Authentication and cloud provider availability are independent of
-the browser support promise.
+acceleration. GitHub, Gist, and Google Drive are currently disabled and are
+outside the browser support promise.
 
 ## Tooling and CI mapping
 
@@ -30,10 +30,9 @@ still need focused compatibility coverage or an explicit fallback.
 Playwright runs the full regression suite in desktop Chromium. A production boot
 test also runs in desktop Chromium, Firefox, and WebKit; Chromium and WebKit phone
 profiles; and a WebKit tablet profile. Those engines are CI proxies for Chrome and
-Edge, Firefox, Safari, Chrome for Android, and iOS/iPadOS Safari. Provider scripts
-are replaced with successful empty responses for a deterministic first-party
-startup measurement. A separate boot test aborts provider requests to verify that
-the application starts when those services are offline.
+Edge, Firefox, Safari, Chrome for Android, and iOS/iPadOS Safari. Production loads
+no provider scripts or provider endpoints; startup tests verify that those requests
+remain absent and that the local application starts offline.
 
 ## Performance budgets
 
@@ -42,12 +41,11 @@ The release gate enforces these baseline budgets:
 - initial first-party JavaScript and CSS: at most 9,250,000 raw bytes and
   2,100,000 bytes after gzip level 9; and
 - first-party production navigation to a visible start page: at most 5,000
-  milliseconds on the Playwright CI profiles with provider scripts replaced by
-  successful empty responses.
+  milliseconds on the Playwright CI profiles.
 
 The payload measurement follows local scripts and styles referenced by the
 production entry point, including its dynamically selected mobile stylesheet. It
-excludes remote provider SDKs and assets loaded after feature activation. The
-startup measurement includes loading, parsing, and initializing the local
+includes no remote provider SDK. The startup measurement includes loading,
+parsing, and initializing the local
 production application from the preview server. Budget changes should be reviewed
 as product decisions and recorded in `CHANGELOG.md`.

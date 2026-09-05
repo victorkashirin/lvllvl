@@ -1,5 +1,10 @@
 # Browser console issues
 
+Current status (2026-09-05): GitHub, Gist, and Google Drive are disabled. Their
+browser implementations, Firebase scripts, and Google API loader are no longer in
+the production startup path, so the provider-owned warnings described in the
+historical snapshot below no longer occur.
+
 ## Snapshot
 
 - Date: 2026-09-04
@@ -22,7 +27,7 @@ exceptions or console errors. Chromium reported no warnings or errors.
 | Classification | Count | Status | Priority | Ownership | Assessment |
 | --- | ---: | --- | --- | --- | --- |
 | Unreachable code after `return` | 37 | Fixed | Medium | First-party | Obsolete implementations and redundant control statements were removed without changing the reachable paths; a source test now rejects JSHint `W027`. |
-| Unsupported `identity-credentials-get` feature policy | 3 | Open | Low | Google API integration | Firefox skips an unsupported policy token in a Google-loaded callback. The project editor still starts. |
+| Unsupported `identity-credentials-get` feature policy | 3 | Fixed | Low | Removed Google API integration | The disabled-provider release removed the Google callback and OAuth iframe from production. |
 | Invalid Glyphicons glyph bounding boxes | 10 | Fixed | Low | Local font asset | The WOFF2 was regenerated with corrected bounds and side bearings while preserving every glyph outline and character mapping. |
 | Empty string passed to `getElementById()` | 1 | Fixed | Medium | First-party markup | Firefox's label-association lookup encountered an empty `for` target. The invalid targets were repaired and verified in Firefox 155. |
 | Vite connection messages | 2 | Expected | Informational | Development server | Expected only under `npm run dev`. |
@@ -32,14 +37,14 @@ exceptions or console errors. Chromium reported no warnings or errors.
 
 A fresh Firefox 155 development run on 2026-09-04 loaded the start page and
 created the default project. It recorded no first-party warning or error and no
-page error. With the real Google provider enabled, Firefox still recorded six
+page error. Before providers were disabled, a run with the real Google provider recorded six
 provider-owned diagnostics: the three feature-policy warnings above, a quirks-mode
 warning from Google's OAuth iframe, a report-only CSP message from that iframe,
 and an opaque-response-blocking warning from a Google CSP endpoint. Two Google
-timing markers were also present. These messages originate on Google domains and
-do not indicate a failure in the editor.
+timing markers were also present. The current production path does not load those
+resources.
 
-The provider-isolated Firefox browser regression records zero warnings, errors,
+The Firefox browser regression records zero warnings, errors,
 and page errors through the same default-project flow. The in-app Chromium run
 recorded four informational messages—the two Vite messages, the C64 banner, and
 one bare object log—and zero warnings or errors.
@@ -131,7 +136,7 @@ Post-fix verification used the installed Firefox 155 in headless mode against a
 fresh profile and created the default project. No `unreachable code after return
 statement` warning or first-party runtime exception occurred.
 
-### 2. Google feature-policy warnings
+### 2. Google feature-policy warnings (historical, fixed 2026-09-05)
 
 Firefox emitted the following message three times from `cb=gapi.loaded_0`:
 
@@ -144,10 +149,10 @@ Feature Policy: Skipping unsupported feature name “identity-credentials-get”
 attempts to use a policy token that Firefox 155 does not recognize. Firefox
 skips the token; no editor failure was observed.
 
-Recommended action: keep this low priority unless Google Drive sign-in fails in
-Firefox. Prefer loading the Drive authentication client only when the user asks
-to connect, and review migration away from the legacy `gapi.auth2` integration.
-The remote callback itself is not maintained in this repository.
+Resolution: the disabled-provider release removed `gdrive.js`, the retained
+Google API loader, Google sign-in controls, and provider origins from the CSP.
+Google Drive can be reintroduced only through the credential-free provider
+boundary and an approved server-side authentication design.
 
 ### 3. Glyphicons font metadata warnings
 
@@ -202,22 +207,19 @@ The Vite `connecting` and `connected` messages are expected development-server
 diagnostics. The `lvllvl c64 emulator` line is embedded in
 `src/c64/c64/c64.wasm` and is a harmless runtime banner.
 
-Chromium recorded four messages for the same flow: the two Vite diagnostics,
-the C64 banner, and one opaque application log rendered only as `Object` from
-`main.js`. Its timing and payload are consistent with the Google Drive
-initialization rejection logged at `src/js/file/gdrive.js:96`, but that mapping
-is provisional because the recorder did not expose the object's stack or
-properties. Provider failures should use a labelled warning or error with a
-useful message instead of logging a bare object.
+Chromium originally recorded four messages for the same flow: the two Vite
+diagnostics, the C64 banner, and one opaque application log rendered only as
+`Object` from `main.js`. The removed Google Drive initialization path was the
+probable source of that log. Disabled-provider errors now use one labelled,
+fixed-text reporter.
 
 ## Suggested order of work
 
-1. Lazy-load or modernize the Google Drive authentication integration.
-2. Remove or label non-actionable application `console.log` output.
+1. Remove or label non-actionable application `console.log` output.
 
 The browser startup tests observe page errors and local request failures. A
 Firefox-only default-project test additionally rejects console warnings and
-errors while external providers are isolated; source checks cover unreachable
+errors; source checks cover unreachable
 statements, the affected local bindings, and multiline empty label targets.
-Provider-owned diagnostics remain documented rather than allow-listed as
-first-party successes.
+Historical provider-owned diagnostics remain documented rather than allow-listed
+as first-party successes.

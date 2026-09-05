@@ -1492,7 +1492,7 @@ Document.prototype = {
       
       _this.openFilesFromBrowser(function(result) {
         // if there is a repository, check repository for updates..
-        if(githubOwner && githubRepository) {
+        if(githubOwner && githubRepository && g_app.isRemoteProviderEnabled('github')) {
           g_app.github.setRepositoryDetails(githubOwner, githubRepository);
 
           if(!g_app.isOnline()) {

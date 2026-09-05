@@ -6,7 +6,7 @@ application from exact npm packages, intentionally retained `src/lib` files, or
 an external production URL; it is not a substitute
 for the upstream license texts.
 
-Last reviewed: 2026-09-04
+Last reviewed: 2026-09-05
 
 | Component | Version | License | Delivery | Audit identity | Modification | Provenance / review | Purpose | Source |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -38,8 +38,6 @@ Last reviewed: 2026-09-04
 | Tuna | snapshot-2023-11-08 | MIT | retained: incompatible-published-package | exempt until 2027-09-04 | unverified | 5e1b2776104b; lvllvl maintainers; review by 2027-09-04 | Provides Web Audio effects for the music editor. | [upstream](https://github.com/jaammees/lvllvl/blob/5e1b2776104b5b9d0f5518471273669109c9a731/src/lib/tuna/tuna.js) |
 | tween.js | 16.6.0 | MIT | npm: tween.js | pkg:npm/tween.js@16.6.0 | unmodified | exact dependency + lockfile | Animates 3D editor transitions. | [upstream](https://github.com/tweenjs/tween.js) |
 | Typr.js | snapshot-2023-11-08 | MIT | retained: incompatible-published-package | exempt until 2027-09-04 | unverified | 5e1b2776104b; lvllvl maintainers; review by 2027-09-04 | Parses font files and extracts glyph outlines. | [upstream](https://github.com/jaammees/lvllvl/tree/5e1b2776104b5b9d0f5518471273669109c9a731/src/lib/typr) |
-| Firebase JavaScript SDK | 10.9.0 | Apache-2.0 | external | pkg:npm/firebase@10.9.0 | unmodified | external URL | Production authentication and Firestore client. | [upstream](https://github.com/firebase/firebase-js-sdk) |
-| Google API JavaScript loader | snapshot-2026-09-03 | Apache-2.0 | retained: provider-snapshot | exempt until 2027-09-04 | unmodified | 3fc6dcf73e11; lvllvl maintainers; review by 2027-09-04 | Loads the Google Drive API client. | [upstream](https://github.com/jaammees/lvllvl/blob/3fc6dcf73e11d449fea06485bf08b360fb18d54f/src/lib/google-api/api.js) |
 | cross-env | 6.0.3 | MIT | bundled in chroma-js | pkg:npm/cross-env@6.0.3 | unmodified | external URL | Bundled transitive dependency of a package-managed browser asset. | [upstream](https://registry.npmjs.org/cross-env/-/cross-env-6.0.3.tgz) |
 | cross-spawn | 7.0.6 | MIT | bundled in chroma-js | pkg:npm/cross-spawn@7.0.6 | unmodified | external URL | Bundled transitive dependency of a package-managed browser asset. | [upstream](https://registry.npmjs.org/cross-spawn/-/cross-spawn-7.0.6.tgz) |
 | path-key | 3.1.1 | MIT | bundled in chroma-js | pkg:npm/path-key@3.1.1 | unmodified | external URL | Bundled transitive dependency of a package-managed browser asset. | [upstream](https://registry.npmjs.org/path-key/-/path-key-3.1.1.tgz) |

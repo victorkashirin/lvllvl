@@ -297,10 +297,6 @@ ExportGifMobile.prototype = {
     });
 
 
-    $('#exportGIFMobileSaveGDrive').on('click', function() {
-      _this.saveToGDrive();
-    });
-
   },
 
 

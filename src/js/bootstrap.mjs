@@ -5,6 +5,11 @@ import { DocumentSession } from "./modules/application/documentSession.mjs";
 import { EditorCommandService } from "./modules/application/editorCommandService.mjs";
 import { PersistenceService } from "./modules/application/persistenceService.mjs";
 import {
+  RemoteProviderCapability,
+  RemoteProviderId,
+  RemoteProviderService,
+} from "./modules/application/remoteProviderService.mjs";
+import {
   createImageImportFeature,
   imageImportFeatureName,
 } from "./modules/feature-adapters/imageImportFeature.mjs";
@@ -12,8 +17,10 @@ import {
   createLegacyTextModeHistoryCapabilities,
   createTextModeHistoryReplay,
 } from "./modules/feature-adapters/textModeHistoryAdapter.mjs";
+import { createLegacyRemoteProviderFacades } from "./modules/feature-adapters/legacyRemoteProviderFacades.mjs";
 import { createClassicScriptLoader } from "./modules/infrastructure/classicScriptLoader.mjs";
 import { createBrowserStorageAdapter } from "./modules/infrastructure/browserStorageAdapter.mjs";
+import { createDisabledRemoteProviderAdapter } from "./modules/infrastructure/disabledRemoteProviderAdapter.mjs";
 
 const featureRegistry = new FeatureRegistry();
 const featureScriptUrl = new URL("./features/image-import.js", import.meta.url);
@@ -42,6 +49,50 @@ const persistence = new PersistenceService({
   clock,
   createId,
 });
+const providerDisabledReason =
+  "Remote providers are temporarily disabled until credential handling moves to a reviewed server-side flow.";
+const remoteProviders = new RemoteProviderService({
+  providers: [
+    createDisabledRemoteProviderAdapter({
+      id: RemoteProviderId.GITHUB,
+      capabilities: [
+        RemoteProviderCapability.IDENTITY,
+        RemoteProviderCapability.LIST,
+        RemoteProviderCapability.LOAD,
+        RemoteProviderCapability.PUBLISH,
+        RemoteProviderCapability.SAVE,
+      ],
+      reason: providerDisabledReason,
+    }),
+    createDisabledRemoteProviderAdapter({
+      id: RemoteProviderId.GIST,
+      capabilities: [RemoteProviderCapability.LOAD, RemoteProviderCapability.PUBLISH],
+      reason: providerDisabledReason,
+    }),
+    createDisabledRemoteProviderAdapter({
+      id: RemoteProviderId.GOOGLE_DRIVE,
+      capabilities: [
+        RemoteProviderCapability.IDENTITY,
+        RemoteProviderCapability.LIST,
+        RemoteProviderCapability.LOAD,
+        RemoteProviderCapability.SAVE,
+      ],
+      reason: providerDisabledReason,
+    }),
+  ],
+  isOnline: () => globalThis.navigator?.onLine !== false,
+});
+const remoteProviderFacades = createLegacyRemoteProviderFacades({
+  remoteProviders,
+  reportError(providerId, error) {
+    app.reportRemoteProviderError(providerId, error);
+  },
+});
+// Provider UI is a separate security-reviewed registration. Installing a live
+// infrastructure adapter must not reactivate dormant callback-era controls.
+const remoteProviderUi = Object.freeze({
+  isEnabled() { return false; },
+});
 
 /** @param {any} editor */
 function createTextModeCommandService(editor) {
@@ -56,6 +107,9 @@ function createTextModeCommandService(editor) {
 const services = {
   clock,
   persistence,
+  remoteProviderFacades,
+  remoteProviders,
+  remoteProviderUi,
   createTextModeCommandService,
   createDocumentSession() {
     return new DocumentSession({

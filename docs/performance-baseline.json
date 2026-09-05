@@ -5,12 +5,12 @@
     "host": "darwin",
     "node": "v24.18.0"
   },
-  "measuredAt": "2026-09-05T00:54:54.216Z",
+  "measuredAt": "2026-09-05T07:52:36.498Z",
   "profiles": {
     "representative-desktop": {
       "activation": {
         "imageImport": {
-          "coldMilliseconds": 5.2,
+          "coldMilliseconds": 3.2,
           "requestBytes": {
             "gzipBytes": 29217,
             "rawBytes": 145329
@@ -23,7 +23,7 @@
               "rawBytes": 145329
             }
           },
-          "warmMilliseconds": 0.1
+          "warmMilliseconds": 0
         }
       },
       "initial": {
@@ -41,8 +41,8 @@
             "rawBytes": 7886
           },
           "js/bootstrap.mjs": {
-            "gzipBytes": 420,
-            "rawBytes": 1022
+            "gzipBytes": 1263,
+            "rawBytes": 4568
           },
           "js/c64/c64.js": {
             "gzipBytes": 4714,
@@ -52,17 +52,9 @@
             "gzipBytes": 2101,
             "rawBytes": 9333
           },
-          "js/githubApi.js": {
-            "gzipBytes": 2105,
-            "rawBytes": 8136
-          },
-          "js/githubClient.js": {
-            "gzipBytes": 7431,
-            "rawBytes": 33603
-          },
           "js/html/htmlcache.js": {
-            "gzipBytes": 43423,
-            "rawBytes": 376266
+            "gzipBytes": 41467,
+            "rawBytes": 363390
           },
           "js/htmlPolicy.js": {
             "gzipBytes": 2054,
@@ -73,28 +65,80 @@
             "rawBytes": 4443719
           },
           "js/main.js": {
-            "gzipBytes": 660212,
-            "rawBytes": 3306610
+            "gzipBytes": 642664,
+            "rawBytes": 3230055
+          },
+          "js/modules/application/documentSession.mjs": {
+            "gzipBytes": 1372,
+            "rawBytes": 4351
+          },
+          "js/modules/application/editorCommandService.mjs": {
+            "gzipBytes": 1124,
+            "rawBytes": 3613
+          },
+          "js/modules/application/editorStateService.mjs": {
+            "gzipBytes": 1230,
+            "rawBytes": 4355
           },
           "js/modules/application/featureRegistry.mjs": {
             "gzipBytes": 2687,
             "rawBytes": 15212
           },
+          "js/modules/application/historyService.mjs": {
+            "gzipBytes": 783,
+            "rawBytes": 2595
+          },
+          "js/modules/application/persistenceService.mjs": {
+            "gzipBytes": 3478,
+            "rawBytes": 15728
+          },
+          "js/modules/application/remoteProviderService.mjs": {
+            "gzipBytes": 3502,
+            "rawBytes": 15572
+          },
+          "js/modules/domain/documentRevisionState.mjs": {
+            "gzipBytes": 591,
+            "rawBytes": 1677
+          },
+          "js/modules/domain/githubRepositoryAddress.mjs": {
+            "gzipBytes": 831,
+            "rawBytes": 1979
+          },
+          "js/modules/domain/historyState.mjs": {
+            "gzipBytes": 739,
+            "rawBytes": 2583
+          },
           "js/modules/feature-adapters/imageImportFeature.mjs": {
             "gzipBytes": 1086,
             "rawBytes": 3627
           },
+          "js/modules/feature-adapters/legacyRemoteProviderFacades.mjs": {
+            "gzipBytes": 1979,
+            "rawBytes": 8297
+          },
+          "js/modules/feature-adapters/textModeHistoryAdapter.mjs": {
+            "gzipBytes": 2179,
+            "rawBytes": 10255
+          },
+          "js/modules/infrastructure/browserStorageAdapter.mjs": {
+            "gzipBytes": 805,
+            "rawBytes": 3463
+          },
           "js/modules/infrastructure/classicScriptLoader.mjs": {
             "gzipBytes": 495,
             "rawBytes": 1124
+          },
+          "js/modules/infrastructure/disabledRemoteProviderAdapter.mjs": {
+            "gzipBytes": 603,
+            "rawBytes": 1337
           },
           "js/startup.js": {
             "gzipBytes": 246,
             "rawBytes": 353
           },
           "js/storageManager.js": {
-            "gzipBytes": 2181,
-            "rawBytes": 7556
+            "gzipBytes": 2196,
+            "rawBytes": 7618
           },
           "lib/ace/src/theme-tomorrow_night.js": {
             "gzipBytes": 1008,
@@ -111,29 +155,25 @@
           "lib/dompurify/purify.min.js": {
             "gzipBytes": 10952,
             "rawBytes": 29204
-          },
-          "lib/google-api/api.js": {
-            "gzipBytes": 5842,
-            "rawBytes": 14576
           }
         },
         "requestBytes": {
-          "gzipBytes": 1922874,
-          "rawBytes": 8662807
+          "gzipBytes": 1908066,
+          "rawBytes": 8596474
         },
-        "requestCount": 22
+        "requestCount": 32
       },
       "memoryAfterClose": {
         "reliability": "diagnostic-only",
-        "retainedBytes": 83348,
-        "usedBytesAfter": 20210180,
-        "usedBytesBefore": 20126832
+        "retainedBytes": 56808,
+        "usedBytesAfter": 20137460,
+        "usedBytesBefore": 20080652
       },
       "timings": {
-        "editorReadyMilliseconds": 1724.6,
-        "javaScriptExecutionMilliseconds": 379.01,
-        "javaScriptParseMilliseconds": 0.8,
-        "startPageVisibleMilliseconds": 850.1
+        "editorReadyMilliseconds": 1088.1,
+        "javaScriptExecutionMilliseconds": 248.72,
+        "javaScriptParseMilliseconds": 0.24,
+        "startPageVisibleMilliseconds": 520.6
       },
       "environment": {
         "cpuSlowdownMultiplier": 1,
@@ -146,7 +186,7 @@
     "minimum-mobile": {
       "activation": {
         "imageImport": {
-          "coldMilliseconds": 11.3,
+          "coldMilliseconds": 6.7,
           "requestBytes": {
             "gzipBytes": 29217,
             "rawBytes": 145329
@@ -181,8 +221,8 @@
             "rawBytes": 7886
           },
           "js/bootstrap.mjs": {
-            "gzipBytes": 420,
-            "rawBytes": 1022
+            "gzipBytes": 1263,
+            "rawBytes": 4568
           },
           "js/c64/c64.js": {
             "gzipBytes": 4714,
@@ -192,17 +232,9 @@
             "gzipBytes": 2101,
             "rawBytes": 9333
           },
-          "js/githubApi.js": {
-            "gzipBytes": 2105,
-            "rawBytes": 8136
-          },
-          "js/githubClient.js": {
-            "gzipBytes": 7431,
-            "rawBytes": 33603
-          },
           "js/html/htmlcache.js": {
-            "gzipBytes": 43423,
-            "rawBytes": 376266
+            "gzipBytes": 41467,
+            "rawBytes": 363390
           },
           "js/htmlPolicy.js": {
             "gzipBytes": 2054,
@@ -213,28 +245,80 @@
             "rawBytes": 4443719
           },
           "js/main.js": {
-            "gzipBytes": 660212,
-            "rawBytes": 3306610
+            "gzipBytes": 642664,
+            "rawBytes": 3230055
+          },
+          "js/modules/application/documentSession.mjs": {
+            "gzipBytes": 1372,
+            "rawBytes": 4351
+          },
+          "js/modules/application/editorCommandService.mjs": {
+            "gzipBytes": 1124,
+            "rawBytes": 3613
+          },
+          "js/modules/application/editorStateService.mjs": {
+            "gzipBytes": 1230,
+            "rawBytes": 4355
           },
           "js/modules/application/featureRegistry.mjs": {
             "gzipBytes": 2687,
             "rawBytes": 15212
           },
+          "js/modules/application/historyService.mjs": {
+            "gzipBytes": 783,
+            "rawBytes": 2595
+          },
+          "js/modules/application/persistenceService.mjs": {
+            "gzipBytes": 3478,
+            "rawBytes": 15728
+          },
+          "js/modules/application/remoteProviderService.mjs": {
+            "gzipBytes": 3502,
+            "rawBytes": 15572
+          },
+          "js/modules/domain/documentRevisionState.mjs": {
+            "gzipBytes": 591,
+            "rawBytes": 1677
+          },
+          "js/modules/domain/githubRepositoryAddress.mjs": {
+            "gzipBytes": 831,
+            "rawBytes": 1979
+          },
+          "js/modules/domain/historyState.mjs": {
+            "gzipBytes": 739,
+            "rawBytes": 2583
+          },
           "js/modules/feature-adapters/imageImportFeature.mjs": {
             "gzipBytes": 1086,
             "rawBytes": 3627
           },
+          "js/modules/feature-adapters/legacyRemoteProviderFacades.mjs": {
+            "gzipBytes": 1979,
+            "rawBytes": 8297
+          },
+          "js/modules/feature-adapters/textModeHistoryAdapter.mjs": {
+            "gzipBytes": 2179,
+            "rawBytes": 10255
+          },
+          "js/modules/infrastructure/browserStorageAdapter.mjs": {
+            "gzipBytes": 805,
+            "rawBytes": 3463
+          },
           "js/modules/infrastructure/classicScriptLoader.mjs": {
             "gzipBytes": 495,
             "rawBytes": 1124
+          },
+          "js/modules/infrastructure/disabledRemoteProviderAdapter.mjs": {
+            "gzipBytes": 603,
+            "rawBytes": 1337
           },
           "js/startup.js": {
             "gzipBytes": 246,
             "rawBytes": 353
           },
           "js/storageManager.js": {
-            "gzipBytes": 2181,
-            "rawBytes": 7556
+            "gzipBytes": 2196,
+            "rawBytes": 7618
           },
           "lib/ace/src/theme-tomorrow_night.js": {
             "gzipBytes": 1008,
@@ -251,29 +335,25 @@
           "lib/dompurify/purify.min.js": {
             "gzipBytes": 10952,
             "rawBytes": 29204
-          },
-          "lib/google-api/api.js": {
-            "gzipBytes": 5842,
-            "rawBytes": 14576
           }
         },
         "requestBytes": {
-          "gzipBytes": 1925938,
-          "rawBytes": 8679419
+          "gzipBytes": 1911130,
+          "rawBytes": 8613086
         },
-        "requestCount": 23
+        "requestCount": 33
       },
       "memoryAfterClose": {
         "reliability": "diagnostic-only",
-        "retainedBytes": 83912,
-        "usedBytesAfter": 20060104,
-        "usedBytesBefore": 19976192
+        "retainedBytes": 81224,
+        "usedBytesAfter": 20019052,
+        "usedBytesBefore": 19937828
       },
       "timings": {
-        "editorReadyMilliseconds": 5043.7,
-        "javaScriptExecutionMilliseconds": 1769.09,
-        "javaScriptParseMilliseconds": 2.81,
-        "startPageVisibleMilliseconds": 2878.4
+        "editorReadyMilliseconds": 2506.2,
+        "javaScriptExecutionMilliseconds": 870.62,
+        "javaScriptParseMilliseconds": 0.63,
+        "startPageVisibleMilliseconds": 1518.3
       },
       "environment": {
         "cpuSlowdownMultiplier": 4,

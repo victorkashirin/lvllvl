@@ -1,6 +1,6 @@
 {
   "schemaVersion": 3,
-  "reviewedAt": "2026-09-04",
+  "reviewedAt": "2026-09-05",
   "components": [
     {
       "id": "ace",
@@ -531,46 +531,6 @@
         "reviewedAt": "2026-09-04",
         "reviewBy": "2027-09-04",
         "compatibilityTests": ["tests/runtime-assets.spec.mjs: retained font parser preserves its split-script browser API"]
-      }
-    },
-    {
-      "id": "firebase",
-      "name": "Firebase JavaScript SDK",
-      "version": "10.9.0",
-      "purpose": "Production authentication and Firestore client.",
-      "source": "https://github.com/firebase/firebase-js-sdk",
-      "license": "Apache-2.0",
-      "purl": "pkg:npm/firebase@10.9.0",
-      "modificationStatus": "unmodified",
-      "externalEntryPoints": [
-        "https://www.gstatic.com/firebasejs/10.9.0/firebase-app-compat.js",
-        "https://www.gstatic.com/firebasejs/10.9.0/firebase-auth-compat.js",
-        "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore-compat.js"
-      ]
-    },
-    {
-      "id": "google-api-loader",
-      "name": "Google API JavaScript loader",
-      "version": "snapshot-2026-09-03",
-      "purpose": "Loads the Google Drive API client.",
-      "source": "https://github.com/jaammees/lvllvl/blob/3fc6dcf73e11d449fea06485bf08b360fb18d54f/src/lib/google-api/api.js",
-      "license": "Apache-2.0",
-      "auditExemption": {
-        "reason": "Google does not publish the loader in an advisory-supported package ecosystem; the retained provider snapshot is pinned to an immutable repository revision.",
-        "expiresAt": "2027-09-04"
-      },
-      "modificationStatus": "unmodified",
-      "paths": ["lib/google-api/api.js"],
-      "retention": {
-        "category": "provider-snapshot",
-        "revision": "3fc6dcf73e11d449fea06485bf08b360fb18d54f",
-        "reproductionCommand": "git show 3fc6dcf73e11d449fea06485bf08b360fb18d54f:src/lib/google-api/api.js > src/lib/google-api/api.js",
-        "toolchain": "Git object extraction; no build step",
-        "patches": [],
-        "owner": "lvllvl maintainers",
-        "reviewedAt": "2026-09-04",
-        "reviewBy": "2027-09-04",
-        "compatibilityTests": ["tests/runtime-assets.spec.mjs: retained provider loader exposes the Google API bootstrap"]
       }
     }
   ]
