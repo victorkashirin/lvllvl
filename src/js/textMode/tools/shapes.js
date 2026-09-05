@@ -5,6 +5,12 @@ var Shapes = function() {
   this.width = 0;
   this.height = 0;
   this.depth = 0;
+  this.touchedCells = [];
+  this.bounds = false;
+  this.dirtyBounds = false;
+  this.previewRequest = null;
+  this.previewCanvas = null;
+  this.layer = null;
 
 
   this.fill = false;
@@ -50,33 +56,142 @@ Shapes.prototype = {
   },
 
   resizeGrid: function() {
-    this.grid = [];
-    for(var y = 0; y < this.height; y++) {
-      var row = [];
-      for(var x = 0; x < this.width; x++) {
-        row.push({ t: false, fc: false, bc: this.editor.colorPaletteManager.noColor });
-      }
-      this.grid.push(row);
+    this.clearGrid();
+  },
+
+  unionBounds: function(a, b) {
+    if(!b) { return a; }
+    if(!a) {
+      return { minX: b.minX, minY: b.minY, maxX: b.maxX, maxY: b.maxY };
     }
+    return {
+      minX: Math.min(a.minX, b.minX), minY: Math.min(a.minY, b.minY),
+      maxX: Math.max(a.maxX, b.maxX), maxY: Math.max(a.maxY, b.maxY)
+    };
   },
 
   clearGrid: function() {
-    if(this.grid == null) {
-      this.resizeGrid();
-    }
-    for(var y = 0; y < this.height; y++) {
-      for(var x = 0; x < this.width; x++) {
-        this.grid[y][x].t = false;// this.editor.tileSetManager.blankCharacter;
-        this.grid[y][x].fc = false;
-        this.grid[y][x].bc = this.editor.colorPaletteManager.noColor;
+    this.dirtyBounds = this.unionBounds(this.dirtyBounds, this.bounds);
+    // Sparse rows: neither clearing nor starting a shape visits the document.
+    this.grid = [];
+    this.touchedCells = [];
+    this.bounds = false;
+  },
 
-        this.grid[y][x].rx = 0;
-        this.grid[y][x].ry = 0;
-        this.grid[y][x].rz = 0;
-        this.grid[y][x].fh = 0;
-        this.grid[y][x].fv = 0;
-      }
+  setShapeCell: function(x, y, t, fc, bc, rx, ry, rz, fh, fv) {
+    if(!this.grid[y]) { this.grid[y] = []; }
+    if(!this.grid[y][x]) { this.touchedCells.push({ x: x, y: y }); }
+    this.grid[y][x] = { t: t, fc: fc, bc: bc, rx: rx, ry: ry, rz: rz, fh: fh, fv: fv };
+    this.bounds = this.unionBounds(this.bounds, { minX: x, minY: y, maxX: x + 1, maxY: y + 1 });
+  },
+
+  requestPreview: function() {
+    this.dirtyBounds = this.unionBounds(this.dirtyBounds, this.bounds);
+    if(this.previewRequest !== null) { return; }
+    var shapes = this;
+    this.previewRequest = requestAnimationFrame(function() {
+      shapes.previewRequest = null;
+      shapes.flushPreview();
+    });
+  },
+
+  takeDirtyBounds: function() {
+    if(this.previewRequest !== null) {
+      cancelAnimationFrame(this.previewRequest);
+      this.previewRequest = null;
     }
+    var bounds = this.unionBounds(this.dirtyBounds, this.bounds);
+    this.dirtyBounds = false;
+    return bounds;
+  },
+
+  getPresentationBounds: function(bounds) {
+    // Vector glyphs can extend past their cells. Match the raster padding.
+    if(bounds && this.layer && this.layer.getMode() == TextModeEditor.Mode.VECTOR) {
+      bounds = { minX: bounds.minX - 1, minY: bounds.minY - 1,
+        maxX: bounds.maxX + 1, maxY: bounds.maxY + 1 };
+    }
+    return bounds;
+  },
+
+  flushPreview: function() {
+    var bounds = this.getPresentationBounds(this.takeDirtyBounds());
+    if(bounds) {
+      // Preview-only changes do not modify artwork or its thumbnail.
+      this.editor.gridView2d.draw({ dirtyCells: bounds });
+    }
+  },
+
+  drawPreview: function(layer, args) {
+    if(!this.shape || layer !== this.layer || !this.bounds
+      || this.width !== layer.getGridWidth() || this.height !== layer.getGridHeight()) {
+      return false;
+    }
+    var tileWidth = layer.getTileSet().getTileWidth();
+    var tileHeight = layer.getTileSet().getTileHeight();
+    var vector = layer.getMode() == TextModeEditor.Mode.VECTOR;
+    var padding = vector ? 1 : 0;
+    var minX = Math.max(0, this.bounds.minX - padding, Math.floor(args.srcX / tileWidth));
+    var minY = Math.max(0, this.bounds.minY - padding, Math.floor(args.srcY / tileHeight));
+    var maxX = Math.min(this.width, this.bounds.maxX + padding, Math.ceil((args.srcX + args.srcWidth) / tileWidth));
+    var maxY = Math.min(this.height, this.bounds.maxY + padding, Math.ceil((args.srcY + args.srcHeight) / tileHeight));
+    if(minX >= maxX || minY >= maxY) { return false; }
+
+    var scale = vector ? args.scale : 1;
+    var width = (maxX - minX) * tileWidth * scale;
+    var height = (maxY - minY) * tileHeight * scale;
+    if(this.previewCanvas === null) { this.previewCanvas = document.createElement('canvas'); }
+    if(!vector) {
+      if(this.previewCanvas.width !== width) { this.previewCanvas.width = width; }
+      if(this.previewCanvas.height !== height) { this.previewCanvas.height = height; }
+    }
+    var drawArgs = {
+      canvas: this.previewCanvas, draw: 'shapes', allCells: true, frame: args.frame,
+      fromX: minX, fromY: minY, toX: maxX, toY: maxY,
+      canvasFromX: minX, canvasFromY: minY,
+      drawBackground: args.drawBackground, scale: scale,
+      drawFromX: minX * tileWidth, drawFromY: minY * tileHeight,
+      drawToX: maxX * tileWidth, drawToY: maxY * tileHeight
+    };
+    var sourceX = 0, sourceY = 0;
+    var x = minX * tileWidth, y = minY * tileHeight;
+    if(vector) {
+      // Use the artwork's viewport origin so fractional-scale glyphs retain
+      // exactly the same pixel phase. Storage is viewport-bounded; only the
+      // shape bounds (plus a glyph/sampling guard) are cleared and rasterized.
+      var viewMinX = Math.max(0, Math.floor(args.srcX / tileWidth));
+      var viewMinY = Math.max(0, Math.floor(args.srcY / tileHeight));
+      var viewMaxX = Math.min(this.width, Math.ceil((args.srcX + args.srcWidth) / tileWidth));
+      var viewMaxY = Math.min(this.height, Math.ceil((args.srcY + args.srcHeight) / tileHeight));
+      var canvasWidth = Math.ceil((viewMaxX - viewMinX) * tileWidth * scale);
+      var canvasHeight = Math.ceil((viewMaxY - viewMinY) * tileHeight * scale);
+      if(this.previewCanvas.width !== canvasWidth) { this.previewCanvas.width = canvasWidth; }
+      if(this.previewCanvas.height !== canvasHeight) { this.previewCanvas.height = canvasHeight; }
+      drawArgs.drawFromX = viewMinX * tileWidth;
+      drawArgs.drawFromY = viewMinY * tileHeight;
+      drawArgs.drawToX = viewMaxX * tileWidth;
+      drawArgs.drawToY = viewMaxY * tileHeight;
+      drawArgs.fromX = Math.max(viewMinX, minX - 1);
+      drawArgs.fromY = Math.max(viewMinY, minY - 1);
+      drawArgs.toX = Math.min(viewMaxX, maxX + 1);
+      drawArgs.toY = Math.min(viewMaxY, maxY + 1);
+      // Two passes preserve overlapping glyph/background order.
+      drawArgs.bgOnly = true;
+      layer.drawVector(drawArgs);
+      drawArgs.bgOnly = false;
+      drawArgs.fgOnly = true;
+      layer.drawVector(drawArgs);
+      sourceX = Math.floor((minX - viewMinX) * tileWidth * scale);
+      sourceY = Math.floor((minY - viewMinY) * tileHeight * scale);
+      width = Math.ceil((maxX - viewMinX) * tileWidth * scale) - sourceX;
+      height = Math.ceil((maxY - viewMinY) * tileHeight * scale) - sourceY;
+      x = viewMinX * tileWidth + sourceX / scale;
+      y = viewMinY * tileHeight + sourceY / scale;
+    } else {
+      layer.draw(drawArgs);
+    }
+    return { canvas: this.previewCanvas, x: x, y: y, sourceX: sourceX, sourceY: sourceY,
+      width: width, height: height, vector: vector };
   },
 
 
@@ -117,6 +232,7 @@ Shapes.prototype = {
       }      
     }
 
+    this.layer = layer;
     this.editor.grid.setCursorEnabled(false);
     this.clearGrid();
 
@@ -130,15 +246,15 @@ Shapes.prototype = {
     this.toZ = -1;
 
     this.setShapeTo(this.fromX, this.fromY, this.fromZ);
-    this.editor.graphic.invalidateAllCells();
-    this.editor.graphic.redraw({ allCells: true});
 
   },
 
   endShape: function() {
 
     var layer = this.editor.layers.getSelectedLayerObject();
-    if(!layer || layer.getType() != 'grid') {
+    if(!this.shape) { return; }
+    if(!layer || layer !== this.layer || layer.getType() != 'grid') {
+      this.cancelShape();
       return;
     }  
 
@@ -147,82 +263,61 @@ Shapes.prototype = {
 
     var args = {};
 
-    for(var y = 0; y < this.height; y++) {
-      for(var x = 0; x < this.width; x++) {
-        if(this.grid[y][x].t !== this.editor.tileSetManager.blankCharacter
-            && this.grid[y][x].t !== false) {
-
-//          var z = this.editor.grid.getXYGridPosition();
-//          var gridY = this.editor.grid.getXZGridPosition();
-
-          args.x = x;
-          args.t = this.grid[y][x].t;
-          args.fc = this.grid[y][x].fc;
-          args.bc = this.grid[y][x].bc;
-          args.rx = this.grid[y][x].rx;
-          args.ry = this.grid[y][x].ry;
-          args.rz = this.grid[y][x].rz;
-          args.fh = this.grid[y][x].fh;
-          args.fv = this.grid[y][x].fv;
-          args.update = false;
-
-          args.y = y;
-          args.z = 0;
-          layer.setCell(args);
-
-//          console.log('set cell:' + args.t);
-
-
-
-          this.editor.grid.grid2d.setMirrorCells(layer, args);
-
-          if(false) {
-            // 3d shapes
-            if(this.plane == 'xz') {
-              args.y = gridY;
-              args.z = y;
-              this.editor.grid.setCell(args);
-            } else {
-              args.y = y;
-              args.z = z;
-              this.editor.grid.setCell(args);
-            }
-          }
-        }
+    // Keep the old row-major commit order, including overlapping mirror cells.
+    this.touchedCells.sort(function(a, b) { return a.y - b.y || a.x - b.x; });
+    for(var i = 0; i < this.touchedCells.length; i++) {
+      var x = this.touchedCells[i].x;
+      var y = this.touchedCells[i].y;
+      var cell = this.grid[y][x];
+      if(cell.t !== this.editor.tileSetManager.blankCharacter && cell.t !== false) {
+        args.x = x;
+        args.y = y;
+        args.z = 0;
+        args.t = cell.t;
+        args.fc = cell.fc;
+        args.bc = cell.bc;
+        args.rx = cell.rx;
+        args.ry = cell.ry;
+        args.rz = cell.rz;
+        args.fh = cell.fh;
+        args.fv = cell.fv;
+        args.update = false;
+        layer.setCell(args);
+        this.editor.grid.grid2d.setMirrorCells(layer, args);
       }
     }
 
     this.editor.history.endEntry();
-    
     this.clearGrid();
-    
-
-    if(layer.getBlockModeEnabled()) {
-      this.editor.graphic.invalidateAllCells();
-      this.editor.graphic.redraw({ allCells: true});
-    }  else {
-      this.editor.graphic.redraw({ allCells: true});
-
-    }
+    this.shape = false;
     this.clearMeshes();
     this.editor.grid.setCursorEnabled(true);
-    this.shape = false;
+    var bounds = this.takeDirtyBounds();
+    var updated = layer.updatedCellRanges;
+    if(updated.minX < updated.maxX && updated.minY < updated.maxY) {
+      bounds = this.unionBounds(bounds, updated);
+    }
+    // Thumbnails still sample the entire bitmap layer synchronously (R3).
+    // Flush offscreen dirtiness once on release, never on preview endpoints,
+    // so an offscreen/mirrored commit cannot leave the final thumbnail stale.
+    var offscreenDirty = layer.getMode() != TextModeEditor.Mode.VECTOR
+      && (updated.minX < layer.viewMinX || updated.minY < layer.viewMinY
+        || updated.maxX > layer.viewMaxX || updated.maxY > layer.viewMaxY);
+    if(layer.getBlockModeEnabled() || offscreenDirty) {
+      if(layer.getBlockModeEnabled()) { this.editor.graphic.invalidateAllCells(); }
+      this.editor.graphic.redraw({ allCells: true });
+    } else {
+      this.editor.graphic.redraw(bounds ? { dirtyCells: this.getPresentationBounds(bounds) } : {});
+    }
   },
 
 
   cancelShape: function() {
     this.clearGrid();
-
-    if(g_newSystem) {
-      this.editor.gridView2d.draw();
-    } else {
-      this.editor.grid.update();
-    }
-    
-
+    this.shape = false;
     this.clearMeshes();
     this.editor.grid.setCursorEnabled(true);
-    this.shape = false;
+    this.flushPreview();
 
   },
 
@@ -334,6 +429,11 @@ Shapes.prototype = {
   },
 
   setShapeTo: function(toX, toY, toZ) {
+    if(!this.shape) { return; }
+    if(this.layer !== this.editor.layers.getSelectedLayerObject()) {
+      this.cancelShape();
+      return;
+    }
 
     if(this.toX != toX || this.toY != toY || this.toZ != toZ) {
       this.toX = toX;
@@ -781,16 +881,7 @@ Shapes.prototype = {
 
           }
 
-          this.grid[y][x].bc = bgColor;
-          this.grid[y][x].fc = color;
-          this.grid[y][x].t = character;
-
-          this.grid[y][x].rx = rx;
-          this.grid[y][x].ry = ry;
-          this.grid[y][x].rz = rz;
-
-          this.grid[y][x].fh = fh;
-          this.grid[y][x].fv = fv;
+          this.setShapeCell(x, y, character, color, bgColor, rx, ry, rz, fh, fv);
 
           if(this.plane == 'xz') {
             this.addCharacter(character, x, gridY, y, color, bgColor, rx, ry, rz);
@@ -845,16 +936,7 @@ Shapes.prototype = {
           } else {
             this.addCharacter(character, x, y, z, color, bgColor, rx, ry, rz);            
           }
-          this.grid[y][x].bc = bgColor;
-          this.grid[y][x].fc = color;
-          this.grid[y][x].t = character;
-
-          this.grid[y][x].rx = rx;
-          this.grid[y][x].ry = ry;
-          this.grid[y][x].rz = rz;
-
-          this.grid[y][x].fh = fh;
-          this.grid[y][x].fv = fv;
+          this.setShapeCell(x, y, character, color, bgColor, rx, ry, rz, fh, fv);
 
         }
       }
@@ -920,16 +1002,7 @@ Shapes.prototype = {
           } else {
             this.addCharacter(character, x, y, z, color, bgColor, rx, ry, rz);          
           }
-          this.grid[y][x].bc = bgColor;
-          this.grid[y][x].fc = color;
-          this.grid[y][x].t = character;
-
-          this.grid[y][x].rx = rx;
-          this.grid[y][x].ry = ry;
-          this.grid[y][x].rz = rz;
-
-          this.grid[y][x].fh = fh;
-          this.grid[y][x].fv = fv;
+          this.setShapeCell(x, y, character, color, bgColor, rx, ry, rz, fh, fv);
 
         }
 
@@ -979,16 +1052,7 @@ Shapes.prototype = {
             this.addCharacter(character, x, y, z, color, bgColor, rx, ry, rz);            
           }
 
-          this.grid[y][x].bc = bgColor;
-          this.grid[y][x].fc = color;
-          this.grid[y][x].t = character;
-
-          this.grid[y][x].rx = rx;
-          this.grid[y][x].ry = ry;
-          this.grid[y][x].rz = rz;
-
-          this.grid[y][x].fh = fh;
-          this.grid[y][x].fv = fv;
+          this.setShapeCell(x, y, character, color, bgColor, rx, ry, rz, fh, fv);
 
         }
 
@@ -1027,14 +1091,7 @@ Shapes.prototype = {
               }                       
 
               this.addCharacter(character, x, y, z, color, bgColor, rx, ry, rz);            
-              this.grid[y][x].bc = bgColor;
-              this.grid[y][x].fc = color;
-              this.grid[y][x].t = character;
-
-              this.grid[y][x].rz = rz;
-
-              this.grid[y][x].fh = fh;
-              this.grid[y][x].fv = fv;
+              this.setShapeCell(x, y, character, color, bgColor, 0, 0, rz, fh, fv);
 
           }
         }
@@ -1043,7 +1100,7 @@ Shapes.prototype = {
 
     
 
-    this.editor.graphic.redraw();
+    this.requestPreview();
   },
 
   line: function(fromX, fromY, fromZ, toX, toY, toZ) {
@@ -1154,15 +1211,7 @@ Shapes.prototype = {
             }
 
 
-            this.grid[y][x].t = character;
-            this.grid[y][x].bc = bgColor;
-            this.grid[y][x].fc = color;
-            this.grid[y][x].rx = rx;
-            this.grid[y][x].ry = ry;
-            this.grid[y][x].rz = rz;
-
-            this.grid[y][x].fh = fh;
-            this.grid[y][x].fv = fv;
+            this.setShapeCell(x, y, character, color, bgColor, rx, ry, rz, fh, fv);
           }
         }
       }
@@ -1208,15 +1257,7 @@ Shapes.prototype = {
               this.addCharacter(character, x, y, z, color, bgColor);          
             }
 
-            this.grid[y][x].t = character;
-            this.grid[y][x].bc = bgColor;
-            this.grid[y][x].fc = color;
-            this.grid[y][x].rx = rx;
-            this.grid[y][x].ry = ry;
-            this.grid[y][x].rz = rz;
-
-            this.grid[y][x].fh = fh;
-            this.grid[y][x].fv = fv;
+            this.setShapeCell(x, y, character, color, bgColor, rx, ry, rz, fh, fv);
 
             
           }
@@ -1226,7 +1267,7 @@ Shapes.prototype = {
     }
 
 
-    this.editor.graphic.redraw();
+    this.requestPreview();
 
 
   },
@@ -1267,27 +1308,19 @@ Shapes.prototype = {
     var cellData = layer.getCell({ x: x, y: y });
 
     if(!this.editor.tools.drawTools.drawCharacter) {
-      character = cell.t;
+      character = cellData.t;
     }
     if(!this.editor.tools.drawTools.drawColor) {
-      color = cell.fc;
+      color = cellData.fc;
     }
     if(!this.editor.tools.drawTools.drawBgColor) {
-      bgColor = cell.bc;
+      bgColor = cellData.bc;
     }                       
 
     this.addCharacter(character, x, y, z, color, bgColor);          
-    this.grid[y][x].bc = bgColor;
-    this.grid[y][x].fc = color;
-    this.grid[y][x].t = character;
-    this.grid[y][x].rx = rx;
-    this.grid[y][x].ry = ry;
-    this.grid[y][x].rz = rz;
+    this.setShapeCell(x, y, character, color, bgColor, rx, ry, rz, fh, fv);
 
-    this.grid[y][x].fh = fh;
-    this.grid[y][x].fv = fv;
-
-    this.editor.graphic.redraw();
+    this.requestPreview();
 
   },
 
@@ -1435,15 +1468,7 @@ Shapes.prototype = {
         } else {
           this.addCharacter(character, x, y, z, color, bgColor);
         }
-        this.grid[y][x].bc = bgColor;
-        this.grid[y][x].fc = color;
-        this.grid[y][x].t = character;
-        this.grid[y][x].rx = rx;
-        this.grid[y][x].ry = ry;
-        this.grid[y][x].rz = rz;
-
-        this.grid[y][x].fh = fh;
-        this.grid[y][x].fv = fv;
+        this.setShapeCell(x, y, character, color, bgColor, rx, ry, rz, fh, fv);
 
       }
 
@@ -1479,15 +1504,7 @@ Shapes.prototype = {
             if(x >= 0 && x < gridWidth && y >= 0 && y < gridHeight) {
 
               this.addCharacter(character, x, y, z, color, bgColor);
-              this.grid[y][x].bc = bgColor;
-              this.grid[y][x].fc = color;
-              this.grid[y][x].t = character;
-              this.grid[y][x].rx = rx;
-              this.grid[y][x].ry = ry;
-              this.grid[y][x].rz = rz;
-
-              this.grid[y][x].fh = fh;
-              this.grid[y][x].fv = fv;
+              this.setShapeCell(x, y, character, color, bgColor, rx, ry, rz, fh, fv);
 
             }
           }
@@ -1495,6 +1512,6 @@ Shapes.prototype = {
       }
     }
 
-    this.editor.graphic.redraw();
+    this.requestPreview();
   }
 }

@@ -966,6 +966,7 @@ GridView2d.prototype = {
       case 'line':
       case 'rect':
       case 'oval':
+        if(cell) { drawTools.shapes.setShapeTo(cell.x, cell.y, cell.z); }
         drawTools.shapes.endShape();
         if(blockModeEnabled) {
           this.editor.graphic.invalidateAllCells();
@@ -3834,7 +3835,8 @@ GridView2d.prototype = {
 
     var dirtyArtworkBounds = false;
     if(redrawLayers) {
-      if(typeof args != 'undefined'
+      if(!this.backBufferNeedsRedraw && !baseCanvasResized
+        && typeof args != 'undefined'
         && typeof args.dirtyCells != 'undefined'
         && !this.editor.tools.drawTools.pixelSelect.isActive()) {
         var selectedLayerObject = this.editor.layers.getSelectedLayerObject();

@@ -2728,15 +2728,6 @@ LayerGrid.prototype = {
       allCells = args.allCells;
     }
 
-    var shapes = false;
-    if(typeof args.shapes != 'undefined') {
-      shapes = args.shapes;
-    }
-
-    if(shapes) {
-      allCells = true;
-    }
-
     var fgOnly = false;
     if(typeof args.fgOnly != 'undefined') {
       fgOnly = args.fgOnly;
@@ -2793,6 +2784,12 @@ LayerGrid.prototype = {
       draw = args.draw;
     }
 
+    var frameIndex = typeof args.frame !== 'undefined' ? args.frame : this.currentFrame;
+    // Only the current frame's owned canvas can consume viewport invalidation.
+    // Animation/export scratch renders must neither borrow nor update it.
+    var useDirtyState = draw == 'grid' && canvas === this.canvas && frameIndex === this.currentFrame;
+    if(!useDirtyState) { allCells = true; }
+
     //the offset the grid is drawn at
     var offsetX = 0;
     var offsetY = 0;
@@ -2836,7 +2833,7 @@ LayerGrid.prototype = {
        || scale != this.lastDrawScale) {
          allCells = true;    
          
-      if(!bgOnly && draw !== 'prevgrid') {
+      if(!bgOnly && useDirtyState) {
         if(!cursor && !eraseCursor && !dragPaste && !eraseDragPaste && !typingCursor && !eraseTypingCursor) {
           // only save these if drawing the graphic
           this.lastDrawFromGridX = drawFromGridX;
@@ -2896,11 +2893,6 @@ LayerGrid.prototype = {
         offsetX: offsetX,
         offsetY: offsetY
       };
-    }
-
-    var frameIndex = this.currentFrame;
-    if(typeof args.frame !== 'undefined') {
-      frameIndex = args.frame;    
     }
 
     var hasTileFlip = this.getHasTileFlip();
@@ -3189,6 +3181,16 @@ LayerGrid.prototype = {
     }
 
 
+    if(draw == 'shapes' && typeof args.fromX != 'undefined') {
+      // The preview shares the viewport's pixel origin, but not its dirty state.
+      fromX = Math.max(drawFromGridX, args.fromX);
+      fromY = Math.max(drawFromGridY, args.fromY);
+      toX = Math.min(drawToGridX, args.toX);
+      toY = Math.min(drawToGridY, args.toY);
+      dstX = (fromX - drawFromGridX) * tileWidth;
+      dstY = (fromY - drawFromGridY) * tileHeight;
+    }
+
     // need to calculate this properly..
     var fromPixelX = 0;
     var fromPixelY = 0;
@@ -3254,13 +3256,20 @@ LayerGrid.prototype = {
     }
 
     if(!fgOnly && !typingCursor) {
-//      console.log('draw background!');
+      if(allCells) {
+        // Fully clear the touched raster pixels. A fractional clear leaves
+        // partial alpha behind (notably in Firefox), accumulating at document
+        // edges and in reused low-zoom shape buffers on successive redraws.
+        var clearX = Math.floor(fromPixelX), clearY = Math.floor(fromPixelY);
+        context.clearRect(clearX, clearY,
+          Math.ceil(fromPixelX + pixelWidth) - clearX,
+          Math.ceil(fromPixelY + pixelHeight) - clearY);
+      }
       if(bgColor != this.editor.colorPaletteManager.noColor) {
-        context.fillStyle= '#' + colorPalette.getHexString(bgColor);      
+        context.fillStyle= '#' + colorPalette.getHexString(bgColor);
         context.fillRect(fromPixelX, fromPixelY, pixelWidth, pixelHeight);
-      } else {
+      } else if(!allCells) {
         context.clearRect(fromPixelX, fromPixelY, pixelWidth, pixelHeight);
-
       }
     }
  
@@ -3327,18 +3336,15 @@ LayerGrid.prototype = {
                   }
               }
 
-              if(shapes) {
-                // need to draw shapes?
-                if(shapesGrid[y][x].t !== false) {
-                  charIndex = shapesGrid[y][x].t;
-                  
-                  flipH = shapesGrid[y][x].fh;
-                  flipV = shapesGrid[y][x].fv;
-                  rotZ = shapesGrid[y][x].rz;
-
-                }
-                if(shapesGrid[y][x].fc !== false) {
-                  colorIndex = shapesGrid[y][x].fc;
+              if(draw == 'shapes') {
+                var shapeCell = shapesGrid[y] && shapesGrid[y][x];
+                if(shapeCell && shapeCell.t !== false) {
+                  charIndex = shapeCell.t;
+                  flipH = shapeCell.fh;
+                  flipV = shapeCell.fv;
+                  rotZ = shapeCell.rz;
+                  colorIndex = shapeCell.fc;
+                  bgColorIndex = shapeCell.bc;
                 }
               }
 
@@ -3473,7 +3479,7 @@ LayerGrid.prototype = {
     // everything has been drawn if not drawing cursor/drag paste area..
     // so invalidate updated cell ranges
     
-    if(draw !== 'prevgrid' && !eraseCursor && !cursor && !eraseDragPaste && !dragPaste && !typingCursor && !eraseTypingCursor) {
+    if(useDirtyState && !eraseCursor && !cursor && !eraseDragPaste && !dragPaste && !typingCursor && !eraseTypingCursor) {
 
       if(!bgOnly) {
         this.updatedCellRanges.minX = this.doc.gridWidth;
@@ -3524,14 +3530,6 @@ LayerGrid.prototype = {
       draw = args.draw;
     }
 
-    var shapes = false;
-    if(typeof args.shapes != 'undefined') {
-      shapes = args.shapes;
-    }
-    if(shapes) {
-      allCells = true;
-    }
-
 
     var screenMode = this.getMode();
     if(screenMode == TextModeEditor.Mode.VECTOR) {
@@ -3544,6 +3542,11 @@ LayerGrid.prototype = {
       frameIndex = args.frame;    
 //      console.log('frame index = ' + frameIndex);  
     }
+
+    // Auxiliary canvases do not contain the main viewport's cached pixels,
+    // even when rendering the same frame. Keep their reads and writes isolated.
+    var useDirtyState = draw == 'grid' && canvas === this.canvas && frameIndex === this.currentFrame;
+    var useDrawnBounds = useDirtyState && !allCells;
 
 //    var hasTileOrientation = this.editor.graphic.hasTileOrientation();
 
@@ -3586,7 +3589,7 @@ LayerGrid.prototype = {
     // has this draw only updated cells visible in the view and there are still cells outside the view needing updating?
     var onlyViewBoundsUpdatedLayer = false;
 
-    if(allCells === false) {
+    if(allCells === false && useDirtyState) {
 
       // set it so only the cells in the view will be drawn
       fromX = this.viewMinX;
@@ -3644,7 +3647,7 @@ LayerGrid.prototype = {
       toY = args.toY;
     }
 
-    if(draw != 'prevgrid') {
+    if(useDirtyState) {
       // is the area we're going to draw smaller than the area that needs updating?
       onlyViewBoundsUpdatedLayer = fromX > this.updatedCellRanges.minX 
                                   || fromY > this.updatedCellRanges.minY 
@@ -3679,11 +3682,23 @@ LayerGrid.prototype = {
     }
 
 
+    // A partially drawn large document can retain offscreen dirtiness. Do not
+    // read/write the unchanged visible raster again just to present a preview.
+    if(useDrawnBounds
+      && fromX >= this.drawnBounds.fromX && toX <= this.drawnBounds.toX
+      && fromY >= this.drawnBounds.fromY && toY <= this.drawnBounds.toY) {
+      if(onlyViewBoundsUpdatedLayer) { this.editor.graphic.setOnlyViewBoundsDrawn(true); }
+      return;
+    }
+
     // workout the bounds in pixels.
-    var fromPixelX = fromX * tileWidth;
-    var fromPixelY = fromY * tileHeight;
-    var toPixelX = toX * tileWidth;
-    var toPixelY = toY * tileHeight;
+    // Shape previews use a bounded scratch canvas with a world-cell origin.
+    var canvasFromX = args.canvasFromX || 0;
+    var canvasFromY = args.canvasFromY || 0;
+    var fromPixelX = (fromX - canvasFromX) * tileWidth;
+    var fromPixelY = (fromY - canvasFromY) * tileHeight;
+    var toPixelX = (toX - canvasFromX) * tileWidth;
+    var toPixelY = (toY - canvasFromY) * tileHeight;
 
     var pixelWidth = toPixelX - fromPixelX;
     var pixelHeight = toPixelY - fromPixelY;
@@ -3761,7 +3776,7 @@ LayerGrid.prototype = {
     
 
     // is there an area that doesn't need redrawing??
-    if(draw != 'selection' && draw != 'prevgrid' && this.drawnBounds.toX > this.drawnBounds.fromX 
+    if(useDrawnBounds && this.drawnBounds.toX > this.drawnBounds.fromX
         && this.drawnBounds.toY > this.drawnBounds.fromY
 
     ) {
@@ -3897,12 +3912,11 @@ LayerGrid.prototype = {
     for(var y = fromY; y < toY; y++) {
       for(var x = fromX; x < toX; x++) {
 //    reverseY    var gridY = gridHeight - 1 - y;
-        if(x < this.drawnBounds.fromX 
-          || x >= this.drawnBounds.toX 
-          || y < this.drawnBounds.fromY 
-          || y >= this.drawnBounds.toY
-          || draw == 'selection'
-          || draw == 'prevgrid') {
+        if(!useDrawnBounds
+          || x < this.drawnBounds.fromX
+          || x >= this.drawnBounds.toX
+          || y < this.drawnBounds.fromY
+          || y >= this.drawnBounds.toY) {
 
           var drawCharacter = false;
           var flipH = false;
@@ -3979,20 +3993,15 @@ LayerGrid.prototype = {
               break;
             case 'shapes':
 
+              var shapeCell = shapesGrid[y] && shapesGrid[y][x];
+              if(!shapeCell || shapeCell.t === false) { continue; }
               drawCharacter = true;
-              charIndex = shapesGrid[y][x].t;
-
-              if(charIndex === false) {
-                drawCharacter = false;
-                charIndex = blankCharacter;              
-              }
-
-              colorIndex =  shapesGrid[y][x].fc;
-              bgColorIndex = shapesGrid[y][x].bc;
-
-              flipH = shapesGrid[y][x].fh;
-              flipV = shapesGrid[y][x].fv;
-              rotZ = shapesGrid[y][x].rz;
+              charIndex = shapeCell.t;
+              colorIndex = shapeCell.fc;
+              bgColorIndex = shapeCell.bc;
+              flipH = shapeCell.fh;
+              flipV = shapeCell.fv;
+              rotZ = shapeCell.rz;
               
 
               if(colorIndex === false) {
@@ -4181,8 +4190,8 @@ LayerGrid.prototype = {
                   var srcPos = srcX + srcY * tileWidth;
                   var colorIndex = tileData[srcPos];
 
-                  var dstPos = ( ((x * tileWidth) - fromPixelX) + i 
-                    + (  ((y * tileHeight) - fromPixelY) + j) * imageDataWidth) * 4;
+                  var dstPos = ((x - fromX) * tileWidth + i
+                    + ((y - fromY) * tileHeight + j) * imageDataWidth) * 4;
 
 
                   if(screenMode === TextModeEditor.Mode.TEXTMODE 
@@ -4350,8 +4359,8 @@ LayerGrid.prototype = {
 
     
 
-    if(draw == 'grid') {
-      // not drawing selection or shapes
+    if(useDirtyState) {
+      // Only the owned current-frame raster satisfies viewport invalidation.
       if(!onlyViewBoundsUpdatedLayer) {
 
         // everything has been drawn..

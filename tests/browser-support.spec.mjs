@@ -179,6 +179,352 @@ for (const vector of [false, true]) {
   });
 }
 
+for (const vector of [false, true]) {
+  test(`2D ${vector ? "vector" : "bitmap"} shape previews stay bounded and match a fresh full preview`, async ({ page }, testInfo) => {
+    test.skip(!isDesktop2DRendererProject(testInfo));
+    await open2DProject(page, testInfo, { vector });
+    const errors = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    const results = await page.evaluate(async (vector) => {
+      const editor = g_app.textModeEditor;
+      const graphic = editor.graphic;
+      const view = editor.gridView2d;
+      const layer = editor.layers.getSelectedLayerObject();
+      const tools = editor.tools.drawTools;
+      const shapes = tools.shapes;
+      const tileSet = layer.getTileSet();
+      if (vector) {
+        tileSet.unitsPerEm = tileSet.ascent = 8;
+        tileSet.vectorData = Array.from({ length: 256 }, (_, i) => ({
+          path: i === 65 ? "M1 1H7L4 7Z" : i === 66 ? "M1 1H7V7H1Z" : "", path2d: null,
+        }));
+        tileSet.modified();
+      }
+      editor.setGridVisible(false);
+      view.setScale(2.25, false);
+      layer.setBackgroundColor(-1);
+      editor.currentTile.setCharacters([[vector ? 65 : 1]]);
+      editor.currentTile.setColor(1);
+      editor.currentTile.setBGColor(-1);
+      Object.assign(tools, { drawCharacter: true, drawColor: true, drawBgColor: true });
+      const pixels = () => view.backBufferContext.getImageData(0, 0, view.width, view.height).data;
+      const equal = (a, b) => a.every((value, i) => value === b[i]);
+      const originalPreview = shapes.drawPreview;
+      const fullPreviewEqual = () => {
+        const bounded = pixels();
+        // Independent full-visible-region control. It uses the same cell
+        // renderer without the optimization's old/new dirty clip or crop.
+        shapes.drawPreview = function(layer, args) {
+          const bounds = this.bounds;
+          this.bounds = { minX: 0, minY: 0, maxX: this.width, maxY: this.height };
+          try { return originalPreview.call(this, layer, args); }
+          finally { this.bounds = bounds; }
+        };
+        try { graphic.redraw({ allCells: true }); }
+        finally { shapes.drawPreview = originalPreview; }
+        return equal(bounded, pixels());
+      };
+      const results = [];
+      for (const [width, height] of [[40, 25], [320, 200]]) {
+        graphic.setGridDimensions({ width, height });
+        view.setCameraPosition(0, 0);
+        const x = Math.floor(width / 2), y = Math.floor(height / 2);
+        for (let cy = y - 6; cy <= y + 7; cy++) {
+          for (let cx = x - 6; cx <= x + 7; cx++) {
+            layer.setCell({ x: cx, y: cy, t: vector ? 66 : 2, fc: 2, bc: -1 });
+          }
+        }
+        tools.tool = "rect";
+        // Warm only the viewport, leaving offscreen artwork dirty on purpose.
+        graphic.invalidateAllCells();
+        graphic.redraw();
+        const baseline = pixels();
+        let artworkPixels = 0, artworkGlyphs = 0, shapePixels = 0, shapeGlyphs = 0, presentations = 0;
+        let active = null;
+        let previewStatePreserved = true;
+        const rendererState = () => JSON.stringify([
+          layer.updatedCellRanges, layer.drawnBounds, layer.lastDrawScale,
+          layer.lastDrawFromGridX, layer.lastDrawFromGridY, layer.lastDrawToGridX, layer.lastDrawToGridY,
+        ]);
+        const proto = CanvasRenderingContext2D.prototype;
+        const getImageData = proto.getImageData, fill = proto.fill;
+        const method = vector ? "drawVector" : "draw", original = layer[method];
+        layer[method] = function(args) {
+          const previous = active;
+          active = args.draw === "shapes" ? "shapes" : "artwork";
+          try { return original.call(this, args); } finally { active = previous; }
+        };
+        proto.getImageData = function(x, y, w, h, ...rest) {
+          if (active === "artwork") artworkPixels += w * h;
+          if (active === "shapes") shapePixels += w * h;
+          return getImageData.call(this, x, y, w, h, ...rest);
+        };
+        proto.fill = function(...args) {
+          if (active === "artwork") artworkGlyphs++;
+          if (active === "shapes") shapeGlyphs++;
+          return fill.apply(this, args);
+        };
+        shapes.drawPreview = function(...args) {
+          presentations++;
+          const before = rendererState();
+          const preview = originalPreview.apply(this, args);
+          previewStatePreserved &&= before === rendererState();
+          return preview;
+        };
+        try {
+          shapes.startShape("rect", x, y, 0);
+          for (let i = 0; i < 8; i++) shapes.setShapeTo(x + 2 + i % 2, y + 2, 0);
+          const synchronous = presentations;
+          await new Promise((resolve) => requestAnimationFrame(resolve));
+          results.push({ width, synchronous, presentations, artworkPixels, artworkGlyphs, shapePixels, shapeGlyphs,
+            previewStatePreserved, visible: !equal(baseline, pixels()),
+            scratch: shapes.previewCanvas.width * shapes.previewCanvas.height,
+            maxScratch: (view.width + tileSet.getTileWidth() * view.displayScale * 2)
+              * (view.height + tileSet.getTileHeight() * view.displayScale * 2) });
+        } finally {
+          layer[method] = original;
+          proto.getImageData = getImageData;
+          proto.fill = fill;
+          shapes.drawPreview = originalPreview;
+        }
+        const checks = [];
+        checks.push(fullPreviewEqual());
+        for (const [dx, dy] of [[6, 5], [1, 1], [-3, -2], [0, 0]]) {
+          shapes.setShapeTo(x + dx, y + dy, 0);
+          shapes.flushPreview();
+          checks.push(fullPreviewEqual());
+        }
+        // Full controls may populate offscreen caches; visible artwork must
+        // still match the shape-free baseline after cancel.
+        shapes.cancelShape();
+        checks.push(equal(baseline, pixels()));
+        for (const tool of ["line", "oval"]) {
+          tools.tool = tool;
+          shapes.startShape(tool, x, y, 0, "xy", true);
+          shapes.setShapeTo(x + 3, y + 2, 0);
+          shapes.flushPreview();
+          checks.push(fullPreviewEqual());
+          shapes.cancelShape();
+          checks.push(equal(baseline, pixels()));
+        }
+        // Panning must reveal offscreen cells, including an endpoint still
+        // pending when the viewport changes. Fractional scales keep crop phase.
+        tools.tool = "rect";
+        shapes.startShape("rect", x, y, 0);
+        shapes.setShapeTo(x + 3, y + 2, 0);
+        view.setScale(0.1, false);
+        view.setCameraPosition(13, 15);
+        shapes.flushPreview();
+        checks.push(fullPreviewEqual());
+        shapes.cancelShape();
+        view.setScale(2.25, false);
+        view.setCameraPosition(0, 0);
+        graphic.redraw({ allCells: true });
+        if (width === 320) {
+          shapes.startShape("rect", x + 80, y, 0);
+          shapes.setShapeTo(x + 82, y + 2, 0);
+          shapes.flushPreview();
+          checks.push(equal(baseline, pixels()));
+          view.setCameraPosition(80 * tileSet.getTileWidth(), 0);
+          shapes.flushPreview();
+          checks.push(fullPreviewEqual());
+          shapes.cancelShape();
+          view.setCameraPosition(0, 0);
+          graphic.redraw({ allCells: true });
+        }
+        // Release before RAF must commit the latest endpoint and cancel work.
+        tools.tool = "rect";
+        Object.assign(tools, { mirrorH: true, mirrorV: true, mirrorHX: x, mirrorVY: y });
+        shapes.startShape("rect", x, y, 0);
+        shapes.setShapeTo(x + 2, y + 2, 0);
+        shapes.endShape();
+        checks.push(shapes.previewRequest === null);
+        checks.push(layer.getCell({ x: x + 2, y: y + 2 }).t === (vector ? 65 : 1));
+        const committed = pixels();
+        graphic.redraw({ allCells: true });
+        checks.push(equal(committed, pixels()));
+        editor.history.undo();
+        checks.push(equal(baseline, pixels()));
+        editor.history.redo();
+        checks.push(equal(committed, pixels()));
+        Object.assign(tools, { mirrorH: false, mirrorV: false });
+        results.at(-1).checks = checks;
+      }
+      return results;
+    }, vector);
+    expect(errors).toEqual([]);
+    for (const result of results) {
+      expect(result.visible, JSON.stringify(result)).toBe(true);
+      expect(result.previewStatePreserved, JSON.stringify(result)).toBe(true);
+      expect(result.synchronous, JSON.stringify(result)).toBe(0);
+      expect(result.presentations, JSON.stringify(result)).toBe(1);
+      expect(result.artworkPixels, JSON.stringify(result)).toBe(0);
+      expect(result.artworkGlyphs, JSON.stringify(result)).toBe(0);
+      expect(result.checks, JSON.stringify(result)).not.toContain(false);
+      expect(result.shapeGlyphs, JSON.stringify(result)).toBeLessThan(100);
+      expect(result.scratch, JSON.stringify(result)).toBeLessThan(vector ? result.maxScratch : 100000);
+    }
+    expect(results[1].shapePixels).toBe(results[0].shapePixels);
+    expect(results[1].shapeGlyphs).toBe(results[0].shapeGlyphs);
+    if (!vector) expect(results[1].scratch).toBe(results[0].scratch);
+  });
+}
+
+test("2D shape previews retain offscreen artwork dirtiness across animation-preview renders", async ({ page }, testInfo) => {
+  test.skip(!isDesktop2DRendererProject(testInfo));
+  await open2DProject(page, testInfo);
+  const errors = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  const result = await page.evaluate(() => {
+    const editor = g_app.textModeEditor, graphic = editor.graphic, view = editor.gridView2d;
+    const layer = editor.layers.getSelectedLayerObject(), shapes = editor.tools.drawTools.shapes;
+    const preview = editor.animationPreview;
+    editor.setGridVisible(false);
+    graphic.setGridDimensions({ width: 160, height: 100 });
+    graphic.duplicateFrame(0);
+    graphic.setCurrentFrame(0);
+    view.setScale(2.25, false);
+    view.setCameraPosition(0, 0);
+    editor.currentTile.setCharacters([[2]]);
+    editor.currentTile.setColor(2);
+    editor.tools.drawTools.tool = "rect";
+    // Set the brush before changing cells: its UI can request a full redraw.
+    for (let y = 0; y < 100; y++) for (let x = 0; x < 160; x++) {
+      for (const frame of [0, 1]) layer.setCell({ frame, x, y, t: 1, fc: frame + 1, bc: frame + 1, update: false });
+    }
+    graphic.invalidateAllCells();
+    graphic.redraw(); // Populate only the viewport; the offscreen raster is stale.
+    shapes.startShape("rect", 80, 50, 0);
+    shapes.setShapeTo(83, 52, 0);
+    shapes.flushPreview();
+    const sample = (canvas, x, y) => Array.from(canvas.getContext("2d").getImageData(x * 8, y * 8, 8, 8).data);
+    const equal = (a, b) => a.every((value, i) => value === b[i]);
+    const state = () => JSON.stringify([
+      layer.updatedCellRanges, layer.drawnBounds, graphic.getOnlyViewBoundsDrawn(),
+    ]);
+    const before = state(), cold = sample(layer.canvas, 124, 46);
+    const dirty = { ...layer.updatedCellRanges };
+    const auxiliarySamples = [];
+    let statePreserved = true;
+    const wasVisible = preview.visible;
+    try {
+      preview.visible = true;
+      if (!preview.canvas) preview.canvas = document.createElement("canvas");
+      preview.context = preview.canvas.getContext("2d");
+      for (const frame of [0, 1]) {
+        preview.currentFrame = frame;
+        preview.draw();
+        statePreserved &&= state() === before;
+        auxiliarySamples.push(sample(preview.screenCanvas, 70, 45));
+      }
+    } finally { preview.visible = wasVisible; }
+    const mainUnchanged = equal(cold, sample(layer.canvas, 124, 46));
+    view.setCameraPosition(40 * 8, 0);
+    shapes.setShapeTo(121, 52, 0);
+    shapes.flushPreview();
+    const revealed = sample(layer.canvas, 124, 46);
+    const pixels = () => view.backBufferContext.getImageData(0, 0, view.width, view.height).data;
+    const actual = pixels();
+    graphic.invalidateAllCells();
+    graphic.redraw({ allCells: true });
+    const freshEqual = equal(actual, pixels());
+    shapes.cancelShape();
+    return { statePreserved, mainUnchanged, freshEqual,
+      offscreenWasDirty: dirty.minX === 0 && dirty.maxX === 160,
+      offscreenWasRefreshed: !equal(cold, revealed),
+      auxiliaryFramesDiffer: !equal(auxiliarySamples[0], auxiliarySamples[1]),
+      frameUnchanged: graphic.getCurrentFrame() === 0 };
+  });
+  expect(errors).toEqual([]);
+  for (const [name, value] of Object.entries(result)) expect(value, name).toBe(true);
+});
+
+test("2D vector shape composites have no fractional-edge seams with odd tiles and layer blending", async ({ page }, testInfo) => {
+  test.skip(!isDesktop2DRendererProject(testInfo));
+  await open2DProject(page, testInfo, { vector: true });
+  const errors = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  const results = await page.evaluate(() => {
+    const editor = g_app.textModeEditor, graphic = editor.graphic, view = editor.gridView2d;
+    const layer = editor.layers.getSelectedLayerObject(), tileSet = layer.getTileSet();
+    const shapes = editor.tools.drawTools.shapes, meta = editor.layers.getSelectedLayer();
+    tileSet.unitsPerEm = tileSet.ascent = 8;
+    tileSet.vectorData = Array.from({ length: 256 }, (_, i) => ({
+      path: i === 65 ? "M1 1H7L4 7Z" : i === 66 ? "M0 0H8V8H0Z" : "", path2d: null,
+    }));
+    tileSet.modified();
+    editor.setGridVisible(false);
+    editor.currentTile.setCharacters([[65]]);
+    editor.currentTile.setColor(1);
+    editor.currentTile.setBGColor(-1);
+    editor.tools.drawTools.tool = "rect";
+    layer.setBackgroundColor(-1);
+    for (let y = 0; y < 25; y++) for (let x = 0; x < 40; x++) {
+      layer.setCell({ x, y, t: 66, fc: 2, bc: -1 });
+    }
+    const pixels = () => view.backBufferContext.getImageData(0, 0, view.width, view.height).data;
+    const maxDifference = (a, b) => {
+      let max = 0;
+      for (let i = 0; i < a.length; i++) max = Math.max(max, Math.abs(a[i] - b[i]));
+      return max;
+    };
+    const original = shapes.drawPreview;
+    const compareFullPreview = () => {
+      const bounded = pixels();
+      shapes.drawPreview = function(layer, args) {
+        const bounds = this.bounds;
+        this.bounds = { minX: 0, minY: 0, maxX: this.width, maxY: this.height };
+        try { return original.call(this, layer, args); }
+        finally { this.bounds = bounds; }
+      };
+      try { graphic.redraw({ allCells: true }); }
+      finally { shapes.drawPreview = original; }
+      return maxDifference(bounded, pixels());
+    };
+    const results = [];
+    for (const [tileSize, zoom, pan] of [[9, 3.5, 13], [9, 2.25, 0], [9, 0.1, 13], [8, 2.25, 0]]) {
+      for (const opacity of [1, 0.5]) for (const blend of ["source-over", "multiply"]) {
+        tileSet.setTileDimensions({ width: tileSize, height: tileSize });
+        graphic.setCellDimensionsFromTiles();
+        Object.assign(meta, { opacity, compositeOperation: blend });
+        view.setScale(zoom, false);
+        view.setCameraPosition(pan, pan);
+        graphic.invalidateAllCells();
+        graphic.redraw({ allCells: true });
+        const baseline = pixels();
+        const differences = [];
+        shapes.startShape("rect", 20, 12, 0);
+        for (const [x, y] of [[23, 14], [21, 13], [18, 11], [23, 14]]) {
+          shapes.setShapeTo(x, y, 0);
+          shapes.flushPreview();
+          differences.push(compareFullPreview());
+        }
+        shapes.cancelShape();
+        differences.push(maxDifference(baseline, pixels()));
+        // At low zoom the document edge is visible and its extent is fractional.
+        if (zoom === 0.1) {
+          shapes.startShape("rect", 38, 23, 0);
+          shapes.setShapeTo(39, 24, 0);
+          shapes.flushPreview();
+          differences.push(compareFullPreview());
+          shapes.cancelShape();
+          differences.push(maxDifference(baseline, pixels()));
+        }
+        results.push({ tileSize, zoom, pan, opacity, blend, differences });
+      }
+    }
+    return results;
+  });
+  expect(errors).toEqual([]);
+  for (const result of results) {
+    // Translucent pixels (layer opacity or low-zoom antialiased document edges)
+    // can differ by one 8-bit blend-rounding level across source textures.
+    // Interior coverage at opaque magnification is exact; seams were 76 levels.
+    const tolerance = result.opacity < 1 || result.zoom < 1 ? 1 : 0;
+    expect(Math.max(...result.differences), JSON.stringify(result)).toBeLessThanOrEqual(tolerance);
+  }
+});
+
 test("first-party production startup stays within budget", async ({ page }, testInfo) => {
   const localFailures = observeLocalFailures(page, testInfo.project.use.baseURL);
 

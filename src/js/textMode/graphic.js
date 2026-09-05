@@ -1170,16 +1170,12 @@ Graphic.prototype = {
               drawToY = layerHeight;
             }
 
-            if(shapes) {
-              shapes = this.editor.tools.drawTools.shapes.getCurrentShape() !== false;
-            }
-            
             var drawArgs = {
               canvas: layerCanvas,  
               frame: frame, 
               drawBackground: drawLayerBackground,
               allCells: allCells,
-              shapes: shapes,
+              shapes: false,
               cursor: false,
               scale: scale,
               drawFromX: drawFromX,
@@ -1195,7 +1191,7 @@ Graphic.prototype = {
             drawArgs.cursor = false;
             drawArgs.dragPaste = false;
             drawArgs.eraseDragPaste = false;
-            drawArgs.shapes = shapes;
+            drawArgs.shapes = false;
             drawArgs.typingCursor = false;
             drawArgs.eraseTypingCursor = false;
 
@@ -1205,7 +1201,7 @@ Graphic.prototype = {
               frame: frame, 
               drawBackground: drawLayerBackground,
               allCells: allCells,
-              shapes: shapes,
+              shapes: false,
               cursor: false,
               scale: scale,
               drawFromX: drawFromX,
@@ -1276,7 +1272,6 @@ Graphic.prototype = {
                     frame: frame, 
                     allCells: allCells,
                     drawBackground: drawLayerBackground,
-                    shapes: shapes,
             });
           }
         }                  
@@ -1392,6 +1387,14 @@ Graphic.prototype = {
         }
 
 
+        var shapePreview = false;
+        if(!graphicOnly && shapes && layer.type == 'grid' && layerObject.isCurrentLayer()) {
+          shapePreview = this.editor.tools.drawTools.shapes.drawPreview(layerObject, {
+            srcX: srcX, srcY: srcY, srcWidth: srcWidth, srcHeight: srcHeight,
+            scale: scale, frame: frame, drawBackground: drawLayerBackground
+          });
+        }
+
         if(layer.type == 'grid' || layer.type == 'image') {
           if(layerCanvas) {
 
@@ -1410,9 +1413,35 @@ Graphic.prototype = {
                 drawHeight = (originY + layerHeight * scale) - drawLayerOffsetY;
               }
 
+              if(shapePreview) {
+                // Partition destination pixels, not fractional cell edges:
+                // antialiasing a hole and then blitting into it leaves seams.
+                var previewLeft = Math.floor(drawLayerOffsetX + shapePreview.sourceX);
+                var previewTop = Math.floor(drawLayerOffsetY + shapePreview.sourceY);
+                var previewRight = Math.ceil(drawLayerOffsetX + shapePreview.sourceX + shapePreview.width);
+                var previewBottom = Math.ceil(drawLayerOffsetY + shapePreview.sourceY + shapePreview.height);
+                context.save();
+                context.beginPath();
+                context.rect(0, 0, canvas.width, canvas.height);
+                context.rect(previewLeft, previewTop, previewRight - previewLeft, previewBottom - previewTop);
+                context.clip('evenodd');
+              }
               context.drawImage(layerCanvas,
                                  0, 0, drawWidth, drawHeight,
                                  drawLayerOffsetX, drawLayerOffsetY, drawWidth, drawHeight);
+              if(shapePreview) {
+                context.restore();
+                context.save();
+                context.beginPath();
+                context.rect(previewLeft, previewTop, previewRight - previewLeft, previewBottom - previewTop);
+                context.clip();
+                // Identical source origin, destination phase and document-edge
+                // crop for both rasters. Only the integer preview clip differs.
+                context.drawImage(shapePreview.canvas,
+                  0, 0, drawWidth, drawHeight,
+                  drawLayerOffsetX, drawLayerOffsetY, drawWidth, drawHeight);
+                context.restore();
+              }
               /*
               context.drawImage(layerCanvas, 
                 drawLayerOffsetX, drawLayerOffsetY,
@@ -1441,6 +1470,13 @@ Graphic.prototype = {
           context.drawImage(layer.canvas, 0, 0);
         }
 
+
+        if(shapePreview && !shapePreview.vector) {
+          drawImage(shapePreview.canvas, shapePreview.sourceX, shapePreview.sourceY,
+            shapePreview.width, shapePreview.height,
+            originX + shapePreview.x * scale, originY + shapePreview.y * scale,
+            shapePreview.width * scale, shapePreview.height * scale);
+        }
 
         // draw the borders if necessary, dont draw border for sprites
         var borderVisible = this.editor.grid.border.visible && this.getType() != 'sprite';    
@@ -1507,36 +1543,6 @@ Graphic.prototype = {
         // draw shapes if in shapes mode and grid correct size
 
         var drawTools = this.editor.tools.drawTools;
-        var drawTool = drawTools.tool;
-        if(drawTool === 'rect' || drawTool === 'line' || drawTool === 'oval' ) {
-          //          var shapesGrid = this.editor.tools.drawTools.shapes.getGrid();
-
-
-          // creates a shapes canvas the same size as the layer canvas and then draws the shapes into it
-          // dont want to do this if vector??
-
-          if(drawTools.shapes.width == layerObject.getGridWidth()
-              && drawTools.shapes.height == layerObject.getGridHeight()) {
-
-            if(this.shapesCanvas === null) {
-              this.shapesCanvas = document.createElement('canvas');
-            }
-
-            var layerCanvas = layerObject.getCanvas();
-
-            if(this.shapesCanvas.width != layerCanvas.width || this.shapesCanvas.height != layerCanvas.height) {
-              this.shapesCanvas.width = layerCanvas.width;
-              this.shapesCanvas.height = layerCanvas.height;
-            }
-
-            layerObject.draw({ canvas: this.shapesCanvas,  allCells: true, draw: 'shapes' });
-
-            drawImage(this.shapesCanvas,
-              0, 0, this.shapesCanvas.width, this.shapesCanvas.height,
-              originX, originY, this.shapesCanvas.width * scale, this.shapesCanvas.height * scale
-              );
-          }
-        }
 
         if(layer.type == 'grid') {
 

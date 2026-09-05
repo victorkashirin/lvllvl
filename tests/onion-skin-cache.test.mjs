@@ -85,6 +85,55 @@ function fixture({ vector = false } = {}) {
 }
 
 for (const vector of [false, true]) {
+  test(`${vector ? "vector" : "bitmap"}: temporary renders neither borrow nor consume viewport dirty state`, () => {
+    for (const frame of [0, 1]) for (const pending of [false, true]) {
+      const f = fixture({ vector });
+      const main = f.layer.getCanvas();
+      Object.assign(f.layer.drawnBounds, { fromX: 0, fromY: 0, toX: 2, toY: 2 });
+      Object.assign(f.layer.updatedCellRanges, pending
+        ? { minX: 0, minY: 0, maxX: 2, maxY: 2 }
+        : { minX: 2, minY: 2, maxX: 0, maxY: 0 });
+      f.layer.lastDrawScale = 3.5;
+      f.graphic.setOnlyViewBoundsDrawn(true);
+      const state = () => JSON.stringify([
+        f.layer.updatedCellRanges, f.layer.drawnBounds, f.graphic.getOnlyViewBoundsDrawn(),
+        f.layer.lastDrawScale, f.layer.lastDrawFromGridX, f.layer.lastDrawFromGridY,
+        f.layer.lastDrawToGridX, f.layer.lastDrawToGridY,
+      ]);
+      const before = state();
+      let glyphs = 0;
+      f.tileSet.getGlyphPath = () => { glyphs++; return {}; };
+      const args = { canvas: f.makeCanvas(), frame, scale: 1,
+        drawFromX: 0, drawFromY: 0, drawToX: 4, drawToY: 4 };
+      f.layer.draw(args);
+      assert.equal(state(), before, `frame=${frame}, pending=${pending}`);
+      if (vector) assert.equal(glyphs, 4, "scratch drawing must ignore empty main dirty ranges");
+      else {
+        assert.equal(f.context.pixels.length, 4 * 4 * 4, "scratch drawing must ignore main view bounds");
+        assert.equal(f.context.pixels[3], 255, "scratch drawing must ignore main drawn bounds");
+        assert.equal(f.context.pixels.at(-1), 255);
+        f.layer.draw({ ...args, fromX: 1, fromY: 1, toX: 2, toY: 2 });
+        assert.equal(f.context.pixels.length, 2 * 2 * 4, "explicit scratch bounds still apply");
+        assert.equal(state(), before);
+      }
+      // The current frame's owned raster still satisfies pending invalidation.
+      f.layer.draw({ ...args, canvas: main, frame: 1, allCells: true });
+      assert.equal(f.layer.updatedCellRanges.minX, 2);
+      assert.equal(f.layer.updatedCellRanges.maxX, 0);
+      if (vector) assert.equal(f.layer.lastDrawScale, 1);
+    }
+  });
+
+  test(`${vector ? "vector" : "bitmap"}: failed temporary renders leave viewport state intact`, () => {
+    const f = fixture({ vector });
+    const before = JSON.stringify([f.layer.updatedCellRanges, f.layer.drawnBounds, f.layer.lastDrawScale]);
+    const fail = () => { throw new Error("raster failed"); };
+    f.context.getImageData = fail;
+    f.tileSet.getGlyphPath = fail;
+    assert.throws(() => f.layer.draw({ ...f.args, draw: "grid", canvas: f.makeCanvas() }), /raster failed/);
+    assert.equal(JSON.stringify([f.layer.updatedCellRanges, f.layer.drawnBounds, f.layer.lastDrawScale]), before);
+  });
+
   test(`${vector ? "vector" : "bitmap"}: current-frame edits reuse the cache through Graphic.drawFrame`, () => {
     const f = fixture({ vector });
     const args = { canvas: f.makeCanvas(), context: f.context, scale: 1 };
@@ -101,6 +150,17 @@ for (const vector of [false, true]) {
     assert.equal(f.calls.length, 2);
   });
 }
+
+test("full vector redraws clear complete touched pixels at fractional document edges", () => {
+  const f = fixture({ vector: true });
+  const clears = [];
+  f.context.clearRect = (...args) => clears.push(args);
+  for (const background of [-1, 1]) {
+    f.layer.frames[0].bgColor = background;
+    f.layer.drawVector({ ...f.args, draw: "grid", scale: 0.3, drawBackground: true, allCells: true });
+    assert.deepEqual(clears.at(-1), [0, 0, 2, 2], "1.2 × 1.2 raster coverage must clear 2 × 2 whole pixels");
+  }
+});
 
 test("frame identity, content, shared dependencies, dimensions and render options invalidate", () => {
   const f = fixture();

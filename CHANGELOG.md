@@ -4,6 +4,17 @@
 
 ### Fixed
 
+- Keep shape previews out of cached artwork, store only touched cells, and bound
+  preview rasterization and dirty presentation to shape/viewport intersections.
+  Batch endpoint presentation once per animation frame while preserving final
+  release cells, mirroring, cancel, and undo/redo. Preserve vector pixel alignment
+  at fractional zoom and avoid unchanged bitmap readbacks with offscreen dirtiness.
+- Keep animation/export scratch renders from consuming or reusing the main
+  viewport's dirty state, so panning during shape drawing reveals current artwork.
+- Remove fractional vector preview seams with pixel-aligned composite clips and
+  matching blit origins; fully clear touched raster pixels to prevent low-zoom
+  alpha accumulation in reused vector buffers, including Firefox.
+- Honor disabled character/color channels in single-cell shape previews.
 - Cache onion-skin rasters per layer so current-frame cell edits no longer redraw
   the unchanged previous frame. Refresh on frame/content, shared tile animation,
   palette/block, background, dimension, and render-option changes; key vector

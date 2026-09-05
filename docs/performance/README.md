@@ -155,6 +155,35 @@ previous-frame dependencies must invalidate it.
 
 ### R2 — P1: a small shape preview does full-document work twice
 
+**Status: fixed.** Shape cells now use sparse rows and a touched-cell list rather
+than resetting/scanning the document. The main viewport keeps artwork unchanged
+and renders previews separately: bitmap scratch storage is cropped to visible
+shape bounds; vector storage is viewport-bounded to preserve the artwork's pixel
+origin, with rasterization limited to shape bounds plus glyph/sampling padding.
+Presentation clips to the union of old/new bounds. Endpoint cells remain
+synchronous; presentation is RAF-batched, with explicit release/cancel flushes
+and the pointer-release endpoint included in the commit. Preview-only updates
+also avoid thumbnail generation. Temporary bitmap/vector renders neither borrow
+nor consume the main canvas's dirty state, so animation-preview draws cannot hide
+pending offscreen updates. Vector compositing partitions whole destination pixels
+with identical blit origins, avoiding fractional-edge seams; full vector raster
+redraws clear complete touched pixels to prevent low-zoom alpha accumulation.
+Unchanged visible bitmap regions skip readbacks even when offscreen cells remain
+dirty. Release retains a conservative full bitmap
+flush when offscreen dirtiness would otherwise leave the final thumbnail stale;
+removing that once-per-commit work belongs with R3's thumbnail scheduling.
+
+Source tests cover sparse work, batching, final commits, cancellation, mirrored
+cells, disabled drawing channels, and visible bounds. Chromium/Firefox tests
+compare bounded rendering against a full-visible-preview control for bitmap and
+vector layers, including transparent backgrounds, shrink/move/cancel, low and
+fractional zoom, odd-sized vector tiles, opacity/blending, pan, and undo/redo.
+Interleaved animation-preview and shape draws preserve offscreen invalidation.
+Source tests also cover same/other-frame scratch renders and failed renders.
+Operation counts verify no artwork
+rasterization during warm preview moves and bounded shape work as documents grow.
+The observations below describe the original bug, not new timing measurements.
+
 **Location:** [shapes.js:63–80](../../src/js/textMode/tools/shapes.js#L63-L80),
 [336–386](../../src/js/textMode/tools/shapes.js#L336-L386);
 [layerGrid.js:3445–3451](../../src/js/textMode/layers/layerGrid.js#L3445-L3451);
