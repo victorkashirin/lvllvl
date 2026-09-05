@@ -4,6 +4,9 @@
 
 ### Fixed
 
+- Run Chromium, Firefox, and WebKit checks as independent GitHub Actions jobs,
+  keeping one Playwright worker per runner while removing the serial browser
+  bottleneck from Pages deployments.
 - Keep image import available through its CPU conversion path when the browser
   cannot allocate the importer's optional WebGL effects renderer.
 - Isolate shape-preview rendering measurements from independently scheduled

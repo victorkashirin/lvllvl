@@ -40,12 +40,13 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
-      - name: Install supported browser engines
-        run: npx playwright install --with-deps chromium firefox webkit
-      - name: Build and test
+      - name: Build and test source
         env:
           GITHUB_EVENT_BEFORE: ${{ github.event.before }}
-        run: npm test
+        run: |-
+          npm run build
+          npm run test:source
+          npm run test:build
       - name: Audit production dependencies
         run: npm run audit:dependencies
       - name: Setup Pages
@@ -57,9 +58,39 @@ jobs:
         with:
           path: './dist/.'
 
+  browser-tests:
+    name: Browser tests (${{ matrix.engine }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - engine: chromium
+            projects: --project=chromium-desktop --project=chromium-handheld
+          - engine: firefox
+            projects: --project=firefox-desktop
+          - engine: webkit
+            projects: --project=webkit-desktop --project=webkit-handheld --project=webkit-tablet
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Install ${{ matrix.engine }}
+        run: npx playwright install --with-deps ${{ matrix.engine }}
+      - name: Build
+        run: npm run build
+      - name: Test ${{ matrix.engine }}
+        run: npx playwright test ${{ matrix.projects }}
+
   deploy:
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
-    needs: [dependency-audit, verify]
+    needs: [dependency-audit, verify, browser-tests]
     # Serialize only deployments; pull-request and scheduled audits may run concurrently.
     concurrency:
       group: "pages"
