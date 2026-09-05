@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Documentation
+
+- Rewrite the README around the fork's visitor-facing improvements and move build,
+  architecture, browser-support, and dependency-maintenance details into a linked
+  development guide.
+
 ### Added
 
 - Add an opt-in production-build rendering workflow benchmark with isolated

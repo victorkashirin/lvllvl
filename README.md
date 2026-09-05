@@ -1,62 +1,54 @@
 # lvllvl
 
-The static site is built with Node.js 20 or newer. PHP is not required.
+lvllvl is a browser-based editor for tile-based graphics, text-mode art, and
+retro-computer formats. It provides tools for drawing tile maps, editing character
+sets and colour palettes, building frame animations, importing images, and
+exporting artwork or data for further use.
 
-```sh
-npm ci
-npm run dev
-```
+This community-maintained fork continues the
+[original lvllvl project](https://github.com/jaammees/lvllvl) with a focus on
+modernizing the application, fixing long-standing problems, and adding practical
+features without disrupting established creative workflows.
 
-The development server performs an initial build, serves `dist/` at
-`http://127.0.0.1:5173/`, and rebuilds when files under `src/` change.
+## What this fork improves
 
-For a production build and verification:
+- **SVG export:** export text-mode, C64 standard, C64 ECM, and vector artwork as
+  scalable geometry, with correct layer dimensions and transparent backgrounds.
+- **Faster, smoother editing:** focused redraws, cached onion-skin frames, batched
+  thumbnails, and lighter shape previews reduce unnecessary work while drawing,
+  selecting tiles, panning, and animating. The large image importer is loaded only
+  when it is needed, improving initial startup.
+- **Crisp rendering at more zoom levels:** artwork, cursors, shape previews, and
+  C64 tiles stay aligned at fractional zoom and across different display pixel
+  ratios, with specific stability fixes for Firefox.
+- **Tile palettes that fit the workspace:** the bottom and side palettes have
+  independent Fit-to-width modes, precise percentage controls, fractional scales,
+  and stable spacing for narrow panels, large tile sets, and non-square tiles.
+- **More reliable browser projects:** saves and autosaves preserve in-memory edits
+  when storage fails, publish versioned project data safely, and recover
+  interrupted save, catalogue, and cleanup operations.
+- **More dependable image importing:** retryable loading, safe cancellation,
+  coordinated dialogs, and restored animation playback make import failures less
+  disruptive.
+- **A more flexible interface:** the bottom animation panel can be closed and
+  restored from the Interface menu to reclaim editing space.
+- **A safer, better-tested web app:** current browser coverage, production startup
+  and performance budgets, stricter content security, and audited runtime
+  dependencies make releases more predictable across desktop, phone, and tablet.
 
-```sh
-npx playwright install chromium firefox webkit
-npm test
-```
+See the [changelog](CHANGELOG.md) for the complete release history and detailed
+fixes.
 
-`npm test` builds into a versioned sibling directory, atomically switches the `dist/`
-version pointer only after the build succeeds, verifies the declared source graph and
-golden artifacts, and runs production-browser tests. The sole production HTML entry
-point is `src/index.html`; Rollup consumes the ordered legacy-script graph in
-`scripts/build-graph.mjs`, while copied and runtime assets are declared in
-`scripts/build-config.mjs`. The native module composition root, lazy-feature
-contract, and dependency rules are documented in
-[`docs/architecture.md`](docs/architecture.md). Release source maps are published
-beside generated JavaScript bundles and include the original sources. After an
-intentional bundle change, inspect the generated output and run
-`npm run artifacts:update` to accept its new hashes.
+## Project status
 
-## Browser support
+Modernization is ongoing. GitHub, Gist, and Google Drive integrations are
+temporarily disabled pending a reviewed server-side credential design.
 
-The supported browser release lines, desktop/phone/tablet device classes, CI
-coverage, JavaScript syntax ceiling, and startup and bundle budgets are defined in
-[`docs/browser-support.md`](docs/browser-support.md). Run `npm run browsers` to see
-the exact browser versions currently resolved by the machine-readable policy.
+## Development
 
-## Runtime dependencies
-
-The reviewed runtime inventory is maintained in
-[`docs/runtime-dependencies.json`](docs/runtime-dependencies.json). Run
-`npm run dependencies:update` after changing a browser dependency, then commit the
-generated SPDX SBOM and `THIRD_PARTY_NOTICES.md`. `npm run dependencies:check`
-rejects stale inventory output, unlisted runtime entry points, unreachable files in
-`src/lib`, invalid SPDX license expressions, missing package URLs or time-limited
-audit exemptions, package assets whose exact npm version is not locked, and retained
-files without an immutable revision, reproduction instructions, ownership, current
-review deadline, or named compatibility test.
-
-Package-managed browser files keep their existing public `lib/` URLs through the
-mapping in `scripts/build-config.mjs`. The SBOM includes the transitive packages
-bundled into those browser files with `DEPENDS_ON` and `CONTAINS` relationships.
-The small set of intentionally retained files records its provenance and review data
-in the same inventory and is checksum-tracked in both generated artifacts.
-`npm run audit:dependencies` scans the installed runtime packages, while CI also
-runs OSV-Scanner against the complete SBOM with an SPDX license allowlist on pull
-requests, main-branch pushes, and a weekly schedule. Deployment waits for both
-the dependency audit and the build/test job.
+Want to run lvllvl locally or contribute? See the
+[development guide](docs/development.md) for setup, build and test commands,
+architecture notes, browser support, and dependency-maintenance procedures.
 
 ## License
 
