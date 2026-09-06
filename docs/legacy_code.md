@@ -1,6 +1,7 @@
-# Legacy and hidden code inventory
+# Legacy code removal TODO
 
-Status: research and removal recommendation. No production code has been removed.
+Status: prioritized removal backlog backed by the inventory below. No production
+code has been removed.
 
 This inventory was added because shortcut scope cannot be designed accurately from the visible 2D image editor alone. The production bundle contains several complete or partial editors that normal navigation does not expose.
 
@@ -15,6 +16,143 @@ Hidden does not automatically mean removable. Some hidden editors are thin views
 The recommended first cleanup removes approximately **7,100-7,600 physical source lines**. About 6,354 of those lines are unbundled backup/orphan files, so the corresponding production-bundle reduction is only about **800-1,100 source lines before minification**. If 3D is also retired, the repository reduction rises to about **16,200-17,000 lines**. If both 3D and music are retired, it rises to approximately **53,500-54,700 lines**.
 
 Those larger removals should not be combined with the low-risk cleanup. 3D is reasonably isolated but requires a product decision. Music is heavily coupled to optional SID music in C64 exports and requires a deliberate compatibility migration.
+
+## Actionable removal backlog
+
+Priorities describe execution order, not severity:
+
+- **P1**: verified dead or unreferenced code; remove in the first cleanup pass.
+- **P2**: bounded removal that needs a dependency check, compatibility check, or
+  small product decision first.
+- **P3**: large feature retirement requiring explicit product approval and a
+  migration or unsupported-record strategy.
+
+A task is complete only when its named code, related build-graph/template entries,
+and now-unused tests or handlers are removed, and the relevant source checks,
+production build, and browser tests pass. Keep tasks in separate commits where
+practical. Components marked **No** in the research tables are intentionally not
+tasks.
+
+### P1 — verified dead or unreferenced
+
+- [ ] **LEG-001 (P1): Remove `src/js/music/patternViewSave.js`.** Confirm it has
+  no filename or build-graph references, then delete the tracked backup file.
+- [ ] **LEG-002 (P1): Remove `src/js/music/sid/sidplayerbackup.js`.** Confirm it
+  has no filename or build-graph references, then delete the backup copy.
+- [ ] **LEG-003 (P1): Remove `src/js/music/sid/sidpatternplayerbackup`.** Confirm
+  it has no filename or build-graph references, then delete the extensionless
+  backup copy.
+- [ ] **LEG-004 (P1): Remove `src/js/music/sid/sidplayernew`.** Confirm it has no
+  filename or build-graph references, then delete the extensionless experiment.
+- [ ] **LEG-005 (P1): Remove `src/js/c64/c64page.js`.** Confirm the exported C64
+  page still uses `src/c64page`, then delete this unused old page source.
+- [ ] **LEG-006 (P1): Remove `src/js/c64/c64pageimages.js`.** Delete it with the
+  unused old C64 page source after confirming there are no runtime references.
+- [ ] **LEG-007 (P1): Remove `src/js/sprite/spriteGridView2d.js`.** Confirm current
+  sprite documents use `TextModeEditor`, then delete this unbundled orphan.
+- [ ] **LEG-008 (P1): Remove `src/js/c64/c64Settings.js`.** Delete the empty file
+  and any stale build or source references.
+- [ ] **LEG-009 (P1): Remove the legacy standalone `SpriteEditor`.** Delete
+  `spriteEditor.js`, its build-graph entry, commented construction/mode code, and
+  dead `mode === 'sprite'` keyboard/undo branches without changing the maintained
+  2D sprite workflow. `LEG-007` owns deletion of its orphan grid-view file.
+- [ ] **LEG-010 (P1): Remove the NES runtime/debugger shell.** Delete the stale
+  `.nes` loader route, dormant mode/menu/build branches, debugger fields, and null
+  dereferences. Preserve the independent 2D NES palette/screen-mode code.
+- [ ] **LEG-011 (P1): Remove the X16 runtime/debugger shell.** Delete stale
+  `x16Debugger` mode, project-output, assembler-runtime, menu, and field references.
+  Preserve the working X16 assembly-source exporter.
+- [ ] **LEG-012 (P1): Remove old `C64Interface` integration.** Delete commented
+  construction and stale interface references without changing `C64Debugger`.
+  `LEG-008` owns deletion of the empty settings file.
+- [ ] **LEG-013 (P1): Remove the Assembly Import dialog.** Delete its class,
+  template, initialization, handler, build-graph entry, and commented menu item.
+- [ ] **LEG-014 (P1): Remove the old `ui-menu-assembler-old` menu.** Delete the
+  unused menu markup/styles and construction path while retaining the active
+  `ui-menu-c64-assembler` menu.
+- [ ] **LEG-015 (P1): Remove the dead `#startMusic` entry handler.** Delete the
+  click binding that has no matching element in either current start-page
+  template; do not remove the music editor in this task.
+- [ ] **LEG-016 (P1): Remove commented `ProjectShare` construction.** Delete the
+  stale construction lines; there is no implementation to retain.
+- [ ] **LEG-017 (P1): Remove obsolete Audio Options fragments.** Delete the
+  commented Settings-menu entry and any handler that has no implementation.
+- [ ] **LEG-018 (P1): Remove obsolete C64 Effects fragments.** Delete the
+  commented Settings-menu entry and unimplemented handler while retaining live
+  C64 export code.
+- [ ] **LEG-019 (P1): Remove obsolete C64 Bytes Free fragments.** Delete the
+  commented Tools-menu entry and any unimplemented handler.
+- [ ] **LEG-020 (P1): Remove the obsolete standalone Image Effects entry.** Delete
+  only the commented standalone Tools-menu fragment; retain image effects used by
+  import and GIF/PNG export.
+- [ ] **LEG-021 (P1): Remove obsolete 3D OBJ/FBX import fragments.** Delete the
+  commented import entries and any unreachable wiring with no matching
+  implementation; retain active 3D OBJ and MagicaVoxel export.
+
+### P2 — validate before removal
+
+- [ ] **LEG-022 (P2): Remove the dormant 2D Background Image feature.** First
+  inspect old-project fixtures for persisted grid background-image data and add a
+  migration or compatibility handling if needed; then remove the implementation,
+  template, hidden commands, and build entries. Preserve Reference Image.
+- [ ] **LEG-023 (P2): Replace and remove the broken generic text-editor wrapper.**
+  Introduce a shared document-code-editor abstraction for generic text, script,
+  and JSON records, migrate callers, then delete the old `TextEditor` wrapper.
+  Preserve generic text-file support.
+- [ ] **LEG-024 (P2): Remove the gated X16 BASIC exporter.** Confirm there is no
+  supported output contract or near-term exposure plan, then remove its JS,
+  template, feature-gated menu/handler, and build entries. Preserve X16 assembly
+  export.
+- [ ] **LEG-025 (P2): Remove obsolete Advanced C64 PRG UI only.** Prove the hidden
+  advanced menu and code-editing entry points are unreachable, then delete those
+  entries and their UI-only handlers. Preserve `toPrgAdvanced.js` and every method
+  called by normal PRG export.
+- [ ] **LEG-026 (P2): Remove remaining dormant GitHub provider UI/callback paths.**
+  Inventory callers first, remove GitHub-specific controls and callback-era code,
+  and keep deterministic disabled behavior until all callers are gone.
+- [ ] **LEG-027 (P2): Remove remaining dormant Gist provider UI/callback paths.**
+  Inventory callers first, remove Gist-specific controls and callback-era code,
+  and keep deterministic disabled behavior until all callers are gone.
+- [ ] **LEG-028 (P2): Remove remaining dormant Google Drive UI/callback paths.**
+  Inventory callers first, remove Drive-specific controls and callback-era code,
+  and keep deterministic disabled behavior until all callers are gone.
+- [ ] **LEG-029 (P2): Remove the disabled remote-provider facade.** After
+  `LEG-026` through `LEG-028` remove every caller, delete
+  `legacyRemoteProviderFacades.mjs`, its tests, and build references. Do not remove
+  the facade earlier because it provides secure, deterministic failure behavior.
+- [ ] **LEG-030 (P2): Resolve the stale Home entry fragments.** Decide whether to
+  restore a supported Home command as recommended; if it is rejected, delete each
+  commented entry and obsolete handler instead of leaving dormant code.
+- [ ] **LEG-031 (P2): Resolve the stale direct C64 entry fragments.** Decide
+  whether visible navigation should be restored; if it is rejected, delete each
+  commented entry and obsolete handler while preserving file-driven C64 loading.
+- [ ] **LEG-032 (P2): Resolve the stale direct 3D entry fragments.** Coordinate
+  with `LEG-033`; restore a supported entry if 3D remains, otherwise delete the
+  commented navigation fragments as part of retirement.
+
+### P3 — explicit feature-retirement decisions
+
+- [ ] **LEG-033 (P3): Retire the 3D scene editor.** Obtain product approval, add
+  an unsupported-record or migration path for saved 3D records, then remove 3D
+  grid/view/tools/export code, templates, mode integration, project creation,
+  Explorer entries, menus, and tests. Keep Three.js because 2D still uses it.
+- [ ] **LEG-034 (P3): Retire the music editor and SID-authoring workflow.** Obtain
+  product approval, first remove the music selector/SID-data path from C64 PRG and
+  assembly exports, stop seeding `/music/Untitled Music`, define old-project
+  handling, and then remove the remaining music code, templates, sandbox, runtime
+  assets, Explorer/mode integration, and tests. If SID-backed export remains a
+  product feature, close this task as rejected rather than deleting the editor.
+
+### Verification for every cleanup batch
+
+- [ ] Search the source and generated build graph for references to every removed
+  file, constructor, mode, menu ID, template, and asset.
+- [ ] Run `npm run check` and `npm run test:source`.
+- [ ] Run `npm run build` and `npm run test:build`; compare production artifacts
+  for large removals.
+- [ ] Run the relevant Playwright coverage, including current 2D sprite, C64,
+  assembler, X16 assembly-export, and old-project fixtures when those neighboring
+  paths are touched.
 
 ## Scope and terminology
 
@@ -64,7 +202,7 @@ The music editor is a separate, substantial lvllvl feature, but it is not reacha
 | X16 runtime/debugger | Disabled and broken | **No.** | Construction and the `setMode('x16')` branch are commented, but assembler and project-output code still contain calls to it. X16 assembly export from 2D remains active; that is an export format, not the runtime. |
 | `none` / no-editor panel | Internal fallback | Not a feature. | Used when a project has no valid screen/path or all editor tabs close. It falls through the default branch of `setMode()`; see [`src/js/editor.js`](../src/js/editor.js#L853). |
 
-## Removal recommendations by component
+## Research reference: removal recommendations by component
 
 The estimates below are physical source lines, including comments and blanks. They exclude shared code unless the recommendation removes the shared capability too. Small edits in `editor.js`, Project Explorer, build configuration, tests, and templates are estimated rather than presented as exact counts.
 
@@ -89,7 +227,7 @@ The estimates below are physical source lines, including comments and blanks. Th
 | `none` / no-editor fallback | **No** | 0 | This is defensive application state rather than legacy functionality. |
 | Old `C64Interface` integration | **Yes** | <20 | Remove the commented construction block and stale references. The empty `c64Settings.js` file can also go. This does not affect `C64Debugger`. |
 
-## Removal recommendations for dormant pieces
+## Research reference: removal recommendations for dormant pieces
 
 | Dormant piece | Remove? | Estimated removal | Details |
 | --- | --- | ---: | --- |
@@ -147,15 +285,13 @@ These tracked files total exactly 6,354 physical lines. They are absent from the
 
 Filename-reference checks cannot prove semantic unreachability by themselves. The removal PR should still run build-graph validation, the production build, browser tests, and old-project import fixtures.
 
-## Recommended removal order
+## Execution order
 
-1. Delete the eight unbundled backup/orphan files in an isolated commit.
-2. Remove the dead standalone SpriteEditor, NES/X16 runtime shells, old C64 interface, and stale menu/comment blocks.
-3. Remove Assembly Import, Background Image, and X16 BASIC only after confirming there is no planned exposure or persisted-data dependency.
-4. Fix or consolidate the small script/JSON/text editor wrappers instead of deleting project-file editing.
-5. Make an explicit product decision on 3D. If retiring it, add unsupported-record handling for old projects and remove it in its own change.
-6. Make a separate product decision on music. If retiring it, decouple C64 export first and test old project loading before deleting the subsystem.
-7. Keep C64 runtime/debugging and assembler unless the product intentionally abandons runnable Commodore workflows.
+Use the prioritized checklist above as the source of truth. Complete P1 in small,
+independently reviewable batches, then P2 after each task's named validation.
+Treat `LEG-033` and `LEG-034` as separate projects; neither belongs in the
+low-risk cleanup. Keep C64 runtime/debugging and assembler unless the product
+intentionally abandons runnable Commodore workflows.
 
 ## Normal and alternate entry paths
 
