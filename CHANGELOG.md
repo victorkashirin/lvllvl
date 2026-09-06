@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.497.6 - 2026-09-06
+
 ### Fixed
 
 - Keep startup and runtime mobile layouts cohesive with a compact 46-pixel app
