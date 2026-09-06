@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.497.7 - 2026-09-06
+
 ### Added
 
 - Add an improvements sidebar and GitHub link to the landing page, identify the
