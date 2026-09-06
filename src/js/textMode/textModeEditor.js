@@ -1816,14 +1816,18 @@ TextModeEditor.prototype = {
   },
 
   keyDown: function(event) {    
-    if(event.keyCode == keys.textMode.play.keyCode && this.tools.drawTools.tool != 'type') {
+    var typing = this.tools.drawTools.isTyping();
+
+    if(event.keyCode == keys.textMode.play.keyCode && !typing) {
       // if its space and not typing, then space means play/pause
       this.frames.play();
     }
 
     this.setAlterKeys(event);
     this.tools.keyDown(event);
-    this.frames.keyDown(event);
+    if(!typing) {
+      this.frames.keyDown(event);
+    }
 
   },
 

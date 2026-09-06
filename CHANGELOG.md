@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### Added
+
+- Let Escape finish an active Type-tool session without changing the selected
+  tool or artwork, restoring editor shortcuts until the canvas is clicked or
+  Type is selected again. Start Type at the current 2D or 3D grid cursor when
+  selected with the T shortcut—including after tools that use their own cursor—
+  hide the insertion cursor when finished, and show the current typing state
+  alongside the on-screen keyboard.
+
 ### Fixed
 
 - Remove the P1 legacy-code backlog: delete unreferenced backup sources, the

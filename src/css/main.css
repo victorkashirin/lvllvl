@@ -139,6 +139,10 @@ input[type=checkbox] {
   vertical-align: middle;
 }
 
+#typeKeyboard.typeKeyboardInactive {
+  opacity: 0.45;
+}
+
 .checkboxGroup, .radioGroup {  
   display: inline-block;
 }

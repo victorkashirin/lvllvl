@@ -1736,6 +1736,115 @@ test("2D renderer invalidates the right cache when stationary controls change", 
   });
 });
 
+test("Escape finishes typing and restores editor shortcuts", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "chromium-desktop");
+
+  await open2DProject(page, testInfo);
+  await page.evaluate(() => {
+    const editor = g_app.textModeEditor;
+    editor.tools.drawTools.setDrawTool("type");
+    editor.tools.drawTools.typing.setCursorPosition({ x: 2, y: 3, z: 0 });
+  });
+
+  await expect(page.locator("#typeKeyboardStatus")).toHaveText(
+    "Press Esc to finish typing and use shortcuts",
+  );
+  await page.keyboard.press("a");
+  await page.keyboard.press("Escape");
+
+  expect(await page.evaluate(() => {
+    const editor = g_app.textModeEditor;
+    return {
+      active: editor.tools.drawTools.typing.isActive(),
+      cursorVisible: editor.grid.grid2d.typingCursor.isOn,
+      tile: editor.layers.getSelectedLayerObject().getCell({ x: 2, y: 3 }).t,
+      tool: editor.tools.drawTools.tool,
+    };
+  })).toEqual({
+    active: false,
+    cursorVisible: false,
+    tile: 1,
+    tool: "type",
+  });
+  await expect(page.locator("#typeKeyboardStatus")).toHaveText(
+    "Typing finished. Click the canvas or press T to type again",
+  );
+
+  await page.evaluate(() => {
+    const currentTile = g_app.textModeEditor.currentTile;
+    currentTile.setColor(2);
+    currentTile.setBGColor(3);
+  });
+  await page.keyboard.press("x");
+  expect(await page.evaluate(() => {
+    const currentTile = g_app.textModeEditor.currentTile;
+    return { background: currentTile.getBGColor(), foreground: currentTile.getColor() };
+  })).toEqual({ background: 2, foreground: 3 });
+
+  await page.keyboard.press("n");
+  await expect.poll(() => page.evaluate(() =>
+    g_app.textModeEditor.tools.drawTools.tool)).toBe("pen");
+
+  await page.keyboard.press("m");
+  await expect.poll(() => page.evaluate(() =>
+    g_app.textModeEditor.tools.drawTools.tool)).toBe("select");
+  const pointer = await page.evaluate(() => {
+    const editor = g_app.textModeEditor;
+    const gridView = editor.gridView2d;
+    const layer = editor.layers.getSelectedLayerObject();
+    const target = { x: 6, y: 7 };
+    const scale = gridView.displayScale;
+    const rect = gridView.canvas.getBoundingClientRect();
+    const artworkX = gridView.width / 2
+      - layer.getWidth() * scale / 2
+      - gridView.camera.position.x * scale;
+    const artworkY = gridView.height / 2
+      - layer.getHeight() * scale / 2
+      + gridView.camera.position.y * scale;
+    editor.grid.grid2d.setCursorPosition(1, 1);
+    return {
+      target,
+      x: rect.left + artworkX + (target.x + 0.5) * layer.getCellWidth() * scale,
+      y: rect.top + artworkY + (target.y + 0.5) * layer.getCellHeight() * scale,
+    };
+  });
+  await page.mouse.move(pointer.x, pointer.y);
+  await expect.poll(() => page.evaluate(() => ({
+    drawingCursor: { ...g_app.textModeEditor.grid.grid2d.cursor.position },
+    pointerCell: g_app.textModeEditor.gridView2d.pointerCell,
+  }))).toEqual({
+    drawingCursor: { x: 1, y: 1 },
+    pointerCell: { ...pointer.target, z: 0 },
+  });
+  await page.keyboard.press("t");
+  expect(await page.evaluate(() => ({
+    active: g_app.textModeEditor.tools.drawTools.typing.isActive(),
+    cursor: { ...g_app.textModeEditor.tools.drawTools.typing.cursor },
+  }))).toEqual({ active: true, cursor: { ...pointer.target, z: 0 } });
+  await page.keyboard.press("Escape");
+  const resumed = await page.evaluate(() => {
+    const editor = g_app.textModeEditor;
+    editor.gridView2d.toolStart(
+      { x: 4, y: 5, z: 0 },
+      0,
+      0,
+      { altKey: false, ctrlKey: false, metaKey: false, shiftKey: false },
+    );
+    return {
+      active: editor.tools.drawTools.typing.isActive(),
+      cursor: { ...editor.tools.drawTools.typing.cursor },
+      cursorVisible: editor.grid.grid2d.typingCursor.isOn,
+      tool: editor.tools.drawTools.tool,
+    };
+  });
+  expect(resumed).toEqual({
+    active: true,
+    cursor: { x: 4, y: 5, z: 0 },
+    cursorVisible: true,
+    tool: "type",
+  });
+});
+
 test("2D editor reuses cached artwork while a marquee animates", async ({ page }, testInfo) => {
   test.skip(!isDesktop2DRendererProject(testInfo));
 

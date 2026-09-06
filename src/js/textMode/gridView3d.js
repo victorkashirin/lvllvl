@@ -354,6 +354,7 @@ GridView3d.prototype = {
             y: grid3d.getCursorY(),
             z: grid3d.getCursorZ()
           });
+          this.editor.tools.drawTools.typing.start();
         break;
       case 'eyedropper':
         this.doEyedropper();

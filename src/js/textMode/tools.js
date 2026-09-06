@@ -80,21 +80,21 @@ Tools.prototype = {
       this.editor.gridView2d.keyUp(event);
     }
     
-    if(this.drawTools.tool == 'type') {
+    if(this.drawTools.isTyping()) {
       this.drawTools.typing.keyUp(event);
     }
 
-    if(this.drawTools.tool != 'type') {
+    if(!this.drawTools.isTyping()) {
       this.drawTools.keyUp(event);
     }
 
   },
 
   keyPress: function(event) {
-    if(this.drawTools.tool == 'type') {
+    if(this.drawTools.isTyping()) {
       this.drawTools.typing.keyPress(event);
     }
-    if(this.drawTools.tool != 'type') {
+    if(!this.drawTools.isTyping()) {
       this.drawTools.keyPress(event);
     }
 

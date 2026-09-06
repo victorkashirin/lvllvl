@@ -16,6 +16,11 @@ var Typing = function() {
   this.ctrlDown = false;
   this.altDown = false;
 
+  // The Type tool can stay selected without capturing the keyboard. This lets
+  // Escape finish the current typing session while a click on the canvas (or
+  // choosing Type again) starts a new one.
+  this.active = false;
+
   this.cursor = {
     x: 0,
     y: 0,
@@ -24,6 +29,71 @@ var Typing = function() {
 }
 
 Typing.prototype = {
+
+  isActive: function() {
+    return this.active;
+  },
+
+  updateActiveStateUI: function() {
+    if(this.canvas && this.canvas.classList) {
+      this.canvas.classList.toggle('typeKeyboardInactive', !this.active);
+      this.canvas.setAttribute('aria-disabled', this.active ? 'false' : 'true');
+    }
+
+    var status = document.getElementById('typeKeyboardStatus');
+    if(status) {
+      status.textContent = this.active
+        ? 'Press Esc to finish typing and use shortcuts'
+        : 'Typing finished. Click the canvas or press T to type again';
+    }
+  },
+
+  start: function() {
+    this.active = true;
+    this.updateActiveStateUI();
+
+    if(g_app.mode == '3d') {
+      this.editor.grid3d.setTypingCursorPosition(this.cursor.x, this.cursor.y, this.cursor.z);
+      this.editor.grid3d.setTypingCursorMeshVisible(true);
+    } else if(this.editor.grid && this.editor.grid.grid2d) {
+      this.editor.grid.grid2d.setTypingCursor(
+        this.cursor.x,
+        this.cursor.y,
+        this.editor.currentTile.color,
+        true
+      );
+    }
+  },
+
+  stop: function() {
+    if(!this.active) {
+      return false;
+    }
+
+    this.active = false;
+    this.keyCodeDown = -1;
+    this.shiftDown = false;
+    this.ctrlDown = false;
+    this.altDown = false;
+    this.cmdDown = false;
+
+    if(g_app.mode == '3d') {
+      this.editor.grid3d.setTypingCursorMeshVisible(false);
+    } else if(this.editor.grid && this.editor.grid.grid2d) {
+      this.editor.grid.grid2d.setTypingCursor(
+        this.cursor.x,
+        this.cursor.y,
+        this.editor.currentTile.bgColor,
+        false
+      );
+    }
+
+    if(this.canvas) {
+      this.updateTypeCanvas();
+    }
+    this.updateActiveStateUI();
+    return true;
+  },
 
   setCursorPosition: function(args) {
     this.cursor.x = args.x;
@@ -598,6 +668,7 @@ Typing.prototype = {
     this.context = this.canvas.getContext('2d');
 
     this.updateTypeCanvas();
+    this.updateActiveStateUI();
   },
 
   moveCursor: function(h, v) {

@@ -886,6 +886,37 @@ DrawTools.prototype = {
     return '<img src="' + imageUrl + '" style="width: 20px">';
   },
 
+  isTyping: function() {
+    return this.tool == 'type' && this.typing.isActive();
+  },
+
+  setTypingCursorToCurrentCursor: function() {
+    var position = null;
+
+    if(g_app.mode == '3d') {
+      position = {
+        x: this.editor.grid3d.getCursorX(),
+        y: this.editor.grid3d.getCursorY(),
+        z: this.editor.grid3d.getCursorZ()
+      };
+    } else if(this.editor.grid && this.editor.grid.grid2d) {
+      if(this.editor.gridView2d && this.editor.gridView2d.pointerCell) {
+        position = {
+          x: this.editor.gridView2d.pointerCell.x,
+          y: this.editor.gridView2d.pointerCell.y,
+          z: this.editor.gridView2d.pointerCell.z
+        };
+      } else {
+        position = this.editor.grid.grid2d.getCursorPosition();
+        position.z = 0;
+      }
+    }
+
+    if(position && position.x >= 0 && position.y >= 0 && position.z >= 0) {
+      this.typing.setCursorPosition(position);
+    }
+  },
+
   updateMobileCurrentTool: function() {
     var tool = this.tool;
     if(!this.toolMap || !this.toolMap[tool]) {
@@ -906,6 +937,10 @@ DrawTools.prototype = {
   },
 
   setDrawTool: function(tool) {
+    if(this.tool == 'type' && tool != 'type') {
+      this.typing.stop();
+    }
+
     if(tool == 'pixel' && this.tool != 'pixel') {
       this.saveCurrentTiles = this.editor.currentTile.getTiles();
     }
@@ -1000,6 +1035,7 @@ DrawTools.prototype = {
 //        this.editor.grid.setTypingCursorPosition(0, 0, this.editor.grid.getXYGridPosition());
 //        this.editor.grid.typingCursor.visible = true;
         this.typing.show();
+        this.typing.start();
       break;
       case 'charpixel':
 
@@ -1429,8 +1465,8 @@ DrawTools.prototype = {
     toolControlsSplitPanel.add(toolControlsPanel);
     splitPanel.add(toolControlsSplitPanel);
 
-    var typingPanel = UI.create("UI.HTMLPanel", { "id": "typeControls", "visible": false, 
-      "html": '<div class="panelFill"><canvas width="421" height="141" id="typeKeyboard" style="background-color: white; cursor: default;"></canvas> <div>Hold \'Shift\' or \'Alt\' to select alternate character ranges</div></div>' });
+    var typingPanel = UI.create("UI.HTMLPanel", { "id": "typeControls", "visible": false,
+      "html": '<div class="panelFill"><canvas width="421" height="141" id="typeKeyboard" style="background-color: white; cursor: default;"></canvas> <div>Hold \'Shift\' or \'Alt\' to select alternate character ranges</div><div id="typeKeyboardStatus" role="status" aria-live="polite">Press Esc to finish typing and use shortcuts</div></div>' });
     toolControlsPanel.add(typingPanel);
     UI.on('ready', function() {
       UI('typeControls').setVisible(false);
@@ -1597,7 +1633,17 @@ DrawTools.prototype = {
     var cl = String.fromCharCode(keyCode).toLowerCase();
     var tool = this.tool;
     var grid2d = this.editor.grid.grid2d;
- 
+
+    if(this.isTyping()) {
+      event.preventDefault();
+      if(event.key == 'Escape' || keyCode == 27) {
+        this.typing.stop();
+      } else {
+        this.typing.keyDown(event);
+      }
+      return;
+    }
+
     var layer = this.editor.layers.getSelectedLayerObject();
 
     if(this.editor.spriteFrames.getVisible()) {
@@ -1606,9 +1652,7 @@ DrawTools.prototype = {
       }
     }
 
-    if(tool != 'type') {
-      this.editor.colorPalettePanel.keyDown(event);      
-    }
+    this.editor.colorPalettePanel.keyDown(event);
 
     if(this.editor.getEditorMode() == 'pixel') {
       this.editor.tools.pixelDrawTools.keyDown(event);
@@ -1618,13 +1662,6 @@ DrawTools.prototype = {
     if(tool == 'pixel') {
       this.pixelDraw.keyDown(event);    
     }
-
-    if(tool == 'type') {
-      event.preventDefault();
-      this.typing.keyDown(event);   
-      return;   
-    }
-
 
     if(!event.shiftKey) {
       switch(c) {
@@ -1650,6 +1687,7 @@ DrawTools.prototype = {
           this.setDrawTool('select');      
           return;
         case keys.textMode.toolsType.key:
+          this.setTypingCursorToCurrentCursor();
           this.setDrawTool('type');
           return;
         case keys.textMode.toolsShape.key:
@@ -1759,7 +1797,7 @@ DrawTools.prototype = {
     }
 
 
-    if(this.tool != 'type') {
+    if(!this.isTyping()) {
       switch(event.key) {
         case keys.textMode.showColorPicker.key:
           this.editor.gridView2d.showColorPicker();
@@ -1825,14 +1863,14 @@ DrawTools.prototype = {
   },
 
   keyUp: function(event) {
-    if(this.tool == 'type') {
+    if(this.isTyping()) {
       event.preventDefault();
     }
 
   },
 
   keyPress: function(event) {
-    if(this.tool == 'type') {
+    if(this.isTyping()) {
       event.preventDefault();
     }
 

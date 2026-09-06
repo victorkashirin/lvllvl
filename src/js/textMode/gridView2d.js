@@ -57,6 +57,9 @@ var GridView2d = function() {
   this.lastSelectAnimate = 0;
 
   this.foundCell = {x: 0, y: 0, z: 0};
+  // Keep the pointer cell separate from the drawing cursor. Some tools (for
+  // example Select and Pixel) intentionally do not move the drawing cursor.
+  this.pointerCell = false;
 
   this.previousScreen = null;
   this.previousScreenFrame = false;
@@ -750,6 +753,7 @@ GridView2d.prototype = {
       case 'type':
         //this.editor.grid.setTypingCursorPosition();
         drawTools.typing.setCursorPosition(grid2d.cursor.position);
+        drawTools.typing.start();
       break;
       case 'hand':
       case 'pixelhand':
@@ -1773,6 +1777,8 @@ GridView2d.prototype = {
     var x = event.pageX - $('#' + this.canvas.id).offset().left;
     var y = event.pageY - $('#' + this.canvas.id).offset().top;
 
+    this.pointerCell = false;
+
     this.mousePageX = event.pageX;
     this.mousePageY = event.pageY;
     this.setOverlayNeedsRedraw();
@@ -1903,6 +1909,10 @@ GridView2d.prototype = {
     var cell = this.xyToCell(x, y);
     if(cell.y < 0) {
       cell = false;
+    }
+
+    if(cell !== false) {
+      this.pointerCell = { x: cell.x, y: cell.y, z: cell.z };
     }
 
 //    console.log(cell);
@@ -2252,6 +2262,8 @@ GridView2d.prototype = {
   },
 
   mouseLeave: function(event) {
+
+    this.pointerCell = false;
 
     if(UI.getMouseIsCaptured()) {
       return;
@@ -4312,7 +4324,7 @@ GridView2d.prototype = {
     var drawTools = this.editor.tools.drawTools;
 
 
-    if(drawTools.tool == 'type') {
+    if(drawTools.isTyping()) {
       // blink the cursor
       this.typingCursor();
     }
