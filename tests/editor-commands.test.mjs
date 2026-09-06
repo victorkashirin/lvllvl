@@ -109,6 +109,29 @@ test("classic redo compensates actions applied before replay fails", async () =>
   assert.equal(editor.tools.currentBackgroundColor, 2);
 });
 
+test("classic history releases the abandoned redo branch after a new edit", async () => {
+  const History = await loadClassic("js/textMode/history.js", "History", { g_newSystem: false });
+  const history = new History();
+  const abandonedEntry = { name: "abandoned", actions: [{ name: "old action", params: {} }] };
+  history.history = [
+    { name: "kept", actions: [{ name: "kept action", params: {} }] },
+    { name: "replaced", actions: [{ name: "replaced action", params: {} }] },
+    abandonedEntry,
+  ];
+  history.historyLength = history.history.length;
+  history.historyPosition = 1;
+
+  history.startEntry("branch");
+  history.addAction("new action", {});
+  history.endEntry();
+
+  assert.equal(history.historyPosition, 2);
+  assert.equal(history.historyLength, 2);
+  assert.equal(history.history.length, 2);
+  assert.deepEqual(history.history.map((entry) => entry.name), ["kept", "branch"]);
+  assert.equal(history.history.includes(abandonedEntry), false);
+});
+
 test("unchanged character pixels do not mutate, dirty, redraw, or enter history", async () => {
   class HTMLCanvasElement {}
   HTMLCanvasElement.prototype.toBlob = () => {};

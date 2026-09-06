@@ -529,6 +529,7 @@ History.prototype = {
       this.history[this.historyPosition] = {"name": this.entryName, "actions": this.changes };
       this.historyPosition++;
       this.historyLength = this.historyPosition;
+      this.history.length = this.historyLength;
     }
    // console.log(this.history);
     this.changes = [];

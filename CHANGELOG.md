@@ -20,6 +20,8 @@
 
 ### Fixed
 
+- Release abandoned redo entries when a new edit follows undo, preventing
+  discarded editor history actions from remaining in memory.
 - Preserve pixel-mode selection bounds in PNG/GIF exports and reserve GIF
   transparency as a dedicated palette entry so opaque colours cannot disappear
   during quantization. Respect transparent export backgrounds in the shared NES
