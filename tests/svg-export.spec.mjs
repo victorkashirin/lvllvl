@@ -64,13 +64,25 @@ test("a text-mode project exports parseable SVG geometry", async ({ page }) => {
   });
 });
 
-test("the export menu opens the classic dialog through the SVG module port", async ({ page }) => {
+test("the export menu provides named, scaled SVG downloads and clipboard output", async ({
+  context,
+  page,
+}) => {
   await startDefaultProject(page);
+  await context.grantPermissions(["clipboard-read", "clipboard-write"], {
+    origin: new URL(page.url()).origin,
+  });
 
-  await page.evaluate(() => g_app.menuClick("export-svg"));
+  await page.evaluate(() => {
+    g_app.fileManager.setProjectName("Named project");
+    g_app.textModeEditor.layers.getSelectedLayerObject().setBackgroundColor(0);
+    g_app.menuClick("export-svg");
+  });
   const filename = page.locator("#exportSVGAs");
+  const dimensions = page.locator("#exportSVGDimensions");
   await expect(filename).toBeVisible();
-  await expect(filename).toHaveValue("Untitled");
+  await expect(filename).toHaveValue("Named project");
+  await expect(dimensions).toHaveText("320 × 200 px");
   expect(await page.evaluate(() => ({
     controllerReady: g_app.textModeEditor.exportSvgDialog instanceof ExportSvg,
     constructorType: typeof globalThis.ExportSvg,
@@ -81,8 +93,64 @@ test("the export menu opens the classic dialog through the SVG module port", asy
     hasExportPort: true,
   });
 
+  await page.locator("input[name='exportSVGScale'][value='4']").check();
+  await expect(dimensions).toHaveText("1280 × 800 px");
+  await page.getByText("Copy SVG", { exact: true }).click();
+  await expect(page.getByText("Copied", { exact: true })).toBeVisible();
+  const copiedSvg = await page.evaluate(() => navigator.clipboard.readText());
+  expect(copiedSvg).toContain('width="1280" height="800" viewBox="0 0 320 200"');
+
+  await page.locator("#exportSVGBackground").selectOption("transparent");
+  await expect(dimensions).toHaveText("1280 × 800 px");
+  const transparentSvg = await page.evaluate(
+    () => g_app.textModeEditor.exportSvgDialog.getSVGData(),
+  );
+  expect(transparentSvg).toContain(
+    'width="1280" height="800" viewBox="0 0 320 200"',
+  );
+  expect(transparentSvg).not.toContain('<rect width="100%"');
+
   await page.evaluate(() => UI.closeDialog());
   await expect(filename).toBeHidden();
+
+  await page.evaluate(() => {
+    g_app.fileManager.setProjectName("Renamed project");
+    g_app.menuClick("export-svg");
+  });
+  await expect(filename).toHaveValue("Renamed project");
+  await expect(page.locator("input[name='exportSVGScale'][value='4']")).toBeChecked();
+  await expect(page.locator("#exportSVGBackground")).toHaveValue("transparent");
+  await expect(dimensions).toHaveText("1280 × 800 px");
+});
+
+test("the SVG export area offers an active canvas selection", async ({ page }) => {
+  await startDefaultProject(page);
+
+  await page.evaluate(() => g_app.menuClick("export-svg"));
+  const areaRow = page.locator("#exportSVGAreaRow");
+  await expect(areaRow).toBeHidden();
+  await page.evaluate(() => UI.closeDialog());
+
+  await page.evaluate(() => {
+    const select = g_app.textModeEditor.tools.drawTools.select;
+    select.setSelection({
+      from: { x: 2, y: 3, z: 0 },
+      to: { x: 4, y: 4, z: 0 },
+      saveInHistory: false,
+    });
+    g_app.menuClick("export-svg");
+  });
+
+  await expect(areaRow).toBeVisible();
+  await expect(page.locator("input[name='exportSVGArea'][value='document']")).toBeChecked();
+  await expect(page.locator("#exportSVGDimensions")).toHaveText("320 × 200 px");
+
+  await page.locator("input[name='exportSVGArea'][value='selection']").check();
+  await expect(page.locator("#exportSVGDimensions")).toHaveText("24 × 16 px");
+  const svg = await page.evaluate(
+    () => g_app.textModeEditor.exportSvgDialog.getSVGData(),
+  );
+  expect(svg).toContain('width="24" height="16" viewBox="0 0 24 16"');
 });
 
 test("C64 monochrome SVG output matches the production renderer", async ({ page }) => {

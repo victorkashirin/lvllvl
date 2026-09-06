@@ -18,6 +18,8 @@ var ExportImage = function() {
 
 
   this.exportFormat = 'gif';
+  this.exportArea = 'document';
+  this.includeBackground = true;
 
   this.borderWidth = 4 * 8;
   this.borderHeight = 4 * 8 + 4;
@@ -182,7 +184,7 @@ ExportImage.prototype = {
       this.splitPanel.add(this.propertiesSplit);
 
       this.htmlComponent = UI.create("UI.HTMLPanel");
-      this.propertiesSplit.addSouth(this.htmlComponent, 250);
+      this.propertiesSplit.addSouth(this.htmlComponent, 320);
 
       this.htmlComponent.load('html/textMode/exportImage.html', function() {
         _this.htmlComponentLoaded(callback);      
@@ -588,6 +590,8 @@ ExportImage.prototype = {
     this.playMode = $('#exportImageLoopType').val();
 
     this.addTransparentPixel = $('#exportImageTransparentPixel').is(':checked');
+    $('#exportImageBackground').val(this.includeBackground ? 'document' : 'transparent');
+    this.updateExportAreaControls();
 
 
     var tileSet = this.editor.tileSetManager.getCurrentTileSet();
@@ -618,6 +622,20 @@ ExportImage.prototype = {
 
   initEvents: function() {
     var _this = this;
+
+    $('input[name=exportImageArea]').on('click', function() {
+      _this.exportArea = $('input[name=exportImageArea]:checked').val();
+      _this.calculateImageDimensions();
+      _this.drawFrame();
+      _this.centerPreview();
+      _this.drawPreview({ redrawLayers: false, applyEffects: false });
+    });
+
+    $('#exportImageBackground').on('change', function() {
+      _this.includeBackground = $(this).val() == 'document';
+      _this.drawFrame();
+      _this.drawPreview({ redrawLayers: false, applyEffects: false });
+    });
 
     $('#exportImageIncludeBorder').on('click', function() {
       console.log('borsder check!');
@@ -841,7 +859,101 @@ ExportImage.prototype = {
         break;
     }
 
+    this.updateExportAreaControls();
     this.setFrameParameters();
+    this.calculateImageDimensions();
+    this.drawFrame();
+    this.centerPreview();
+    this.drawPreview({ redrawLayers: false, applyEffects: false });
+  },
+
+  getSelectionBounds: function() {
+    var layer = this.editor.layers.getSelectedLayerObject();
+    var isPixelMode = this.editor.getEditorMode() == 'pixel';
+    var select = isPixelMode
+      ? this.editor.tools.drawTools.pixelSelect
+      : this.editor.tools.drawTools.select;
+    if(!layer || layer.getType() != 'grid' || !select || !select.isActive()) {
+      return false;
+    }
+
+    var selection = select.getSelection();
+    if(!selection
+      || !Number.isFinite(selection.minX) || !Number.isFinite(selection.minY)
+      || !Number.isFinite(selection.maxX) || !Number.isFinite(selection.maxY)) {
+      return false;
+    }
+
+    var boundsWidth = isPixelMode
+      ? this.editor.graphic.getGraphicWidth()
+      : layer.getGridWidth();
+    var boundsHeight = isPixelMode
+      ? this.editor.graphic.getGraphicHeight()
+      : layer.getGridHeight();
+    var minX = Math.max(0, Math.min(boundsWidth, Math.floor(selection.minX)));
+    var minY = Math.max(0, Math.min(boundsHeight, Math.floor(selection.minY)));
+    var maxX = Math.max(0, Math.min(boundsWidth, Math.ceil(selection.maxX)));
+    var maxY = Math.max(0, Math.min(boundsHeight, Math.ceil(selection.maxY)));
+    if(maxX <= minX || maxY <= minY) {
+      return false;
+    }
+
+    if(isPixelMode) {
+      return {
+        x: minX,
+        y: minY,
+        width: maxX - minX,
+        height: maxY - minY
+      };
+    }
+
+    var cellWidth = layer.getCellWidth();
+    var cellHeight = layer.getCellHeight();
+    var x = minX * cellWidth;
+    var y = minY * cellHeight;
+    var maxPixelX = Math.min(this.editor.graphic.getGraphicWidth(), maxX * cellWidth);
+    var maxPixelY = Math.min(this.editor.graphic.getGraphicHeight(), maxY * cellHeight);
+    if(maxPixelX <= x || maxPixelY <= y) {
+      return false;
+    }
+
+    return {
+      x: x,
+      y: y,
+      width: maxPixelX - x,
+      height: maxPixelY - y
+    };
+  },
+
+  getExportBounds: function() {
+    if(this.exportArea == 'selection') {
+      var selection = this.getSelectionBounds();
+      if(selection !== false) {
+        return selection;
+      }
+    }
+    return {
+      x: 0,
+      y: 0,
+      width: this.editor.graphic.getGraphicWidth(),
+      height: this.editor.graphic.getGraphicHeight()
+    };
+  },
+
+  updateExportAreaControls: function() {
+    var hasSelection = this.getSelectionBounds() !== false;
+    if(!hasSelection) {
+      this.exportArea = 'document';
+    }
+    $('#exportImageAreaRow').toggle(hasSelection);
+    $("input[name='exportImageArea'][value='" + this.exportArea + "']").prop('checked', true);
+  },
+
+  centerPreview: function() {
+    if(this.canvas) {
+      this.previewOffsetX = -this.canvas.width / 2;
+      this.previewOffsetY = -this.canvas.height / 2;
+    }
   },
 
   gotoEffect: function(offset) {
@@ -885,8 +997,9 @@ ExportImage.prototype = {
       this.borderWidth = 0;
       this.borderHeight = 0;
     }
-    var graphicWidth = this.editor.graphic.getGraphicWidth();
-    var graphicHeight = this.editor.graphic.getGraphicHeight();
+    var exportBounds = this.getExportBounds();
+    var graphicWidth = exportBounds.width;
+    var graphicHeight = exportBounds.height;
 
     var width = (graphicWidth + this.borderWidth * 2) * this.scale;
     var height = (graphicHeight + this.borderHeight * 2) * this.scale;
@@ -1243,11 +1356,14 @@ ExportImage.prototype = {
     this.previewOffsetX = Math.floor(this.previewOffsetX * this.scale / oldScale);    
   },
 
-  initCanvas: function() {
+  initCanvas: function(exportBounds) {
     var tileSet = this.editor.tileSetManager.getCurrentTileSet();
 
-    var graphicWidth = this.editor.graphic.getGraphicWidth();
-    var graphicHeight = this.editor.graphic.getGraphicHeight();
+    if(typeof exportBounds == 'undefined') {
+      exportBounds = this.getExportBounds();
+    }
+    var graphicWidth = exportBounds.width;
+    var graphicHeight = exportBounds.height;
 
     var width = (graphicWidth + this.borderWidth * 2) * this.scale;
     var height = (graphicHeight + this.borderHeight * 2) * this.scale;
@@ -1283,6 +1399,8 @@ ExportImage.prototype = {
     var section = false;
     var effects = this.effect;
     var scale = this.scale;
+    var includeBackground = this.includeBackground;
+    var backgroundWasSpecified = false;
 
     if(typeof args != 'undefined') {
       if(typeof args.frame != 'undefined') {
@@ -1307,6 +1425,15 @@ ExportImage.prototype = {
       if(typeof args.effects != 'undefined') {
         effects = args.effects;
       }
+
+      if(typeof args.includeBackground != 'undefined') {
+        includeBackground = args.includeBackground;
+        backgroundWasSpecified = true;
+      }
+    }
+
+    if(section && !backgroundWasSpecified) {
+      includeBackground = true;
     }
 
 
@@ -1318,17 +1445,30 @@ ExportImage.prototype = {
       this.borderHeight = 0;
     } 
 
-    this.initCanvas();
+    var exportBounds = section ? {
+      x: 0,
+      y: 0,
+      width: this.editor.graphic.getGraphicWidth(),
+      height: this.editor.graphic.getGraphicHeight()
+    } : this.getExportBounds();
+    var crop = false;
+    if(!section && this.exportArea == 'selection') {
+      crop = exportBounds;
+    }
+
+    this.initCanvas(exportBounds);
 
     this.editor.exportFrameImage.exportFrame({
       scale: scale,
       includeBorder: includeBorder,
+      includeBackground: includeBackground,
       borderWidth: this.borderWidth,
       borderHeight: this.borderHeight,
       addTransparentPixel: this.addTransparentPixel,
       layers: this.exportLayer,
       frame: drawFrame,
-      section: section
+      section: section,
+      crop: crop
     });
 
     if(effects) {
@@ -1427,6 +1567,33 @@ ExportImage.prototype = {
     }
     var dataURL = this.canvas.toDataURL("image/png");    
     download(dataURL, filename, "image/png");    
+  },
+
+  prepareGifFrame: function() {
+    var imageData = this.context.getImageData(0, 0, this.canvas.width, this.canvas.height);
+    var data = imageData.data;
+
+    var hasTransparentPixels = false;
+    for(var i = 0; i < data.length; i += 4) {
+      if(data[i + 3] < 128) {
+        hasTransparentPixels = true;
+        break;
+      }
+    }
+
+    return { imageData: imageData, hasTransparentPixels: hasTransparentPixels };
+  },
+
+  addGifFrame: function(gif, delay) {
+    if(this.includeBackground) {
+      gif.setOption('transparent', null);
+      gif.addFrame(this.context, { copy: true, delay: delay });
+      return;
+    }
+
+    var frame = this.prepareGifFrame();
+    gif.setOption('transparent', frame.hasTransparentPixels ? 0 : null);
+    gif.addFrame(frame.imageData, { delay: delay });
   },
 
 
@@ -1541,11 +1708,11 @@ ExportImage.prototype = {
           var duration = (tick - lastFrameTick) * this.msPerTick;
 
           if(twitterExport) {
-            gif.addFrame(this.context, {copy: true, delay: duration / 2 });
-            gif.addFrame(this.context, {copy: true, delay: duration / 2 });
+            this.addGifFrame(gif, duration / 2);
+            this.addGifFrame(gif, duration / 2);
 
           } else {
-            gif.addFrame(this.context, {copy: true, delay: duration });
+            this.addGifFrame(gif, duration);
           }
           // now draw next frame
           lastFrameTick = tick;
@@ -1561,9 +1728,9 @@ ExportImage.prototype = {
       var duration = (tick - lastFrameTick) * this.msPerTick;
       this.drawFrame();
       if(twitterExport) {
-        gif.addFrame(this.context, {copy: true, delay: duration / 2 });
+        this.addGifFrame(gif, duration / 2);
       } else {
-        gif.addFrame(this.context, {copy: true, delay: duration });
+        this.addGifFrame(gif, duration);
       }
 
 

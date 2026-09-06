@@ -4468,7 +4468,7 @@ LayerGrid.prototype = {
       bgColor = this.editor.colorPaletteManager.noColor;
     }
 
-    if(this.getScreenMode() == TextModeEditor.Mode.NES) {
+    if(drawBackground && this.getScreenMode() == TextModeEditor.Mode.NES) {
       // bg colour is the 0 colour of any palette
       bgColor = this.editor.colorPaletteManager.colorSubPalettes.getPaletteColor(0, 0);
 

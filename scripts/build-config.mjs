@@ -145,6 +145,67 @@ export const packageAssetFiles = {
   "lib/tween/tween.min.js": "node_modules/tween.js/src/Tween.js",
 };
 
+const gifWorkerAnalysisResult =
+  "this.pixels=null,this.colorDepth=8,this.palSize=7," +
+  "this.transparent!==null&&(this.transIndex=this.findClosest(this.transparent))";
+const gifWorkerAlphaAwareAnalysisResult =
+  "this.pixels=null,this.colorDepth=8,this.palSize=7," +
+  "this.transparent!==null&&this.reserveTransparentPaletteEntry()";
+const gifWorkerFindClosestPrefix = "},b.prototype.findClosest=function(e){";
+
+function addAlphaAwareGifTransparency(source) {
+  if (source.split(gifWorkerAnalysisResult).length !== 2) {
+    throw new Error("gif.js worker transparency patch no longer matches analyzePixels");
+  }
+  if (source.split(gifWorkerFindClosestPrefix).length !== 2) {
+    throw new Error("gif.js worker transparency patch no longer matches findClosest");
+  }
+
+  const reserveTransparentPaletteEntry = `},b.prototype.reserveTransparentPaletteEntry=function(){
+    var image=this.image,indexed=this.indexedPixels,palette=this.colorTab;
+    var opaqueUseCount=new Uint32Array(256),reservedIndex=0;
+    var pixel,index,paletteOffset,red,green,blue,closestIndex,closestDistance,distance;
+    var deltaRed,deltaGreen,deltaBlue;
+    for(pixel=0;pixel<indexed.length;pixel++){
+      if(image[pixel*4+3]>=128)opaqueUseCount[indexed[pixel]]++;
+    }
+    for(index=1;index<256;index++){
+      if(opaqueUseCount[index]<opaqueUseCount[reservedIndex])reservedIndex=index;
+    }
+    for(pixel=0;pixel<indexed.length;pixel++){
+      if(image[pixel*4+3]<128){
+        indexed[pixel]=reservedIndex;
+      }else if(indexed[pixel]===reservedIndex){
+        red=image[pixel*4];green=image[pixel*4+1];blue=image[pixel*4+2];
+        closestIndex=reservedIndex===0?1:0;closestDistance=Infinity;
+        for(index=0;index<256;index++){
+          if(index===reservedIndex)continue;
+          paletteOffset=index*3;
+          deltaRed=red-(palette[paletteOffset]&255);
+          deltaGreen=green-(palette[paletteOffset+1]&255);
+          deltaBlue=blue-(palette[paletteOffset+2]&255);
+          distance=deltaRed*deltaRed+deltaGreen*deltaGreen+deltaBlue*deltaBlue;
+          if(distance<closestDistance){closestDistance=distance;closestIndex=index;}
+        }
+        indexed[pixel]=closestIndex;this.usedEntry[closestIndex]=true;
+      }
+    }
+    this.transIndex=reservedIndex;this.usedEntry[reservedIndex]=true;
+  },b.prototype.findClosest=function(e){`;
+
+  return source
+    .replace(gifWorkerAnalysisResult, gifWorkerAlphaAwareAnalysisResult)
+    .replace(gifWorkerFindClosestPrefix, reserveTransparentPaletteEntry)
+    .replace("\n//# sourceMappingURL=gif.worker.js.map", "");
+}
+
+// gif.js otherwise identifies transparency only by an RGB key after
+// quantization. Preserve the source alpha mask and reserve a palette entry so
+// an opaque color can never be quantized to the transparent index.
+export const packageAssetTransforms = Object.freeze({
+  "lib/gif/gif.worker.js": addAlphaAwareGifTransparency,
+});
+
 // Some published package maps omit sourcesContent and reference files that are
 // not otherwise part of the application build. Embed those package sources so
 // browsers and development servers can consume the maps without filesystem

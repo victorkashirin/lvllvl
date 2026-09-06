@@ -19,13 +19,14 @@ ExportFrameImage.prototype = {
     this.editor = editor;
   },
 
-  initCanvas: function() {
+  initCanvas: function(contentWidth, contentHeight) {
+    if(typeof contentWidth == 'undefined') {
+      contentWidth = this.editor.graphic.getGraphicWidth();
+      contentHeight = this.editor.graphic.getGraphicHeight();
+    }
 
-    var graphicWidth = this.editor.graphic.getGraphicWidth();
-    var graphicHeight = this.editor.graphic.getGraphicHeight();
-
-    var width = (graphicWidth + this.borderWidth * 2) * this.scale ;
-    var height = (graphicHeight + this.borderHeight * 2) * this.scale;
+    var width = (contentWidth + this.borderWidth * 2) * this.scale ;
+    var height = (contentHeight + this.borderHeight * 2) * this.scale;
 
     if(!this.layersCanvas) {
 
@@ -46,6 +47,10 @@ ExportFrameImage.prototype = {
   exportFrame: function(args) {
     this.scale = args.scale;
     this.includeBorder = args.includeBorder;
+    var drawBackground = this.editor.layers.isBackgroundVisible();
+    if(args.includeBackground === false) {
+      drawBackground = false;
+    }
     var layers = args.layers;
     
     if(layers == 'current') {
@@ -80,14 +85,25 @@ ExportFrameImage.prototype = {
     
     var colorPalette = this.editor.colorPaletteManager.getCurrentColorPalette();
 
-    var screenWidth =  this.editor.graphic.getGraphicWidth();
-    var screenHeight = this.editor.graphic.getGraphicHeight();
+    var graphicWidth = this.editor.graphic.getGraphicWidth();
+    var graphicHeight = this.editor.graphic.getGraphicHeight();
+    var sourceX = 0;
+    var sourceY = 0;
+    var screenWidth = graphicWidth;
+    var screenHeight = graphicHeight;
+
+    if(typeof args.crop != 'undefined' && args.crop) {
+      sourceX = args.crop.x;
+      sourceY = args.crop.y;
+      screenWidth = args.crop.width;
+      screenHeight = args.crop.height;
+    }
 
     var exportWidth = (screenWidth + this.borderWidth * 2) * this.scale;
     var exportHeight = (screenHeight + this.borderHeight * 2) * this.scale;
 
 
-    this.initCanvas();
+    this.initCanvas(screenWidth, screenHeight);
 
 
     // draw the border
@@ -130,9 +146,9 @@ ExportFrameImage.prototype = {
       this.screenCanvas = document.createElement('canvas');
     }
 
-    if(this.screenContext == null || this.screenCanvas.width != screenWidth || this.screenCanvas.height != screenHeight) {
-      this.screenCanvas.width = screenWidth;
-      this.screenCanvas.height = screenHeight;
+    if(this.screenContext == null || this.screenCanvas.width != graphicWidth || this.screenCanvas.height != graphicHeight) {
+      this.screenCanvas.width = graphicWidth;
+      this.screenCanvas.height = graphicHeight;
       this.screenContext = UI.getContextNoSmoothing(this.screenCanvas);
     }
 
@@ -157,15 +173,28 @@ ExportFrameImage.prototype = {
         context: this.layersContext,
         frame: frame, 
         layers: layers,
+        drawBackground: drawBackground,
         scale: this.scale,
+        srcX: sourceX,
+        srcY: sourceY,
+        srcWidth: screenWidth,
+        srcHeight: screenHeight,
         dstX: this.borderWidth * this.scale,
         dstY: this.borderHeight * this.scale
       });
     } else {
-      this.editor.grid.grid2d.drawFrame({ canvas: this.screenCanvas, context: this.screenContext, frame: frame, layers: layers });
+      this.editor.grid.grid2d.drawFrame({
+        canvas: this.screenCanvas,
+        context: this.screenContext,
+        frame: frame,
+        layers: layers,
+        drawBackground: drawBackground
+      });
       // draw it rescaled
-      this.layersContext.drawImage(this.screenCanvas, this.borderWidth * this.scale, this.borderHeight * this.scale, 
-        this.screenCanvas.width * this.scale, this.screenCanvas.height * this.scale);
+      this.layersContext.drawImage(this.screenCanvas,
+        sourceX, sourceY, screenWidth, screenHeight,
+        this.borderWidth * this.scale, this.borderHeight * this.scale,
+        screenWidth * this.scale, screenHeight * this.scale);
     }
 
     if(this.addTransparentPixel) {

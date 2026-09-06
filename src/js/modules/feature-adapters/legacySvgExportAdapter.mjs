@@ -7,6 +7,55 @@ import { encodeSvgExport } from "../domain/svgExport.mjs";
 
 const supportedScreenModes = new Set(["vector", "textmode", "c64standard", "c64ecm"]);
 
+/**
+ * @param {any} editor
+ * @param {any} layer
+ * @returns {{ maxX: number, maxY: number, minX: number, minY: number } | false}
+ */
+function svgExportSelection(editor, layer) {
+  const select = editor.tools?.drawTools?.select;
+  if (
+    !select || typeof select.isActive !== "function" || !select.isActive() ||
+    typeof select.getSelection !== "function"
+  ) {
+    return false;
+  }
+  const selection = select.getSelection();
+  if (
+    !selection ||
+    ![selection.minX, selection.minY, selection.maxX, selection.maxY].every(Number.isFinite)
+  ) {
+    return false;
+  }
+  const gridWidth = layer.getGridWidth();
+  const gridHeight = layer.getGridHeight();
+  const minX = Math.max(0, Math.min(gridWidth, Math.floor(selection.minX)));
+  const minY = Math.max(0, Math.min(gridHeight, Math.floor(selection.minY)));
+  const maxX = Math.max(0, Math.min(gridWidth, Math.ceil(selection.maxX)));
+  const maxY = Math.max(0, Math.min(gridHeight, Math.ceil(selection.maxY)));
+  if (maxX <= minX || maxY <= minY) return false;
+  return Object.freeze({ maxX, maxY, minX, minY });
+}
+
+/**
+ * @param {any} layer
+ * @param {string} screenMode
+ * @param {{ maxX: number, maxY: number, minX: number, minY: number }} [bounds]
+ */
+function svgExportDimensions(layer, screenMode, bounds) {
+  const vector = screenMode === "vector";
+  const cellWidth = vector ? 32 : layer.getCellWidth();
+  const cellHeight = vector ? 32 : layer.getCellHeight();
+  const gridWidth = bounds ? bounds.maxX - bounds.minX : layer.getGridWidth();
+  const gridHeight = bounds ? bounds.maxY - bounds.minY : layer.getGridHeight();
+  return Object.freeze({
+    cellHeight,
+    cellWidth,
+    height: cellHeight * gridHeight,
+    width: cellWidth * gridWidth,
+  });
+}
+
 /** @param {any} palette @param {unknown} index @param {unknown} noColor */
 function colorValue(palette, index, noColor) {
   if (index === false || typeof index === "undefined" || index === noColor) return null;
@@ -94,8 +143,12 @@ function rasterPath(tileSet, cell, layer, width, height) {
   return path;
 }
 
-/** @param {any} editor @param {string} [filename] */
-export function captureLegacySvgExportSnapshot(editor, filename = "Untitled") {
+/**
+ * @param {any} editor
+ * @param {string} [filename]
+ * @param {{ area?: "document" | "selection" }} [options]
+ */
+export function captureLegacySvgExportSnapshot(editor, filename = "Untitled", options = {}) {
   const layer = editor.layers.getSelectedLayerObject();
   if (!layer || layer.getType() !== "grid") {
     return Object.freeze({ error: "Please choose a grid layer", supported: false });
@@ -112,32 +165,42 @@ export function captureLegacySvgExportSnapshot(editor, filename = "Untitled") {
   const palette = layer.getColorPalette();
   const noColor = editor.colorPaletteManager.noColor;
   const vector = screenMode === "vector";
-  const cellWidth = vector ? 32 : layer.getCellWidth();
-  const cellHeight = vector ? 32 : layer.getCellHeight();
-  const gridWidth = layer.getGridWidth();
-  const gridHeight = layer.getGridHeight();
+  const selection = options.area === "selection" ? svgExportSelection(editor, layer) : false;
+  if (options.area === "selection" && selection === false) {
+    return Object.freeze({ error: "Please make a selection to export", supported: false });
+  }
+  const bounds = selection || Object.freeze({
+    maxX: layer.getGridWidth(),
+    maxY: layer.getGridHeight(),
+    minX: 0,
+    minY: 0,
+  });
+  const dimensions = svgExportDimensions(layer, screenMode, bounds);
+  const { cellHeight, cellWidth, height, width } = dimensions;
   const vectorScale = vector ? cellWidth * tileSet.getFontScale() : 1;
   const scaledAscent = vector ? tileSet.getFontAscent() * vectorScale : 0;
   const cells = [];
 
-  for (let y = 0; y < gridHeight; y++) {
-    for (let x = 0; x < gridWidth; x++) {
+  for (let y = bounds.minY; y < bounds.maxY; y++) {
+    for (let x = bounds.minX; x < bounds.maxX; x++) {
       const cell = layer.getCell({ x, y });
       if (cell === false) continue;
       const colors = cellColors(layer, tileSet, cell);
+      const exportX = x - bounds.minX;
+      const exportY = y - bounds.minY;
       let path = null;
       if (vector) {
         const vectorPath = tileSet.getSVGPath(cell.t);
         if (vectorPath !== false && !vectorPath.startsWith("lyph glyph-name")) {
-          const xPosition = x * cellWidth;
-          const yPosition = y * cellHeight;
+          const xPosition = exportX * cellWidth;
+          const yPosition = exportY * cellHeight;
           cells.push({
             background: colorValue(palette, colors.background, noColor),
             foreground: colorValue(palette, colors.foreground, noColor),
             path: vectorPath,
             transform: `translate(${xPosition} ${yPosition + scaledAscent}) scale(${vectorScale} -${vectorScale})`,
-            x,
-            y,
+            x: exportX,
+            y: exportY,
           });
           continue;
         }
@@ -148,8 +211,8 @@ export function captureLegacySvgExportSnapshot(editor, filename = "Untitled") {
         background: colorValue(palette, colors.background, noColor),
         foreground: colorValue(palette, colors.foreground, noColor),
         path,
-        x,
-        y,
+        x: exportX,
+        y: exportY,
       });
     }
   }
@@ -160,31 +223,37 @@ export function captureLegacySvgExportSnapshot(editor, filename = "Untitled") {
     cellWidth,
     cells,
     filename,
-    height: cellHeight * gridHeight,
+    height,
     supported: true,
     vector,
-    width: cellWidth * gridWidth,
+    width,
   };
 }
 
 /**
  * @param {{
- *   editor: object,
+ *   editor: any,
+ *   getProjectName: () => string,
  *   host: {
+ *     copyText: (value: string) => Promise<void>,
  *     downloadArtifact: (artifact: { filename: string, mediaType: string, text: string }) => void,
  *     reportError: (operation: string, error: unknown) => void,
  *     showAlert: (message: string) => void,
  *   },
  * }} dependencies
  */
-export function createLegacySvgExportPort({ editor, host }) {
-  /** @param {string} filename @returns {Promise<SvgPortArtifact>} */
-  async function artifact(filename) {
-    const snapshot = captureLegacySvgExportSnapshot(editor, filename);
+export function createLegacySvgExportPort({ editor, getProjectName, host }) {
+  /**
+   * @param {string} filename
+   * @param {{ area?: "document" | "selection", includeBackground?: boolean, scale?: number }} [options]
+   * @returns {Promise<SvgPortArtifact>}
+   */
+  async function artifact(filename, options) {
+    const snapshot = captureLegacySvgExportSnapshot(editor, filename, options);
     if ("error" in snapshot) {
       return Object.freeze({ error: snapshot.error, supported: /** @type {false} */ (false) });
     }
-    const encoded = encodeSvgExport(snapshot);
+    const encoded = encodeSvgExport(snapshot, options);
     return Object.freeze({
       filename: encoded.filename,
       mediaType: encoded.mediaType,
@@ -193,9 +262,37 @@ export function createLegacySvgExportPort({ editor, host }) {
   }
 
   return Object.freeze({
-    /** @param {string} filename */
-    async export(filename) {
-      const result = await artifact(filename);
+    /** @param {{ area?: "document" | "selection", includeBackground?: boolean, scale?: number }} [options] */
+    async copy(options) {
+      const result = await artifact("Untitled", options);
+      if ("error" in result) {
+        host.showAlert(result.error);
+        return false;
+      }
+      await host.copyText(result.text);
+      return result;
+    },
+    getDefaultFilename() {
+      const projectName = getProjectName();
+      return typeof projectName === "string" && projectName !== "" ? projectName : "Untitled";
+    },
+    /** @param {"document" | "selection"} [area] */
+    getDimensions(area = "document") {
+      const layer = editor.layers.getSelectedLayerObject();
+      if (!layer || layer.getType() !== "grid") return false;
+      const screenMode = layer.getScreenMode();
+      if (!supportedScreenModes.has(screenMode)) return false;
+      const selection = area === "selection" ? svgExportSelection(editor, layer) : false;
+      if (area === "selection" && selection === false) return false;
+      const { height, width } = svgExportDimensions(layer, screenMode, selection || undefined);
+      return Object.freeze({ height, width });
+    },
+    /**
+     * @param {string} filename
+     * @param {{ area?: "document" | "selection", includeBackground?: boolean, scale?: number }} [options]
+     */
+    async export(filename, options) {
+      const result = await artifact(filename, options);
       if ("error" in result) {
         host.showAlert(result.error);
         return false;
@@ -203,8 +300,9 @@ export function createLegacySvgExportPort({ editor, host }) {
       host.downloadArtifact(result);
       return result;
     },
-    async getSVGData() {
-      const result = await artifact("Untitled");
+    /** @param {{ area?: "document" | "selection", includeBackground?: boolean, scale?: number }} [options] */
+    async getSVGData(options) {
+      const result = await artifact("Untitled", options);
       return "error" in result ? false : result.text;
     },
     reportError(/** @type {unknown} */ error) {

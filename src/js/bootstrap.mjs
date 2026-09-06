@@ -19,6 +19,12 @@ const clock = () => Date.now();
 const createId = () => globalThis.generateUUID();
 
 const featureHost = Object.freeze({
+  async copyText(/** @type {string} */ value) {
+    if (!globalThis.navigator?.clipboard?.writeText) {
+      throw new Error("Clipboard access is not available");
+    }
+    await globalThis.navigator.clipboard.writeText(value);
+  },
   downloadArtifact(/** @type {{filename: string, mediaType: string, text: string}} */ artifact) {
     legacy.download(artifact.text, artifact.filename, artifact.mediaType);
   },
@@ -72,7 +78,11 @@ const services = {
   remoteProviderFacades: disabledRemoteProviders.facades,
   remoteProviders: disabledRemoteProviders.policy,
   createSvgExportPort(/** @type {any} */ editor) {
-    return createLegacySvgExportPort({ editor, host: featureHost });
+    return createLegacySvgExportPort({
+      editor,
+      getProjectName: () => app.fileManager.getProjectName(),
+      host: featureHost,
+    });
   },
   createDocumentSession() {
     return new DocumentSession({

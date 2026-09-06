@@ -44,6 +44,27 @@
 
     </div>
     
+    <div class="formGroup" id="exportImageAreaRow" style="display: none">
+      <label class="controlLabel">Area:</label>
+      <div class="radioGroup">
+        <label class="rb-container">Full document
+          <input type="radio" name="exportImageArea" value="document" checked="checked"/>
+          <span class="checkmark"></span>
+        </label>
+        <label class="rb-container">Selection
+          <input type="radio" name="exportImageArea" value="selection"/>
+          <span class="checkmark"></span>
+        </label>
+      </div>
+    </div>
+
+    <div class="formRow">
+      <label class="controlLabel" for="exportImageBackground">Background</label>
+      <select class="formControl" id="exportImageBackground">
+        <option value="document">Document</option>
+        <option value="transparent">Transparent</option>
+      </select>
+    </div>
 
     <div class="formRow">
       <label class="controlLabel" for="exportImageScale">Scale</label> 

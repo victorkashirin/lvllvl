@@ -79,14 +79,82 @@ test("text-mode SVG export converts binary tile pixels into crisp vector paths",
   };
   const snapshot = captureLegacySvgExportSnapshot(editor);
   const svg = encodeSvgExport(snapshot).data;
+  const scaledSvg = encodeSvgExport(snapshot, { scale: 4 }).data;
+  const backgroundSvg = encodeSvgExport({
+    ...snapshot,
+    background: "rgb(0,0,0)",
+  }).data;
+  const transparentSvg = encodeSvgExport({
+    ...snapshot,
+    background: "rgb(0,0,0)",
+  }, {
+    includeBackground: false,
+    scale: 4,
+  }).data;
 
   assert.match(svg, /<svg xmlns="http:\/\/www\.w3\.org\/2000\/svg" width="6" height="2" viewBox="0 0 6 2" shape-rendering="crispEdges">/);
+  assert.match(scaledSvg, /width="24" height="8" viewBox="0 0 6 2"/);
+  assert.match(backgroundSvg, /<rect width="100%" height="100%" fill="rgb\(0,0,0\)"\/>/);
+  assert.match(transparentSvg, /width="24" height="8" viewBox="0 0 6 2"/);
+  assert.doesNotMatch(transparentSvg, /<rect width="100%"/);
   assert.doesNotMatch(svg, /<rect width="100%"/);
   assert.match(svg, /<path transform="translate\(0 0\)" d="M0 0h2v1h-2zM1 1h2v1h-2z" fill="rgb\(255,0,0\)"\/>/);
   assert.match(svg, /<rect x="3" y="0" width="3" height="2" fill="rgb\(0,0,255\)"\/>/);
   assert.match(svg, /<path transform="translate\(3 0\)" d="M1 0h2v1h-2zM0 1h2v1h-2z" fill="rgb\(255,0,0\)"\/>/);
   assert.ok(pixelFrames.length > 0);
   assert.deepEqual(new Set(pixelFrames), new Set(["current"]));
+});
+
+test("selection SVG export crops and rebases the selected cells", () => {
+  const { layer } = createTextModeLayer({
+    cells: [
+      [
+        { t: 0, fc: 1, bc: -1, fh: 0, fv: 0, rz: 0 },
+        { t: 0, fc: 1, bc: 2, fh: 0, fv: 0, rz: 0 },
+      ],
+      [
+        { t: 0, fc: 1, bc: -1, fh: 0, fv: 0, rz: 0 },
+        { t: 0, fc: 1, bc: -1, fh: 0, fv: 0, rz: 0 },
+      ],
+    ],
+    pixels: [[1, 0, 0, 0, 0, 0]],
+  });
+  const editor = {
+    colorPaletteManager: { noColor: -1 },
+    layers: { getSelectedLayerObject: () => layer },
+    tools: {
+      drawTools: {
+        select: {
+          getSelection: () => ({ maxX: 2, maxY: 1, minX: 1, minY: 0 }),
+          isActive: () => true,
+        },
+      },
+    },
+  };
+
+  const documentSnapshot = captureLegacySvgExportSnapshot(editor);
+  const selectionSnapshot = captureLegacySvgExportSnapshot(
+    editor,
+    "Selection",
+    { area: "selection" },
+  );
+  const svg = encodeSvgExport(selectionSnapshot).data;
+
+  assert.deepEqual(
+    { height: documentSnapshot.height, width: documentSnapshot.width },
+    { height: 4, width: 6 },
+  );
+  assert.deepEqual(
+    { height: selectionSnapshot.height, width: selectionSnapshot.width },
+    { height: 2, width: 3 },
+  );
+  assert.deepEqual(
+    selectionSnapshot.cells.map(({ x, y }) => ({ x, y })),
+    [{ x: 0, y: 0 }],
+  );
+  assert.match(svg, /width="3" height="2" viewBox="0 0 3 2"/);
+  assert.match(svg, /<rect x="0" y="0" width="3" height="2" fill="rgb\(0,0,255\)"\/>/);
+  assert.match(svg, /<path transform="translate\(0 0\)"/);
 });
 
 test("text-mode SVG paths honor tile rotation metadata", async () => {
@@ -167,7 +235,8 @@ test("the editor enables SVG export for monochrome text modes", async () => {
   assert.equal(editor.isSVGExportSupported(context.TextModeEditor.Mode.INDEXED), false);
 });
 
-test("SVG downloads use the standard MIME type and preserve an existing extension", async () => {
+test("SVG exports apply intrinsic scale to downloads and clipboard copies", async () => {
+  const copies = [];
   const downloads = [];
   const { layer } = createTextModeLayer({
     cells: [[{ t: 0, fc: 1, bc: -1, fh: 0, fv: 0, rz: 0 }]],
@@ -177,18 +246,31 @@ test("SVG downloads use the standard MIME type and preserve an existing extensio
     colorPaletteManager: { noColor: -1 },
     layers: { getSelectedLayerObject: () => layer },
   };
+  let projectName = "Named project";
   const port = createLegacySvgExportPort({
     editor,
+    getProjectName: () => projectName,
     host: {
+      copyText: async (value) => copies.push(value),
       downloadArtifact: (artifact) => downloads.push(artifact),
       reportError: (operation, error) => assert.fail(`${operation}: ${error}`),
       showAlert: (message) => assert.fail(message),
     },
   });
 
-  await port.export("picture.SVG");
+  assert.equal(port.getDefaultFilename(), "Named project");
+  projectName = "Renamed project";
+  assert.equal(port.getDefaultFilename(), "Renamed project");
+  assert.deepEqual(port.getDimensions(), { height: 2, width: 3 });
+  await port.export("picture.SVG", { scale: 4 });
+  await port.copy({ scale: 2 });
 
   assert.equal(downloads.length, 1);
   assert.equal(downloads[0].filename, "picture.SVG");
   assert.equal(downloads[0].mediaType, "image/svg+xml");
+  assert.match(downloads[0].text, /width="12" height="8" viewBox="0 0 3 2"/);
+  assert.equal(copies.length, 1);
+  assert.match(copies[0], /width="6" height="4" viewBox="0 0 3 2"/);
+  const transparentSvg = await port.getSVGData({ includeBackground: false, scale: 4 });
+  assert.match(transparentSvg, /width="12" height="8" viewBox="0 0 3 2"/);
 });

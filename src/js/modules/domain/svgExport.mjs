@@ -45,8 +45,9 @@ function escapeAttribute(value) {
  *   vector: boolean,
  *   width: number,
  * }} snapshot
+ * @param {{ includeBackground?: boolean, scale?: number }} [options]
  */
-export function encodeSvgExport(snapshot) {
+export function encodeSvgExport(snapshot, options = {}) {
   if (!snapshot || typeof snapshot !== "object" || !Array.isArray(snapshot.cells)) {
     throw new TypeError("SVG export requires a document snapshot");
   }
@@ -55,13 +56,18 @@ export function encodeSvgExport(snapshot) {
   const cellWidth = requireNumber(snapshot.cellWidth, "cell width");
   const cellHeight = requireNumber(snapshot.cellHeight, "cell height");
   const background = requireColor(snapshot.background);
+  const includeBackground = options.includeBackground !== false;
+  const scale = typeof options.scale === "undefined" ? 1 : options.scale;
+  if (!Number.isFinite(scale) || scale <= 0) {
+    throw new TypeError("SVG export scale must be a positive number");
+  }
   let data = '<?xml version="1.0" standalone="no"?>';
-  data += `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"`;
+  data += `<svg xmlns="http://www.w3.org/2000/svg" width="${width * scale}" height="${height * scale}"`;
   data += ` viewBox="0 0 ${width} ${height}"`;
   if (!snapshot.vector) data += ' shape-rendering="crispEdges"';
   data += ">";
 
-  if (background !== null) {
+  if (includeBackground && background !== null) {
     data += `<rect width="100%" height="100%" fill="${background}"/>`;
   }
 

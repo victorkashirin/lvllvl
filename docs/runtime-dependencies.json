@@ -195,7 +195,7 @@
       "source": "https://github.com/jnordberg/gif.js",
       "license": "MIT",
       "purl": "pkg:npm/gif.js@0.1.6",
-      "modificationStatus": "unmodified",
+      "modificationStatus": "modified",
       "pathPrefixes": ["lib/gif/"],
       "package": {
         "name": "gif.js",

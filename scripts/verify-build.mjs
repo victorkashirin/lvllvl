@@ -20,6 +20,7 @@ import { versionModuleImports } from "./module-versioning.mjs";
 import {
   buildDirectory,
   packageAssetFiles,
+  packageAssetTransforms,
   packageSourceMapsWithEmbeddedSources,
   runtimeAssetFiles,
   runtimeFeatureRequests,
@@ -611,9 +612,11 @@ for (const filename of runtimeAssetFiles) {
   if (!runtimeRequestFiles.has(filename)) {
     throw new Error(`Copied runtime asset is not assigned to a feature: ${filename}`);
   }
-  const source = embeddedPackageSourceMaps.has(filename)
+  let source = embeddedPackageSourceMaps.has(filename)
     ? Buffer.from(await embedSourceMapSources(sourceFile(filename)))
     : await readFile(sourceFile(filename));
+  const transform = packageAssetTransforms[filename];
+  if (transform) source = Buffer.from(transform(source.toString("utf8")));
   const output = await readFile(path.join(buildRoot, filename));
   if (!source.equals(output)) throw new Error(`${filename} differs from its source`);
 }

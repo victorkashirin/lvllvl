@@ -4,5 +4,38 @@
       <label class="controlLabel" for="exportSVGAs">File name:</label> 
       <input type="text" class="formControl" size="20" value="" id="exportSVGAs"/>
     </div>
+
+    <div class="formGroup" id="exportSVGAreaRow" style="display: none">
+      <label class="controlLabel">Area:</label>
+      <div class="radioGroup" style="display: inline-block">
+        <label><input type="radio" name="exportSVGArea" value="document" checked="checked"/> Full document</label>
+        &nbsp;&nbsp;
+        <label><input type="radio" name="exportSVGArea" value="selection"/> Selection</label>
+      </div>
+    </div>
+
+    <div class="formGroup">
+      <label class="controlLabel">Scale:</label>
+      <div class="radioGroup" style="display: inline-block">
+        <label><input type="radio" name="exportSVGScale" value="1" checked="checked"/> 1&times;</label>
+        &nbsp;&nbsp;
+        <label><input type="radio" name="exportSVGScale" value="2"/> 2&times;</label>
+        &nbsp;&nbsp;
+        <label><input type="radio" name="exportSVGScale" value="4"/> 4&times;</label>
+      </div>
+    </div>
+
+    <div class="formGroup">
+      <span class="controlLabel">Size:</span>
+      <span id="exportSVGDimensions" aria-live="polite"></span>
+    </div>
+
+    <div class="formGroup">
+      <label class="controlLabel" for="exportSVGBackground">Background:</label>
+      <select class="formControl" id="exportSVGBackground">
+        <option value="document">Document</option>
+        <option value="transparent">Transparent</option>
+      </select>
+    </div>
   </div>
 </div>

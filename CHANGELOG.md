@@ -4,6 +4,13 @@
 
 ### Added
 
+- Add 1x, 2x, and 4x intrinsic sizing with a live dimensions readout,
+  document or transparent canvas backgrounds, and direct clipboard copying to
+  SVG export.
+- Let SVG exports target the current canvas selection when one is active.
+- Let PNG and GIF exports target the current canvas selection and optionally
+  omit the document background, while preserving layer, border, scale, effect,
+  preview, download, and clipboard behavior.
 - Let Escape finish an active Type-tool session without changing the selected
   tool or artwork, restoring editor shortcuts until the canvas is clicked or
   Type is selected again. Start Type at the current 2D or 3D grid cursor when
@@ -13,6 +20,14 @@
 
 ### Fixed
 
+- Preserve pixel-mode selection bounds in PNG/GIF exports and reserve GIF
+  transparency as a dedicated palette entry so opaque colours cannot disappear
+  during quantization. Respect transparent export backgrounds in the shared NES
+  sprite renderer as well.
+- Increase the GIF/PNG export controls pane height so its standard options fit
+  without scrolling.
+- Populate the SVG export filename from the current project name, including
+  project renames made after the export dialog was first opened.
 - Remove the P1 legacy-code backlog: delete unreferenced backup sources, the
   superseded standalone sprite editor, the broken NES/X16 runtime shells, dormant
   NES assembler/build targets, the unused assembly-import and old C64-menu paths,

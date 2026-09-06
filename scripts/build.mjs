@@ -29,6 +29,7 @@ import {
   assetDirectories,
   buildDirectory,
   packageAssetFiles,
+  packageAssetTransforms,
   packageSourceMapsWithEmbeddedSources,
   runtimeAssetFiles,
   sourceDirectory,
@@ -367,8 +368,11 @@ async function copyRuntimeAssets() {
     const destination = path.join(buildRoot, relativePath);
     await mkdir(path.dirname(destination), { recursive: true });
     const source = await sourceFile(relativePath);
+    const transform = packageAssetTransforms[relativePath];
     if (embeddedPackageSourceMaps.has(relativePath)) {
       await writeFile(destination, await embedSourceMapSources(source));
+    } else if (transform) {
+      await writeFile(destination, transform(await readFile(source, "utf8")));
     } else {
       await cp(source, destination, { force: true });
     }
