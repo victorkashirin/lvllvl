@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.497.8 - 2026-09-07
+
 ### Added
 
 - Add a momentary artwork overview to the 2D editor: hold Tab to hide panels,

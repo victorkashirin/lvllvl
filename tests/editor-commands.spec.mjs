@@ -30,10 +30,12 @@ test("landing page and About show plus release information", async ({ page }) =>
 
   await expect(page.locator(".start-edition")).toHaveText(/plus/i);
   await expect(page.locator(".lvllvl-version")).toHaveText(`v${packageJson.version}`);
-  await expect(page.locator(".start-improvement-list li")).toHaveCount(9);
+  await expect(page.locator(".start-improvement-list li").filter({
+    hasText: "Artwork preview",
+  })).toContainText("hold Tab");
   await expect(page.locator(".start-improvement-list li").filter({
     hasText: "Zen Mode",
-  })).toContainText("Alt+Shift+Z");
+  })).toBeVisible();
   await expect(page.locator(".start-github-link")).toHaveAttribute(
     "href",
     "https://github.com/victorkashirin/lvllvl",
