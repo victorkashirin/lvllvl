@@ -479,8 +479,26 @@ multiple changed tiles should not each trigger separate full palette traversals.
 
 ### R8 — P2: bitmap rasterization mixes canvas readback with per-pixel JS work
 
-**Location:** [layerGrid.js:3805](../../src/js/textMode/layers/layerGrid.js#L3805),
-[4073–4238](../../src/js/textMode/layers/layerGrid.js#L4073-L4238).
+**Status: fixed.** Bitmap layers now keep a CPU-rasterized tile atlas bounded to
+at most 1,024 entries and four million pixels. A cache miss expands
+one tile into reusable `ImageData`; repeated cells use canvas-to-canvas blits and
+never read pixels back from the artwork canvas. Atlas entries include the tile and
+its selective render revision, foreground/background colours, screen mode,
+orientation, C64 registers/transparency, and NES subpalette. Bulk tile, palette,
+dimension, and mode changes replace the atlas dependencies.
+
+The cache-miss rasterizers are specialized by mode and share precomputed
+orientation maps and packed RGBA palette values. Transparent text, C64, and NES
+pixels leave the background or reference image composed before the cell pass
+visible. Indexed and RGB cells are cleared before blitting to preserve their prior
+replacement-transparency and alpha semantics. Selection and shape scratch renders
+use the same atlas without consuming the main viewport's dirty state. Slot reuse
+is bounded and evicts the oldest indexed entry.
+
+**Location:** [layerGrid.js:4082–4228](../../src/js/textMode/layers/layerGrid.js#L4082-L4228),
+[4607–4923](../../src/js/textMode/layers/layerGrid.js#L4607-L4923).
+
+The observations below describe the original implementation.
 
 Each nonempty bitmap draw reads the destination canvas into a new `ImageData`,
 loops through cells/pixels in JavaScript, branches on screen mode and orientation,
@@ -493,7 +511,8 @@ share, and the relative cost of inner-loop branches were not separately measured
 `getImageData` can force synchronization depending on the browser's canvas backend;
 there is no basis here to label all of it GPU readback.
 
-**Fix after R1–R5:** choose a consistent representation for the hot path:
+**Implemented after R1–R5:** the retained bounded-atlas option above provides a
+consistent hot-path representation. The alternatives considered were:
 
 - Retain CPU pixel buffers/dirty chunks when CPU rasterization is needed, avoiding
   reading back pixels the renderer already owns.
@@ -506,6 +525,14 @@ Reference-image compositing, transparency, and selections need explicit treatmen
 blindly replacing `getImageData` with blank `ImageData` would lose content. Benchmark
 `willReadFrequently` only on read-heavy scratch contexts, not on every visible
 canvas. It can change backend trade-offs rather than universally improve speed.
+
+**Regression checks:** source tests cover cache reuse, bounds, revision invalidation,
+orientation, transparency, and exact text, indexed, RGB, C64 multicolour, and NES
+pixel mapping. Chromium and Firefox production-build checks render 1,000 identical
+cells with one cold upload, no warm upload, one selective-revision upload, and zero
+artwork-canvas reads while comparing the rendered pixels. The workflow operation
+counter also removes one 64-pixel artwork read and write from a one-cell pencil
+edit; its remaining 64-pixel read is the separate fractional viewport sampler.
 
 ### R9 — P2: 3D rendering scales with grid volume and object count while idle
 

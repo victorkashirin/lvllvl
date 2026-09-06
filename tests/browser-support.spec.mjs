@@ -185,6 +185,7 @@ for (const vector of [false, true]) {
         checks.push(["palette dependency", freshEqual()]);
         if (!vector) {
           tileSet.setPixel(1, 0, 0, tileSet.getPixel(1, 0, 0) ? 0 : 1, false);
+          tileSet.updateCharacters([1], true);
           layers.updateAllLayerPreviews();
           checks.push(["tile dependency", freshEqual()]);
         }
@@ -298,8 +299,7 @@ for (const vector of [false, true]) {
         expect(work.glyphs, label).toBeGreaterThan(0);
         expect(work.glyphs, label).toBeLessThan(work.width * work.height / 8);
       } else {
-        expect(work.readPixels, label).toBeGreaterThan(0);
-        expect(work.readPixels, label).toBeLessThan(work.documentPixels / 8);
+        expect(work.readPixels, label).toBe(0);
       }
     }
     expect(errors).toEqual([]);
@@ -427,6 +427,7 @@ for (const vector of [false, true]) {
         return cached.every((value, i) => value === fresh[i]);
       };
       const steps = [];
+      let movingSelectionPreserved = true;
       try {
         for (let i = 0; i < 8; i++) {
           layer.setCell({ x: 20, y: 12, t: i % 2 + tile, fc: 1, bc: -1 });
@@ -440,7 +441,10 @@ for (const vector of [false, true]) {
           ["zoom", () => view.setScale(3.5, false)],
           ["pan", () => view.setCameraPosition(13, 15)],
         ];
-        if (!vector) changes.push(["shared tile pixels", () => tileSet.setPixel(1, 0, 0, tileSet.getPixel(1, 0, 0) ? 0 : 1, false)]);
+        if (!vector) changes.push(["shared tile pixels", () => {
+          tileSet.setPixel(1, 0, 0, tileSet.getPixel(1, 0, 0) ? 0 : 1, false);
+          tileSet.updateCharacters([1], true);
+        }]);
         for (const [name, change] of changes) {
           rasters = 0;
           change();
@@ -450,16 +454,40 @@ for (const vector of [false, true]) {
           graphic.redraw({ allCells: true });
           steps.push({ name, refreshed, rasters, equal: compareFresh() });
         }
+        if (!vector) {
+          const previousCanvas = layer.getPrevFrameCanvas();
+          const previousContext = previousCanvas.getContext("2d");
+          const beforeSelection = previousContext.getImageData(
+            0, 0, previousCanvas.width, previousCanvas.height,
+          ).data;
+          const select = editor.tools.drawTools.select;
+          select.setSelection({
+            from: { x: 10, y: 10, z: 0 },
+            to: { x: 16, y: 11, z: 0 },
+            saveInHistory: false,
+          });
+          select.selectionOffsetX = 1;
+          layer.invalidatePrevFrame();
+          graphic.redraw({ allCells: true });
+          const afterSelection = previousContext.getImageData(
+            0, 0, previousCanvas.width, previousCanvas.height,
+          ).data;
+          movingSelectionPreserved = beforeSelection.every(
+            (value, index) => value === afterSelection[index],
+          );
+        }
         const withOnion = pixels();
         editor.frames.setShowPrevFrame(false);
         graphic.redraw({ allCells: true });
         const withoutOnion = pixels();
-        return { steps, visible: withOnion.some((value, i) => value !== withoutOnion[i]) };
+        return { steps, movingSelectionPreserved,
+          visible: withOnion.some((value, i) => value !== withoutOnion[i]) };
       } finally {
         layer[method] = original;
       }
     }, vector);
     expect(result.visible, JSON.stringify(result)).toBe(true);
+    expect(result.movingSelectionPreserved, JSON.stringify(result)).toBe(true);
     for (const step of result.steps) {
       expect(step.rasters, step.name).toBe(0);
       expect(step.equal, step.name).toBe(true);
@@ -1706,6 +1734,194 @@ test("2D tile animation redraws only artwork that uses the changed tile", async 
     width <= Math.ceil(result.tileWidth * 3.5) + 1
     && height <= Math.ceil(result.tileHeight * 3.5) + 1
   )).toBe(true);
+});
+
+test("2D bitmap cells reuse a bounded atlas without artwork readback", async ({ page }, testInfo) => {
+  test.skip(!isDesktop2DRendererProject(testInfo));
+
+  await open2DProject(page, testInfo);
+  const result = await page.evaluate(() => {
+    const editor = g_app.textModeEditor;
+    const { graphic, layers, gridView2d: view } = editor;
+    const layer = layers.getSelectedLayerObject();
+    const tileSet = layer.getTileSet();
+    const width = 40, height = 25, tile = 1;
+    graphic.setGridDimensions({ width, height });
+    view.setScale(8, false);
+    view.setCameraPosition(0, 0);
+    editor.frames.setShowPrevFrame(false);
+    editor.history.setEnabled(false);
+    for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+      layer.setCell({ x, y, t: tile, fc: 1, bc: -1, update: false });
+    }
+    editor.history.setEnabled(true);
+
+    const prototype = CanvasRenderingContext2D.prototype;
+    const originalRead = prototype.getImageData;
+    const originalPut = prototype.putImageData;
+    const originalDraw = prototype.drawImage;
+    let active = false, reads = 0, uploads = 0, blits = 0;
+    let atlasStateNormalized = true;
+    prototype.getImageData = function(...args) {
+      if (active && this.canvas === layer.canvas) reads++;
+      return originalRead.apply(this, args);
+    };
+    prototype.putImageData = function(...args) {
+      if (active && this.canvas === layer.bitmapTileAtlas?.canvas) uploads++;
+      return originalPut.apply(this, args);
+    };
+    prototype.drawImage = function(source, ...args) {
+      if (active && this.canvas === layer.canvas
+          && source === layer.bitmapTileAtlas?.canvas) {
+        blits++;
+        const transform = this.getTransform();
+        atlasStateNormalized &&= transform.a === 1 && transform.b === 0
+          && transform.c === 0 && transform.d === 1
+          && transform.e === 0 && transform.f === 0
+          && this.globalAlpha === 1
+          && this.globalCompositeOperation === "source-over"
+          && this.shadowBlur === 0
+          && this.filter === "none";
+      }
+      return originalDraw.call(this, source, ...args);
+    };
+
+    const render = () => {
+      reads = uploads = blits = 0;
+      graphic.invalidateAllCells();
+      active = true;
+      try { graphic.redraw({ allCells: true }); }
+      finally { active = false; }
+      return { reads, uploads, blits };
+    };
+    const pixels = () => new Uint8ClampedArray(originalRead.call(
+      layer.canvas.getContext("2d"), 0, 0, layer.canvas.width, layer.canvas.height,
+    ).data);
+    const equal = (a, b) => a.every((value, index) => value === b[index]);
+
+    try {
+      layer.bitmapTileAtlas = null;
+      const cold = render();
+      const coldPixels = pixels();
+      const warm = render();
+      const warmPixels = pixels();
+      tileSet.currentTileData[tile][0] = tileSet.currentTileData[tile][0] ? 0 : 1;
+      tileSet.tileRenderRevisions[tile] = (tileSet.tileRenderRevisions[tile] || 0) + 1;
+      const changed = render();
+      const changedPixels = pixels();
+      const layerContext = layer.canvas.getContext("2d");
+      layerContext.setTransform(1, 0, 0, 1, 3, 4);
+      layerContext.globalAlpha = 0.4;
+      layerContext.globalCompositeOperation = "copy";
+      layerContext.shadowColor = "#ff0000";
+      layerContext.shadowBlur = 3;
+      layerContext.filter = "blur(1px)";
+      const callerState = {
+        transform: layerContext.getTransform(),
+        alpha: layerContext.globalAlpha,
+        composite: layerContext.globalCompositeOperation,
+        shadowColor: layerContext.shadowColor,
+        shadowBlur: layerContext.shadowBlur,
+        filter: layerContext.filter,
+      };
+      const stateProbe = render();
+      const restoredTransform = layerContext.getTransform();
+      const callerStateRestored = restoredTransform.a === callerState.transform.a
+        && restoredTransform.b === callerState.transform.b
+        && restoredTransform.c === callerState.transform.c
+        && restoredTransform.d === callerState.transform.d
+        && restoredTransform.e === callerState.transform.e
+        && restoredTransform.f === callerState.transform.f
+        && layerContext.globalAlpha === callerState.alpha
+        && layerContext.globalCompositeOperation === callerState.composite
+        && layerContext.shadowColor === callerState.shadowColor
+        && layerContext.shadowBlur === callerState.shadowBlur
+        && layerContext.filter === callerState.filter;
+      layerContext.setTransform(1, 0, 0, 1, 0, 0);
+      layerContext.globalAlpha = 1;
+      layerContext.globalCompositeOperation = "source-over";
+      layerContext.shadowColor = "rgba(0, 0, 0, 0)";
+      layerContext.shadowBlur = 0;
+      layerContext.filter = "none";
+      return {
+        cold, warm, changed, stateProbe,
+        warmMatches: equal(coldPixels, warmPixels),
+        changedPixels: !equal(warmPixels, changedPixels),
+        atlasStateNormalized, callerStateRestored,
+        entries: layer.bitmapTileAtlas.entries.size,
+        capacity: layer.bitmapTileAtlas.capacity,
+        atlasPixels: layer.bitmapTileAtlas.canvas.width * layer.bitmapTileAtlas.canvas.height,
+      };
+    } finally {
+      prototype.getImageData = originalRead;
+      prototype.putImageData = originalPut;
+      prototype.drawImage = originalDraw;
+    }
+  });
+
+  expect(result.cold).toEqual({ reads: 0, uploads: 1, blits: 1000 });
+  expect(result.warm).toEqual({ reads: 0, uploads: 0, blits: 1000 });
+  expect(result.changed).toEqual({ reads: 0, uploads: 1, blits: 1000 });
+  expect(result.stateProbe).toEqual({ reads: 0, uploads: 0, blits: 1000 });
+  expect(result.warmMatches).toBe(true);
+  expect(result.changedPixels).toBe(true);
+  expect(result.atlasStateNormalized).toBe(true);
+  expect(result.callerStateRestored).toBe(true);
+  expect(result.entries).toBe(2);
+  expect(result.capacity).toBeLessThanOrEqual(1024);
+  expect(result.atlasPixels).toBeLessThanOrEqual(4 * 1024 * 1024);
+});
+
+test("2D RGB and indexed atlas preserve replacement transparency", async ({ page }, testInfo) => {
+  test.skip(!isDesktop2DRendererProject(testInfo));
+
+  await open2DProject(page, testInfo);
+  const pixels = await page.evaluate(() => {
+    const editor = g_app.textModeEditor;
+    const { graphic, layers } = editor;
+    const layer = layers.getSelectedLayerObject();
+    const tileSet = layer.getTileSet();
+    const tile = 1;
+    graphic.setGridDimensions({ width: 2, height: 1 });
+    layer.mode = TextModeEditor.Mode.RGB;
+    layer.doc.screenMode = TextModeEditor.Mode.RGB;
+    tileSet.currentTileData[tile] = new Array(64).fill(0x80112233);
+    tileSet.currentTileData[tile][1] = 0;
+    tileSet.updateCharacters([tile], true);
+    layer.setCell({ x: 0, y: 0, t: tile, fc: 1, bc: -1, update: false });
+    layer.setCell({ x: 1, y: 0, t: tile, fc: 5, bc: 3, update: false });
+    layer.bitmapTileAtlas = null;
+    graphic.invalidateAllCells();
+    graphic.redraw({ allCells: true });
+    const context = layer.canvas.getContext("2d");
+    const rgb = Array.from(context.getImageData(0, 0, 2, 1).data);
+    const rgbEntries = layer.bitmapTileAtlas.entries.size;
+
+    layer.mode = TextModeEditor.Mode.INDEXED;
+    layer.doc.screenMode = TextModeEditor.Mode.INDEXED;
+    tileSet.currentTileData[tile] = new Array(64).fill(1);
+    tileSet.currentTileData[tile][1] = layer.getTransparentColorIndex();
+    tileSet.updateCharacters([tile], true);
+    layer.bitmapTileAtlas = null;
+    graphic.invalidateAllCells();
+    graphic.redraw({ allCells: true });
+    const indexed = Array.from(context.getImageData(0, 0, 2, 1).data);
+    const indexedEntries = layer.bitmapTileAtlas.entries.size;
+    return { rgb, indexed, rgbEntries, indexedEntries };
+  });
+
+  // Canvas blits use premultiplied colour internally, so browsers may round an
+  // RGB channel by one while retaining the source alpha and replacement result.
+  expect(pixels.rgb[3]).toBe(128);
+  expect(pixels.rgb.slice(4)).toEqual([0, 0, 0, 0]);
+  for (const [actual, expected] of pixels.rgb.slice(0, 3).map((value, index) =>
+    [value, [17, 34, 51][index]])) {
+    expect(Math.abs(actual - expected)).toBeLessThanOrEqual(1);
+  }
+  expect(pixels.indexed[3]).toBe(255);
+  expect(pixels.indexed.slice(4)).toEqual([0, 0, 0, 0]);
+  expect(pixels.rgbEntries).toBe(1);
+  expect(pixels.indexedEntries).toBe(1);
 });
 
 test("2D editor confines pencil rasterization and repaint to edited cells", async ({ page }, testInfo) => {

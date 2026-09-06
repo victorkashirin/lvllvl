@@ -4,11 +4,17 @@ import test from "node:test";
 import vm from "node:vm";
 
 function fixture({ vector = false, width = 2, height = 2 } = {}) {
+  const drawImages = [];
+  const atlasUploads = new Map();
   const context = {
-    clearRect() {}, fillRect() {}, drawImage() {}, setTransform() {}, fill() {},
+    clearRect() {}, fillRect() {}, drawImage(...args) { drawImages.push(args); }, setTransform() {}, fill() {},
     save() {}, restore() {}, beginPath() {}, rect() {}, clip() {},
+    createImageData: (width, height) => ({ width, height, data: new Uint8ClampedArray(width * height * 4) }),
     getImageData: (x, y, width, height) => ({ width, height, data: new Uint8ClampedArray(width * height * 4) }),
-    putImageData(data) { this.pixels = data.data.slice(); },
+    putImageData(data, x = 0, y = 0) {
+      this.pixels = data.data.slice();
+      atlasUploads.set(`${x},${y}`, data.data.slice());
+    },
   };
   const makeCanvas = () => ({ width: 0, height: 0, getContext: () => context });
   const sandbox = vm.createContext({
@@ -82,7 +88,8 @@ function fixture({ vector = false, width = 2, height = 2 } = {}) {
   }
   const args = { frame: 0, canvas: layer.getPrevFrameCanvas(), scale: 1, drawFromX: 0, drawFromY: 0, drawToX: 4, drawToY: 4, drawBackground: false };
   const draw = () => layer.drawPrevFrame(args);
-  return { layer, tileSet, palette, blockSet, graphic, editor, args, draw, calls, context, makeCanvas };
+  return { layer, tileSet, palette, blockSet, graphic, editor, args, draw, calls,
+    context, makeCanvas, drawImages, atlasUploads };
 }
 
 for (const vector of [false, true]) {
@@ -110,11 +117,10 @@ for (const vector of [false, true]) {
       assert.equal(state(), before, `frame=${frame}, pending=${pending}`);
       if (vector) assert.equal(glyphs, 4, "scratch drawing must ignore empty main dirty ranges");
       else {
-        assert.equal(f.context.pixels.length, 4 * 4 * 4, "scratch drawing must ignore main view bounds");
-        assert.equal(f.context.pixels[3], 255, "scratch drawing must ignore main drawn bounds");
-        assert.equal(f.context.pixels.at(-1), 255);
+        const blits = () => f.drawImages.filter(([source]) => source === f.layer.bitmapTileAtlas.canvas);
+        assert.equal(blits().length, 4, "scratch drawing must ignore main view bounds");
         f.layer.draw({ ...args, fromX: 1, fromY: 1, toX: 2, toY: 2 });
-        assert.equal(f.context.pixels.length, 2 * 2 * 4, "explicit scratch bounds still apply");
+        assert.equal(blits().length, 5, "explicit scratch bounds still apply");
         assert.equal(state(), before);
       }
       // The current frame's owned raster still satisfies pending invalidation.
@@ -129,7 +135,7 @@ for (const vector of [false, true]) {
     const f = fixture({ vector });
     const before = JSON.stringify([f.layer.updatedCellRanges, f.layer.drawnBounds, f.layer.lastDrawScale]);
     const fail = () => { throw new Error("raster failed"); };
-    f.context.getImageData = fail;
+    f.context.putImageData = fail;
     f.tileSet.getGlyphPath = fail;
     assert.throws(() => f.layer.draw({ ...f.args, draw: "grid", canvas: f.makeCanvas() }), /raster failed/);
     assert.equal(JSON.stringify([f.layer.updatedCellRanges, f.layer.drawnBounds, f.layer.lastDrawScale]), before);
@@ -205,14 +211,19 @@ test("ECM onion skin uses previous-frame colors, not current-frame background re
   f.layer.frames[0].c64ECMColor1 = 2;
   f.layer.frames[1].c64ECMColor1 = 0;
   f.draw();
-  assert.deepEqual(Array.from(f.context.pixels.slice(4, 8)), [0, 255, 0, 255]);
+  const pixelsForBackground = (index) => {
+    const entry = [...f.layer.bitmapTileAtlas.entries.values()].find(({ key }) =>
+      key.startsWith("ecm/0/0/") && key.endsWith(`/1/${index}`));
+    return f.atlasUploads.get(`${entry.x},${entry.y}`);
+  };
+  assert.deepEqual(Array.from(pixelsForBackground(2).slice(4, 8)), [0, 255, 0, 255]);
   f.layer.frames[1].c64ECMColor1 = 1;
   f.draw();
   assert.equal(f.calls.length, 1);
   f.layer.frames[0].c64ECMColor1 = 1;
   f.draw();
   assert.equal(f.calls.length, 2);
-  assert.deepEqual(Array.from(f.context.pixels.slice(4, 8)), [255, 255, 255, 255]);
+  assert.deepEqual(Array.from(pixelsForBackground(1).slice(4, 8)), [255, 255, 255, 255]);
 });
 
 test("block edits and NES subpalette edits invalidate shared previous-frame dependencies", () => {
@@ -308,13 +319,16 @@ test("frame wraparound, replacement, onion toggle and one-frame documents", () =
 test("moving a current-frame selection does not erase the previous-frame raster", () => {
   const f = fixture();
   f.draw();
-  const pixels = f.context.pixels.slice();
-  assert.ok(pixels.some(Boolean));
+  const pixels = JSON.stringify([...f.atlasUploads].map(([key, value]) => [key, Array.from(value)]));
+  assert.ok(f.atlasUploads.size > 0);
+  const firstBlits = f.drawImages.filter(([source]) => source === f.layer.bitmapTileAtlas.canvas).length;
   f.editor.tools.drawTools.select.isActive = () => true;
   f.editor.tools.drawTools.select.isMovingSelectionContents = () => true;
   f.layer.invalidatePrevFrame();
   f.draw();
-  assert.deepEqual(f.context.pixels, pixels);
+  assert.equal(JSON.stringify([...f.atlasUploads].map(([key, value]) => [key, Array.from(value)])), pixels);
+  assert.equal(f.drawImages.filter(([source]) => source === f.layer.bitmapTileAtlas.canvas).length,
+    firstBlits * 2);
 });
 
 // Thumbnail caching shares the same dependency keys and isolated raster paths.

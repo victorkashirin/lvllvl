@@ -45,6 +45,11 @@ var LayerGrid = function() {
   this.canvas = null;
   this.context = null;
 
+  // Bitmap cells are expanded into a bounded tile atlas and then blitted.
+  // Keeping this separate from the artwork canvas avoids reading destination
+  // pixels back from Canvas 2D on every dirty draw.
+  this.bitmapTileAtlas = null;
+
   this.prevFrameCanvas = null;
   this.prevFrameContext = null;
   this.prevFrameCache = null;
@@ -4054,6 +4059,174 @@ LayerGrid.prototype = {
     // if something wants the whole frame redrawn, it should call invalidate all cells
     // if drawing a shape, want to redraw all visible cells? should really be confined to the size of the shape..
 
+  packBitmapRGB: function(rgb, alpha) {
+    // ImageData bytes are RGBA; Uint32Array is used only as a faster view over
+    // that buffer on the little-endian browser architectures we support.
+    return (((alpha & 255) << 24) | ((rgb & 255) << 16)
+      | (rgb & 0xff00) | ((rgb >>> 16) & 255)) >>> 0;
+  },
+
+  packBitmapARGB: function(argb) {
+    return ((argb & 0xff000000) | ((argb & 255) << 16)
+      | (argb & 0xff00) | ((argb >>> 16) & 255)) >>> 0;
+  },
+
+  getBitmapPaletteRGBA: function(atlas, colorPalette, colorIndex) {
+    var key = String(colorIndex);
+    if(typeof atlas.paletteRGBA[key] === 'undefined') {
+      atlas.paletteRGBA[key] = this.packBitmapRGB(colorPalette.getHex(colorIndex), 255);
+    }
+    return atlas.paletteRGBA[key];
+  },
+
+  getBitmapTileAtlas: function(args) {
+    var state = [
+      args.tileSet, args.tileSet.renderRevision, args.tileData,
+      args.colorPalette, args.colorPalette.renderRevision, args.colorPalette.colors,
+      args.tileWidth, args.tileHeight, args.screenMode,
+      args.transparentColorIndex, args.isSprite,
+      args.tileSet.backgroundIsTransparent, args.nesPaletteState
+    ];
+    var atlas = this.bitmapTileAtlas;
+    if(atlas && state.length === atlas.state.length
+        && state.every(function(value, index) { return value === atlas.state[index]; })) {
+      return atlas;
+    }
+
+    var tilePixels = Math.max(1, args.tileWidth * args.tileHeight);
+    var maxAtlasPixels = 4 * 1024 * 1024;
+    var capacity = Math.max(1, Math.min(1024, Math.floor(maxAtlasPixels / tilePixels)));
+    var columns = Math.max(1, Math.min(capacity,
+      Math.ceil(Math.sqrt(capacity * args.tileHeight / args.tileWidth))));
+    var rows = Math.max(1, Math.min(Math.ceil(capacity / columns),
+      Math.floor(maxAtlasPixels / (columns * tilePixels))));
+    capacity = Math.max(1, Math.min(capacity, columns * rows));
+    var canvas = atlas ? atlas.canvas : document.createElement('canvas');
+    canvas.width = columns * args.tileWidth;
+    canvas.height = rows * args.tileHeight;
+    var context = canvas.getContext('2d');
+    var imageData = context.createImageData
+      ? context.createImageData(args.tileWidth, args.tileHeight)
+      : { width: args.tileWidth, height: args.tileHeight,
+        data: new Uint8ClampedArray(args.tileWidth * args.tileHeight * 4) };
+
+    atlas = {
+      state: state, canvas: canvas, context: context,
+      width: args.tileWidth, height: args.tileHeight,
+      columns: columns, capacity: capacity, nextSlot: 0,
+      entries: new Map(), slots: [],
+      imageData: imageData,
+      pixels: new Uint32Array(imageData.data.buffer),
+      orientationMaps: Object.create(null), paletteRGBA: Object.create(null)
+    };
+    this.bitmapTileAtlas = atlas;
+    return atlas;
+  },
+
+  getBitmapOrientationMap: function(atlas, flipH, flipV, rotZ) {
+    var key = (flipH ? 1 : 0) + '/' + (flipV ? 1 : 0) + '/' + rotZ;
+    if(atlas.orientationMaps[key]) { return atlas.orientationMaps[key]; }
+
+    var tileWidth = atlas.width;
+    var tileHeight = atlas.height;
+    var positions = new Int32Array(tileWidth * tileHeight);
+    for(var y = 0; y < tileHeight; y++) {
+      for(var x = 0; x < tileWidth; x++) {
+        var srcX = flipH ? tileWidth - x - 1 : x;
+        var srcY = flipV ? tileHeight - y - 1 : y;
+        if(rotZ != 0 && tileWidth === tileHeight) {
+          var beforeRotateX = srcX;
+          var beforeRotateY = srcY;
+          if(rotZ === 1) {
+            srcY = tileWidth - beforeRotateX - 1;
+            srcX = beforeRotateY;
+          } else if(rotZ === 2) {
+            srcX = tileWidth - beforeRotateX - 1;
+            srcY = tileHeight - beforeRotateY - 1;
+          } else if(rotZ === 3) {
+            srcY = beforeRotateX;
+            srcX = tileHeight - beforeRotateY - 1;
+          }
+        }
+        positions[x + y * tileWidth] = srcX + srcY * tileWidth;
+      }
+    }
+    atlas.orientationMaps[key] = positions;
+    return positions;
+  },
+
+  getBitmapTileAtlasEntry: function(atlas, args) {
+    var key = args.key;
+    var cached = atlas.entries.get(key);
+    if(cached) { return cached; }
+
+    var pixels = atlas.pixels;
+    pixels.fill(0);
+    var positions = this.getBitmapOrientationMap(atlas, args.flipH, args.flipV, args.rotZ);
+    var tileData = args.tileData;
+    var pixelCount = pixels.length;
+    var i;
+
+    if(args.screenMode === TextModeEditor.Mode.TEXTMODE
+        || args.screenMode === TextModeEditor.Mode.C64ECM
+        || args.screenMode === TextModeEditor.Mode.C64STANDARD) {
+      var foreground = this.getBitmapPaletteRGBA(atlas, args.colorPalette, args.colorIndex);
+      var background = args.bgColorIndex !== -1
+        ? this.getBitmapPaletteRGBA(atlas, args.colorPalette, args.bgColorIndex) : 0;
+      for(i = 0; i < pixelCount; i++) {
+        if(tileData[positions[i]] > 0) { pixels[i] = foreground; }
+        else if(args.bgColorIndex !== -1) { pixels[i] = background; }
+      }
+    } else if(args.screenMode === TextModeEditor.Mode.INDEXED) {
+      for(i = 0; i < pixelCount; i++) {
+        var indexedColor = tileData[positions[i]];
+        if(indexedColor !== args.transparentColorIndex) {
+          pixels[i] = this.getBitmapPaletteRGBA(atlas, args.colorPalette, indexedColor);
+        }
+      }
+    } else if(args.screenMode === TextModeEditor.Mode.RGB) {
+      for(i = 0; i < pixelCount; i++) {
+        pixels[i] = this.packBitmapARGB(tileData[positions[i]]);
+      }
+    } else if(args.screenMode === TextModeEditor.Mode.C64MULTICOLOR) {
+      for(var y = 0; y < atlas.height; y++) {
+        var row = y * atlas.width;
+        for(var x = 0; x < atlas.width; x += 2) {
+          var source = positions[row + x];
+          var value = (tileData[source] > 0 ? 2 : 0)
+            + (tileData[source + 1] > 0 ? 1 : 0);
+          var multicolor = value === 0 && args.backgroundIsTransparent
+            ? 0 : (value === args.multicolorForegroundIndex
+              ? this.getBitmapPaletteRGBA(atlas, args.colorPalette, args.colorIndex)
+              : args.multicolorRGBA[value]);
+          pixels[row + x] = multicolor;
+          if(x + 1 < atlas.width) { pixels[row + x + 1] = multicolor; }
+        }
+      }
+    } else if(args.screenMode === TextModeEditor.Mode.NES) {
+      var nesColors = args.nesRGBA[args.nesPaletteIndex] || args.nesRGBA[0];
+      for(i = 0; i < pixelCount; i++) {
+        var nesColor = tileData[positions[i]];
+        if(nesColor >= 4) { nesColor = 1; }
+        if(nesColor !== 0) { pixels[i] = nesColors[nesColor]; }
+      }
+    }
+
+    var slot = atlas.nextSlot;
+    atlas.nextSlot = (atlas.nextSlot + 1) % atlas.capacity;
+    var evicted = atlas.slots[slot];
+    if(evicted) { atlas.entries.delete(evicted.key); }
+    var entry = {
+      key: key,
+      x: (slot % atlas.columns) * atlas.width,
+      y: Math.floor(slot / atlas.columns) * atlas.height
+    };
+    atlas.context.putImageData(atlas.imageData, entry.x, entry.y);
+    atlas.slots[slot] = entry;
+    atlas.entries.set(key, entry);
+    return entry;
+  },
+
   draw: function(args) {
       
      
@@ -4255,28 +4428,15 @@ LayerGrid.prototype = {
 
     var isSprite = this.editor.graphic.getType() == 'sprite';
 
-    // get colours for c64 multicolor mode
-    var colors = [];
+    // Global colours used by C64 multicolour cells. The cell foreground is
+    // resolved below and included in the atlas key.
+    var backgroundColor = false;
+    var multi1 = false;
+    var multi2 = false;
     if(this.getScreenMode() == TextModeEditor.Mode.C64MULTICOLOR) {
-
-      var backgroundColor = this.getBackgroundColor(frameIndex);
-      var cellColor = this.editor.currentTile.color;
-      var multi1 = this.getC64Multi1Color(frameIndex);
-      var multi2 = this.getC64Multi2Color(frameIndex);
-
-      colors = [];
-      if(this.editor.graphic.getType() == 'sprite') {
-        colors.push(colorPalette.getColor(backgroundColor));
-        colors.push(colorPalette.getColor(multi1));
-        colors.push(colorPalette.getColor(cellColor));
-        colors.push(colorPalette.getColor(multi2));
-
-      } else {
-        colors.push(colorPalette.getColor(backgroundColor));
-        colors.push(colorPalette.getColor(multi1));
-        colors.push(colorPalette.getColor(multi2));
-        colors.push(colorPalette.getColor(cellColor));
-      }
+      backgroundColor = this.getBackgroundColor(frameIndex);
+      multi1 = this.getC64Multi1Color(frameIndex);
+      multi2 = this.getC64Multi2Color(frameIndex);
     }
 
 
@@ -4440,19 +4600,63 @@ LayerGrid.prototype = {
         );
       }
     } 
-
-
-
-    // now image data is ready to draw on..
-    var imageData = context.getImageData(fromPixelX, fromPixelY, pixelWidth, pixelHeight);  
-    var imageDataWidth = imageData.width;
-
     var blankCharacter = this.blankTileId;
     var screenMode = this.getMode();
+    var nesPaletteState = screenMode === TextModeEditor.Mode.NES
+      ? JSON.stringify(this.editor.colorPaletteManager.colorSubPalettes.subPalettes) : null;
+    var atlas = this.getBitmapTileAtlas({
+      tileSet: tileSet, tileData: this.tileData,
+      colorPalette: colorPalette,
+      tileWidth: tileWidth, tileHeight: tileHeight,
+      screenMode: screenMode,
+      transparentColorIndex: transparentColorIndex,
+      isSprite: isSprite,
+      nesPaletteState: nesPaletteState
+    });
+    var multicolorRGBA = null;
+    if(screenMode === TextModeEditor.Mode.C64MULTICOLOR) {
+      multicolorRGBA = [
+        this.getBitmapPaletteRGBA(atlas, colorPalette, backgroundColor),
+        this.getBitmapPaletteRGBA(atlas, colorPalette, multi1),
+        0,
+        this.getBitmapPaletteRGBA(atlas, colorPalette, multi2)
+      ];
+      if(!isSprite) {
+        multicolorRGBA[2] = multicolorRGBA[3];
+        multicolorRGBA[3] = 0;
+      }
+    }
+    var nesRGBA = null;
+    if(screenMode === TextModeEditor.Mode.NES) {
+      nesRGBA = [];
+      for(var paletteIndex = 0; paletteIndex < 4; paletteIndex++) {
+        nesRGBA[paletteIndex] = [0];
+        for(var paletteColor = 1; paletteColor < 4; paletteColor++) {
+          var mappedColor = this.editor.colorPaletteManager.colorSubPalettes
+            .getPaletteColor(paletteIndex, paletteColor);
+          nesRGBA[paletteIndex][paletteColor] =
+            this.getBitmapPaletteRGBA(atlas, colorPalette, mappedColor);
+        }
+      }
+    }
     var dontDrawSelected = draw !== 'prevgrid' && draw !== 'thumbnail' && draw !== 'preview' && this.isCurrentLayer()
       && this.editor.tools.drawTools.select.isActive()
       && this.editor.tools.drawTools.select.isMovingSelectionContents()
       && !this.editor.tools.drawTools.select.isInPasteMove();
+
+    // putImageData ignored drawing state. Match that behavior for the atlas
+    // cell pass, then restore the caller's state for overlays and later draws.
+    context.save();
+    context.setTransform(1, 0, 0, 1, 0, 0);
+    context.globalAlpha = 1;
+    context.globalCompositeOperation = 'source-over';
+    context.shadowColor = 'rgba(0, 0, 0, 0)';
+    context.shadowBlur = 0;
+    context.shadowOffsetX = 0;
+    context.shadowOffsetY = 0;
+    if(typeof context.filter !== 'undefined') {
+      context.filter = 'none';
+    }
 
     // loop over the area to be drawn..
     for(var y = fromY; y < toY; y++) {
@@ -4503,7 +4707,7 @@ LayerGrid.prototype = {
                       if(blockIndex !== 'undefined') {
 
                         var blockXOffset = this.getXOffsetInBlock(selectionX);
-                        var blockYOffset = this.getYOffsetInBlock(y);//selectionY);//gridY);  
+                        var blockYOffset = this.getYOffsetInBlock(y);//selectionY);//gridY);
 
                         charIndex =  blockSet.getCharacterInBlock(blockIndex, blockXOffset, blockYOffset);
                         drawCharacter = true;
@@ -4535,7 +4739,7 @@ LayerGrid.prototype = {
                   }
                 }
 
-              }            
+              }
               break;
             case 'shapes':
 
@@ -4548,7 +4752,7 @@ LayerGrid.prototype = {
               flipH = shapeCell.fh;
               flipV = shapeCell.fv;
               rotZ = shapeCell.rz;
-              
+
 
               if(colorIndex === false) {
                 drawCharacter = false;
@@ -4614,12 +4818,12 @@ LayerGrid.prototype = {
                 drawCharacter = false;
 
                 charIndex = blankCharacter;
-                bgColorIndex = this.editor.colorPaletteManager.noColor;            
+                bgColorIndex = this.editor.colorPaletteManager.noColor;
               }
               break;
           }
 
-          
+
           if(this.getMode() == TextModeEditor.Mode.C64MULTICOLOR) {
             // no cell background color in multicolor mode
             bgColorIndex = this.editor.colorPaletteManager.noColor;
@@ -4632,247 +4836,91 @@ LayerGrid.prototype = {
               }
             }
           }
-          
-          var bgColorR = false;
-          var bgColorG = false;
-          var bgColorB = false;
 
           // are we still sure we want to draw it?
           if(drawCharacter) {
-            var screenMode = this.getMode();
+            var cellScreenMode = screenMode;
             // work out the colour, if in multicolour mode and not a sprite
-            if(screenMode == TextModeEditor.Mode.C64MULTICOLOR) {
+            if(cellScreenMode == TextModeEditor.Mode.C64MULTICOLOR) {
               if(this.editor.graphic.getType() !== 'sprite') {
                 if(colorIndex < 8) {
-                  screenMode = TextModeEditor.Mode.TEXTMODE;
+                  cellScreenMode = TextModeEditor.Mode.TEXTMODE;
                 } else {
                   colorIndex -= 8;
                 }
               }
             }
 
-            // TODO: need to optimise this somehow...
-            var color = colorPalette.getHex(colorIndex);
-            var colorR = (color >> 16) & 255;
-            var colorG = (color >> 8) & 255;
-            var colorB =  color & 255;
-
-
             // colorindex holds the nespalette index if in nes mode
             var nesPaletteIndex = colorIndex;
-            if(nesPaletteIndex >=4 ) {
+            if(nesPaletteIndex >= 4 || nesPaletteIndex < 0 || nesPaletteIndex === false) {
               nesPaletteIndex = 0;
             }
 
-
-            if(bgColorIndex !== -1) {
-              var bgColor = colorPalette.getHex(bgColorIndex);
-              bgColorR = (bgColor >> 16) & 255;
-              bgColorG = (bgColor >> 8) & 255;
-              bgColorB =  bgColor & 255;
-            }
-
-            var charX = charIndex % 32;
-            var charY = Math.floor(charIndex / 32);
-
-            if(charIndex !== false && charIndex < this.tileData.length) {
-
-
+            if(charIndex !== false && charIndex >= 0 && charIndex < this.tileData.length) {
               if(this.getScreenMode() == TextModeEditor.Mode.C64ECM) {
 
                 if(charIndex >= 64 || bgColorIndex === this.editor.colorPaletteManager.noColor || bgColorIndex === false) {
                   var ecmColor = Math.floor(charIndex / 64) % 4;
                   bgColorIndex = ecmColors[ecmColor];
-                  var bgColor = colorPalette.getHex(bgColorIndex);
-                  bgColorR = (bgColor >> 16) & 255;
-                  bgColorG = (bgColor >> 8) & 255;
-                  bgColorB =  bgColor & 255;
                 }
                 var ecmGroup = Math.floor(charIndex / 256);
                 charIndex = (charIndex % 64) + ecmGroup * 256 ;
               }
 
-              // the data for this tile..
               var tileData = this.tileData[charIndex];
-
-              for(var j = 0; j < tileHeight; j++) {
-                for(var i = 0; i < tileWidth; i++) {
-
-                  var srcX = i;
-                  var srcY = j;
-
-                  if(hasTileFlip) {
-
-                    if(flipH) {
-                      srcX = (tileWidth - srcX - 1);
-                    }
-
-                    if(flipV) {
-                      srcY = (tileHeight - srcY - 1);
-                    }
-                  }
-
-                  if(hasTileRotate) {
-                    if(rotZ != 0 && tileWidth === tileHeight) {
-                      var tempX = srcX;
-                      var tempY = srcY;
-                      if(rotZ === 1) {
-                        srcY = (tileWidth - tempX - 1);
-                        srcX = tempY;
-                      } 
-                      if(rotZ === 2) {
-                        srcX = (tileWidth - tempX - 1);
-                        srcY = (tileHeight - tempY - 1);
-                      }
-
-                      if(rotZ === 3) {
-                        srcY = tempX;
-                        srcX = (tileHeight - tempY - 1); 
-                      }
-                    }
-                  }
-
-
-                  var srcPos = srcX + srcY * tileWidth;
-                  var colorIndex = tileData[srcPos];
-
-                  var dstPos = ((x - fromX) * tileWidth + i
-                    + ((y - fromY) * tileHeight + j) * imageDataWidth) * 4;
-
-
-                  if(screenMode === TextModeEditor.Mode.TEXTMODE 
-                    || screenMode === TextModeEditor.Mode.C64ECM
-                    || screenMode === TextModeEditor.Mode.C64STANDARD) { 
-
-                    if(colorIndex > 0) {
-
-                      imageData.data[dstPos] = colorR; 
-                      imageData.data[dstPos + 1] = colorG;
-                      imageData.data[dstPos + 2] = colorB;
-                      imageData.data[dstPos + 3] = 255;
-
-                    } else if(bgColorIndex !== -1) {
-                      imageData.data[dstPos] = bgColorR;
-                      imageData.data[dstPos + 1] = bgColorG;
-                      imageData.data[dstPos + 2] = bgColorB;
-                      imageData.data[dstPos + 3] = 255;
-                    }
-                  } else if(screenMode == TextModeEditor.Mode.INDEXED) {
-                    if(colorIndex === transparentColorIndex) {
-                      imageData.data[dstPos] = 0;
-                      imageData.data[dstPos + 1] = 0;
-                      imageData.data[dstPos + 2] = 0;
-                      imageData.data[dstPos + 3] = 0;
-
-                    } else {
-                    
-                      // TODO: speed this up
-                      var color = colorPalette.getHex(colorIndex);  
-                      colorR = (color >> 16) & 255;
-                      colorG = (color >> 8) & 255;
-                      colorB = color & 255;
-                      imageData.data[dstPos] = colorR;
-                      imageData.data[dstPos + 1] = colorG;
-                      imageData.data[dstPos + 2] = colorB;
-                      imageData.data[dstPos + 3] = 255;
-                    }
-                  } else if(screenMode == TextModeEditor.Mode.RGB) {
-                    colorR = (colorIndex >>> 16) & 255;
-                    colorG = (colorIndex >>> 8) & 255;
-                    colorB = colorIndex & 255;
-                    colorA = (colorIndex >>> 24) & 255;
-
-                    imageData.data[dstPos] = colorR;
-                    imageData.data[dstPos + 1] = colorG;
-                    imageData.data[dstPos + 2] = colorB;
-                    imageData.data[dstPos + 3] = colorA;
-
-                  } else if(screenMode == TextModeEditor.Mode.C64MULTICOLOR) {
-
-
-                    var value = 0;
-
-                    // upper bit
-                    if(colorIndex > 0) {
-                      value += 2;
-                    }
-
-                    colorIndex = tileData[srcPos + 1];
-
-                    // lower bit
-                    if(colorIndex > 0) {
-                      value += 1;
-                    }
-
-                    // TODO: do this without multiplications
-                    var color = colors[value];
-                    if(value == 0 && tileSet.backgroundIsTransparent) {
-                      // background..
-  //                      imageData.data[dstPos] = colorR; 
-  //                      imageData.data[dstPos + 1] = colorG;
-  //                     imageData.data[dstPos + 2] = colorB;
-
-  //                    imageData.data[dstPos + 3] = 0;
-  //                    imageData.data[dstPos + 7] = 0;                    
-
-                    } else if( (!isSprite && value == 3) || (isSprite && value == 2)) {
-                      imageData.data[dstPos] = colorR; 
-                      imageData.data[dstPos + 1] = colorG;
-                      imageData.data[dstPos + 2] = colorB;
-                      imageData.data[dstPos + 3] = 255;
-
-                      imageData.data[dstPos + 4] = colorR;
-                      imageData.data[dstPos + 5] = colorG;
-                      imageData.data[dstPos + 6] = colorB;
-                      imageData.data[dstPos + 7] = 255;
-                    } else {
-                      imageData.data[dstPos] = color.r * 255; 
-                      imageData.data[dstPos + 1] = color.g * 255;
-                      imageData.data[dstPos + 2] = color.b * 255;
-                      imageData.data[dstPos + 3] = 255;
-
-                      imageData.data[dstPos + 4] = color.r * 255; 
-                      imageData.data[dstPos + 5] = color.g * 255;
-                      imageData.data[dstPos + 6] = color.b * 255;
-                      imageData.data[dstPos + 7] = 255;
-                    }
-
-                    // need to skip next pixel cos c64 multicolor
-                    i++;
-                  } else if(screenMode == TextModeEditor.Mode.NES) {
-
-                    if(colorIndex >= 4) {
-                      colorIndex = 1;
-                    }
-
-                    if(colorIndex == 0) {
-
-                    } else {
-
-                      var paletteColorIndex = this.editor.colorPaletteManager.colorSubPalettes.getPaletteColor(nesPaletteIndex, colorIndex);
-
-                      var color = colorPalette.getHex(paletteColorIndex);
-
-                      imageData.data[dstPos] = (color >> 16) & 255;  
-                      imageData.data[dstPos + 1] = (color >> 8) & 255;
-                      imageData.data[dstPos + 2] = color & 255;
-                      imageData.data[dstPos + 3] = 255;
-                    }
-
-                  }
-
+              if(tileData) {
+                var tileFlipH = hasTileFlip && flipH;
+                var tileFlipV = hasTileFlip && flipV;
+                var tileRotZ = hasTileRotate ? rotZ : 0;
+                var tileRevision = tileSet.tileRenderRevisions
+                  ? tileSet.tileRenderRevisions[charIndex] || 0 : 0;
+                var keyParts = [
+                  cellScreenMode, charIndex, tileRevision,
+                  tileFlipH ? 1 : 0, tileFlipV ? 1 : 0, tileRotZ
+                ];
+                if(cellScreenMode === TextModeEditor.Mode.TEXTMODE
+                    || cellScreenMode === TextModeEditor.Mode.C64ECM
+                    || cellScreenMode === TextModeEditor.Mode.C64STANDARD) {
+                  keyParts.push(colorIndex, bgColorIndex);
+                } else if(cellScreenMode === TextModeEditor.Mode.C64MULTICOLOR) {
+                  keyParts.push(colorIndex, backgroundColor, multi1, multi2);
+                } else if(cellScreenMode === TextModeEditor.Mode.NES) {
+                  keyParts.push(nesPaletteIndex);
                 }
+                var key = keyParts.join('/');
+                var entry = this.getBitmapTileAtlasEntry(atlas, {
+                  key: key, tileData: tileData,
+                  screenMode: cellScreenMode,
+                  colorPalette: colorPalette,
+                  colorIndex: colorIndex, bgColorIndex: bgColorIndex,
+                  transparentColorIndex: transparentColorIndex,
+                  flipH: tileFlipH, flipV: tileFlipV, rotZ: tileRotZ,
+                  backgroundIsTransparent: tileSet.backgroundIsTransparent,
+                  multicolorRGBA: multicolorRGBA,
+                  multicolorForegroundIndex: isSprite ? 2 : 3,
+                  nesRGBA: nesRGBA, nesPaletteIndex: nesPaletteIndex
+                });
+                var destinationX = fromPixelX + (x - fromX) * tileWidth;
+                var destinationY = fromPixelY + (y - fromY) * tileHeight;
+                // putImageData replaced RGB pixels and indexed transparent
+                // pixels instead of blending them with the destination. Clear
+                // these cells first so source-over atlas blits keep that behavior.
+                if(cellScreenMode === TextModeEditor.Mode.RGB
+                    || cellScreenMode === TextModeEditor.Mode.INDEXED) {
+                  context.clearRect(destinationX, destinationY, tileWidth, tileHeight);
+                }
+                context.drawImage(atlas.canvas,
+                  entry.x, entry.y, tileWidth, tileHeight,
+                  destinationX, destinationY,
+                  tileWidth, tileHeight);
               }
             }
-            
           }
-        }          
+        }
       }
     }
-
-    if(this.getMode() !== TextModeEditor.Mode.VECTOR) {
-      context.putImageData(imageData, fromPixelX, fromPixelY);
-    }
+    context.restore();
 
 
     if(this.isCurrentLayer() && this.editor.tools.drawTools.pixelSelect.isActive() && draw == 'grid') {

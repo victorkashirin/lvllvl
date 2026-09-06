@@ -4,6 +4,10 @@
 
 ### Fixed
 
+- Replace bitmap-layer destination readback and repeated per-cell pixel expansion
+  with a bounded, revision-aware tile atlas. Cache mode-specialized text, indexed,
+  RGB, C64, and NES rasters while preserving orientation, transparency, reference
+  images, selections, scratch rendering, and selective animation invalidation.
 - Batch animated, edited, transformed, and history-restored tile IDs before
   refreshing tile palettes. Reuse tile-to-slot layouts, redraw bitmap/vector
   glyphs through direct slot lookups, restrict bitmap uploads to dirty tile
