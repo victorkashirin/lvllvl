@@ -89,6 +89,196 @@ async function open2DProject(page, testInfo, { vector = false } = {}) {
   )).toBe(true);
 }
 
+test("handheld editor starts compact and exposes expanded controls on demand", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "chromium-handheld");
+
+  const localFailures = observeLocalFailures(page, testInfo.project.use.baseURL);
+  await open2DProject(page, testInfo);
+
+  const compactState = await page.evaluate(() => {
+    const appBar = document.getElementById("mobileMenuBar");
+    const appBarBounds = appBar.getBoundingClientRect();
+    const currentToolButton = document.getElementById("mobileMenuCurrentTools");
+    const currentToolBounds = currentToolButton.getBoundingClientRect();
+    const currentToolIconBounds = currentToolButton.querySelector("img").getBoundingClientRect();
+    const hamburger = document.getElementById("mobileMenuBarHamburger");
+    const bounds = hamburger.getBoundingClientRect();
+    const hitTarget = document.elementFromPoint(
+      bounds.left + bounds.width / 2,
+      bounds.top + bounds.height / 2,
+    );
+    return {
+      appBarHeight: appBarBounds.height,
+      bodyMobileMode: document.body.classList.contains("mobileMode"),
+      currentTool: document.getElementById("mobileMenuCurrentTools").textContent.trim(),
+      currentToolCenterDelta: Math.abs(
+        currentToolBounds.top + currentToolBounds.height / 2 -
+        (appBarBounds.top + appBarBounds.height / 2),
+      ),
+      currentToolHeight: currentToolBounds.height,
+      currentToolIconCenterDelta: Math.abs(
+        currentToolIconBounds.top + currentToolIconBounds.height / 2 -
+        (appBarBounds.top + appBarBounds.height / 2),
+      ),
+      desktopSettingsVisible: UI("toolSettingsDesktopPanel").getVisible(),
+      framesVisible: UI("textEditorMobileSplitPanel").getPanelVisible("south"),
+      hamburgerHitTarget: Boolean(hitTarget?.closest("#mobileMenuBarHamburger")),
+      hamburgerTag: hamburger.tagName,
+      interfaceType: g_app.getMobileInterfaceType(),
+      mobileSettingsVisible: UI("toolsSettingsMobileHTMLPanel").getVisible(),
+      paletteHeight: g_app.textModeEditor.tilePaletteMobile.canvas.height,
+      settingsVisible: UI("textEditorMobileSplitPanel").getPanelVisible("north"),
+      toolsPanelVisible: UI("textModeEditor").getPanelVisible("west"),
+      toolsPanelWidth: UI("textModeEditor").westSize,
+    };
+  });
+  expect(compactState).toMatchObject({
+    appBarHeight: 46,
+    bodyMobileMode: true,
+    currentTool: "Pencil",
+    currentToolHeight: 42,
+    desktopSettingsVisible: false,
+    framesVisible: false,
+    hamburgerHitTarget: true,
+    hamburgerTag: "BUTTON",
+    interfaceType: "reduced",
+    mobileSettingsVisible: true,
+    settingsVisible: false,
+    toolsPanelVisible: true,
+    toolsPanelWidth: 70,
+  });
+  expect(compactState.currentToolCenterDelta).toBeLessThanOrEqual(1);
+  expect(compactState.currentToolIconCenterDelta).toBeLessThanOrEqual(1);
+  expect(compactState.paletteHeight).toBeGreaterThan(0);
+
+  await page.locator("#mobileMenuBarHamburger").click();
+  const saveButtonGeometry = await page.locator("#mobileMenuSave").evaluate((button) => {
+    const buttonBounds = button.getBoundingClientRect();
+    const iconBounds = button.querySelector("img").getBoundingClientRect();
+    return {
+      buttonHeight: buttonBounds.height,
+      iconCenterDelta: Math.abs(
+        iconBounds.top + iconBounds.height / 2 -
+        (buttonBounds.top + buttonBounds.height / 2),
+      ),
+      iconContained:
+        iconBounds.top >= buttonBounds.top && iconBounds.bottom <= buttonBounds.bottom,
+      iconHeight: iconBounds.height,
+    };
+  });
+  expect(saveButtonGeometry).toMatchObject({
+    buttonHeight: 44,
+    iconContained: true,
+    iconHeight: 24,
+  });
+  expect(saveButtonGeometry.iconCenterDelta).toBeLessThanOrEqual(1);
+  const expandControls = page.locator(".mobile-menu-item").filter({
+    hasText: "Show Expanded Controls",
+  });
+  await expect(expandControls).toBeVisible();
+  await expandControls.click();
+  await expect.poll(() => page.evaluate(() => ({
+    desktopSettingsVisible: UI("toolSettingsDesktopPanel").getVisible(),
+    framesVisible: UI("textEditorMobileSplitPanel").getPanelVisible("south"),
+    interfaceType: g_app.getMobileInterfaceType(),
+    mobileSettingsVisible: UI("toolsSettingsMobileHTMLPanel").getVisible(),
+    settingsVisible: UI("textEditorMobileSplitPanel").getPanelVisible("north"),
+    toolsPanelVisible: UI("textModeEditor").getPanelVisible("west"),
+  }))).toEqual({
+    desktopSettingsVisible: false,
+    framesVisible: true,
+    interfaceType: "full",
+    mobileSettingsVisible: true,
+    settingsVisible: true,
+    toolsPanelVisible: false,
+  });
+
+  await page.locator("#mobileMenuBarHamburger").click();
+  const compactControls = page.locator(".mobile-menu-item").filter({
+    hasText: "Use Compact Layout",
+  });
+  await expect(compactControls).toBeVisible();
+  await expect.poll(() => page.locator("#mobile-menu").evaluate((element) =>
+    Math.round(element.getBoundingClientRect().left))).toBe(0);
+  const compactControlsBounds = await compactControls.boundingBox();
+  expect(compactControlsBounds).not.toBeNull();
+  await page.touchscreen.tap(
+    compactControlsBounds.x + compactControlsBounds.width / 2,
+    compactControlsBounds.y + compactControlsBounds.height / 2,
+  );
+  await expect(page.locator("#mobile-menu")).toBeHidden({ timeout: 500 });
+  await expect.poll(() => page.evaluate(() =>
+    g_app.getMobileInterfaceType())).toBe("reduced");
+  expect(await page.evaluate(() => Array.from(document.body.children)
+    .filter((element) => !["mobile-menu", "mobile-menu-holder"].includes(element.id))
+    .every((element) => !element.hasAttribute("inert")))).toBe(true);
+
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const readDesktopState = () => page.evaluate(() => {
+    const editor = g_app.textModeEditor;
+    const panels = {
+      animation: Boolean(editor.getAnimationPanelVisible()),
+      bottomBlocks: editor.getBottomBlockPanelVisible(),
+      bottomTiles: editor.getTilePalettePanelVisible("bottom"),
+      colour: editor.getColorPalettePanelVisible(),
+      layers: editor.getLayersPanelVisible(),
+      sideBlocks: editor.getSideBlockPanelVisible(),
+      sideTiles: editor.getTilePalettePanelVisible("side"),
+      tools: editor.getToolsVisible(),
+    };
+    const menuCheck = (id) => UI.ids[id]?.getChecked() ?? null;
+    return {
+      bodyMobileMode: document.body.classList.contains("mobileMode"),
+      bottomSize: UI("textEditorContent").southSize,
+      checks: {
+        animation: menuCheck("view-animationpanel"),
+        bottomBlocks: menuCheck("view-metatilepalettepanelbottom"),
+        bottomTiles: menuCheck("view-tilepalettepanelbottom"),
+        colour: menuCheck("view-palettepanel"),
+        layers: menuCheck("view-layerspanel"),
+        sideBlocks: menuCheck("view-metatilepalettepanelside"),
+        sideTiles: menuCheck("view-tilepalettepanelside"),
+        tools: menuCheck("view-tools"),
+      },
+      desktopSettingsVisible: UI("toolSettingsDesktopPanel").getVisible(),
+      eastVisible: UI("textModeEditor").getPanelVisible("east"),
+      mobileBottomVisible: UI("textEditorMobileToolsHolder").getVisible(),
+      panels,
+      settingsSize: UI("textEditorMobileSplitPanel").northSize,
+      settingsVisible: UI("textEditorMobileSplitPanel").getPanelVisible("north"),
+      westSize: UI("textModeEditor").westSize,
+      westVisible: UI("textModeEditor").getPanelVisible("west"),
+    };
+  });
+
+  await page.evaluate(() => g_app.setDeviceType("desktop"));
+  const desktopFromMobileStartup = await readDesktopState();
+  expect(desktopFromMobileStartup).toMatchObject({
+    bodyMobileMode: false,
+    desktopSettingsVisible: true,
+    mobileBottomVisible: false,
+    settingsSize: 30,
+    settingsVisible: true,
+  });
+  expect(desktopFromMobileStartup.checks).toEqual(desktopFromMobileStartup.panels);
+  expect(desktopFromMobileStartup.bottomSize).toBe(
+    (desktopFromMobileStartup.panels.bottomTiles ||
+      desktopFromMobileStartup.panels.bottomBlocks ? 220 : 0) +
+      (desktopFromMobileStartup.panels.animation ? 60 : 0),
+  );
+
+  await page.evaluate(() => g_app.setDeviceType("mobile"));
+  await page.evaluate(
+    () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+  );
+  await page.evaluate(() => g_app.setDeviceType("desktop"));
+  const desktopAfterRoundTrip = await readDesktopState();
+  expect(desktopAfterRoundTrip).toEqual(desktopFromMobileStartup);
+  expect(desktopAfterRoundTrip.checks).toEqual(desktopAfterRoundTrip.panels);
+
+  expect(localFailures, localFailures.join("\n")).toEqual([]);
+});
+
 for (const vector of [false, true]) {
   test(`2D ${vector ? "vector" : "bitmap"} thumbnails batch edits and retain correct full-layer final state`, async ({ page }, testInfo) => {
     test.skip(!isDesktop2DRendererProject(testInfo));

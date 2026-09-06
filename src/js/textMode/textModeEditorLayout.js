@@ -6,9 +6,8 @@
 
 
 TextModeEditor.prototype.mobileReduceInterface = function() {
-
-
   var mobileSplitPanel = UI('textEditorMobileSplitPanel');
+  var mobileLayout = g_app.mobileLayout;
 
   // tool settings panel
   mobileSplitPanel.setPanelVisible('north', false);
@@ -18,6 +17,10 @@ TextModeEditor.prototype.mobileReduceInterface = function() {
 
   // tools panel
   this.textModeEditorPanel.setPanelVisible('west', true);
+  this.textModeEditorPanel.resizeThePanel({
+    panel: 'west',
+    size: mobileLayout.toolsPanelWidth
+  });
   
   this.tilePaletteMobile.setCurrentTileVisible(false);
   this.tilePaletteMobile.draw();
@@ -25,12 +28,22 @@ TextModeEditor.prototype.mobileReduceInterface = function() {
 
 TextModeEditor.prototype.mobileRestoreInterface = function() {
   var mobileSplitPanel = UI('textEditorMobileSplitPanel');
+  var mobileLayout = g_app.mobileLayout;
 
   // tool settings panel
+  UI('toolSettingsPanel').showOnly('toolsSettingsMobileHTMLPanel');
   mobileSplitPanel.setPanelVisible('north', true);
+  mobileSplitPanel.resizeThePanel({
+    panel: 'north',
+    size: mobileLayout.toolSettingsHeight
+  });
   
   // frames panel
   mobileSplitPanel.setPanelVisible('south', true);
+  mobileSplitPanel.resizeThePanel({
+    panel: 'south',
+    size: mobileLayout.framesHeight
+  });
 
   // tools panel
   this.textModeEditorPanel.setPanelVisible('west', false);
@@ -44,7 +57,7 @@ TextModeEditor.prototype.mobileRestoreInterface = function() {
 
 
 TextModeEditor.prototype.setLayoutType = function(mode) {
-  var isMobile = UI.isMobile.any();
+  var isMobile = g_app.isMobile();
   if(isMobile) {
     return;
   }
@@ -211,7 +224,7 @@ TextModeEditor.prototype.buildEastPanel = function() {
   var sideTilePaletteVisible = g_app.getPref("textmode.sideTilePaletteVisible") == "yes";
   var infoPanelVisible = g_app.getPref("textmode.infoPanelVisible") == "yes";
 
-  var isMobile = UI.isMobile.any();
+  var isMobile = g_app.isMobile();
   this.deviceType = 'desktop';
   if(isMobile) {
     this.deviceType = 'mobile';
@@ -377,15 +390,12 @@ TextModeEditor.prototype.buildInterface =  function(parentPanel) {
 
   this.desktopToolsWidth = 77;
 
-  var isMobile = UI.isMobile.any();
+  var isMobile = g_app.isMobile();
+  var mobileInterfaceReduced = isMobile && g_app.getMobileInterfaceType() == 'reduced';
   this.deviceType = 'desktop';
   if(isMobile) {
     this.deviceType = 'mobile';
   }
-
-  var screenWidth = UI.getScreenWidth();
-  var screenHeight = UI.getScreenHeight();
-
 
   this.textModeEditorPanel = UI.create("UI.SplitPanel", { "id": "textModeEditor"});
   parentPanel.add(this.textModeEditorPanel);
@@ -435,7 +445,7 @@ TextModeEditor.prototype.buildInterface =  function(parentPanel) {
 
   var toolsPanelWidth = this.desktopToolsWidth;
   if(isMobile) {
-    toolsPanelWidth = 70;// 62;
+    toolsPanelWidth = g_app.mobileLayout.toolsPanelWidth;
   }
   var toolsPanel = UI.create("UI.Panel", { "id": " toolsPanel" });
 
@@ -460,6 +470,9 @@ TextModeEditor.prototype.buildInterface =  function(parentPanel) {
 //    this.textModeEditorPanel.addWest(toolsPanel, toolsPanelWidth, false, !desktopPanelVisible);
 
   var toolsPanelVisible = g_app.getPref("textmode.toolsPanelVisible") !== 'no';
+  if(isMobile) {
+    toolsPanelVisible = true;
+  }
 
   this.textModeEditorPanel.addWest(toolsPanel, toolsPanelWidth, false, !toolsPanelVisible);
 
@@ -490,15 +503,25 @@ TextModeEditor.prototype.buildInterface =  function(parentPanel) {
 
   mobileBottomSplitPanel.add(framesMobilePanel);
 
-  mobileSplitPanel.addSouth(mobileBottomSplitPanel, 50, false, !mobilePanelVisible);
+  mobileSplitPanel.addSouth(
+    mobileBottomSplitPanel,
+    g_app.mobileLayout.framesHeight,
+    false,
+    !mobilePanelVisible || mobileInterfaceReduced
+  );
 
   var toolSettingsSize = 30;
   if(isMobile) {
-    toolSettingsSize = 40;
+    toolSettingsSize = g_app.mobileLayout.toolSettingsHeight;
 
   }
   var toolSettingsPanel = UI.create("UI.Panel", { "id": "toolSettingsPanel" });
-  mobileSplitPanel.addNorth(toolSettingsPanel, toolSettingsSize, false);
+  mobileSplitPanel.addNorth(
+    toolSettingsPanel,
+    toolSettingsSize,
+    false,
+    mobileInterfaceReduced
+  );
   toolSettingsPanel.add(toolsSettingsMobilePanel);
 //  mobileSplitPanel.addNorth(toolsSettingsMobilePanel, 40, false, !mobilePanelVisible);
 
@@ -520,15 +543,8 @@ TextModeEditor.prototype.buildInterface =  function(parentPanel) {
 
 
 
-  var toolsPanelHidden = false;
   if(isMobile) {
-    toolsPanelHidden = true;
-
-    bottomToolsPanelHeight = 68;
-    if(screenHeight < 700) {
-      bottomToolsPanelHeight = 50;
-    } 
-
+    bottomToolsPanelHeight = g_app.mobileLayout.paletteHeight;
   }
 
   var bottomToolsPanel = UI.create("UI.Panel", { "id": "bottomToolsPanel" });
@@ -552,6 +568,9 @@ TextModeEditor.prototype.buildInterface =  function(parentPanel) {
   this.tilePaletteMobile = new TilePaletteMobile();
   this.tilePaletteMobile.init(this);
   this.tilePaletteMobile.buildInterface(tilePaletteMobileHolder);
+  if(mobileInterfaceReduced) {
+    this.tilePaletteMobile.setCurrentTileVisible(false);
+  }
 
 
   var spriteFramesMobileHolder = UI.create("UI.Panel", { "visible": false, "id": "spriteFramesMobile"});
@@ -562,7 +581,7 @@ TextModeEditor.prototype.buildInterface =  function(parentPanel) {
   this.spriteFramesMobile.buildInterface(spriteFramesMobileHolder);
 
 
-  textEditorContent.addSouth(bottomToolsPanel, bottomToolsPanelHeight, !isMobile);//, toolsPanelHidden);    
+  textEditorContent.addSouth(bottomToolsPanel, bottomToolsPanelHeight, !isMobile);
   if(!tilePaletteVisible) {
     textEditorContent.setResizeVisible('south', false);
   }
@@ -1011,6 +1030,13 @@ TextModeEditor.prototype.setLayout = function(layout) {
 }
 
 TextModeEditor.prototype.startBlockTool = function() {
+  // The compact mobile palette shares the desktop bottom panel container, so
+  // opening a desktop block palette here would expand the mobile layout and
+  // change which desktop panels are restored later.
+  if(this.deviceType == 'mobile') {
+    return;
+  }
+
   if(this.getSideBlockPanelVisible() || this.getBottomBlockPanelVisible()) {
     return;
   }
@@ -1043,39 +1069,135 @@ TextModeEditor.prototype.startBlockTool = function() {
 }
 
 // *******************  SWITCH MOBILE / DESKTOP LAYOUT ******************* //
+TextModeEditor.prototype.captureDesktopLayoutState = function() {
+  var editorPanel = this.textModeEditorPanel;
+  var contentPanel = UI('textEditorContent');
+  var mobileSplitPanel = UI('textEditorMobileSplitPanel');
+
+  var captureSide = function(splitPanel, panel, defaultSize) {
+    var size = splitPanel[panel + 'Size'];
+    var savedSize = splitPanel[panel + 'SizeSave'];
+    var barSize = splitPanel[panel + 'BarSize'];
+    var savedBarSize = splitPanel[panel + 'BarSizeSave'];
+    // SplitPanel#getPanelVisible uses jQuery's :visible and therefore reports
+    // false when an ancestor (for example, another editor tab) is hidden. The
+    // split size is the component's durable enabled/disabled state.
+    var visible = splitPanel[panel + 'Size'] != 0;
+
+    if(!visible && typeof savedSize == 'number') {
+      size = savedSize;
+    }
+    if(typeof size != 'number' || isNaN(size) || size <= 0) {
+      size = defaultSize;
+    }
+
+    return {
+      visible: visible,
+      size: size,
+      barSize: typeof savedBarSize == 'number' ? savedBarSize : barSize
+    };
+  };
+
+  this.desktopLayoutState = {
+    east: captureSide(editorPanel, 'east', 340),
+    west: captureSide(editorPanel, 'west', this.desktopToolsWidth),
+    bottom: {
+      size: contentPanel.southSize,
+      savedSize: contentPanel.southSizeSave,
+      resizeVisible: !contentPanel.southResizeHidden
+    },
+    settings: captureSide(mobileSplitPanel, 'north', 30),
+    mobileFrames: captureSide(mobileSplitPanel, 'south', g_app.mobileLayout.framesHeight)
+  };
+};
+
+TextModeEditor.prototype.restoreDesktopPanelSide = function(splitPanel, panel, state) {
+  splitPanel.setPanelVisible(panel, state.visible);
+
+  if(state.visible) {
+    splitPanel.resizeThePanel({ panel: panel, size: state.size });
+  }
+
+  // setPanelVisible saves the temporary mobile geometry when it closes a
+  // panel. Replace that saved value with the desktop geometry as well, so a
+  // later Interface-menu toggle does not reopen at the mobile size.
+  splitPanel[panel + 'SizeSave'] = state.size;
+  if(typeof state.barSize == 'number') {
+    splitPanel[panel + 'BarSizeSave'] = state.barSize;
+  }
+};
+
+TextModeEditor.prototype.syncInterfaceMenuChecks = function() {
+  var setChecked = function(id, checked) {
+    var menuItem = UI.ids[id];
+    if(menuItem && typeof menuItem.setChecked == 'function') {
+      menuItem.setChecked(checked);
+    }
+  };
+  var panelEnabled = function(id, panel) {
+    var splitPanel = UI.ids[id];
+    if(!splitPanel) {
+      return false;
+    }
+    if(panel == 'center') {
+      return splitPanel.centerVisible;
+    }
+    return splitPanel[panel + 'Size'] != 0;
+  };
+
+  setChecked('view-tools', panelEnabled('textModeEditor', 'west'));
+  setChecked('view-infopanel', panelEnabled('eastInfoPanel', 'north'));
+  setChecked('view-layerspanel', panelEnabled('textModeEastPanel', 'north'));
+  setChecked('view-palettepanel', panelEnabled('textModeEastPanel', 'south'));
+  setChecked('view-tilepalettepanelside', panelEnabled('eastTilesSplitPanel', 'center'));
+  setChecked('view-metatilepalettepanelside', panelEnabled('eastTilesSplitPanel', 'south'));
+  setChecked('view-tilepalettepanelbottom', panelEnabled('tilePaletteSplitPanel', 'center'));
+  setChecked('view-metatilepalettepanelbottom', panelEnabled('tilePaletteSplitPanel', 'east'));
+  setChecked('view-animationpanel', this.getAnimationPanelVisible());
+};
+
 TextModeEditor.prototype.setDeviceType = function(deviceType) {
-  var mobileToolsPanelWidth = 80; // 62;
+  var mobileLayout = g_app.mobileLayout;
+  var previousDeviceType = this.deviceType;
+
+  if(deviceType == 'mobile' && previousDeviceType != 'mobile') {
+    this.captureDesktopLayoutState();
+  }
+
   this.deviceType = deviceType;
 
   if(deviceType == 'mobile') {
     this.textModeEditorPanel.setPanelVisible('east', false);
-    UI('textEditorContent').setPanelVisible('south', false);
-    UI('textEditorContent').resizeThePanel({panel: 'south', size: 0 });
+    UI('textEditorContent').setPanelVisible('south', true);
+    UI('textEditorContent').setResizeVisible('south', false);
+    UI('textEditorContent').resizeThePanel({
+      panel: 'south',
+      size: mobileLayout.paletteHeight
+    });
 
     UI('framesMobilePanel').setVisible(true);
+    UI('textEditorMobileToolsHolder').setVisible(true);
+    UI('textEditorDesktopToolsHolder').setVisible(false);
 
     UI('toolsMobileSidePanel').setVisible(true & (this.editorMode != 'pixel'));
     UI('toolsDesktopPanel').setVisible(false);
     UI('pixelToolsMobileSidePanel').setVisible(true & (this.editorMode == 'pixel'));
     UI('pixelToolsDesktopPanel').setVisible(false);
+    UI('toolSettingsPanel').showOnly('toolsSettingsMobileHTMLPanel');
+    this.tools.drawTools.updateMobileCurrentTool();
 
-    // panel holding the tools
-    UI('textModeEditor').resizeThePanel({panel: 'west', size: 62});
-
-    UI('textEditorMobileSplitPanel').setPanelVisible('south', true);
-    UI('textEditorMobileSplitPanel').resizeThePanel({ panel: 'south', size: 50 });
-
-    UI('textEditorMobileSplitPanel').setPanelVisible('north', true);
-    UI('textEditorMobileSplitPanel').resizeThePanel({ panel: 'north', size: 50 });
+    if(g_app.getMobileInterfaceType() == 'reduced') {
+      this.mobileReduceInterface();
+    } else {
+      this.mobileRestoreInterface();
+    }
 
   } 
 
   if(deviceType == 'desktop') {
-    this.textModeEditorPanel.setPanelVisible('east', true);
-    UI('textEditorContent').setPanelVisible('south', true);
-    UI('textEditorContent').resizeThePanel({panel: 'south', size: 260 });
-
     UI('framesMobilePanel').setVisible(false);
+    UI('textEditorMobileToolsHolder').setVisible(false);
+    UI('textEditorDesktopToolsHolder').setVisible(true);
 
     UI('toolsMobileSidePanel').setVisible(false);
     UI('toolsDesktopPanel').setVisible(true & (this.editorMode != 'pixel'));
@@ -1083,14 +1205,34 @@ TextModeEditor.prototype.setDeviceType = function(deviceType) {
     UI('pixelToolsMobileSidePanel').setVisible(false);
     UI('pixelToolsDesktopPanel').setVisible(true & (this.editorMode == 'pixel'));
 
-    // panel holding the tools
-    UI('textModeEditor').resizeThePanel({panel: 'west', size: this.desktopToolsSize});
+    UI('toolSettingsPanel').showOnly('toolSettingsDesktopPanel');
 
-    UI('textEditorMobileSplitPanel').setPanelVisible('south', false);
-    UI('textEditorMobileSplitPanel').resizeThePanel({ panel: 'south', size: 0 });
+    if(previousDeviceType == 'mobile' && this.desktopLayoutState) {
+      var desktopState = this.desktopLayoutState;
+      var contentPanel = UI('textEditorContent');
+      var mobileSplitPanel = UI('textEditorMobileSplitPanel');
 
-    UI('textEditorMobileSplitPanel').setPanelVisible('north', false);
-    UI('textEditorMobileSplitPanel').resizeThePanel({ panel: 'north', size: 0 });
+      this.restoreDesktopPanelSide(this.textModeEditorPanel, 'east', desktopState.east);
+      this.restoreDesktopPanelSide(this.textModeEditorPanel, 'west', desktopState.west);
+      this.restoreDesktopPanelSide(mobileSplitPanel, 'north', desktopState.settings);
+      this.restoreDesktopPanelSide(mobileSplitPanel, 'south', desktopState.mobileFrames);
+
+      contentPanel.setResizeVisible('south', desktopState.bottom.resizeVisible);
+      contentPanel.resizeThePanel({ panel: 'south', size: desktopState.bottom.size });
+      contentPanel.southSizeSave = desktopState.bottom.savedSize;
+      this.desktopLayoutState = null;
+    } else if(previousDeviceType == 'mobile') {
+      // A session can start directly in mobile mode, in which case there is no
+      // live desktop geometry to capture. Reconstruct it from saved preferences.
+      var layoutType = this.graphic.getType() == 'sprite' ? 'sprite' : 'textmode';
+      this.setLayoutType(layoutType);
+      UI('textEditorMobileSplitPanel').setPanelVisible('south', false);
+      UI('textEditorMobileSplitPanel').resizeThePanel({ panel: 'south', size: 0 });
+      UI('textEditorMobileSplitPanel').setPanelVisible('north', true);
+      UI('textEditorMobileSplitPanel').resizeThePanel({ panel: 'north', size: 30 });
+    }
+
+    this.syncInterfaceMenuChecks();
 
 /*      $('.drawTool').css('width', '26px');
     $('.drawTool').css('height', '26px');

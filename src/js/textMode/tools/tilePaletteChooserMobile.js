@@ -145,8 +145,17 @@ TilePaletteChooserMobile.prototype = {
 
       this.tilePaletteDisplay.on('charactertouchend', function(character) {
         if(_this.mode === "single") {
-          _this.editor.currentTile.setCharacters([[character]]);
-          UI.closeDialog();
+          _this.commitCharacter(character);
+        }
+      });
+
+      // MobilePanel is also used when a regular desktop browser switches to
+      // mobile mode. TilePaletteDisplay reports mouse selection separately
+      // from touch selection, so handle that path explicitly as well.
+      this.tilePaletteDisplay.on('characterselected', function(character) {
+        _this.setCharacter(character);
+        if(_this.mode === "single") {
+          _this.commitCharacter(character);
         }
       });
 
@@ -159,6 +168,15 @@ TilePaletteChooserMobile.prototype = {
 
 
     this.initContent();
+  },
+
+  commitCharacter: function(character) {
+    this.editor.currentTile.setCharacters([[character]]);
+    UI.closeDialog();
+
+    if(this.editor.tilePaletteMobile) {
+      this.editor.tilePaletteMobile.revealTile(character);
+    }
   },
 
   initTilePaletteDisplay: function() {
@@ -631,4 +649,3 @@ TilePaletteChooserMobile.prototype = {
 
   }
 }
-

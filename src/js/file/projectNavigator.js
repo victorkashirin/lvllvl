@@ -1358,14 +1358,19 @@ ProjectNavigator.prototype = {
         }
       }
 
-      var title = '';
-      title += '<img height="14" style="height: 14px; margin: 0; padding: 0; border: 0; filter: invert(0.8)" src="images/tree/file.png">';
-      title += '&nbsp; ' + record.name;
+      var title = record.name;
+      var tabData = {
+        icon: 'file',
+        isTemp: tempTab,
+        key: tabKey,
+        path: path,
+        title: title
+      };
 
       // tempTabIndex will be false if there is already a tab
       if(tempTabIndex !== false) {
         // if there is a temp tab, then replace it
-        tabPanel.setTabData(tempTabIndex, { key: tabKey, path: path, title: title, isTemp: tempTab} );
+        tabPanel.setTabData(tempTabIndex, tabData);
         tabPanel.showTab(tabKey);
       } else if(tabIndex !== -1) {
         if(!tempTab) {
@@ -1373,7 +1378,7 @@ ProjectNavigator.prototype = {
         }
         tabPanel.showTab(tabKey);
       } else {
-        tabPanel.addTab({ key: tabKey,  path: path, title: title, isTemp: tempTab }, true);
+        tabPanel.addTab(tabData, true);
       }
     }
 

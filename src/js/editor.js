@@ -51,7 +51,14 @@ var Editor = function() {
 
   this.newProjectDialog = null;
 
-  this.mobileInterfaceType = 'full';
+  this.mobileInterfaceType = 'reduced';
+  this.mobileLayout = Object.freeze({
+    framesHeight: 50,
+    menuBarHeight: 46,
+    paletteHeight: 50,
+    toolSettingsHeight: 40,
+    toolsPanelWidth: 70
+  });
   this.projectSplitPanel = null;
   this.mainSplitPanel = null;
   this.menuBar = null;
@@ -547,25 +554,30 @@ Editor.prototype = {
   },
 
   setDeviceType: function(deviceType) {
+    var isMobile = deviceType == 'mobile';
+
+    if(deviceType != 'desktop' && !isMobile) {
+      return;
+    }
+
+    this.deviceType = deviceType;
+    UI.setMobileMode(isMobile);
 
     if(deviceType == 'desktop') {
-      this.deviceType = 'desktop';
-
-
       UI('menubar').setVisible(true);
       UI('mobileMenuBar').setVisible(false);
       UI('projectSplitPanel').resizeThePanel({panel: 'north', size: 30});
       UI('tabSplitPanel').setPanelVisible('north', true);
     }
 
-    if(deviceType == 'mobile') {
-
-      this.deviceType = 'mobile';
-
+    if(isMobile) {
       UI('menubar').setVisible(false);
       UI('mobileMenuBar').setVisible(true);
 
-      UI('projectSplitPanel').resizeThePanel({panel: 'north', size: 70});
+      UI('projectSplitPanel').resizeThePanel({
+        panel: 'north',
+        size: this.mobileLayout.menuBarHeight
+      });
 
       UI('tabSplitPanel').setPanelVisible('north', false);
 
@@ -899,14 +911,17 @@ main split panel north is menu
 
     var _this = this;
     $('#mobileMenuBarHamburger').on('click', function(event) {
+      event.preventDefault();
       _this.textModeEditor.showMobileMenu();
     });
 
     $('#mobileMenuBarUndo').on('click', function(event) {
+      event.preventDefault();
       _this.undo();
     });
 
     $('#mobileMenuBarRedo').on('click', function(event) {
+      event.preventDefault();
       _this.redo();
     });
 
@@ -980,7 +995,7 @@ main split panel north is menu
       var menuBarHeight = 30;
       if(isMobile) {
         menuBarHidden = true;
-        menuBarHeight = 46;
+        menuBarHeight = _this.mobileLayout.menuBarHeight;
       }
 
 

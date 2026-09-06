@@ -105,6 +105,10 @@ var TextModeEditor = function() {
 
   this.mobileMenu = null;
 
+  // Mobile mode temporarily reuses several desktop split panels. Keep the
+  // desktop geometry here so a device-mode round trip is lossless.
+  this.desktopLayoutState = null;
+
   this.lastSelectAnimate = 0;
 
 

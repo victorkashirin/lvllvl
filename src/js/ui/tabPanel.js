@@ -50,6 +50,26 @@ UI.TabPanel = function(args) {
     return this.components;
   }
 
+  this.getTabIconPath = function(icon) {
+    if(icon === 'file') {
+      return 'images/tree/file.png';
+    }
+    return '';
+  }
+
+  this.appendTabLabelContent = function(labelElement, tabIndex, title) {
+    var iconPath = this.getTabIconPath(this.components[tabIndex].tab.icon);
+    if(iconPath) {
+      var icon = document.createElement('img');
+      icon.className = 'ui-tab-icon';
+      icon.alt = '';
+      icon.setAttribute('aria-hidden', 'true');
+      icon.src = iconPath;
+      labelElement.appendChild(icon);
+    }
+    labelElement.appendChild(document.createTextNode(String(title == null ? '' : title)));
+  }
+
   this.getTabHTML = function(tabIndex) {
     var tab = this.components[tabIndex];
     var html = '';
@@ -74,6 +94,11 @@ UI.TabPanel = function(args) {
     html += '>';
 
     html += '<div class="ui-tab-label">';
+    var iconPath = this.getTabIconPath(this.components[tabIndex].tab.icon);
+    if(iconPath) {
+      html += '<img class="ui-tab-icon" alt="" aria-hidden="true" src="' +
+        SafeHTML.escape(iconPath) + '">';
+    }
     html += SafeHTML.escape(this.components[tabIndex].tab.title);
     html += '</div>';
 
@@ -206,7 +231,12 @@ UI.TabPanel = function(args) {
 
   this.setTabLabel = function(tabIndex, label) {
     var id = this.id + 'tab-' + this.components[tabIndex].tabId;
-    $('#' + id + ' .ui-tab-label').text(label);
+    var labelElement = $('#' + id + ' .ui-tab-label').get(0);
+    if(!labelElement) {
+      return;
+    }
+    labelElement.replaceChildren();
+    this.appendTabLabelContent(labelElement, tabIndex, label);
   }
 
   this.getTabData = function(tabIndex) {

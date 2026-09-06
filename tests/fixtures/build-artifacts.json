@@ -3,16 +3,16 @@
   "releaseVersion": "0.497.5",
   "artifacts": {
     "index.html": {
-      "bytes": 1961,
-      "sha256": "959d6ecc1ede39e70872f94002e2e5c7a6428db30b29af60d27852dc38d0b3ba"
+      "bytes": 2024,
+      "sha256": "f55cfe0a12f1731c252c02c504e6af5fcbd8139b0fd620e75efdb487f29fd9b0"
     },
     "c64/index.html": {
-      "bytes": 1978,
-      "sha256": "829f31c3db420d81e94440aad5526af5a9870ef8af39404871af3c7752411a03"
+      "bytes": 2041,
+      "sha256": "ad742ba3e2fbedcb7b1c07a106a161e2f636c697136379db18dd3d5b9dfe53cd"
     },
     "css/style.css": {
-      "bytes": 137634,
-      "sha256": "8e5c345aa1a7fc29c64bd354eec21f77e7993526eb80836238ee94770a649763"
+      "bytes": 137795,
+      "sha256": "616fc4d35249f61478c8e5a4a9eb33ebcf987d12593677abbed48f19a767c80d"
     },
     "fonts/glyphicons-halflings-regular.woff2": {
       "bytes": 20188,
@@ -27,12 +27,12 @@
       "sha256": "f6e20ce93d4c5e5a0fe109bd3a07dc51e482ba8700c4ef7468bbc0839d2872b8"
     },
     "js/main.js": {
-      "bytes": 3274260,
-      "sha256": "e29a59e5144fb9f5da2858be737dedf9b9442c6d368efa1e518a546cda2f8411"
+      "bytes": 3283474,
+      "sha256": "d6de64bdd19fbe7a14c30b3168694b0f8c2ac697fbb1b51e156bf4865baecf86"
     },
     "js/main.js.map": {
-      "bytes": 10457610,
-      "sha256": "d41cd7b099b3db41e7a9259c0952e9472aa017693321ffa7c9330842fed68406"
+      "bytes": 10485104,
+      "sha256": "346e3946ffd40de02b34dc63c271702e5cd67ee7a871dc96fa8d2221b000beb0"
     },
     "js/bootstrap.mjs": {
       "bytes": 3299,
@@ -91,8 +91,8 @@
       "sha256": "f396b07f3692d7a8cfd285c0d86dac078750abbf75358b93b2841b1c67f75a02"
     },
     "js/html/htmlcache.js": {
-      "bytes": 363779,
-      "sha256": "74a0bdf54100a5f157e21ec0f0765f7103ea55d9d7a9721d475a2370cdd3d403"
+      "bytes": 364221,
+      "sha256": "a9b89d2f493442f070a5ae19f7138f7e3e48e8bf3aead43183b11869037bd569"
     }
   }
 }

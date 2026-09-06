@@ -1,24 +1,23 @@
 <div id="mobileMenuBar" class="panelFill activeBackground nodrag" >
 
-  <div id="mobileMenuBarHamburger" class="ui-mobile-button" >
-    <div class="rippleJS"></div>
-    <img src="icons/material/ic_menu_48px.svg"/>    
-  </div>
+  <button type="button" id="mobileMenuBarHamburger" class="ui-mobile-button mobile-app-bar-button" aria-label="Open menu" aria-controls="mobile-menu" aria-expanded="false">
+    <span class="rippleJS"></span>
+    <img src="icons/material/ic_menu_48px.svg" alt="" aria-hidden="true"/>
+  </button>
 
-  <div id="mobileMenuCurrentTools">
-  </div>
+  <button type="button" id="mobileMenuCurrentTools" class="mobile-app-bar-current-tool" aria-label="Choose drawing tool"></button>
 
   <div id="mobileMenuUndoRedo">
     
-    <div id="mobileMenuBarUndo" class="ui-mobile-button">
-      <img src="icons/material/ic_undo_48px.svg" class="ui-mobile-button-img"/>    
-      <div class="rippleJS"></div>
-    </div>
+    <button type="button" id="mobileMenuBarUndo" class="ui-mobile-button mobile-app-bar-button" aria-label="Undo">
+      <img src="icons/material/ic_undo_48px.svg" class="ui-mobile-button-img" alt="" aria-hidden="true"/>
+      <span class="rippleJS"></span>
+    </button>
 
-    <div id="mobileMenuBarRedo" class="ui-mobile-button">
-      <img src="icons/material/ic_redo_48px.svg" class="ui-mobile-button-img"/>    
-      <div class="rippleJS"></div>
-    </div>
+    <button type="button" id="mobileMenuBarRedo" class="ui-mobile-button mobile-app-bar-button" aria-label="Redo">
+      <img src="icons/material/ic_redo_48px.svg" class="ui-mobile-button-img" alt="" aria-hidden="true"/>
+      <span class="rippleJS"></span>
+    </button>
   </div>
 
 </div>

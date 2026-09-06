@@ -188,13 +188,15 @@ ColorSubPalettePickerMobile.prototype = {
     var currentSubPaletteColor = colorSubPalettes.getCurrentPaletteColor();
     colorSubPalettes.setColor(currentSubPaletteColor, colorIndex);
     this.editor.currentTile.setColor(currentSubPalette, { force: true});
+    UI.closeDialog();
   },
 
 
   selectSubPaletteColor: function(subPalette, subPaletteColor) {
 
     this.editor.colorPaletteManager.colorSubPalettes.selectPalette(subPalette, subPaletteColor);
-    this.editor.colorPaletteManager.colorSubPalettes.selectPaletteColor(subPaletteColor);    
+    this.editor.colorPaletteManager.colorSubPalettes.selectPaletteColor(subPaletteColor);
+    UI.closeDialog();
   },
 
   highlightSubPaletteColor: function() {

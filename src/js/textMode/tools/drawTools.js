@@ -886,6 +886,25 @@ DrawTools.prototype = {
     return '<img src="' + imageUrl + '" style="width: 20px">';
   },
 
+  updateMobileCurrentTool: function() {
+    var tool = this.tool;
+    if(!this.toolMap || !this.toolMap[tool]) {
+      this.getTools();
+    }
+    if(!this.toolMap[tool]) {
+      return;
+    }
+
+    var toolHtml = '';
+    toolHtml += '<span class="mobileToolIconHolder"><img src="' + this.toolMap[tool].mobileIcon + '" alt="" aria-hidden="true"></span>';
+    toolHtml += '<span>' + this.toolMap[tool].label + '</span>';
+    $('#mobileMenuCurrentTools').html(toolHtml);
+    $('#mobileMenuCurrentTools').attr(
+      'aria-label',
+      'Choose drawing tool. Current tool: ' + this.toolMap[tool].label
+    );
+  },
+
   setDrawTool: function(tool) {
     if(tool == 'pixel' && this.tool != 'pixel') {
       this.saveCurrentTiles = this.editor.currentTile.getTiles();
@@ -1150,13 +1169,7 @@ DrawTools.prototype = {
 
 
     if(g_app.isMobile()) {
-      var toolHtml = '';
-//      var toolHtml = '<div id="mobileCurrentTool">';
-      toolHtml += '<div class="mobileToolIconHolder"><img src="' + this.toolMap[tool].mobileIcon + '"/></div>';
-      toolHtml += '<span>' + this.toolMap[tool].label + '</span>';;
-  //    toolHtml += '</div>';
-
-      $('#mobileMenuCurrentTools').html(toolHtml);
+      this.updateMobileCurrentTool();
 
       /*
       var _this = this;

@@ -29,6 +29,12 @@ var TilePaletteMobile = function() {
   this.xScroll = 0;
 
   this.velocityTween = null;
+  this.lastTouchEnd = 0;
+
+  this.mouseIsDown = false;
+  this.mouseStartX = 0;
+  this.mouseStartScrollX = 0;
+  this.mouseDidDrag = false;
 
 //  this.canvasMaxWidth = 4400;
 }
@@ -179,6 +185,70 @@ TilePaletteMobile.prototype = {
 
     }, false);
 
+    this.canvas.addEventListener("wheel", function(event) {
+      var wheel = normalizeWheel(event);
+      var delta = Math.abs(wheel.pixelX) > Math.abs(wheel.pixelY)
+        ? wheel.pixelX
+        : wheel.pixelY;
+      if(delta == 0) {
+        return;
+      }
+
+      event.preventDefault();
+      _this.stopVelocityTween();
+      _this.setXScroll(_this.xScroll - delta);
+      _this.draw({ redrawTileset: false });
+    }, { passive: false });
+
+    this.canvas.addEventListener("mousedown", function(event) {
+      if(event.button != 0) {
+        return;
+      }
+
+      _this.stopVelocityTween();
+      _this.mouseIsDown = true;
+      _this.mouseStartX = event.pageX;
+      _this.mouseStartScrollX = _this.xScroll;
+      _this.mouseDidDrag = false;
+    }, false);
+
+    document.addEventListener("mousemove", function(event) {
+      if(!_this.mouseIsDown) {
+        return;
+      }
+
+      var deltaX = event.pageX - _this.mouseStartX;
+      if(!_this.mouseDidDrag && Math.abs(deltaX) < 4) {
+        return;
+      }
+
+      event.preventDefault();
+      _this.mouseDidDrag = true;
+      _this.setXScroll(_this.mouseStartScrollX + deltaX);
+      _this.draw({ redrawTileset: false });
+    }, false);
+
+    document.addEventListener("mouseup", function() {
+      _this.mouseIsDown = false;
+    }, false);
+
+    // A desktop browser can switch into the mobile layout without gaining a
+    // touch input source. Keep the touch gestures, but also make an ordinary
+    // mouse click select the tile under the pointer.
+    this.canvas.addEventListener("click", function(event) {
+      if(_this.mouseDidDrag || Date.now() - _this.lastTouchEnd < 500) {
+        return;
+      }
+
+      var x = event.pageX - $('#' + _this.canvas.id).offset().left;
+      var y = event.pageY - $('#' + _this.canvas.id).offset().top;
+      var tile = _this.tileFromXY(x, y);
+      if(_this.selectTile(tile)) {
+        _this.touchOnTile = tile;
+        _this.draw({ redrawTileset: false });
+      }
+    }, false);
+
   },
 
 
@@ -211,11 +281,7 @@ TilePaletteMobile.prototype = {
 
   touchStart: function(event) {
     this.touchVelocity.touchStart(event);  
-    
-    if(this.velocityTween !== null) {
-      this.velocityTween.stop();
-      this.velocityTween = null;
-    }
+    this.stopVelocityTween();
 
     event.preventDefault();
     var touches = event.touches;
@@ -272,6 +338,44 @@ TilePaletteMobile.prototype = {
     }
 
   },
+
+  stopVelocityTween: function() {
+    if(this.velocityTween !== null) {
+      this.velocityTween.stop();
+      this.velocityTween = null;
+    }
+  },
+
+  revealTile: function(tile) {
+    if(typeof tile != 'number' || isNaN(tile) || tile < 0) {
+      return false;
+    }
+
+    // Refresh the palette first so its scale and viewport reflect the layout
+    // restored after the chooser closes.
+    this.draw({ redrawTileset: false });
+    if(tile >= this.tileCount) {
+      return false;
+    }
+
+    var tileHolderWidth = (this.tileWidth * this.blockWidth + this.tileHPadding) * this.scale;
+    var tileLeft = this.tileHPadding * this.scale + tile * tileHolderWidth;
+    var tileRight = tileLeft + this.tileWidth * this.blockWidth * this.scale;
+    var viewportLeft = -this.xScroll;
+    var viewportRight = viewportLeft + this.canvas.width;
+    var nextScroll = this.xScroll;
+
+    if(tileLeft < viewportLeft) {
+      nextScroll = -(tileLeft - this.tileHPadding * this.scale);
+    } else if(tileRight > viewportRight) {
+      nextScroll = -(tileRight - this.canvas.width + this.tileHPadding * this.scale);
+    }
+
+    this.setXScroll(nextScroll);
+    this.draw({ redrawTileset: false });
+    return true;
+  },
+
   startVelocityTween: function(velocity) {
 
     var start = { vx: velocity.vx }; // Start at (0, 0)
@@ -297,20 +401,14 @@ TilePaletteMobile.prototype = {
   touchEnd: function(event) {
 
     event.preventDefault();
+    this.lastTouchEnd = Date.now();
     this.scrollLeftEnd = this.xScroll;//$('#tilePaletteMobileHolder').scrollLeft();
     var scrollDiff = this.scrollLeftEnd - this.scrollLeftStart;
 
 
     if(scrollDiff < 10 && scrollDiff > -10) {
       // prob wanted to select tile, not scroll
-      if(this.touchOnTile !== false) {
-
-        if(this.editor.tools.drawTools.tool == 'block') {
-          this.editor.currentTile.setBlock(this.touchOnTile);
-        } else {
-          this.editor.currentTile.setCharacters([[this.touchOnTile]]);
-        }
-      }
+      this.selectTile(this.touchOnTile);
     } else {
       this.touchVelocity.touchEnd(event);    
       var velocity = this.touchVelocity.getVelocity();
@@ -325,6 +423,19 @@ TilePaletteMobile.prototype = {
     this.highlightTouchOnTile = false;
 //    this.touchOnTile = false;
     this.draw({ redrawTileset: false });
+  },
+
+  selectTile: function(tile) {
+    if(tile === false) {
+      return false;
+    }
+
+    if(this.editor.tools.drawTools.tool == 'block') {
+      this.editor.currentTile.setBlock(tile);
+    } else {
+      this.editor.currentTile.setCharacters([[tile]]);
+    }
+    return true;
   },
 
 
@@ -342,7 +453,7 @@ TilePaletteMobile.prototype = {
     if(g_app.mode == '2d') {
       var layer = this.editor.layers.getSelectedLayerObject();    
       if(!layer || layer.getType() !== 'grid') {
-        return;
+        return false;
       }
 
       screenMode = layer.getScreenMode();
@@ -398,7 +509,7 @@ TilePaletteMobile.prototype = {
       this.tileVPadding = 2;
     }
 
-    this.scale = Math.floor( this.canvas.height / (this.tileHeight * this.blockHeight) );
+    this.scale = Math.max(1, Math.floor( this.canvas.height / (this.tileHeight * this.blockHeight) ));
 
     if(screenMode == TextModeEditor.Mode.VECTOR) {
       this.tileHeight = this.canvas.height - 2;
@@ -407,6 +518,10 @@ TilePaletteMobile.prototype = {
     }
 
     var tileHolderWidth = (this.tileWidth * this.blockWidth + this.tileHPadding )* this.scale;
+
+    if(!isFinite(tileHolderWidth) || tileHolderWidth <= 0) {
+      return false;
+    }
 
 
     // max x scroll is the width of palette when drawn at scale minus what is displayed
@@ -438,6 +553,11 @@ TilePaletteMobile.prototype = {
     
     this.offscreenHeight = this.canvas.height;
     this.offscreenWidth = tilesDisplayed * (tileHolderWidth / this.scale);
+
+    if(!isFinite(this.offscreenWidth) || this.offscreenWidth <= 0 ||
+        !isFinite(this.offscreenHeight) || this.offscreenHeight <= 0) {
+      return false;
+    }
 
     if(
       this.paletteCanvas.width < this.offscreenWidth 
@@ -492,7 +612,7 @@ TilePaletteMobile.prototype = {
     var colorPerMode = this.editor.getColorPerMode();
     var colorPalette = colorPaletteManager.getCurrentColorPalette();
     if(!colorPalette) {
-      return;
+      return false;
     }
 
 
@@ -584,7 +704,7 @@ TilePaletteMobile.prototype = {
     }
 
 
-    return;
+    return true;
   },
 
 
@@ -616,11 +736,24 @@ TilePaletteMobile.prototype = {
 
     this.resize();
 
+    // Desktop-to-mobile layout changes resize the still-hidden mobile palette
+    // before TextModeEditor has made its compact panels visible. Canvas
+    // getImageData/drawImage reject a zero-sized source, so wait for the resize
+    // that gives the palette real dimensions.
+    if(this.canvas.width <= 0 || this.canvas.height <= 0) {
+      return;
+    }
+
     if(redrawTileset) {
       this.setPaletteTiles();
     }
 
-    this.drawPalette();
+    if(!this.drawPalette() || !this.paletteCanvas ||
+        this.paletteCanvas.width <= 0 || this.paletteCanvas.height <= 0 ||
+        !isFinite(this.offscreenWidth) || this.offscreenWidth <= 0 ||
+        !isFinite(this.offscreenHeight) || this.offscreenHeight <= 0) {
+      return;
+    }
 
 
     var srcX = 0;

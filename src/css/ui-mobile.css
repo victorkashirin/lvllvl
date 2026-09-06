@@ -33,13 +33,13 @@
 
 
 
-.tileEditorC64ColorLabel {
+.mobileMode .tileEditorC64ColorLabel {
   line-height: 30px;
   vertical-align: top;
   margin-left: 4px;
 }
 
-.ui-mobile-button {
+.mobileMode .ui-mobile-button {
   border-radius: 50%;
   display: inline-block;
   padding: 6px;
@@ -48,20 +48,20 @@
 */  
 }
 
-.ui-mobile-button img {
+.mobileMode .ui-mobile-button img {
   filter: invert(80%) !important
 }
 
-.ui-mobile-button-disabled img {
+.mobileMode .ui-mobile-button-disabled img {
   filter: invert(40%) !important
 }
 
-.ui-mobile-button:active {
+.mobileMode .ui-mobile-button:active {
   background-color: #222222; 
 }
 
 
-.ui-mobile-button:active img {
+.mobileMode .ui-mobile-button:active img {
   filter: invert(20%) !important ;
 }
 
@@ -109,7 +109,7 @@
   font-size: 14px;
 }
 
-a, startBlock {
+.mobileMode a, .mobileMode startBlock {
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   -khtml-user-select: none;
@@ -123,7 +123,7 @@ a, startBlock {
   min-width: 70px;
 }
 
-.mobileMode .ui-button, .ui-button:hover {
+.mobileMode .ui-button, .mobileMode .ui-button:hover {
   margin-right: 2px;
   border: 0px;
   font-size: 14px;
@@ -172,27 +172,27 @@ padding: 10px 10px 8px 10px; /*6px 10px; */
 
 
 
-.tileEditorC64Color {
+.mobileMode .tileEditorC64Color {
   width: 12px;
   height: 12px;
 }
 
-.tileEditorC64ColorType {
+.mobileMode .tileEditorC64ColorType {
   width: 50px;
   height: 20px;
 }
 
-.tileEditorC64ColorLabel {
+.mobileMode .tileEditorC64ColorLabel {
   line-height: 20px;
 }
 
 
 
-.ui-mobilepanel select {
+.mobileMode .ui-mobilepanel select {
   min-width: 60%;
 }
 
-.ui-mobilepanel .rangeHolder {
+.mobileMode .ui-mobilepanel .rangeHolder {
   position: absolute; 
   left: 156px; 
   top: 0 ; 
@@ -202,25 +202,25 @@ padding: 10px 10px 8px 10px; /*6px 10px; */
   align-items: center;
 }
 
-.rangeHolder input {
+.mobileMode .rangeHolder input {
   width: 100%;
 }
 
-.ui-mobilepanel .rangeButton {
+.mobileMode .ui-mobilepanel .rangeButton {
   width: 40px; 
 /*  margin-left: auto;  */
   position: absolute; 
   right: 0;
 }
 
-.ui-mobilepanel h3 {
+.mobileMode .ui-mobilepanel h3 {
   font-size: 18px;
   margin-top: 10px;
   border-bottom: 1px solid #444444;
 }
 
 
-.ui-mobilepanel {
+.mobileMode .ui-mobilepanel {
   position: absolute;
   background-color: #efefef;
   padding: 0px;
@@ -228,7 +228,7 @@ padding: 10px 10px 8px 10px; /*6px 10px; */
   background-color: #444444;
 }
 
-.ui-mobilepanel-titlebar {
+.mobileMode .ui-mobilepanel-titlebar {
   position: absolute;
   top: 0;
   left: 0;
@@ -240,18 +240,18 @@ padding: 10px 10px 8px 10px; /*6px 10px; */
 
 }
 
-.ui-mobilepanel-titlebar-buttons {
+.mobileMode .ui-mobilepanel-titlebar-buttons {
   margin-left: auto;
   padding-right: 6px;
 }
 
-.ui-mobilepanel-titlebar-buttons .ui-button {
+.mobileMode .ui-mobilepanel-titlebar-buttons .ui-button {
   background-color: #334499;
   font-size: 18px;
   font-weight: bold;
 }
 
-.ui-mobilepanel-titlebar-heading {
+.mobileMode .ui-mobilepanel-titlebar-heading {
   /*
   position: absolute;
   top: 0;
@@ -264,7 +264,7 @@ padding: 10px 10px 8px 10px; /*6px 10px; */
   color: #dddddd;
 }
 
-.ui-mobilepanel-content {
+.mobileMode .ui-mobilepanel-content {
   position: absolute;
   top: 50px;
   left: 0px;
@@ -482,81 +482,193 @@ padding: 10px 10px 8px 10px; /*6px 10px; */
 }
 
 
-#mobileMenuBar {
+.mobileMode #mobileMenuBar {
+  position: absolute;
+  inset: 0;
   background-color: #101010;
 }
 
-#mobileMenuBarHamburger {
-  position: absolute; 
-  left: 4px; 
-  top: 0px; 
-  width: 32px; 
-  height: 32px
+.mobileMode .mobile-app-bar-button,
+.mobileMode .mobile-app-bar-current-tool {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 0;
+  box-sizing: border-box;
+  color: #dddddd;
+  cursor: pointer;
+  font-family: inherit;
+  margin: 0;
 }
 
-#mobileMenuBarHamburger img {
+.mobileMode .mobile-app-bar-button {
+  background: transparent;
+  height: 44px;
+  padding: 6px;
+  width: 44px;
+}
+
+.mobileMode .mobile-app-bar-button:focus-visible,
+.mobileMode .mobile-app-bar-current-tool:focus-visible {
+  outline: 2px solid #5ea5e8;
+  outline-offset: -2px;
+}
+
+.mobileMode #mobileMenuBarHamburger {
+  left: 2px;
+  position: absolute;
+  top: 1px;
+}
+
+.mobileMode #mobileMenuBarHamburger img {
   width: 32px;
   height: 32px;
 }
 
-#mobileMenuCurrentTools {
-  position: absolute; left: 60px; top: 3px; bottom: 4px; right: 100px;display: flex;  align-items: center;  
+.mobileMode #mobileMenuCurrentTools {
+  align-items: center;
+  background: transparent;
+  bottom: 2px;
+  display: flex;
   font-size: 20px;
+  gap: 6px;
+  height: auto;
+  left: 50px;
+  min-width: 0;
+  overflow: hidden;
+  padding: 0 4px;
+  position: absolute;
+  right: 94px;
+  text-align: left;
+  top: 2px;
 }
 
-#mobileMenuUndoRedo {
-  position: absolute; 
-  top: 0px; 
-  right: 4px; width: 96px; text-align: right;
-}
-#mobileMenuBarUndo {
-  position: absolute; left: 0; width: 32px; height: 32px;
-}
-
-#mobileMenuBarRedo {
-  position: absolute; right: 00px; width: 32px; height: 32px;
+.mobileMode #mobileMenuUndoRedo {
+  display: flex;
+  height: 44px;
+  position: absolute;
+  right: 2px;
+  text-align: right;
+  top: 1px;
+  width: 88px;
 }
 
-#mobileMenuBarUndo img, #mobileMenuBarRedo img {
+.mobileMode #mobileMenuBarUndo,
+.mobileMode #mobileMenuBarRedo {
+  position: relative;
+}
+
+.mobileMode #mobileMenuBarUndo img,
+.mobileMode #mobileMenuBarRedo img {
   width: 32px;
   height: 32px;
 }
 
+.mobileMode .mobile-menu-header {
+  align-items: center;
+  background-color: #111111;
+  box-sizing: border-box;
+  display: flex;
+  gap: 8px;
+  height: 64px;
+  left: 0;
+  padding: 10px;
+  position: absolute;
+  right: 0;
+  top: 0;
+}
 
-#toolIconHolderMobile::-webkit-scrollbar {
+.mobileMode .mobile-menu-header .ui-button {
+  align-items: center;
+  box-sizing: border-box;
+  display: flex;
+  gap: 8px;
+  height: 44px;
+  justify-content: center;
+  margin: 0;
+  min-width: 0;
+  padding: 6px 12px;
+}
+
+.mobileMode .mobile-menu-header .ui-button img {
+  flex: 0 0 auto;
+  height: 24px;
+  margin: 0;
+  width: 24px;
+}
+
+.mobileMode #mobile-menu-content {
+  background-color: #222222;
+  bottom: 0;
+  left: 0;
+  overflow-y: auto;
+  position: absolute;
+  right: 0;
+  top: 64px;
+}
+
+.mobileMode .mobile-menu-item {
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid #303030;
+  border-radius: 0;
+  box-sizing: border-box;
+  color: #eeeeee;
+  cursor: pointer;
+  display: flex;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 300;
+  letter-spacing: 0.5px;
+  margin: 0;
+  padding: 13px 16px;
+  text-align: left;
+  width: 100%;
+}
+
+.mobileMode .mobile-menu-item:focus-visible {
+  outline: 2px solid #5ea5e8;
+  outline-offset: -2px;
+}
+
+
+.mobileMode #toolIconHolderMobile::-webkit-scrollbar {
   width: 0px;  /* remove scrollbar space */
   background: transparent;  /* optional: just make scrollbar invisible */
 }
 
-#mobileMenuCurrentTools .mobileToolIconHolder {
-  display: inline-block;
-  width: 34px;
-  height: 34px;
-/*  padding: 2px;  */
-/*  border: 1px solid #333333; */
-  margin-right: 8px;
+.mobileMode #mobileMenuCurrentTools .mobileToolIconHolder {
+  align-items: center;
+  display: flex;
+  flex: 0 0 32px;
+  height: 32px;
+  justify-content: center;
+  width: 32px;
 }
 
-#mobileMenuCurrentTools  span {
+.mobileMode #mobileMenuCurrentTools span {
   font-weight: 200;
   letter-spacing: 1px;
   font-size: 20px;
-  line-height: 18px;
-  height: 24px;
+  line-height: 24px;
+  height: auto;
   white-space: nowrap;
   overflow:hidden;
   text-overflow: ellipsis;
 
 }
 
-#mobileMenuCurrentTools img {
+.mobileMode #mobileMenuCurrentTools img {
+  display: block;
   filter: invert(70%);
   width: 32px;
-  height: 32px;
+  height: auto;
+  max-height: 32px;
 }
 
 
-#drawToolSettingsMobile  {
+.mobileMode #drawToolSettingsMobile  {
   display: flex;
   flex: 1;
   align-items: center;
@@ -566,7 +678,7 @@ padding: 10px 10px 8px 10px; /*6px 10px; */
 
 }
 
-#drawToolSettingsMobile .cb-container {
+.mobileMode #drawToolSettingsMobile .cb-container {
   flex-grow: 1;
   /*flex-basis: 0;*/
   padding-right: 12px;
@@ -574,7 +686,7 @@ padding: 10px 10px 8px 10px; /*6px 10px; */
 }
 
 
-#selectToolSettingsMobile .ui-button {
+.mobileMode #selectToolSettingsMobile .ui-button {
   margin-right: 10px;
 
 }
@@ -894,12 +1006,12 @@ padding: 10px 10px 8px 10px; /*6px 10px; */
   display: flex;
   align-items: center;  
 }
-.projectNavigatorMobileDocIcon {
+.mobileMode .projectNavigatorMobileDocIcon {
   filter: invert(80%);
   height: 30px;
 }
 
-.projectNavigatorMobileFilename {
+.mobileMode .projectNavigatorMobileFilename {
   margin-left: 4px;
 }
 

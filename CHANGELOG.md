@@ -4,6 +4,19 @@
 
 ### Fixed
 
+- Keep startup and runtime mobile layouts cohesive with a compact 46-pixel app
+  bar, consistent tool and palette dimensions, working accessible menu controls,
+  on-demand expanded controls, and lossless desktop restoration of enabled
+  panels, custom split sizes, resize affordances, and Interface-menu checks
+  across repeated mode switches and mobile tool changes. Use a smaller
+  responsive application drawer with correctly aligned tool and Save controls,
+  contained keyboard focus,
+  prompt touch actions, mouse-scrollable mobile tile palettes, mouse-operable
+  tile choosers with synchronized selection outlines, single-choice mobile
+  palette dialogs that dismiss after selection, and clean project tabs when
+  returning to desktop mode.
+- Prevent hidden, zero-sized mobile tile palettes from causing canvas exceptions
+  during device and layout changes.
 - Replace bitmap-layer destination readback and repeated per-cell pixel expansion
   with a bounded, revision-aware tile atlas. Cache mode-specialized text, indexed,
   RGB, C64, and NES rasters while preserving orientation, transparency, reference

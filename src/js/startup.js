@@ -1,14 +1,16 @@
 (function() {
   'use strict';
 
-  if(UI.isMobile.any()) {
-    var link = document.createElement('link');
-    link.setAttribute('rel', 'stylesheet');
-    link.setAttribute('href', 'css/ui-mobile.css?v={v}');
-    document.getElementsByTagName('head')[0].appendChild(link);
+  UI.setMobileMode = function(enabled) {
+    if(!document.body) {
+      $(function() {
+        UI.setMobileMode(enabled);
+      });
+      return;
+    }
 
-    $(function() {
-      $('body').addClass('mobileMode');
-    });
-  }
+    document.body.classList.toggle('mobileMode', enabled);
+  };
+
+  UI.setMobileMode(UI.isMobile.any());
 })();

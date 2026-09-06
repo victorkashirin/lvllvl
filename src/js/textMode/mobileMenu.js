@@ -12,8 +12,11 @@ var MobileMenu = function() {
 
   this.moveHorizonal = false;
   this.moveVertical = false;
+  this.touchActive = false;
 
   this.touchVelocity = null;
+  this.previouslyFocusedElement = null;
+  this.inertElements = [];
 }
 
 MobileMenu.prototype = {
@@ -33,14 +36,54 @@ MobileMenu.prototype = {
 
   },
 
+  getFocusableElements: function() {
+    if(!this.uiComponent) {
+      return [];
+    }
+
+    var elements = this.uiComponent.querySelectorAll(
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), ' +
+      'textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    );
+
+    return Array.prototype.filter.call(elements, function(element) {
+      return element.getClientRects().length > 0;
+    });
+  },
+
+  setBackgroundInert: function(inert) {
+    if(inert) {
+      if(this.inertElements.length > 0) {
+        return;
+      }
+
+      var children = document.body.children;
+      for(var i = 0; i < children.length; i++) {
+        var element = children[i];
+        if(element === this.uiComponent || element === this.uiComponentHolder) {
+          continue;
+        }
+
+        this.inertElements.push({
+          element: element,
+          wasInert: element.hasAttribute('inert')
+        });
+        element.setAttribute('inert', '');
+      }
+      return;
+    }
+
+    for(var i = 0; i < this.inertElements.length; i++) {
+      var inertElement = this.inertElements[i];
+      if(!inertElement.wasInert && inertElement.element.isConnected) {
+        inertElement.element.removeAttribute('inert');
+      }
+    }
+    this.inertElements = [];
+  },
+
   getMenuHTML: function() {
     var menuItems = [
-    /*
-      { "label": "Project Explorer", "id": "projectexplorer", "icon": '<img  height="25" src="icons/svg/glyphicons-basic-21-home.svg"/>' },
-      { "label": "Save", "id": "save", "icon": '<img  height="25" src="icons/svg/glyphicons-basic-199-save.svg"/>' },
-      { "label": "Save As", "id": "saveas", "icon": '<img  height="25"  src="icons/svg/glyphicons-basic-200-save-as.svg">' },      
-      { "label": "Save To GitHub...", "id": "savetogithub", "icon": '<img  height="25" src="icons/svg/glyphicons-basic-545-cloud-upload.svg"/>' },
-      */
       { "className": "screen-menu-item", "label": "Dimensions", "id": "dimensions", "icon": '<img  height="25" src="icons/svg/glyphicons-basic-69-ruler.svg"/>' },
       { "label": "Screen Mode", "id": "screenmode", "icon": '<img  height="25" src="icons/svg/glyphicons-basic-87-tv.svg"/>' },
 
@@ -49,51 +92,30 @@ MobileMenu.prototype = {
       { "className": "screen-menu-item", "label": "Choose A Character Set", "id": "tilesetpreset", "icon": '<img height="25" src="icons/svg/glyphicons-basic-422-book-library.svg"/>' },
       { "label": "Choose A Colour Palette", "id": "colorpalettepreset", "icon": '<img height="25" src="icons/svg/glyphicons-basic-444-sampler.svg"/>' },
       { "className": "screen-menu-item", "label": "Import Image / Video", "id": "importimage", "icon": '<img  height="25" src="icons/svg/glyphicons-basic-399-import.svg">' },
-//      { "label": "Download", "id": "download" },
-//icons/svg/glyphicons-basic-400-export.svg
-      { "label": "Export GIF/PNG", "id": "exportimage", "icon": '<img  height="25" src="icons/svg/glyphicons-basic-199-save.svg">' },
-
-      { "label": "Export PNG", "id": "exportpng", "icon": '<img  height="25" src="icons/svg/glyphicons-basic-199-save.svg">' },
-      { "label": "Export GIF", "id": "exportgif", "icon": '<img  height="25" src="icons/svg/glyphicons-basic-199-save.svg">' },
+      { "label": "Export Image", "id": "exportimage", "icon": '<img  height="25" src="icons/svg/glyphicons-basic-199-save.svg">' },
       { "className": "screen-menu-item", "label": "Export Tileset", "id": "exporttileset", "icon": '<img  height="25" src="icons/svg/glyphicons-basic-199-save.svg">' },
 
       { "label": "Toggle Grid", "id": "togglegrid", "icon": '<img height="25" src="icons/material/grid_on-24px.svg"/>' },
       { "label": "Toggle Show Previous Frame", "id": "toggleprev" },
-      { "label": "Minimal Interface", "id": "minimalinterface" },
-      { "label": "Desktop Mode", "id": "desktopview" },
+      { "label": "Show Expanded Controls", "id": "minimalinterface" },
+      { "label": "Switch to Desktop Mode", "id": "desktopview" },
     ];
+
+    if(SHOWUNFINISHED) {
+      menuItems.unshift({
+        "label": "Project Explorer",
+        "id": "projectexplorer",
+        "icon": '<img height="25" src="icons/svg/glyphicons-basic-21-home.svg">'
+      });
+    }
 
     var html = '';
 
-    html += '<div class="mobile-menu-header" style="position: absolute; top: 0; left: 0; right: 0; height: 200px; background-color: #111111">';
-
-/*
-    html += '<div style="padding: 0 20px">';
-    html += '<h2>lvllvl</h2>';
+    html += '<div class="mobile-menu-header">';
+    html += '<button type="button" class="ui-button ui-button-info" id="mobileMenuSave"><img height="25" src="icons/svg/glyphicons-basic-199-save.svg" alt=""><span class="ui-text" data-textid="Save">' + TextStore.get("Save") + '</span></button>';
+    html += '<button type="button" class="ui-button ui-button-info" id="mobileMenuSaveAs"><img height="25" src="icons/svg/glyphicons-basic-200-save-as.svg" alt=""><span class="ui-text" data-textid="Save As">' + TextStore.get("Save As") + '</span>...</button>';
     html += '</div>';
-*/
-
-    html += '<div id="mobileMenuUserInfo"></div>';
-
-    html += '<div style="padding: 0 10px 0 10px">';
-
-    html += '<div style="padding: 0 0 10px 0">';
-    if(SHOWUNFINISHED) {
-      html += '<div class="ui-button ui-button-primary" id="mobileMenuProjectExplorer"> <img height="25" src="icons/svg/glyphicons-basic-21-home.svg">&nbsp;Project Explorer</div>';
-      html += '&nbsp;'
-    }
-
-    html += '<div class="ui-button ui-button-info" id="mobileMenuSave" style="margin-right: 10px"> <img  height="25" src="icons/svg/glyphicons-basic-199-save.svg"/>&nbsp;<span class="ui-text" data-textid="Save">' + TextStore.get("Save") + '</div>';
-//    html += '&nbsp;'
-    html += '<div class="ui-button ui-button-info" id="mobileMenuSaveAs"> <img  height="25"  src="icons/svg/glyphicons-basic-200-save-as.svg"/>&nbsp;<span class="ui-text" data-textid="Save As">' + TextStore.get("Save As") + '</span>...</div>';
-
-    html += '</div>';
-
-    html += '</div>';
-
-
-    html += '</div>';
-    html += '<div id="mobile-menu-content" style="position: absolute; top: 200px; left: 0; right: 0; bottom: 0; overflow-y: auto; background-color: #222222">';
+    html += '<div id="mobile-menu-content">';
     for(var i = 0; i < menuItems.length; i++) {
       var className = menuItems[i].className;
       html += '<div';
@@ -102,44 +124,57 @@ MobileMenu.prototype = {
       }
       html += '>';
 
-      html += '<a href="#" class="mobile-menu-item" data-id="' + SafeHTML.escape(menuItems[i].id) + '">';
-      html += '<div class="rippleJS-manual"></div>';
-      html += '<div class="mobile-menu-icon" >';
+      html += '<button type="button" class="mobile-menu-item" data-id="' + SafeHTML.escape(menuItems[i].id) + '">';
+      html += '<span class="rippleJS-manual" aria-hidden="true"></span>';
+      html += '<span class="mobile-menu-icon" aria-hidden="true">';
       if(menuItems[i].icon) {
         html += menuItems[i].icon;
       }
-      html += '</div>';
+      html += '</span>';
       html += '<span class="ui-text" data-textid="' + SafeHTML.escape(menuItems[i].label) + '" id="mobile-menu-item-' + SafeHTML.escape(menuItems[i].id) + '">';
       html += SafeHTML.escape(TextStore.get(menuItems[i].label));
       html += '</span>';
       
-      html += '</a>';
+      html += '</button>';
       html += '</div>';
     }
     html += '</div>';
     return html;
   },
 
+  updateDimensions: function() {
+    var oldWidth = this.menuWidth || 0;
+    var screenWidth = UI.getScreenWidth();
+    this.menuWidth = Math.min(330, Math.max(0, screenWidth - 48));
+    this.menuHeight = UI.getScreenHeight();
+
+    if(!this.uiComponent) {
+      return;
+    }
+
+    $('#mobile-menu').css('width', this.menuWidth + 'px');
+    if($('#mobile-menu').is(':visible')) {
+      if(this.menuPosition < 0 && oldWidth > 0) {
+        this.menuPosition = this.menuWidth * (this.menuPosition / oldWidth);
+      }
+      $('#mobile-menu').css('left', this.menuPosition + 'px');
+    } else {
+      $('#mobile-menu').css('left', '-' + this.menuWidth + 'px');
+    }
+  },
+
   show: function() {
     var _this = this;
-//    this.callback = args.colorPickedCallback;
+    var menuWasVisible = $('#mobile-menu').is(':visible');
+    if(!menuWasVisible) {
+      this.previouslyFocusedElement = document.activeElement;
+    }
+    this.updateDimensions();
+
     if(this.uiComponent == null) {
-
-      var screenWidth = UI.getScreenWidth();
-      var screenHeight = UI.getScreenHeight();
-
-      _this.menuWidth = screenWidth - 80;
-      _this.menuHeight = screenHeight;
-
-      if(_this.menuWidth > 330) {
-        _this.menuWidth = 330;
-      }
-
-      
-
       this.uiComponentHolder = document.createElement('div');
       this.uiComponentHolder.setAttribute('id', 'mobile-menu-holder');
-      this.uiComponentHolder.setAttribute('style', 'position: absolute; z-index: 90; top: 0; bottom: 0; left: 0; right:0; background-color: black; opacity: 0.6; display: none');
+      this.uiComponentHolder.setAttribute('style', 'position: fixed; z-index: 90; top: 0; bottom: 0; left: 0; right:0; background-color: black; opacity: 0.6; display: none');
       document.body.append(this.uiComponentHolder);
       $('#mobile-menu-holder').on('click', function(e) {
         _this.hideMenu();
@@ -148,7 +183,11 @@ MobileMenu.prototype = {
 
       this.uiComponent = document.createElement('div');
       this.uiComponent.setAttribute('id', 'mobile-menu');
-      this.uiComponent.setAttribute('style', 'position: absolute; z-index: 100; display: none');
+      this.uiComponent.setAttribute('role', 'dialog');
+      this.uiComponent.setAttribute('aria-modal', 'true');
+      this.uiComponent.setAttribute('aria-label', 'Application menu');
+      this.uiComponent.setAttribute('aria-hidden', 'true');
+      this.uiComponent.setAttribute('style', 'position: fixed; z-index: 100; display: none');
       document.body.append(this.uiComponent);
 
       $('#mobile-menu').css('top', '0');
@@ -160,6 +199,7 @@ MobileMenu.prototype = {
 
       var menuHtml = this.getMenuHTML();
       $('#mobile-menu').html(menuHtml);
+      this.updateDimensions();
 
       g_app.displayUserDetails();
 
@@ -182,6 +222,9 @@ MobileMenu.prototype = {
       $('.mobile-menu-header').on('touchend', function(e) {
         _this.touchEnd(e);
       });
+      $('.mobile-menu-header').on('touchcancel', function() {
+        _this.touchCancel();
+      });
 
 
 
@@ -202,6 +245,9 @@ MobileMenu.prototype = {
       $('.mobile-menu-item').on('touchend', function(e) {
         _this.touchEnd(e);
       });
+      $('.mobile-menu-item').on('touchcancel', function() {
+        _this.touchCancel();
+      });
 
 
       $('#mobile-menu-content').on('scroll', function(e) {
@@ -219,19 +265,48 @@ MobileMenu.prototype = {
       });
 
 
-      $('#mobileMenuProjectExplorer').on('click', function() {
-        _this.hideMenu();
-        g_app.showProjectNavigator();
-      });
-
       $('#mobileMenuSave').on('click', function() {
-        _this.hideMenu();
-        g_app.fileManager.save();
+        _this.hideMenu('save');
       });
 
       $('#mobileMenuSaveAs').on('click', function() {
-        _this.hideMenu();
-        g_app.fileManager.showSaveAs();
+        _this.hideMenu('saveas');
+      });
+
+      document.addEventListener('keydown', function(e) {
+        if(!$('#mobile-menu').is(':visible')) {
+          return;
+        }
+
+        if(e.key == 'Escape') {
+          e.preventDefault();
+          e.stopPropagation();
+          _this.hideMenu();
+          return;
+        }
+
+        if(e.key == 'Tab') {
+          var focusableElements = _this.getFocusableElements();
+          if(focusableElements.length == 0) {
+            e.preventDefault();
+            return;
+          }
+
+          var firstElement = focusableElements[0];
+          var lastElement = focusableElements[focusableElements.length - 1];
+          var activeElement = document.activeElement;
+          if(e.shiftKey && (activeElement === firstElement || !_this.uiComponent.contains(activeElement))) {
+            e.preventDefault();
+            lastElement.focus();
+          } else if(!e.shiftKey && (activeElement === lastElement || !_this.uiComponent.contains(activeElement))) {
+            e.preventDefault();
+            firstElement.focus();
+          }
+        }
+      }, true);
+
+      window.addEventListener('resize', function() {
+        _this.updateDimensions();
       });
 
     }
@@ -254,14 +329,25 @@ MobileMenu.prototype = {
       this.setMenuItemText('toggleprev', "Show Prev Frame");
 
     }
+    if(g_app.getMobileInterfaceType() == 'full') {
+      this.setMenuItemText('minimalinterface', 'Use Compact Layout');
+    } else {
+      this.setMenuItemText('minimalinterface', 'Show Expanded Controls');
+    }
 //    $('#mobile-menu-holder').fadeIn(100);
     $('#mobile-menu').show();
     $('#mobile-menu-holder').show();
+    $('#mobile-menu').attr('aria-hidden', 'false');
+    $('#mobileMenuBarHamburger').attr('aria-expanded', 'true');
+    this.setBackgroundInert(true);
+    if(!menuWasVisible) {
+      $('#mobileMenuSave').trigger('focus');
+    }
 
     var duration = 300 * (-this.menuPosition/this.menuWidth);
 
 
-    $('#mobile-menu').animate({
+    $('#mobile-menu').stop(true, false).animate({
       left: '0px'
     }, {
       duration: 300,
@@ -308,7 +394,6 @@ MobileMenu.prototype = {
   },
 
   showRipple: function() {
-    console.log('show ripple');
 //    this.touchAt.target = document.getElementById(this.touchAt.elementId);
     var element = getHolderWithRippleJsClass(this.touchAt, 'rippleJS-manual');
     startRipple('touchstart', this.touchAt, element);
@@ -316,6 +401,7 @@ MobileMenu.prototype = {
 
   touchStart: function(e) {
     this.touchVelocity.touchStart(e);
+    this.touchActive = true;
 
     var touches = e.touches;
 
@@ -337,14 +423,11 @@ MobileMenu.prototype = {
         target: touches[0].target
       }
 
-      console.log(this.touchAt);
-      console.log(touches[0].target);
-
       var _this = this;
       //
       // check if movingn or menu selection
       setTimeout(function() {
-        if(!_this.moveHorizonal && !_this.moveVertical) {
+        if(_this.touchActive && !_this.moveHorizonal && !_this.moveVertical) {
           _this.showRipple();
         }
         
@@ -387,13 +470,21 @@ MobileMenu.prototype = {
   touchEnd: function(e) {
     this.touchVelocity.touchEnd(e);
 
-    var touches = e.touches;
-
+    var movedHorizonal = this.moveHorizonal;
+    var movedVertical = this.moveVertical;
+    this.touchActive = false;
     this.moveHorizonal = false;  
     this.moveVertical = false;  
+
+    // A normal tap is handled by the button's click event. Reopening the menu
+    // here queues an extra animation ahead of the requested action.
+    if(!movedHorizonal || movedVertical) {
+      return;
+    }
+
     var closeDistance = this.menuWidth / 3.5;
-    if(closeDistance < -95) {
-      closeDistance = -95;
+    if(closeDistance > 95) {
+      closeDistance = 95;
     }
 
     var velocity = this.touchVelocity.getVelocity();
@@ -404,6 +495,12 @@ MobileMenu.prototype = {
       this.show();
     }
 
+  },
+
+  touchCancel: function() {
+    this.touchActive = false;
+    this.moveHorizonal = false;
+    this.moveVertical = false;
   },
 
   hideMenu: function(id, velocity) {
@@ -428,14 +525,28 @@ MobileMenu.prototype = {
 
 
 //    $('#mobile-menu-holder').fadeOut(100);
-    $('#mobile-menu').animate({
+    $('#mobile-menu').stop(true, false).animate({
       left: '-' + this.menuWidth + 'px'
     }, duration, function() {
+      var focusTarget = _this.previouslyFocusedElement;
+      if(_this.uiComponent.contains(document.activeElement)) {
+        document.activeElement.blur();
+      }
       $('#mobile-menu').hide();
+      $('#mobile-menu').attr('aria-hidden', 'true');
+      $('#mobileMenuBarHamburger').attr('aria-expanded', 'false');
       $('#mobile-menu-holder').fadeOut(10);
+      _this.menuPosition = -_this.menuWidth;
+      _this.setBackgroundInert(false);
       if(typeof id != 'undefined' && id !== false) {
         _this.menuItemSelected(id);
       }
+
+      if(focusTarget && focusTarget.isConnected && $(focusTarget).is(':visible') &&
+          (document.activeElement === document.body || document.activeElement === null)) {
+        focusTarget.focus();
+      }
+      _this.previouslyFocusedElement = null;
     });
   },
 

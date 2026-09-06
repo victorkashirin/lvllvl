@@ -237,7 +237,8 @@ test("shared UI helpers render ordinary labels as text", async ({ page }) => {
     button.element.click();
 
     const tabs = UI.create("UI.TabPanel", { canCloseTabs: true });
-    tabs.add({ key: "security", title: payload });
+    tabs.add({ icon: "file", key: "security", title: payload });
+    tabs.add({ icon: "javascript:alert(1)", key: "unknown-icon", title: "Unknown icon" });
     holder.appendChild(tabs.getElement());
 
     const menuItem = UI.create("UI.MenuItem", { label: payload });
@@ -279,7 +280,11 @@ test("shared UI helpers render ordinary labels as text", async ({ page }) => {
       mobilePanelText: mobilePanelHolder
         .querySelector(".ui-dialog-titlebar-heading")?.textContent.trim(),
       treeText: treeHolder.querySelector(".ui-tree-label")?.textContent.replace(/\u00a0/g, " "),
+      tabIconCount: holder.querySelector(".ui-tab-label")?.querySelectorAll("img").length,
+      tabIconSrc: holder.querySelector(".ui-tab-label img")?.getAttribute("src"),
       tabText: holder.querySelector(".ui-tab-label")?.textContent,
+      unknownTabIconCount: holder.querySelectorAll(".ui-tab-label")[1]
+        ?.querySelectorAll("img").length,
       menuText: holder.querySelector(".ui-menu-item-label")?.textContent,
       prototypeTreeKeyWorks: tree.getNodeFromKey("__proto__") === treeNode,
     };
@@ -295,7 +300,10 @@ test("shared UI helpers render ordinary labels as text", async ({ page }) => {
   expect(result.mobilePanelCloses).toBe(1);
   expect(result.mobilePanelText).toBe(payload);
   expect(result.treeText).toBe(payload);
+  expect(result.tabIconCount).toBe(1);
+  expect(result.tabIconSrc).toBe("images/tree/file.png");
   expect(result.tabText).toBe(payload);
+  expect(result.unknownTabIconCount).toBe(0);
   expect(result.menuText).toBe(payload);
   expect(result.prototypeTreeKeyWorks).toBe(true);
 });
