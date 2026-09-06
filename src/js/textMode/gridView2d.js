@@ -521,24 +521,28 @@ GridView2d.prototype = {
   },
 
   contextMenu: function(event) {
-
-
-//    var x = event.pageX;
-//    var y = event.pageY;
     event.preventDefault();
-//    event.stopPropagation();
+    this.showContextMenuPicker(event);
+  },
+
+  showContextMenuPicker: function(event) {
     var layer = this.editor.layers.getSelectedLayerObject();
     if(layer == null || layer.getType() != 'grid') {
       return;
     }
 
-    if(event.shiftKey) {
+    // Keep context-click pickers anchored to the click itself. Keyboard
+    // shortcuts intentionally continue to use the last pointer position.
+    this.mousePageX = event.pageX;
+    this.mousePageY = event.pageY;
+
+    var colorPickerModifier = event.metaKey
+      || (UI.os != 'Mac OS' && event.ctrlKey);
+    if(colorPickerModifier) {
       this.showColorPicker();
     } else {
-      this.editor.gridView2d.showCharacterPicker();
+      this.showCharacterPicker();
     }
-    return;
-
   },
 
   setButtons: function(event) {

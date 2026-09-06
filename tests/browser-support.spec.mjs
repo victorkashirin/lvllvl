@@ -89,6 +89,28 @@ async function open2DProject(page, testInfo, { vector = false } = {}) {
   )).toBe(true);
 }
 
+test("desktop canvas context clicks open tile and color palettes", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.metadata.deviceClass !== "desktop");
+  await open2DProject(page, testInfo);
+
+  const canvasId = await page.evaluate(() => g_app.textModeEditor.gridView2d.canvas.id);
+  const canvas = page.locator(`#${canvasId}`);
+  await expect(canvas).toBeVisible();
+  await canvas.click({
+    button: "right",
+    position: { x: 160, y: 120 },
+  });
+  await expect.poll(() => page.evaluate(() => UI.popup?.uiID)).toBe("tilePickerPopup");
+
+  await page.evaluate(() => UI.hidePopup());
+  await canvas.click({
+    button: "right",
+    modifiers: [process.platform === "darwin" ? "Meta" : "Control"],
+    position: { x: 220, y: 180 },
+  });
+  await expect.poll(() => page.evaluate(() => UI.popup?.uiID)).toBe("colorPickerPopup");
+});
+
 test("handheld editor starts compact and exposes expanded controls on demand", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "chromium-handheld");
 

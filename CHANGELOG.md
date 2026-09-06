@@ -4,6 +4,9 @@
 
 ### Added
 
+- Let Ctrl+right-click on Windows/Linux or Command+right-click on macOS open
+  the same 2D canvas colour palette as the Shift+/ shortcut across browsers,
+  while an unmodified right-click continues to open tiles.
 - Add desktop Zen Mode from the Interface menu or Alt+Shift+Z, preserving the
   current layout while hiding editor chrome, keeping active shortcuts working,
   and temporarily revealing menus, tools, side panels, and bottom panels from

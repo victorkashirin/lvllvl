@@ -132,6 +132,73 @@ test("classic history releases the abandoned redo branch after a new edit", asyn
   assert.equal(history.history.includes(abandonedEntry), false);
 });
 
+test("2D canvas context clicks open the tile or color picker at the click", async () => {
+  const ui = {
+    LEFTMOUSEBUTTON: 1,
+    RIGHTMOUSEBUTTON: 2,
+    isMobile: { any: () => false },
+    os: "Mac OS",
+  };
+  const GridView2d = await loadClassic("js/textMode/gridView2d.js", "GridView2d", {
+    $: () => ({ offset: () => ({ left: 0, top: 0 }) }),
+    styles: { ui: { scrollbarWidth: 10 } },
+    UI: ui,
+  });
+  const gridView = new GridView2d();
+  const opened = [];
+  let prevented = 0;
+  gridView.editor = {
+    layers: {
+      getSelectedLayerObject: () => ({ getType: () => "grid" }),
+    },
+  };
+  gridView.showCharacterPicker = () => opened.push("tile");
+  gridView.showColorPicker = () => opened.push("color");
+
+  gridView.contextMenu({
+    pageX: 320,
+    pageY: 240,
+    ctrlKey: false,
+    metaKey: false,
+    preventDefault: () => { prevented++; },
+  });
+  assert.deepEqual(opened, ["tile"]);
+  assert.deepEqual([gridView.mousePageX, gridView.mousePageY], [320, 240]);
+
+  gridView.contextMenu({
+    pageX: 480,
+    pageY: 360,
+    ctrlKey: false,
+    metaKey: true,
+    preventDefault: () => { prevented++; },
+  });
+  assert.deepEqual(opened, ["tile", "color"]);
+  assert.deepEqual([gridView.mousePageX, gridView.mousePageY], [480, 360]);
+  assert.equal(prevented, 2);
+
+  // macOS uses Ctrl+click as a conventional context click, so it must retain
+  // the plain right-click tile behavior.
+  gridView.contextMenu({
+    pageX: 560,
+    pageY: 400,
+    ctrlKey: true,
+    metaKey: false,
+    preventDefault: () => { prevented++; },
+  });
+  assert.deepEqual(opened, ["tile", "color", "tile"]);
+
+  ui.os = "Linux";
+  gridView.contextMenu({
+    pageX: 640,
+    pageY: 440,
+    ctrlKey: true,
+    metaKey: false,
+    preventDefault: () => { prevented++; },
+  });
+  assert.deepEqual(opened, ["tile", "color", "tile", "color"]);
+  assert.equal(prevented, 4);
+});
+
 test("unchanged character pixels do not mutate, dirty, redraw, or enter history", async () => {
   class HTMLCanvasElement {}
   HTMLCanvasElement.prototype.toBlob = () => {};
