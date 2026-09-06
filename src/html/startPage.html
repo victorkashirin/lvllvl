@@ -1,28 +1,51 @@
 <div id="startPage" class="panelFill" style="background-color: #191919">
 
-    <div id="projectMenuBacking" style="display: none; top: 0; left: 0; bottom: 0; right: 0; background-color: black; opacity: 0.2; position: fixed; z-index: 1000"></div>
-    <div id="projectMenu" style="display: none; position: absolute; width: auto; height: auto; z-index: 2000" class="ui-menu">
-      <div class="ui-menu-item"><div class="ui-menu-item-label projectMenuItem" data-action="open">Open</div></div>
-      <div class="ui-menu-item"><div class="ui-menu-item-label projectMenuItem" data-action="delete">Delete</div></div>
-      <div class="ui-menu-item"><div class="ui-menu-item-label projectMenuItem" data-action="rename">Rename...</div></div>
-      <div class="ui-menu-item"><div class="ui-menu-item-label projectMenuItem" data-action="download">Download</div></div>
+  <div id="projectMenuBacking"
+    style="display: none; top: 0; left: 0; bottom: 0; right: 0; background-color: black; opacity: 0.2; position: fixed; z-index: 1000">
+  </div>
+  <div id="projectMenu" style="display: none; position: absolute; width: auto; height: auto; z-index: 2000"
+    class="ui-menu">
+    <div class="ui-menu-item">
+      <div class="ui-menu-item-label projectMenuItem" data-action="open">Open</div>
     </div>
+    <div class="ui-menu-item">
+      <div class="ui-menu-item-label projectMenuItem" data-action="delete">Delete</div>
+    </div>
+    <div class="ui-menu-item">
+      <div class="ui-menu-item-label projectMenuItem" data-action="rename">Rename...</div>
+    </div>
+    <div class="ui-menu-item">
+      <div class="ui-menu-item-label projectMenuItem" data-action="download">Download</div>
+    </div>
+  </div>
 
-  <div id="startPageBanner" style="position: absolute; top: 0px; left: 0px; right: 0px; height: 122px; background-color: #131313; padding: 10px; border-bottom: 1px solid #222222">
-    <a class="start-github-link" href="https://github.com/victorkashirin/lvllvl" target="_blank" rel="noopener noreferrer" aria-label="View lvllvl plus on GitHub">
-      <img src="icons/GitHub-Mark-Light-64px.png" width="18" height="18" alt=""/>
+  <div id="startPageBanner"
+    style="position: absolute; top: 0px; left: 0px; right: 0px; height: 122px; background-color: #131313; padding: 10px; border-bottom: 1px solid #222222">
+    <a class="start-github-link" href="https://github.com/victorkashirin/lvllvl" target="_blank"
+      rel="noopener noreferrer" aria-label="View lvllvl plus on GitHub">
+      <img src="icons/GitHub-Mark-Light-64px.png" width="18" height="18" alt="" />
       <span>GitHub</span>
     </a>
-    <h1 class="start-brand"><img src="images/logo40.png" width="40" height="40" alt=""/><span class="start-brand-name">lvllvl</span><span class="start-edition">plus</span></h1>
+    <h1 class="start-brand"><img src="images/logo40.png" width="40" height="40" alt="" /><span
+        class="start-brand-name">lvllvl</span><span class="start-edition">plus</span></h1>
     <div class="start-tagline">
       Create pictures using character sets <span class="start-version lvllvl-version"></span>
     </div>
     <div class="ui-button-holder" style="margin-top: 10px">
-      <div class="ui-button ui-button-primary" id="start2D"><i class="halflings halflings-plus"></i> <span class="ui-text" data-textid="New Project">New Project...</span><div class="rippleJS"></div></div>
+      <div class="ui-button ui-button-primary" id="start2D"><i class="halflings halflings-plus"></i> <span
+          class="ui-text" data-textid="New Project">New Project...</span>
+        <div class="rippleJS"></div>
+      </div>
 
-      <div class="ui-button"  style="margin-left: 6px" id="startOpen"><img src="icons/svg/glyphicons-halflings-106-open.svg"/> <span class="ui-text" data-textid="Open Local File">Open Local File...</span><div class="rippleJS"></div></div>
+      <div class="ui-button" style="margin-left: 6px" id="startOpen"><img
+          src="icons/svg/glyphicons-halflings-106-open.svg" /> <span class="ui-text" data-textid="Open Local File">Open
+          Local File...</span>
+        <div class="rippleJS"></div>
+      </div>
 
-      <button type="button" class="ui-button" style="margin-left: 6px" id="startImportImage"><img src="icons/svg/glyphicons-basic-399-import.svg" alt=""/> <span class="ui-text" data-textid="Import Image">Import Image...</span><span class="rippleJS"></span></button>
+      <button type="button" class="ui-button" style="margin-left: 6px" id="startImportImage"><img
+          src="icons/svg/glyphicons-basic-399-import.svg" alt="" /> <span class="ui-text"
+          data-textid="Import Image">Import Image...</span><span class="rippleJS"></span></button>
     </div>
 
 
@@ -30,232 +53,235 @@
 
 
 
-<style>
-.start-tile {
-  display: inline-block;  
-  width: 130px;
-  height: 130px;
-  margin-right: 10px;
-  margin-bottom: 16px;
-  position: relative;
-  background-color: #131313; /* transparent; */
-  cursor: pointer;
-  transition: all 0.1s;  
-}
+  <style>
+    .start-tile {
+      display: inline-block;
+      width: 130px;
+      height: 130px;
+      margin-right: 10px;
+      margin-bottom: 16px;
+      position: relative;
+      background-color: #131313;
+      /* transparent; */
+      cursor: pointer;
+      transition: all 0.1s;
+    }
 
-.start-tile:hover {
-  background-color: #262626;
-}
-
-
-.start-tile-image {
-  cursor: pointer;
-  position: absolute;
-  top: 6px;
-  bottom: 26px;
-  left: 6px;
-  right: 6px;  
-  background-color: #0a0a0a;
-  background-position: center; /* Center the image */
-  background-repeat: no-repeat; /* Do not repeat the image */
-  transition: all 0.1s;    
-  /*background-size: cover;  Resize the background image to cover the entire container */  
-}
+    .start-tile:hover {
+      background-color: #262626;
+    }
 
 
-.start-tile-label {
-  position: absolute;
-  height: 18px;
-  bottom: 2px;
-  left: 6px;
-  right: 24px;  
-  font-size: 12px;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  cursor: pointer;
+    .start-tile-image {
+      cursor: pointer;
+      position: absolute;
+      top: 6px;
+      bottom: 26px;
+      left: 6px;
+      right: 6px;
+      background-color: #0a0a0a;
+      background-position: center;
+      /* Center the image */
+      background-repeat: no-repeat;
+      /* Do not repeat the image */
+      transition: all 0.1s;
+      /*background-size: cover;  Resize the background image to cover the entire container */
+    }
 
-  color: #cdcdcd;
-  transition: all 0.1s;    
-}
 
-.start-tile-more { 
-  position: absolute;
-  right: 1px;
-  bottom: 0px;
-  height: 18px;
-  width: 12px;
-  padding: 3px;
-  cursor: pointer;
-  filter: invert(40%);
-  opacity: 0;
-  display: none;
-  transition: opacity 2.6s;     
+    .start-tile-label {
+      position: absolute;
+      height: 18px;
+      bottom: 2px;
+      left: 6px;
+      right: 24px;
+      font-size: 12px;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      cursor: pointer;
 
-}
+      color: #cdcdcd;
+      transition: all 0.1s;
+    }
 
-.start-tile-more img {
-  cursor: pointer;
-}
+    .start-tile-more {
+      position: absolute;
+      right: 1px;
+      bottom: 0px;
+      height: 18px;
+      width: 12px;
+      padding: 3px;
+      cursor: pointer;
+      filter: invert(40%);
+      opacity: 0;
+      display: none;
+      transition: opacity 2.6s;
 
-.start-tile:hover .start-tile-image {
-  /*
+    }
+
+    .start-tile-more img {
+      cursor: pointer;
+    }
+
+    .start-tile:hover .start-tile-image {
+      /*
   top: 5px;
   bottom: 25px;
-  left: 5px; 
+  left: 5px;
   right: 5px;
   */
-  background-color: #161616;
-}
+      background-color: #161616;
+    }
 
-.start-tile:hover .start-tile-label {
-  color: #dddddd;
-}
+    .start-tile:hover .start-tile-label {
+      color: #dddddd;
+    }
 
-.start-tile:hover .start-tile-more {
-  display: block;
-  opacity: 1;
-  cursor: pointer;  
-}
+    .start-tile:hover .start-tile-more {
+      display: block;
+      opacity: 1;
+      cursor: pointer;
+    }
 
-.start-tile-more:hover {
-  filter: invert(80%);
-}
+    .start-tile-more:hover {
+      filter: invert(80%);
+    }
 
-.start-brand {
-  align-items: baseline;
-  display: flex;
-  font-size: 54px;
-  font-weight: normal;
-  margin: 0;
-}
+    .start-brand {
+      align-items: baseline;
+      display: flex;
+      font-size: 54px;
+      font-weight: normal;
+      margin: 0;
+    }
 
-.start-brand img {
-  align-self: center;
-  filter: opacity(80%);
-}
+    .start-brand img {
+      align-self: center;
+      filter: opacity(80%);
+    }
 
-.start-brand-name {
-  margin: 0 6px;
-}
+    .start-brand-name {
+      margin: 0 6px;
+    }
 
-.start-edition {
-  color: #7fb8ed;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
+    .start-edition {
+      color: #7fb8ed;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
 
-.start-version {
-  border-left: 1px solid #555;
-  color: #999;
-  margin-left: 7px;
-  padding-left: 8px;
-}
+    .start-version {
+      border-left: 1px solid #555;
+      color: #999;
+      margin-left: 7px;
+      padding-left: 8px;
+    }
 
-.start-github-link,
-.start-github-link:visited {
-  align-items: center;
-  background: #242424;
-  border: 1px solid #383838;
-  border-radius: 4px;
-  color: #ddd;
-  display: flex;
-  font-size: 12px;
-  gap: 7px;
-  padding: 6px 10px;
-  position: absolute;
-  right: 16px;
-  text-decoration: none;
-  top: 16px;
-}
+    .start-github-link,
+    .start-github-link:visited {
+      align-items: center;
+      background: #242424;
+      border: 1px solid #383838;
+      border-radius: 4px;
+      color: #ddd;
+      display: flex;
+      font-size: 12px;
+      gap: 7px;
+      padding: 6px 10px;
+      position: absolute;
+      right: 16px;
+      text-decoration: none;
+      top: 16px;
+    }
 
-.start-github-link:hover {
-  background: #303030;
-  color: #fff;
-}
+    .start-github-link:hover {
+      background: #303030;
+      color: #fff;
+    }
 
-#startPageProjectHolder {
-  bottom: 62px;
-  left: 0;
-  overflow: auto;
-  padding: 10px;
-  position: absolute;
-  right: 340px;
-  top: 143px;
-}
+    #startPageProjectHolder {
+      bottom: 62px;
+      left: 0;
+      overflow: auto;
+      padding: 10px;
+      position: absolute;
+      right: 340px;
+      top: 143px;
+    }
 
-#startPageFooter {
-  bottom: 0;
-  height: 42px;
-  left: 0;
-  padding: 10px;
-  position: absolute;
-  right: 340px;
-}
+    #startPageFooter {
+      bottom: 0;
+      height: 42px;
+      left: 0;
+      padding: 10px;
+      position: absolute;
+      right: 340px;
+    }
 
-.start-improvements {
-  background: #151515;
-  border-left: 1px solid #292929;
-  bottom: 0;
-  box-sizing: border-box;
-  overflow: auto;
-  padding: 20px 22px;
-  position: absolute;
-  right: 0;
-  top: 143px;
-  width: 340px;
-}
+    .start-improvements {
+      background: #151515;
+      border-left: 1px solid #292929;
+      bottom: 0;
+      box-sizing: border-box;
+      overflow: auto;
+      padding: 20px 22px;
+      position: absolute;
+      right: 0;
+      top: 143px;
+      width: 340px;
+    }
 
-.start-improvements h2 {
-  color: #eee;
-  font-size: 20px;
-  line-height: 1.25;
-  margin: 0 0 8px;
-}
+    .start-improvements h2 {
+      color: #eee;
+      font-size: 20px;
+      line-height: 1.25;
+      margin: 0 0 8px;
+    }
 
-.start-improvements-intro {
-  color: #999;
-  margin: 0 0 12px;
-}
+    .start-improvements-intro {
+      color: #999;
+      margin: 0 0 12px;
+    }
 
-.start-improvement-list {
-  list-style: disc;
-  margin: 0;
-  padding-left: 18px;
-}
+    .start-improvement-list {
+      list-style: disc;
+      margin: 0;
+      padding-left: 18px;
+    }
 
-.start-improvement-list li {
-  color: #aaa;
-  line-height: 1.45;
-  padding: 5px 0;
-}
+    .start-improvement-list li {
+      color: #aaa;
+      line-height: 1.45;
+      padding: 5px 0;
+    }
 
-.start-improvement-list strong {
-  color: #ddd;
-  font-weight: 500;
-}
+    .start-improvement-list strong {
+      color: #ddd;
+      font-weight: 500;
+    }
 
-@media (max-width: 900px) {
-  #startPageProjectHolder,
-  #startPageFooter {
-    right: 290px;
-  }
+    @media (max-width: 900px) {
 
-  .start-improvements {
-    padding-left: 18px;
-    padding-right: 18px;
-    width: 290px;
-  }
-}
+      #startPageProjectHolder,
+      #startPageFooter {
+        right: 290px;
+      }
 
-</style>
+      .start-improvements {
+        padding-left: 18px;
+        padding-right: 18px;
+        width: 290px;
+      }
+    }
+  </style>
 
   <div id="startPageProjectHolder">
 
 
-<!--    
+    <!--
     <div id="test">
 
       <div class="start-tile">
@@ -277,15 +303,15 @@
       </div>
 
     </div>
--->    
-<!--
+-->
+    <!--
     <div id="browserStorage_templates">
     </div>
 -->
-    <div id="browserStorage_persistent" ></div>
+    <div id="browserStorage_persistent"></div>
 
-    <div id="browserStorage_projects" ></div>
-    <div id="browserStorageOld_projects" ></div>
+    <div id="browserStorage_projects"></div>
+    <div id="browserStorageOld_projects"></div>
   </div>
 
   <div id="startPageFooter">
@@ -301,14 +327,12 @@
     <p class="start-improvements-intro">This version includes:</p>
     <ul class="start-improvement-list">
       <li><strong>SVG export</strong> - export text-mode, C64, and vector artwork</li>
-      <li><strong>Faster editing</strong> - focused redraws, cached previews, and quicker startup</li>
+      <li><strong>Better performance</strong> - responsive UI and focused redraws</li>
       <li><strong>Crisp rendering</strong> - better alignment at fractional zoom and different display densities</li>
-      <li><strong>Tile palettes</strong> - independent fit modes and precise scaling</li>
-      <li><strong>More reliable saves</strong> - better recovery from browser storage errors</li>
-      <li><strong>Image importing</strong> - retry loading, cancel safely, and keep animation playback working</li>
-      <li><strong>Zen Mode</strong> - use Interface or Alt+Shift+Z to hide editor chrome and reveal controls from the screen edges</li>
+      <li><strong>Tile palettes</strong> - fit palette to panel width</li>
+      <li><strong>Artwork preview</strong> - hold Tab for a clean centred view</li>
+      <li><strong>Zen Mode</strong> - Minimal workspace</li>
       <li><strong>UI improvements</strong> - close/restore animation panel</li>
-      <li><strong>Safer releases</strong> - modern browser tests, stronger content security, and audited dependencies</li>
     </ul>
   </div>
 
