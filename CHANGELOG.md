@@ -4,6 +4,12 @@
 
 ### Added
 
+- Add a momentary artwork overview to the 2D editor: hold Tab to hide panels,
+  grids, and editing guides while centring the image at 100% on first use;
+  overview zoom stays centred and is remembered for the next preview, while
+  releasing Tab restores the exact working view. Small zoom-in gestures also
+  move away from the minimum scale immediately.
+
 - Let Ctrl+right-click on Windows/Linux or Command+right-click on macOS open
   the same 2D canvas colour palette as the Shift+/ shortcut across browsers,
   while an unmodified right-click continues to open tiles.
@@ -27,6 +33,9 @@
 
 ### Fixed
 
+- Keep native Tab focus traversal outside the artwork canvas, retain keyboard
+  zoom commands during the momentary overview, keep its zoom out of document
+  settings, and safely restore it before Zen, editor, or device transitions.
 - Reveal Zen Mode edge panels as overlays so the canvas does not resize, stack
   the menu and tabs above the persistent tool row and the timeline below the
   persistent info row, and keep the whole stack open while it is hovered.

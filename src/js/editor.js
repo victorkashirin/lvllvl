@@ -67,6 +67,8 @@ var Editor = function() {
   this.zenModeEdges = {};
   this.zenModeRevealTimers = {};
   this.zenModeMessageTimer = null;
+  this.overviewMode = false;
+  this.overviewModeState = null;
 
   this.textModeEditor = null;
   this.music = null;
@@ -480,6 +482,18 @@ Editor.prototype = {
       _this.keyPress(event);
     });
 
+    // A keyup is not delivered when the browser loses focus. Never leave the
+    // press-and-hold overview active after switching windows or tabs.
+    window.addEventListener('blur', function() {
+      _this.setOverviewMode(false);
+    });
+
+    document.addEventListener('visibilitychange', function() {
+      if(document.hidden) {
+        _this.setOverviewMode(false);
+      }
+    });
+
 
   },
 
@@ -856,6 +870,9 @@ Editor.prototype = {
 
   setZenMode: function(enabled) {
     enabled = enabled === true;
+    if(enabled != this.zenMode && this.overviewMode) {
+      this.setOverviewMode(false);
+    }
     if(enabled == this.zenMode) {
       return true;
     }
@@ -948,6 +965,165 @@ Editor.prototype = {
     return this.setZenMode(!this.zenMode);
   },
 
+  isOverviewShortcut: function(event) {
+    return (event.key == 'Tab' || event.keyCode == 9)
+      && !event.altKey
+      && !event.ctrlKey
+      && !event.metaKey
+      && !event.shiftKey;
+  },
+
+  canStartOverviewMode: function(event) {
+    if(this.mode != '2d' || this.isMobile() || !this.textModeEditor) {
+      return false;
+    }
+
+    var drawTools = this.textModeEditor.tools
+      && this.textModeEditor.tools.drawTools;
+    if(drawTools && drawTools.isTyping()) {
+      return false;
+    }
+
+    var target = event.target;
+    if(target) {
+      var focusable = target.closest
+        ? target.closest('a, button, input, select, textarea, [contenteditable], [tabindex]')
+        : null;
+      if(target.isContentEditable || focusable !== null) {
+        return false;
+      }
+    }
+
+    var gridView = this.textModeEditor.gridView2d;
+    return Boolean(gridView && gridView.mouseInCanvas);
+  },
+
+  handleOverviewZoomShortcut: function(event) {
+    var commandDown = UI.os == 'Mac OS' ? event.metaKey : event.ctrlKey;
+    if(!this.overviewMode
+      || !commandDown
+      || event.altKey) {
+      return false;
+    }
+
+    var key = typeof event.key == 'string' ? event.key : '';
+    var keyCode = event.keyCode;
+    if(key == '=' || key == '+'
+      || (key === '' && (keyCode == 187 || keyCode == 107))) {
+      event.preventDefault();
+      this.textModeEditor.zoom(1);
+      return true;
+    }
+    if(key == '-'
+      || (key === '' && (keyCode == 189 || keyCode == 109 || keyCode == 173))) {
+      event.preventDefault();
+      this.textModeEditor.zoom(-1);
+      return true;
+    }
+    if(!event.shiftKey
+      && (key == '0' || (key === '' && (keyCode == 48 || keyCode == 96)))) {
+      event.preventDefault();
+      this.textModeEditor.fitOnScreen();
+      return true;
+    }
+    if(!event.shiftKey
+      && (key == '1' || (key === '' && (keyCode == 49 || keyCode == 97)))) {
+      event.preventDefault();
+      this.textModeEditor.actualPixels();
+      return true;
+    }
+
+    return false;
+  },
+
+  setOverviewMode: function(enabled) {
+    enabled = enabled === true;
+    if(enabled == this.overviewMode) {
+      return true;
+    }
+    if(enabled && (this.isMobile() || this.mode != '2d')) {
+      return false;
+    }
+
+    var textModeEditor = this.textModeEditor;
+    var gridView = textModeEditor && textModeEditor.gridView2d;
+    if(!gridView) {
+      return false;
+    }
+
+    if(enabled) {
+      var gridSplitPanel = UI('gridSplitPanel');
+      this.overviewModeState = {
+        panels: [
+          this.captureZenModePanel(this.projectPanel, 'north', 30),
+          this.captureZenModePanel(this.tabSplitPanel, 'north', 34),
+          this.captureZenModePanel(this.projectPanel, 'west', 180),
+          this.captureZenModePanel(this.mainSplitPanel, 'west', 360),
+          this.captureZenModePanel(textModeEditor.textModeEditorPanel, 'west', textModeEditor.desktopToolsWidth),
+          this.captureZenModePanel(textModeEditor.textModeEditorPanel, 'east', 340),
+          this.captureZenModePanel(UI('textEditorMobileSplitPanel'), 'north', 30),
+          this.captureZenModePanel(UI('textEditorMobileSplitPanel'), 'south', this.mobileLayout.framesHeight),
+          this.captureZenModePanel(UI('textEditorContent'), 'south', 220),
+          this.captureZenModePanel(gridSplitPanel, 'west', 300),
+          this.captureZenModePanel(gridSplitPanel, 'south', 24)
+        ],
+        scale: gridView.scale,
+        cameraX: gridView.camera.position.x,
+        cameraY: gridView.camera.position.y
+      };
+
+      if(this.zenMode) {
+        this.hideZenModeEdge('top');
+        this.hideZenModeEdge('left');
+        this.hideZenModeEdge('right');
+        this.hideZenModeEdge('bottom');
+      }
+      this.menuBar.hideMenu();
+      this.overviewMode = true;
+      document.body.classList.add('overview-mode');
+      gridView.setArtworkOnly(true, false);
+
+      for(var panelIndex = this.overviewModeState.panels.length - 1;
+        panelIndex >= 0; panelIndex--) {
+        this.setZenModePanelVisible(this.overviewModeState.panels[panelIndex], false);
+      }
+
+      var overviewScale = parseFloat(this.getPref('textmode.overviewScale'));
+      if(isNaN(overviewScale) || !isFinite(overviewScale) || overviewScale <= 0) {
+        overviewScale = 1;
+      }
+      gridView.setScale(overviewScale, false);
+      gridView.setCameraPosition(0, 0);
+      gridView.render();
+      return true;
+    }
+
+    this.overviewMode = false;
+    document.body.classList.remove('overview-mode');
+    var state = this.overviewModeState;
+    this.overviewModeState = null;
+    if(state === null) {
+      return true;
+    }
+
+    var selectedOverviewScale = gridView.getScale();
+    if(!isNaN(selectedOverviewScale)
+      && isFinite(selectedOverviewScale)
+      && selectedOverviewScale > 0) {
+      this.setPref('textmode.overviewScale', selectedOverviewScale);
+    }
+
+    for(var restoreIndex = 0; restoreIndex < state.panels.length; restoreIndex++) {
+      this.restoreZenModePanel(state.panels[restoreIndex]);
+    }
+
+    gridView.setArtworkOnly(false, false);
+    gridView.setScale(state.scale);
+    gridView.setCameraPosition(state.cameraX, state.cameraY);
+    gridView.render();
+    return true;
+  },
+
   // really setting whether the editors get keyboard events..
   setAllowKeyShortcuts: function(allow) {
     this.allowKeyShortcuts = allow;
@@ -974,6 +1150,16 @@ Editor.prototype = {
       return;
     }
 
+    if(this.handleOverviewZoomShortcut(event)) {
+      return;
+    }
+
+    if(this.isOverviewShortcut(event) && this.canStartOverviewMode(event)) {
+      event.preventDefault();
+      this.setOverviewMode(true);
+      return;
+    }
+
     switch(this.mode) {
       case '3d':
       case '2d':
@@ -996,6 +1182,12 @@ Editor.prototype = {
 
   keyUp: function(event) {
 
+
+    if(this.overviewMode && (event.key == 'Tab' || event.keyCode == 9)) {
+      event.preventDefault();
+      this.setOverviewMode(false);
+      return;
+    }
 
     if(!this.allowKeyShortcuts) {
       return;
@@ -1051,6 +1243,10 @@ Editor.prototype = {
       return;
     }
 
+    if(deviceType != this.deviceType && this.overviewMode) {
+      this.setOverviewMode(false);
+    }
+
     if(isMobile && this.zenMode) {
       this.setZenMode(false);
     }
@@ -1099,6 +1295,9 @@ Editor.prototype = {
 
 
   setMode: function(mode) {
+    if(this.overviewMode && mode != this.mode) {
+      this.setOverviewMode(false);
+    }
     if(this.zenMode && mode != this.mode) {
       this.setZenMode(false);
     }

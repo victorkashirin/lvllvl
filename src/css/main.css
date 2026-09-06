@@ -1506,6 +1506,10 @@ body.zen-mode #zenModeEdges {
   display: block;
 }
 
+body.overview-mode #zenModeEdges {
+  display: none;
+}
+
 body.zen-mode .zen-mode-panel-overlay {
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.55);
   box-sizing: border-box;

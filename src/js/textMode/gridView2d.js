@@ -113,6 +113,7 @@ var GridView2d = function() {
   this.mouseDownOnVControl = false;
 
   this.displayScale = 1;
+  this.artworkOnly = false;
 }
 
 GridView2d.prototype = {
@@ -2011,6 +2012,18 @@ GridView2d.prototype = {
 
 
   zoomToXY: function(zoomX, zoomY, amount) {
+    // At the minimum displayed scale, small trackpad increments otherwise get
+    // rounded straight back to 10%, making zoom-in feel stuck.
+    if(this.scale <= 0.25 && amount > 0 && amount < 0.5) {
+      amount = 0.5;
+    }
+
+    if(this.artworkOnly) {
+      this.zoom(amount, false);
+      this.setCameraPosition(0, 0);
+      return;
+    }
+
     var scale = this.displayScale;
 
     var graphic = this.editor.graphic;
@@ -2024,10 +2037,6 @@ GridView2d.prototype = {
               this.height / (2 * scale) 
               + graphicHeight  / 2 + this.camera.position.y;
 
-    if(this.scale <= 0.25 && amount > 0 && amount < 0.5) {
-      amount = 0.5;
-      console.log(amount);
-    }
     this.zoom(amount, false);
 
     scale = this.displayScale;
@@ -2051,6 +2060,7 @@ GridView2d.prototype = {
   },
 
   fitOnScreen: function(args) {
+    args = args || {};
     var centreX = 0;
     var centreY = 0;
 
@@ -2058,7 +2068,7 @@ GridView2d.prototype = {
     var graphicWidth = graphic.getGraphicWidth();
     var graphicHeight = graphic.getGraphicHeight();
 
-    if(typeof args != 'undefined' && typeof args.minX != 'undefined' && typeof args.minY != 'undefined') {
+    if(typeof args.minX != 'undefined' && typeof args.minY != 'undefined') {
       var tileSet = this.editor.tileSetManager.getCurrentTileSet();
       var charWidth = tileSet.getTileWidth();
       var charHeight = tileSet.getTileHeight();
@@ -2150,6 +2160,12 @@ GridView2d.prototype = {
         hPadding = 20;
         vPadding = 40;
       }
+      if(typeof args.horizontalPadding != 'undefined') {
+        hPadding = args.horizontalPadding;
+      }
+      if(typeof args.verticalPadding != 'undefined') {
+        vPadding = args.verticalPadding;
+      }
 
       // find scale to fit it into current canvas, with a bit of padding
       var horizontalScale = (panelWidth - hPadding) / graphicWidth;
@@ -2160,8 +2176,11 @@ GridView2d.prototype = {
       if(horizontalScale > verticalScale) {
         scale = verticalScale;
       }
-      if(scale < 1) {
+      if(!args.allowScaleBelowOne && !this.artworkOnly && scale < 1) {
         scale = 1;
+      }
+      if(typeof args.maxScale != 'undefined' && scale > args.maxScale) {
+        scale = args.maxScale;
       }
       this.setScale(scale);
 
@@ -2169,16 +2188,18 @@ GridView2d.prototype = {
     }
 
 
-    if(typeof args != 'undefined') {
-      if(typeof args.minScale != 'undefined') {
-        if(this.scale < args.minScale) {
-          this.setScale(args.minScale);
-        }
+    if(typeof args.minScale != 'undefined') {
+      if(this.scale < args.minScale) {
+        this.setScale(args.minScale);
       }
     }
 
     // need to centre it
 
+    if(this.artworkOnly) {
+      centreX = 0;
+      centreY = 0;
+    }
     this.setCameraPosition(centreX, centreY);
 
       
@@ -2211,9 +2232,18 @@ GridView2d.prototype = {
     this.backBufferNeedsRedraw = true;
     this.gridNeedsRedraw = true;
 
+    if(this.artworkOnly && this.camera) {
+      this.camera.position.x = 0;
+      this.camera.position.y = 0;
+    }
 
-    var settings = g_app.doc.getDocRecord('/settings');
-    settings.data.scale = scale;
+
+    // Overview zoom has its own preference and must not transiently replace
+    // the document's working zoom while the momentary view is active.
+    if(!this.artworkOnly) {
+      var settings = g_app.doc.getDocRecord('/settings');
+      settings.data.scale = scale;
+    }
 
     if(typeof redraw == 'undefined' || redraw === true) {
       // does the grid need redrawing?
@@ -2230,6 +2260,20 @@ GridView2d.prototype = {
 
   getScale: function() {
     return this.displayScale;
+  },
+
+  setArtworkOnly: function(artworkOnly, redraw) {
+    artworkOnly = artworkOnly === true;
+    if(this.artworkOnly == artworkOnly) {
+      return;
+    }
+
+    this.artworkOnly = artworkOnly;
+    this.gridNeedsRedraw = true;
+    this.overlayNeedsRedraw = true;
+    if(typeof redraw == 'undefined' || redraw === true) {
+      this.render();
+    }
   },
 
 
@@ -2538,6 +2582,10 @@ GridView2d.prototype = {
   },
 
   drawGrid: function(x, y, width, height, context, clipRegions) {
+
+    if(this.artworkOnly) {
+      return;
+    }
 
     var scale = this.displayScale;
     context = context || this.context;
@@ -4233,6 +4281,14 @@ GridView2d.prototype = {
     this.overlayContext.globalAlpha = 1;
     this.overlayContext.globalCompositeOperation = 'source-over';
     this.overlayContext.setLineDash([]);
+
+    // The momentary overview is a clean presentation of the artwork. Keep the
+    // transparent interaction canvas empty so cursors, selections, mirrors,
+    // zoom guides, and scrollbars cannot obscure it.
+    if(this.artworkOnly) {
+      this.overlayNeedsRedraw = false;
+      return;
+    }
 
     if(!UI.isMobile.any()) {
       var selectedLayer = this.editor.layers.getSelectedLayer();

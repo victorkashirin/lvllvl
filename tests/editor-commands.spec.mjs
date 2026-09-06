@@ -274,6 +274,242 @@ test("zen mode reveals edge controls, keeps shortcuts active, and restores the l
   });
 });
 
+test("holding Tab shows a clean centred overview, remembers its zoom, and restores the working view", async ({ page }) => {
+  await open2DProject(page);
+
+  const before = await page.evaluate(() => {
+    const editor = g_app.textModeEditor;
+    localStorage.removeItem("textmode.overviewScale");
+    UI("tabSplitPanel").setPanelVisible("north", true);
+    editor.setToolsVisible(true);
+    editor.textModeEditorPanel.setPanelVisible("east", true);
+    UI("textEditorContent").setPanelVisible("south", true);
+    UI("gridSplitPanel").setPanelVisible("west", true);
+    UI("gridSplitPanel").setPanelVisible("south", true);
+    editor.textModeEditorPanel.resizeThePanel({ panel: "west", size: 91 });
+    editor.textModeEditorPanel.resizeThePanel({ panel: "east", size: 317 });
+    UI("textEditorContent").resizeThePanel({ panel: "south", size: 233 });
+    UI("gridSplitPanel").resizeThePanel({ panel: "west", size: 211 });
+    editor.setGridVisible(true);
+    editor.gridView2d.setScale(3.25);
+    editor.gridView2d.setCameraPosition(17, -11);
+
+    return {
+      cameraX: editor.gridView2d.camera.position.x,
+      cameraY: editor.gridView2d.camera.position.y,
+      documentScale: g_app.doc.getDocRecord("/settings").data.scale,
+      gridInfo: UI("gridSplitPanel").southSize,
+      gridVisible: editor.getGridVisible(),
+      menu: UI("projectSplitPanel").northSize,
+      right: editor.textModeEditorPanel.eastSize,
+      scale: editor.gridView2d.scale,
+      tabs: UI("tabSplitPanel").northSize,
+      tileEditor: UI("gridSplitPanel").westSize,
+      timeline: UI("textEditorContent").southSize,
+      tools: editor.textModeEditorPanel.westSize,
+      topStrip: UI("textEditorMobileSplitPanel").northSize,
+    };
+  });
+
+  const gridCanvasId = await page.evaluate(() =>
+    g_app.textModeEditor.gridView2d.canvas.id,
+  );
+  const gridCanvas = page.locator(`#${gridCanvasId}`);
+  await gridCanvas.hover();
+  await page.evaluate(() => {
+    const first = document.createElement("div");
+    first.id = "overview-focus-first";
+    first.tabIndex = 0;
+    const second = document.createElement("button");
+    second.id = "overview-focus-second";
+    document.body.append(first, second);
+    first.focus();
+  });
+  await page.keyboard.press("Tab");
+  await expect.poll(() => page.evaluate(() => document.activeElement.id))
+    .toBe("overview-focus-second");
+  await expect(page.locator("body")).not.toHaveClass(/\boverview-mode\b/);
+  await page.evaluate(() => {
+    document.querySelector("#overview-focus-first").remove();
+    document.querySelector("#overview-focus-second").remove();
+  });
+
+  await gridCanvas.hover();
+  await page.evaluate(() => document.activeElement.blur());
+  await page.keyboard.down("Tab");
+  await expect(page.locator("body")).toHaveClass(/\boverview-mode\b/);
+  await expect.poll(() => page.evaluate(() => {
+    const editor = g_app.textModeEditor;
+    const gridView = editor.gridView2d;
+    return {
+      artworkOnly: gridView.artworkOnly,
+      cameraX: gridView.camera.position.x,
+      cameraY: gridView.camera.position.y,
+      documentScale: g_app.doc.getDocRecord("/settings").data.scale,
+      gridInfo: UI("gridSplitPanel").southSize,
+      gridSettingPreserved: editor.getGridVisible(),
+      menu: UI("projectSplitPanel").northSize,
+      right: editor.textModeEditorPanel.eastSize,
+      scale: gridView.getScale(),
+      tabs: UI("tabSplitPanel").northSize,
+      tileEditor: UI("gridSplitPanel").westSize,
+      timeline: UI("textEditorContent").southSize,
+      tools: editor.textModeEditorPanel.westSize,
+      topStrip: UI("textEditorMobileSplitPanel").northSize,
+    };
+  })).toEqual({
+    artworkOnly: true,
+    cameraX: 0,
+    cameraY: 0,
+    documentScale: before.documentScale,
+    gridInfo: 0,
+    gridSettingPreserved: true,
+    menu: 0,
+    right: 0,
+    scale: 1,
+    tabs: 0,
+    tileEditor: 0,
+    timeline: 0,
+    tools: 0,
+    topStrip: 0,
+  });
+
+  const modifier = await page.evaluate(() => UI.os === "Mac OS" ? "Meta" : "Control");
+  await page.evaluate(() =>
+    g_app.textModeEditor.gridView2d.setCameraPosition(23, -17),
+  );
+  await page.keyboard.press(`${modifier}+-`);
+  await expect.poll(() => page.evaluate(() => {
+    const gridView = g_app.textModeEditor.gridView2d;
+    return {
+      cameraX: gridView.camera.position.x,
+      cameraY: gridView.camera.position.y,
+      documentScale: g_app.doc.getDocRecord("/settings").data.scale,
+      scale: gridView.getScale(),
+    };
+  })).toEqual({
+    cameraX: 0,
+    cameraY: 0,
+    documentScale: before.documentScale,
+    scale: 0.5,
+  });
+
+  await page.evaluate(() =>
+    g_app.textModeEditor.gridView2d.setCameraPosition(-31, 19),
+  );
+  await page.keyboard.press(`${modifier}+=`);
+  await expect.poll(() => page.evaluate(() => {
+    const gridView = g_app.textModeEditor.gridView2d;
+    return {
+      cameraX: gridView.camera.position.x,
+      cameraY: gridView.camera.position.y,
+      scale: gridView.getScale(),
+    };
+  })).toEqual({ cameraX: 0, cameraY: 0, scale: 1 });
+
+  await page.evaluate(() =>
+    g_app.textModeEditor.gridView2d.setCameraPosition(11, 13),
+  );
+  await page.keyboard.press(`${modifier}+0`);
+  await expect.poll(() => page.evaluate(() => ({
+    cameraX: g_app.textModeEditor.gridView2d.camera.position.x,
+    cameraY: g_app.textModeEditor.gridView2d.camera.position.y,
+  }))).toEqual({ cameraX: 0, cameraY: 0 });
+  await page.keyboard.press(`${modifier}+1`);
+  await expect.poll(() => page.evaluate(() =>
+    g_app.textModeEditor.gridView2d.getScale(),
+  )).toBe(1);
+
+  await page.evaluate(() => {
+    const gridView = g_app.textModeEditor.gridView2d;
+    gridView.setScale(0.1);
+    gridView.zoomToXY(5, 7, 0.25);
+  });
+  await expect.poll(() => page.evaluate(() => {
+    const gridView = g_app.textModeEditor.gridView2d;
+    return {
+      cameraX: gridView.camera.position.x,
+      cameraY: gridView.camera.position.y,
+      scale: gridView.getScale(),
+    };
+  })).toEqual({ cameraX: 0, cameraY: 0, scale: 0.25 });
+
+  await page.keyboard.up("Tab");
+  await expect(page.locator("body")).not.toHaveClass(/\boverview-mode\b/);
+  await expect.poll(() => page.evaluate(() => {
+    const editor = g_app.textModeEditor;
+    return {
+      artworkOnly: editor.gridView2d.artworkOnly,
+      cameraX: editor.gridView2d.camera.position.x,
+      cameraY: editor.gridView2d.camera.position.y,
+      documentScale: g_app.doc.getDocRecord("/settings").data.scale,
+      gridInfo: UI("gridSplitPanel").southSize,
+      gridVisible: editor.getGridVisible(),
+      menu: UI("projectSplitPanel").northSize,
+      right: editor.textModeEditorPanel.eastSize,
+      scale: editor.gridView2d.scale,
+      tabs: UI("tabSplitPanel").northSize,
+      tileEditor: UI("gridSplitPanel").westSize,
+      timeline: UI("textEditorContent").southSize,
+      tools: editor.textModeEditorPanel.westSize,
+      topStrip: UI("textEditorMobileSplitPanel").northSize,
+    };
+  })).toEqual({ artworkOnly: false, ...before });
+
+  await expect.poll(() => page.evaluate(() =>
+    localStorage.getItem("textmode.overviewScale"),
+  )).toBe("0.25");
+
+  await gridCanvas.hover();
+  await page.evaluate(() => document.activeElement.blur());
+  await page.keyboard.down("Tab");
+  await expect.poll(() => page.evaluate(() => {
+    const gridView = g_app.textModeEditor.gridView2d;
+    return {
+      artworkOnly: gridView.artworkOnly,
+      cameraX: gridView.camera.position.x,
+      cameraY: gridView.camera.position.y,
+      scale: gridView.getScale(),
+    };
+  })).toEqual({ artworkOnly: true, cameraX: 0, cameraY: 0, scale: 0.25 });
+  await page.keyboard.up("Tab");
+
+  await page.keyboard.press("Alt+Shift+z");
+  await expect(page.locator("body")).toHaveClass(/\bzen-mode\b/);
+  await gridCanvas.hover();
+  await page.evaluate(() => document.activeElement.blur());
+  await page.keyboard.down("Tab");
+  await expect(page.locator("body")).toHaveClass(/\boverview-mode\b/);
+  await page.keyboard.press("Alt+Shift+z");
+  await expect(page.locator("body")).not.toHaveClass(/\bzen-mode\b/);
+  await expect(page.locator("body")).not.toHaveClass(/\boverview-mode\b/);
+  await page.keyboard.up("Tab");
+  await expect.poll(() => page.evaluate(() => {
+    const editor = g_app.textModeEditor;
+    return {
+      artworkOnly: editor.gridView2d.artworkOnly,
+      gridInfo: UI("gridSplitPanel").southSize,
+      menu: UI("projectSplitPanel").northSize,
+      right: editor.textModeEditorPanel.eastSize,
+      tabs: UI("tabSplitPanel").northSize,
+      tileEditor: UI("gridSplitPanel").westSize,
+      timeline: UI("textEditorContent").southSize,
+      tools: editor.textModeEditorPanel.westSize,
+      topStrip: UI("textEditorMobileSplitPanel").northSize,
+    };
+  })).toEqual({
+    artworkOnly: false,
+    gridInfo: before.gridInfo,
+    menu: before.menu,
+    right: before.right,
+    tabs: before.tabs,
+    tileEditor: before.tileEditor,
+    timeline: before.timeline,
+    tools: before.tools,
+    topStrip: before.topStrip,
+  });
+});
+
 test("maintained editors work without the retired runtime shells", async ({ page }) => {
   await page.route(/^https:\/\//, (route) =>
     route.fulfill({ body: "", contentType: "application/javascript", status: 200 }),
