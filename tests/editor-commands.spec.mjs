@@ -30,7 +30,10 @@ test("landing page and About show plus release information", async ({ page }) =>
 
   await expect(page.locator(".start-edition")).toHaveText(/plus/i);
   await expect(page.locator(".lvllvl-version")).toHaveText(`v${packageJson.version}`);
-  await expect(page.locator(".start-improvement-list li")).toHaveCount(8);
+  await expect(page.locator(".start-improvement-list li")).toHaveCount(9);
+  await expect(page.locator(".start-improvement-list li").filter({
+    hasText: "Zen Mode",
+  })).toContainText("Alt+Shift+Z");
   await expect(page.locator(".start-github-link")).toHaveAttribute(
     "href",
     "https://github.com/victorkashirin/lvllvl",
@@ -106,6 +109,169 @@ test("tile editor, keyboard, desktop menu, and mobile menu share classic history
   await expect.poll(() => page.evaluate(() =>
     g_app.textModeEditor.tileEditor.tileEditorGrid.getPixel(0, 0),
   )).toBe(before.value);
+});
+
+test("zen mode reveals edge controls, keeps shortcuts active, and restores the layout", async ({ page }) => {
+  await open2DProject(page);
+
+  const before = await page.evaluate(() => {
+    const editor = g_app.textModeEditor;
+    UI("tabSplitPanel").setPanelVisible("north", true);
+    editor.setToolsVisible(true);
+    editor.textModeEditorPanel.setPanelVisible("east", true);
+    UI("textEditorContent").setPanelVisible("south", true);
+    editor.textModeEditorPanel.resizeThePanel({ panel: "west", size: 91 });
+    editor.textModeEditorPanel.resizeThePanel({ panel: "east", size: 317 });
+    UI("textEditorContent").resizeThePanel({ panel: "south", size: 233 });
+
+    return {
+      bottom: UI("textEditorContent").southSize,
+      gridInfo: UI("gridSplitPanel").southSize,
+      menu: UI("projectSplitPanel").northSize,
+      right: editor.textModeEditorPanel.eastSize,
+      tabs: UI("tabSplitPanel").northSize,
+      tools: editor.textModeEditorPanel.westSize,
+    };
+  });
+
+  await page.evaluate(() => g_app.menuClick("view-zenmode"));
+  await expect(page.locator("body")).toHaveClass(/\bzen-mode\b/);
+  await expect(page.locator("#zenModeStatus")).toContainText("Alt+Shift+Z to exit");
+
+  await expect.poll(() => page.evaluate(() => ({
+    bottom: UI("textEditorContent").southSize,
+    gridInfo: UI("gridSplitPanel").southSize,
+    menu: UI("projectSplitPanel").northSize,
+    right: g_app.textModeEditor.textModeEditorPanel.eastSize,
+    tabs: UI("tabSplitPanel").northSize,
+    tools: g_app.textModeEditor.textModeEditorPanel.westSize,
+    zoomShortcut: g_app.menuBar.shortcuts.find(
+      ({ menuItem }) => menuItem.uiID === "view-zoomin",
+    ).menuItem.isShortcutAvailable(),
+  }))).toEqual({
+    bottom: 0,
+    gridInfo: before.gridInfo,
+    menu: 0,
+    right: 0,
+    tabs: 0,
+    tools: 0,
+    zoomShortcut: true,
+  });
+
+  const panelSelectors = await page.evaluate(() => ({
+    bottom: `#${g_app.zenModeState.bottom.element.id}`,
+    gridInfo: `#${g_app.zenModeState.gridInfo.element.id}`,
+    left: `#${g_app.zenModeState.tools.element.id}`,
+    menu: `#${g_app.zenModeState.menu.element.id}`,
+    right: `#${g_app.zenModeState.right.element.id}`,
+    tabs: `#${g_app.zenModeState.tabs.element.id}`,
+    topStrip: `#${g_app.zenModeState.topStrip.element.id}`,
+  }));
+
+  const modifier = await page.evaluate(() => UI.os === "Mac OS" ? "Meta" : "Control");
+  const scaleBefore = await page.evaluate(() => g_app.textModeEditor.gridView2d.getScale());
+  await page.keyboard.press(`${modifier}+=`);
+  await expect.poll(() => page.evaluate(() =>
+    g_app.textModeEditor.gridView2d.getScale(),
+  )).toBeGreaterThan(scaleBefore);
+
+  const viewport = page.viewportSize();
+  const getCanvasBounds = () => page.evaluate(() => {
+    const bounds = g_app.textModeEditor.gridView2d.canvas.getBoundingClientRect();
+    return {
+      height: bounds.height,
+      width: bounds.width,
+      x: bounds.x,
+      y: bounds.y,
+    };
+  });
+  const zenWorkspace = await getCanvasBounds();
+  const expectWorkspaceUnchanged = async () => {
+    expect(await getCanvasBounds()).toEqual(zenWorkspace);
+  };
+  const restingTopStrip = await page.locator(panelSelectors.topStrip).boundingBox();
+  const restingGridInfo = await page.locator(panelSelectors.gridInfo).boundingBox();
+
+  await page.locator("#zenModeEdgeTop").hover();
+  await expect(page.locator(panelSelectors.menu)).toBeVisible();
+  await expect(page.locator(panelSelectors.tabs)).toBeVisible();
+  await expect(page.locator(panelSelectors.topStrip)).toBeVisible();
+  await expect.poll(() => page.evaluate(() => UI("projectSplitPanel").northSize)).toBe(0);
+  await expectWorkspaceUnchanged();
+  const menuBounds = await page.locator(panelSelectors.menu).boundingBox();
+  const tabBounds = await page.locator(panelSelectors.tabs).boundingBox();
+  const topStripBounds = await page.locator(panelSelectors.topStrip).boundingBox();
+  expect(menuBounds.y + menuBounds.height).toBeLessThanOrEqual(tabBounds.y);
+  expect(tabBounds.y + tabBounds.height).toBeLessThanOrEqual(topStripBounds.y);
+  await page.locator(panelSelectors.menu).hover({ position: { x: 100, y: 15 } });
+  await page.waitForTimeout(500);
+  await expect(page.locator(panelSelectors.menu)).toBeVisible();
+  await page.locator(panelSelectors.topStrip).hover({ position: { x: 100, y: 15 } });
+  await page.waitForTimeout(500);
+  await expect(page.locator(panelSelectors.menu)).toBeVisible();
+  await page.mouse.move(viewport.width / 2, viewport.height / 2);
+  await expect(page.locator(panelSelectors.menu)).toBeHidden();
+  expect(await page.locator(panelSelectors.topStrip).boundingBox()).toEqual(restingTopStrip);
+
+  await page.locator("#zenModeEdgeLeft").hover();
+  await expect(page.locator(panelSelectors.left)).toBeVisible();
+  await expect.poll(() => page.evaluate(() =>
+    g_app.textModeEditor.textModeEditorPanel.westSize,
+  )).toBe(0);
+  await expectWorkspaceUnchanged();
+  await page.locator(panelSelectors.left).hover({ position: { x: 30, y: 100 } });
+  await page.waitForTimeout(500);
+  await expect(page.locator(panelSelectors.left)).toBeVisible();
+  await page.mouse.move(viewport.width / 2, viewport.height / 2);
+  await expect(page.locator(panelSelectors.left)).toBeHidden();
+
+  await page.locator("#zenModeEdgeRight").hover();
+  await expect(page.locator(panelSelectors.right)).toBeVisible();
+  await expect.poll(() => page.evaluate(() =>
+    g_app.textModeEditor.textModeEditorPanel.eastSize,
+  )).toBe(0);
+  await expectWorkspaceUnchanged();
+  await page.locator(panelSelectors.right).hover({ position: { x: 30, y: 100 } });
+  await page.waitForTimeout(500);
+  await expect(page.locator(panelSelectors.right)).toBeVisible();
+  await page.mouse.move(viewport.width / 2, viewport.height / 2);
+  await expect(page.locator(panelSelectors.right)).toBeHidden();
+
+  await page.locator("#zenModeEdgeBottom").hover();
+  await expect(page.locator(panelSelectors.bottom)).toBeVisible();
+  await expect(page.locator(panelSelectors.gridInfo)).toBeVisible();
+  await expect.poll(() => page.evaluate(() => UI("textEditorContent").southSize)).toBe(0);
+  await expectWorkspaceUnchanged();
+  const bottomBounds = await page.locator(panelSelectors.bottom).boundingBox();
+  const gridInfoBounds = await page.locator(panelSelectors.gridInfo).boundingBox();
+  expect(gridInfoBounds.y + gridInfoBounds.height).toBeLessThanOrEqual(bottomBounds.y);
+  await page.locator(panelSelectors.bottom).hover({ position: { x: 100, y: 50 } });
+  await page.waitForTimeout(500);
+  await expect(page.locator(panelSelectors.bottom)).toBeVisible();
+  await page.locator(panelSelectors.gridInfo).hover({ position: { x: 100, y: 12 } });
+  await page.waitForTimeout(500);
+  await expect(page.locator(panelSelectors.bottom)).toBeVisible();
+  await page.mouse.move(viewport.width / 2, viewport.height / 2);
+  await expect(page.locator(panelSelectors.bottom)).toBeHidden();
+  expect(await page.locator(panelSelectors.gridInfo).boundingBox()).toEqual(restingGridInfo);
+
+  await page.keyboard.press("Alt+Shift+z");
+  await expect(page.locator("body")).not.toHaveClass(/\bzen-mode\b/);
+  await expect.poll(() => page.evaluate(() => ({
+    bottom: UI("textEditorContent").southSize,
+    menu: UI("projectSplitPanel").northSize,
+    right: g_app.textModeEditor.textModeEditorPanel.eastSize,
+    tabs: UI("tabSplitPanel").northSize,
+    tools: g_app.textModeEditor.textModeEditorPanel.westSize,
+    zenMenuChecked: UI("view-zenmode").getChecked(),
+  }))).toEqual({
+    bottom: before.bottom,
+    menu: before.menu,
+    right: before.right,
+    tabs: before.tabs,
+    tools: before.tools,
+    zenMenuChecked: false,
+  });
 });
 
 test("maintained editors work without the retired runtime shells", async ({ page }) => {

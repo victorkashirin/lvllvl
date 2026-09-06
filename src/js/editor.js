@@ -62,6 +62,11 @@ var Editor = function() {
   this.projectSplitPanel = null;
   this.mainSplitPanel = null;
   this.menuBar = null;
+  this.zenMode = false;
+  this.zenModeState = null;
+  this.zenModeEdges = {};
+  this.zenModeRevealTimers = {};
+  this.zenModeMessageTimer = null;
 
   this.textModeEditor = null;
   this.music = null;
@@ -478,6 +483,471 @@ Editor.prototype = {
 
   },
 
+  createZenModeInterface: function() {
+    if(document.getElementById('zenModeEdges') !== null) {
+      return;
+    }
+
+    var _this = this;
+    var holder = document.createElement('div');
+    holder.id = 'zenModeEdges';
+
+    var addEdge = function(edge) {
+      var element = document.createElement('div');
+      element.id = 'zenModeEdge' + edge.charAt(0).toUpperCase() + edge.slice(1);
+      element.className = 'zen-mode-edge zen-mode-edge-' + edge;
+      element.setAttribute('data-zen-edge', edge);
+      element.setAttribute('aria-hidden', 'true');
+      holder.appendChild(element);
+      _this.zenModeEdges[edge] = element;
+
+      element.addEventListener('pointerenter', function() {
+        _this.revealZenModeEdge(edge);
+      });
+      element.addEventListener('pointerleave', function() {
+        _this.scheduleZenModeEdgeHide(edge);
+      });
+    };
+
+    addEdge('top');
+    addEdge('left');
+    addEdge('right');
+    addEdge('bottom');
+
+    var status = document.createElement('div');
+    status.id = 'zenModeStatus';
+    status.className = 'zen-mode-status';
+    status.setAttribute('role', 'status');
+    status.setAttribute('aria-live', 'polite');
+    holder.appendChild(status);
+    document.body.appendChild(holder);
+
+    var bindPanel = function(id, edge) {
+      var element = document.getElementById(id);
+      if(element === null) {
+        return;
+      }
+      element.addEventListener('pointerenter', function() {
+        _this.cancelZenModeEdgeHide(edge);
+      });
+      element.addEventListener('pointerleave', function() {
+        _this.scheduleZenModeEdgeHide(edge);
+      });
+    };
+
+    var bindSplitPanel = function(splitPanel, panel, edge) {
+      if(splitPanel) {
+        bindPanel(splitPanel.id + panel, edge);
+      }
+    };
+
+    bindSplitPanel(this.projectPanel, 'north', 'top');
+    bindSplitPanel(this.tabSplitPanel, 'north', 'top');
+    bindSplitPanel(this.projectPanel, 'west', 'left');
+    bindSplitPanel(this.mainSplitPanel, 'west', 'left');
+    bindSplitPanel(this.textModeEditor.textModeEditorPanel, 'west', 'left');
+    bindSplitPanel(this.textModeEditor.textModeEditorPanel, 'east', 'right');
+    bindSplitPanel(UI('textEditorMobileSplitPanel'), 'north', 'top');
+    bindSplitPanel(UI('textEditorContent'), 'south', 'bottom');
+    bindSplitPanel(UI('gridSplitPanel'), 'south', 'bottom');
+  },
+
+  captureZenModePanel: function(splitPanel, panel, defaultSize) {
+    if(!splitPanel || !splitPanel[panel]) {
+      return null;
+    }
+
+    var size = splitPanel[panel + 'Size'];
+    var savedSize = splitPanel[panel + 'SizeSave'];
+    var barSize = splitPanel[panel + 'BarSize'];
+    var savedBarSize = splitPanel[panel + 'BarSizeSave'];
+    var visible = typeof size == 'number' && size > 0;
+    var revealSize = visible ? size : savedSize;
+    var revealBarSize = visible ? barSize : savedBarSize;
+
+    if(typeof revealSize != 'number' || isNaN(revealSize) || revealSize <= 0) {
+      revealSize = defaultSize;
+    }
+    if(typeof revealBarSize != 'number' || isNaN(revealBarSize)) {
+      revealBarSize = 0;
+    }
+
+    return {
+      splitPanel: splitPanel,
+      panel: panel,
+      element: document.getElementById(splitPanel.id + panel),
+      overlayVisible: false,
+      stacked: false,
+      visible: visible,
+      size: size,
+      savedSize: savedSize,
+      barSize: barSize,
+      savedBarSize: savedBarSize,
+      revealSize: revealSize,
+      revealBarSize: revealBarSize,
+      resizeHidden: panel == 'south' ? splitPanel.southResizeHidden : false
+    };
+  },
+
+  setZenModePanelOverlayVisible: function(state, visible, edge, offset) {
+    if(state === null || state.element === null) {
+      return;
+    }
+
+    var element = state.element;
+    if(!visible) {
+      state.overlayVisible = false;
+      element.classList.remove('zen-mode-panel-overlay');
+      element.classList.remove('zen-mode-panel-overlay-' + edge);
+      element.style.removeProperty('--zen-mode-panel-size');
+      element.style.removeProperty('--zen-mode-panel-offset');
+      element.style.display = 'none';
+      return;
+    }
+
+    state.overlayVisible = true;
+    element.style.setProperty('--zen-mode-panel-size', state.revealSize + 'px');
+    element.style.setProperty('--zen-mode-panel-offset', (offset || 0) + 'px');
+    element.classList.add('zen-mode-panel-overlay');
+    element.classList.add('zen-mode-panel-overlay-' + edge);
+    element.style.display = 'block';
+
+    var panelComponent = state.splitPanel[state.panel];
+    if(panelComponent && typeof panelComponent.resize == 'function') {
+      panelComponent.resize();
+    }
+  },
+
+  setZenModePanelStackOffset: function(state, edge, offset) {
+    if(state === null || state.element === null || !state.visible) {
+      return;
+    }
+
+    if(!offset) {
+      state.stacked = false;
+      state.element.classList.remove('zen-mode-panel-stacked');
+      state.element.classList.remove('zen-mode-panel-stacked-' + edge);
+      state.element.style.removeProperty('--zen-mode-stack-offset');
+      return;
+    }
+
+    state.stacked = true;
+    state.element.style.setProperty('--zen-mode-stack-offset', offset + 'px');
+    state.element.classList.add('zen-mode-panel-stacked');
+    state.element.classList.add('zen-mode-panel-stacked-' + edge);
+  },
+
+  syncZenModePanelBar: function(state, visible, barSize, resizeHidden) {
+    var panel = state.panel;
+    var bar = $('#' + state.splitPanel.id + panel + 'bar');
+    if(panel == 'north' || panel == 'south') {
+      bar.css('height', barSize + 'px');
+    } else {
+      bar.css('width', barSize + 'px');
+    }
+
+    if(visible && barSize > 0 && !resizeHidden) {
+      bar.show();
+    } else {
+      bar.hide();
+    }
+  },
+
+  setZenModePanelVisible: function(state, visible) {
+    if(state === null) {
+      return;
+    }
+
+    var splitPanel = state.splitPanel;
+    var panel = state.panel;
+    var sizeProperty = panel + 'Size';
+
+    if(visible) {
+      if(splitPanel[sizeProperty] == 0) {
+        splitPanel[panel + 'SizeSave'] = state.revealSize;
+        splitPanel[panel + 'BarSizeSave'] = state.revealBarSize;
+        splitPanel.setPanelVisible(panel, true);
+      }
+      splitPanel[panel + 'BarSize'] = state.revealBarSize;
+      splitPanel.resizeThePanel({ panel: panel, size: state.revealSize });
+      this.syncZenModePanelBar(state, true, state.revealBarSize, state.resizeHidden);
+      return;
+    }
+
+    if(splitPanel[sizeProperty] != 0) {
+      splitPanel.setPanelVisible(panel, false);
+    }
+  },
+
+  restoreZenModePanel: function(state) {
+    if(state === null) {
+      return;
+    }
+
+    var splitPanel = state.splitPanel;
+    var panel = state.panel;
+    var sizeProperty = panel + 'Size';
+
+    if(splitPanel[sizeProperty] != 0) {
+      splitPanel.setPanelVisible(panel, false);
+    }
+
+    if(state.visible) {
+      splitPanel[panel + 'SizeSave'] = state.size;
+      splitPanel[panel + 'BarSizeSave'] = state.barSize;
+      splitPanel.setPanelVisible(panel, true);
+      splitPanel[panel + 'BarSize'] = state.barSize;
+      splitPanel.resizeThePanel({ panel: panel, size: state.size });
+    }
+
+    splitPanel[panel + 'SizeSave'] = state.savedSize;
+    splitPanel[panel + 'BarSizeSave'] = state.savedBarSize;
+    if(panel == 'south') {
+      splitPanel.southResizeHidden = state.resizeHidden;
+    }
+    this.syncZenModePanelBar(state, state.visible, state.barSize, state.resizeHidden);
+  },
+
+  cancelZenModeEdgeHide: function(edge) {
+    if(this.zenModeRevealTimers[edge]) {
+      clearTimeout(this.zenModeRevealTimers[edge]);
+      this.zenModeRevealTimers[edge] = null;
+    }
+  },
+
+  scheduleZenModeEdgeHide: function(edge) {
+    if(!this.zenMode) {
+      return;
+    }
+
+    var _this = this;
+    this.cancelZenModeEdgeHide(edge);
+    this.zenModeRevealTimers[edge] = setTimeout(function() {
+      _this.zenModeRevealTimers[edge] = null;
+      if(_this.isZenModeEdgeHovered(edge)) {
+        return;
+      }
+      if(edge == 'top' && _this.menuBar && _this.menuBar.menuShownId !== false) {
+        _this.scheduleZenModeEdgeHide(edge);
+        return;
+      }
+      _this.hideZenModeEdge(edge);
+    }, 350);
+  },
+
+  getZenModeEdgePanels: function(edge) {
+    if(this.zenModeState === null) {
+      return [];
+    }
+
+    if(edge == 'top') {
+      return [this.zenModeState.menu, this.zenModeState.tabs, this.zenModeState.topStrip];
+    }
+    if(edge == 'left') {
+      return [this.zenModeState.tools, this.zenModeState.projectNavigator];
+    }
+    if(edge == 'right') {
+      return [this.zenModeState.right];
+    }
+    if(edge == 'bottom') {
+      return [this.zenModeState.bottom, this.zenModeState.gridInfo];
+    }
+    return [];
+  },
+
+  isZenModeEdgeHovered: function(edge) {
+    if(this.zenModeEdges[edge] && this.zenModeEdges[edge].matches(':hover')) {
+      return true;
+    }
+
+    var panels = this.getZenModeEdgePanels(edge);
+    for(var i = 0; i < panels.length; i++) {
+      if(
+        panels[i] &&
+        (panels[i].overlayVisible || panels[i].stacked) &&
+        panels[i].element.matches(':hover')
+      ) {
+        return true;
+      }
+    }
+    return false;
+  },
+
+  revealZenModeEdge: function(edge) {
+    if(!this.zenMode || this.zenModeState === null) {
+      return;
+    }
+
+    this.cancelZenModeEdgeHide(edge);
+    if(this.zenModeEdges[edge]) {
+      this.zenModeEdges[edge].classList.add('zen-mode-edge-active');
+    }
+
+    if(edge == 'top') {
+      this.setZenModePanelOverlayVisible(this.zenModeState.menu, true, edge, 0);
+      var topStackOffset = this.zenModeState.menu.revealSize;
+      if(this.zenModeState.tabs.visible) {
+        this.setZenModePanelOverlayVisible(
+          this.zenModeState.tabs,
+          true,
+          edge,
+          this.zenModeState.menu.revealSize
+        );
+        topStackOffset += this.zenModeState.tabs.revealSize;
+      }
+      this.setZenModePanelStackOffset(this.zenModeState.topStrip, edge, topStackOffset);
+    } else if(edge == 'left') {
+      if(this.mode == '2d' || this.mode == '3d') {
+        this.setZenModePanelOverlayVisible(this.zenModeState.tools, true, edge);
+      } else {
+        this.setZenModePanelOverlayVisible(this.zenModeState.projectNavigator, true, edge);
+      }
+    } else if(edge == 'right') {
+      this.setZenModePanelOverlayVisible(this.zenModeState.right, true, edge);
+    } else if(edge == 'bottom') {
+      this.setZenModePanelOverlayVisible(this.zenModeState.bottom, true, edge);
+      this.setZenModePanelStackOffset(
+        this.zenModeState.gridInfo,
+        edge,
+        this.zenModeState.bottom.revealSize
+      );
+    }
+  },
+
+  hideZenModeEdge: function(edge) {
+    if(!this.zenMode || this.zenModeState === null) {
+      return;
+    }
+
+    if(this.zenModeEdges[edge]) {
+      this.zenModeEdges[edge].classList.remove('zen-mode-edge-active');
+    }
+
+    if(edge == 'top') {
+      this.setZenModePanelStackOffset(this.zenModeState.topStrip, edge, 0);
+      this.setZenModePanelOverlayVisible(this.zenModeState.tabs, false, edge);
+      this.setZenModePanelOverlayVisible(this.zenModeState.menu, false, edge);
+    } else if(edge == 'left') {
+      this.setZenModePanelOverlayVisible(this.zenModeState.tools, false, edge);
+      this.setZenModePanelOverlayVisible(this.zenModeState.projectNavigator, false, edge);
+    } else if(edge == 'right') {
+      this.setZenModePanelOverlayVisible(this.zenModeState.right, false, edge);
+    } else if(edge == 'bottom') {
+      this.setZenModePanelStackOffset(this.zenModeState.gridInfo, edge, 0);
+      this.setZenModePanelOverlayVisible(this.zenModeState.bottom, false, edge);
+    }
+  },
+
+  showZenModeStatus: function() {
+    var status = document.getElementById('zenModeStatus');
+    if(status === null) {
+      return;
+    }
+
+    status.textContent = 'Zen Mode  ·  Alt+Shift+Z to exit';
+    status.classList.add('zen-mode-status-visible');
+    if(this.zenModeMessageTimer) {
+      clearTimeout(this.zenModeMessageTimer);
+    }
+    this.zenModeMessageTimer = setTimeout(function() {
+      status.classList.remove('zen-mode-status-visible');
+    }, 1800);
+  },
+
+  setZenMode: function(enabled) {
+    enabled = enabled === true;
+    if(enabled == this.zenMode) {
+      return true;
+    }
+    if(enabled && this.isMobile()) {
+      return false;
+    }
+
+    if(enabled) {
+      this.createZenModeInterface();
+      this.zenModeState = {
+        menu: this.captureZenModePanel(this.projectPanel, 'north', 30),
+        tabs: this.captureZenModePanel(this.tabSplitPanel, 'north', 34),
+        projectNavigator: this.captureZenModePanel(this.projectPanel, 'west', 180),
+        scripting: this.captureZenModePanel(this.mainSplitPanel, 'west', 360),
+        tools: this.captureZenModePanel(this.textModeEditor.textModeEditorPanel, 'west', this.textModeEditor.desktopToolsWidth),
+        right: this.captureZenModePanel(this.textModeEditor.textModeEditorPanel, 'east', 340),
+        topStrip: this.captureZenModePanel(UI('textEditorMobileSplitPanel'), 'north', 30),
+        bottom: this.captureZenModePanel(UI('textEditorContent'), 'south', 220),
+        gridInfo: this.captureZenModePanel(UI('gridSplitPanel'), 'south', 24)
+      };
+
+      this.menuBar.setHiddenShortcutsEnabled(true);
+      this.zenMode = true;
+      document.body.classList.add('zen-mode');
+      this.setZenModePanelVisible(this.zenModeState.bottom, false);
+      this.setZenModePanelVisible(this.zenModeState.right, false);
+      this.setZenModePanelVisible(this.zenModeState.tools, false);
+      this.setZenModePanelVisible(this.zenModeState.scripting, false);
+      this.setZenModePanelVisible(this.zenModeState.projectNavigator, false);
+      this.setZenModePanelVisible(this.zenModeState.tabs, false);
+      this.setZenModePanelVisible(this.zenModeState.menu, false);
+      if(UI.exists('view-zenmode')) {
+        UI('view-zenmode').setChecked(true);
+      }
+      this.showZenModeStatus();
+      return true;
+    }
+
+    this.zenMode = false;
+    for(var edge in this.zenModeRevealTimers) {
+      if(this.zenModeRevealTimers.hasOwnProperty(edge)) {
+        this.cancelZenModeEdgeHide(edge);
+      }
+    }
+    if(this.zenModeMessageTimer) {
+      clearTimeout(this.zenModeMessageTimer);
+      this.zenModeMessageTimer = null;
+    }
+    this.menuBar.hideMenu();
+    document.body.classList.remove('zen-mode');
+    var zenStatus = document.getElementById('zenModeStatus');
+    if(zenStatus !== null) {
+      zenStatus.classList.remove('zen-mode-status-visible');
+    }
+    for(var edgeName in this.zenModeEdges) {
+      if(this.zenModeEdges.hasOwnProperty(edgeName)) {
+        this.zenModeEdges[edgeName].classList.remove('zen-mode-edge-active');
+      }
+    }
+
+    this.setZenModePanelOverlayVisible(this.zenModeState.menu, false, 'top');
+    this.setZenModePanelOverlayVisible(this.zenModeState.tabs, false, 'top');
+    this.setZenModePanelOverlayVisible(this.zenModeState.projectNavigator, false, 'left');
+    this.setZenModePanelOverlayVisible(this.zenModeState.scripting, false, 'left');
+    this.setZenModePanelOverlayVisible(this.zenModeState.tools, false, 'left');
+    this.setZenModePanelOverlayVisible(this.zenModeState.right, false, 'right');
+    this.setZenModePanelOverlayVisible(this.zenModeState.bottom, false, 'bottom');
+    this.setZenModePanelStackOffset(this.zenModeState.topStrip, 'top', 0);
+    this.setZenModePanelStackOffset(this.zenModeState.gridInfo, 'bottom', 0);
+
+    this.restoreZenModePanel(this.zenModeState.menu);
+    this.restoreZenModePanel(this.zenModeState.tabs);
+    this.restoreZenModePanel(this.zenModeState.projectNavigator);
+    this.restoreZenModePanel(this.zenModeState.scripting);
+    this.restoreZenModePanel(this.zenModeState.tools);
+    this.restoreZenModePanel(this.zenModeState.right);
+    this.restoreZenModePanel(this.zenModeState.bottom);
+    this.menuBar.setHiddenShortcutsEnabled(false);
+    this.zenModeState = null;
+    if(UI.exists('view-zenmode')) {
+      UI('view-zenmode').setChecked(false);
+    }
+    if(this.textModeEditor) {
+      this.textModeEditor.syncInterfaceMenuChecks();
+    }
+    return true;
+  },
+
+  toggleZenMode: function() {
+    return this.setZenMode(!this.zenMode);
+  },
+
   // really setting whether the editors get keyboard events..
   setAllowKeyShortcuts: function(allow) {
     this.allowKeyShortcuts = allow;
@@ -581,6 +1051,10 @@ Editor.prototype = {
       return;
     }
 
+    if(isMobile && this.zenMode) {
+      this.setZenMode(false);
+    }
+
     this.deviceType = deviceType;
     UI.setMobileMode(isMobile);
 
@@ -625,6 +1099,9 @@ Editor.prototype = {
 
 
   setMode: function(mode) {
+    if(this.zenMode && mode != this.mode) {
+      this.setZenMode(false);
+    }
     if(this.services && this.services.imageImportCoordinator &&
         this.services.imageImportCoordinator.isActive()) {
       void this.closeImageImport();
@@ -1321,6 +1798,8 @@ main split panel north is menu
 //      menu.addItem({ "label": "Import Shader Code...", "id": "settings-importshader" });
 
       menu = _this.menuBar.addMenu({"label": "Interface", "className": 'ui-menu-tilemode' });
+      menu.addItem({ "label": "Zen Mode", "id": "view-zenmode", "checked": false, "shortcut": { "alt": true, "shift": true, "key": "Z" } });
+      menu.addSeparator({  });
       menu.addItem({ "label": "Tools Panel", "id": "view-tools" });
       menu.addSeparator({  });
 
@@ -1494,6 +1973,7 @@ main split panel north is menu
 
       _this.textModeEditor.loadPreferences();
       _this.displayUserDetails();
+      _this.createZenModeInterface();
 
 
     });
@@ -2294,6 +2774,10 @@ main split panel north is menu
         break;
       case 'layout-minimal':
         this.textModeEditor.setLayout('minimal');
+        break;
+
+      case 'view-zenmode':
+        this.toggleZenMode();
         break;
 
       case 'view-tools':

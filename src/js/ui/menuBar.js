@@ -223,8 +223,7 @@ UI.MenuItem = function() {
     if(this.menu === false) {
       return true;
     }
-    var menuBarItem = document.getElementById(this.menu.menuBarItemId);
-    return menuBarItem !== null && menuBarItem.getClientRects().length > 0;
+    return this.menuBar.isMenuShortcutAvailable(this.menu);
   }
 }
 UI.registerComponentType("UI.MenuItem", UI.MenuItem);
@@ -379,6 +378,7 @@ UI.MenuBar = function() {
   this.menus = [];
 
   this.shortcuts = [];
+  this.hiddenShortcutMenus = null;
 
   this.menuShownId = false;
   this.menuBarItemShownId = false;  
@@ -428,6 +428,34 @@ UI.MenuBar = function() {
 
     }
 
+  }
+
+  // Zen mode collapses the menu bar itself, but commands belonging to the
+  // currently active editor must continue to work. Remember that active menu
+  // set before the bar is hidden so shortcuts from other editors stay dormant.
+  this.setHiddenShortcutsEnabled = function(enabled) {
+    if(!enabled) {
+      this.hiddenShortcutMenus = null;
+      return;
+    }
+
+    this.hiddenShortcutMenus = {};
+    for(var i = 0; i < this.menus.length; i++) {
+      var menuBarItem = document.getElementById(this.menus[i].menuBarItemId);
+      if(menuBarItem !== null && menuBarItem.getClientRects().length > 0) {
+        this.hiddenShortcutMenus[this.menus[i].menuBarItemId] = true;
+      }
+    }
+  }
+
+  this.isMenuShortcutAvailable = function(menu) {
+    var menuBarItem = document.getElementById(menu.menuBarItemId);
+    if(menuBarItem !== null && menuBarItem.getClientRects().length > 0) {
+      return true;
+    }
+
+    return this.hiddenShortcutMenus !== null &&
+      this.hiddenShortcutMenus[menu.menuBarItemId] === true;
   }
 /*
   this.enableShortcut = function(shortcut) {

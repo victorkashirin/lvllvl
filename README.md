@@ -30,8 +30,11 @@ features without disrupting established creative workflows.
 - **More dependable image importing:** retryable loading, safe cancellation,
   coordinated dialogs, and restored animation playback make import failures less
   disruptive.
-- **A more flexible interface:** the bottom animation panel can be closed and
-  restored from the Interface menu to reclaim editing space.
+- **Zen Mode and a more flexible interface:** choose **Interface → Zen Mode** or
+  press **Alt+Shift+Z** to hide editor chrome while keeping shortcuts active.
+  Hover the top, left, right, or bottom edge to reveal stacked menus, tools, side
+  panels, and the timeline without moving the canvas. The bottom animation panel
+  can also be closed and restored independently from the Interface menu.
 - **A safer, better-tested web app:** current browser coverage, production startup
   and performance budgets, stricter content security, and audited runtime
   dependencies make releases more predictable across desktop, phone, and tablet.

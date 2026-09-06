@@ -4,6 +4,10 @@
 
 ### Added
 
+- Add desktop Zen Mode from the Interface menu or Alt+Shift+Z, preserving the
+  current layout while hiding editor chrome, keeping active shortcuts working,
+  and temporarily revealing menus, tools, side panels, and bottom panels from
+  their corresponding screen edges.
 - Add 1x, 2x, and 4x intrinsic sizing with a live dimensions readout,
   document or transparent canvas backgrounds, and direct clipboard copying to
   SVG export.
@@ -20,6 +24,9 @@
 
 ### Fixed
 
+- Reveal Zen Mode edge panels as overlays so the canvas does not resize, stack
+  the menu and tabs above the persistent tool row and the timeline below the
+  persistent info row, and keep the whole stack open while it is hovered.
 - Release abandoned redo entries when a new edit follows undo, preventing
   discarded editor history actions from remaining in memory.
 - Preserve pixel-mode selection bounds in PNG/GIF exports and reserve GIF
