@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Added
+
+- Add an improvements sidebar and GitHub link to the landing page, identify the
+  maintained edition as lvllvl plus with its current version, and add an About
+  dialog with generated release version and build-date information.
+
 ## 0.497.6 - 2026-09-06
 
 ### Fixed

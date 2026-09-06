@@ -90,4 +90,8 @@ const services = {
 };
 
 globalThis.g_app = app;
-app.init({ features: featureRegistry, services });
+app.init({
+  buildInfo: legacy.LVLLVL_BUILD_INFO,
+  features: featureRegistry,
+  services,
+});

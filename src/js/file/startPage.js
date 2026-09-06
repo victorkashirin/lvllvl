@@ -759,6 +759,9 @@ StartPage.prototype = {
 
 
   initContent: function() {
+    var buildInfo = g_app.getBuildInfo();
+    $('.lvllvl-version').text('v' + buildInfo.version);
+
     if(UI.isMobile.any()) {
       $('#startContinueLast').show();
       $('#startOpen').hide();

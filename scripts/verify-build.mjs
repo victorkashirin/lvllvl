@@ -60,6 +60,7 @@ const coreFiles = [
   "js/libs.js",
   "js/libs.js.map",
   "js/html/htmlcache.js",
+  "js/buildInfo.js",
   ...moduleFiles,
   "js/storageManager.js",
   "js/acmeAssembler.js",
@@ -569,6 +570,17 @@ for (const filename of requiredFiles) {
 
 if (typeof version !== "string" || version.trim() === "") {
   throw new Error("package.json must contain the sole release version");
+}
+
+const buildInfoSource = await readFile(path.join(buildRoot, "js/buildInfo.js"), "utf8");
+const buildInfoContext = vm.createContext({});
+new vm.Script(buildInfoSource, { filename: "buildInfo.js" }).runInContext(buildInfoContext);
+const buildInfo = buildInfoContext.LVLLVL_BUILD_INFO;
+if (buildInfo?.version !== version) {
+  throw new Error("The generated build information does not match package.json");
+}
+if (!/^\d{4}-\d{2}-\d{2}$/.test(buildInfo?.buildDate ?? "")) {
+  throw new Error("The generated build information has no valid UTC build date");
 }
 
 await verifyBuildGraph();

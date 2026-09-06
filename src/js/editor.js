@@ -98,6 +98,12 @@ var Editor = function() {
   this.menuItems = {};
   this.confirmLeave = true;
 
+  this.aboutDialog = null;
+  this.buildInfo = Object.freeze({
+    version: 'unknown',
+    buildDate: 'unknown'
+  });
+
 
   // allow code editor to turn off key shortcuts
   this.allowKeyShortcuts = true;
@@ -137,6 +143,9 @@ Editor.prototype = {
       }
       if(typeof args.services != 'undefined') {
         this.services = args.services;
+      }
+      if(typeof args.buildInfo != 'undefined' && args.buildInfo != null) {
+        this.buildInfo = args.buildInfo;
       }
       if(typeof args.type != 'undefined') {
         this.isElectron = args.type == 'electron';
@@ -350,6 +359,43 @@ Editor.prototype = {
 
     return this.features[feature];
 
+  },
+
+  getBuildInfo: function() {
+    return this.buildInfo;
+  },
+
+  showAboutDialog: function() {
+    if(this.aboutDialog == null) {
+      var buildInfo = this.getBuildInfo();
+      this.aboutDialog = UI.create("UI.Dialog", {
+        "id": "aboutDialog",
+        "title": "About lvllvl plus",
+        "width": 400,
+        "height": 340
+      });
+
+      var html = '';
+      html += '<div style="padding: 22px; text-align: center">';
+      html += '<img src="images/logo40.png" width="40" height="40" alt="">';
+      html += '<div style="color: #eeeeee; font-size: 24px; margin-top: 5px">lvllvl <span style="color: #7fb8ed; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase">plus</span></div>';
+      html += '<p style="color: #aaaaaa; line-height: 1.45; margin: 12px 0 18px">A browser-based editor for tile graphics, text-mode art, and retro-computer formats.</p>';
+      html += '<div style="background: #191919; border: 1px solid #333333; border-radius: 4px; display: inline-block; line-height: 1.7; padding: 8px 18px">';
+      html += '<div><span style="color: #888888">Version</span>&nbsp;&nbsp;<strong style="color: #dddddd">' + SafeHTML.escape(buildInfo.version) + '</strong></div>';
+      html += '<div><span style="color: #888888">Build date</span>&nbsp;&nbsp;<strong style="color: #dddddd">' + SafeHTML.escape(buildInfo.buildDate) + ' UTC</strong></div>';
+      html += '</div>';
+      html += '<div style="margin-top: 18px"><a href="https://github.com/victorkashirin/lvllvl" target="_blank" rel="noopener noreferrer">View lvllvl plus on GitHub</a></div>';
+      html += '</div>';
+
+      this.aboutDialog.add(UI.create("UI.HTMLPanel", { "html": html }));
+      var closeButton = UI.create('UI.Button', { "text": "Close", "color": "secondary" });
+      this.aboutDialog.addButton(closeButton);
+      closeButton.on('click', function() {
+        UI.closeDialog();
+      });
+    }
+
+    UI.showDialog("aboutDialog");
   },
 
   activateFeature: function(feature, context) {
@@ -1556,6 +1602,9 @@ main split panel north is menu
         menu.addItem({ "label": "Scripting API" + "...", "id": "help-scriptingapi" });
       }
 
+      menu.addSeparator({ });
+      menu.addItem({ "label": "About lvllvl plus" + "...", "id": "help-about" });
+
       _this.menuBar.on('itemclick', function(id, source) {
         _this.menuClick(id, source);
       });
@@ -2462,6 +2511,9 @@ main split panel north is menu
       break;
       case 'help-scriptingapi':
         window.open('./docs/api.html', 'scripting-api');
+      break;
+      case 'help-about':
+        this.showAboutDialog();
       break;
 
       case 'c64-sound':

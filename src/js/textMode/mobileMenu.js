@@ -99,6 +99,7 @@ MobileMenu.prototype = {
       { "label": "Toggle Show Previous Frame", "id": "toggleprev" },
       { "label": "Show Expanded Controls", "id": "minimalinterface" },
       { "label": "Switch to Desktop Mode", "id": "desktopview" },
+      { "label": "About lvllvl plus", "id": "about" },
     ];
 
     if(SHOWUNFINISHED) {
@@ -625,6 +626,9 @@ MobileMenu.prototype = {
         if(confirm("Are you sure you want to switch to desktop mode?")) {
           g_app.setDeviceType('desktop');
         }
+      break;
+      case 'about':
+        g_app.showAboutDialog();
       break;
     }
 

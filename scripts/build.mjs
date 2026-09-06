@@ -53,6 +53,7 @@ const outputDirectories = [
 
 let buildRoot = publishedBuildRoot;
 let version;
+let buildDate;
 
 async function assertCaseExactPath(baseDirectory, relativePath) {
   const normalized = path.normalize(relativePath);
@@ -94,6 +95,31 @@ async function sourceFile(relativePath) {
 
 function renderVersion(content) {
   return content.split("{v}").join(version);
+}
+
+function resolveBuildDate() {
+  const sourceDateEpoch = process.env.SOURCE_DATE_EPOCH;
+  if (sourceDateEpoch !== undefined && !/^\d+$/.test(sourceDateEpoch)) {
+    throw new Error("SOURCE_DATE_EPOCH must be a valid Unix timestamp");
+  }
+
+  const date = sourceDateEpoch === undefined
+    ? new Date()
+    : new Date(Number(sourceDateEpoch) * 1000);
+
+  if (Number.isNaN(date.getTime())) {
+    throw new Error("SOURCE_DATE_EPOCH must be a valid Unix timestamp");
+  }
+
+  return date.toISOString().slice(0, 10);
+}
+
+async function writeBuildInfo() {
+  const contents =
+    "globalThis.LVLLVL_BUILD_INFO = Object.freeze(" +
+    JSON.stringify({ version, buildDate }) +
+    ");\n";
+  await writeFile(path.join(buildRoot, "js/buildInfo.js"), contents);
 }
 
 function replaceRequired(content, searchValue, replacement, filename) {
@@ -433,6 +459,7 @@ async function build() {
   if (typeof version !== "string" || version.trim() === "") {
     throw new Error("package.json must contain a release version");
   }
+  buildDate = resolveBuildDate();
 
   await verifyProductionLegacyGraph();
   const moduleVerification = await verifyModuleBoundaries();
@@ -451,6 +478,7 @@ async function build() {
 
     await copyAssets();
     await copyRuntimeAssets();
+    await writeBuildInfo();
     await buildHtmlCache();
     await buildDeclaredGraph();
     await copyDeclaredScripts(copiedScripts);

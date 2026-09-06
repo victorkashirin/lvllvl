@@ -9,9 +9,13 @@
     </div>
 
   <div id="startPageBanner" style="position: absolute; top: 0px; left: 0px; right: 0px; height: 122px; background-color: #131313; padding: 10px; border-bottom: 1px solid #222222">
-    <h1 style="margin: 0px; font-size: 54px;  font-weight: normal"><img src="images/logo40.png" style="width: 40px; height: 40px; filter: opacity(80%);"/><span style="margin: 0 6px">lvllvl</span><span style="font-size: 12px">alpha</span></h1>
-    <div>
-      Create pictures using character sets
+    <a class="start-github-link" href="https://github.com/victorkashirin/lvllvl" target="_blank" rel="noopener noreferrer" aria-label="View lvllvl plus on GitHub">
+      <img src="icons/GitHub-Mark-Light-64px.png" width="18" height="18" alt=""/>
+      <span>GitHub</span>
+    </a>
+    <h1 class="start-brand"><img src="images/logo40.png" width="40" height="40" alt=""/><span class="start-brand-name">lvllvl</span><span class="start-edition">plus</span></h1>
+    <div class="start-tagline">
+      Create pictures using character sets <span class="start-version lvllvl-version"></span>
     </div>
     <div class="ui-button-holder" style="margin-top: 10px">
       <div class="ui-button ui-button-primary" id="start2D"><i class="halflings halflings-plus"></i> <span class="ui-text" data-textid="New Project">New Project...</span><div class="rippleJS"></div></div>
@@ -118,9 +122,137 @@
   filter: invert(80%);
 }
 
+.start-brand {
+  align-items: baseline;
+  display: flex;
+  font-size: 54px;
+  font-weight: normal;
+  margin: 0;
+}
+
+.start-brand img {
+  align-self: center;
+  filter: opacity(80%);
+}
+
+.start-brand-name {
+  margin: 0 6px;
+}
+
+.start-edition {
+  color: #7fb8ed;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.start-version {
+  border-left: 1px solid #555;
+  color: #999;
+  margin-left: 7px;
+  padding-left: 8px;
+}
+
+.start-github-link,
+.start-github-link:visited {
+  align-items: center;
+  background: #242424;
+  border: 1px solid #383838;
+  border-radius: 4px;
+  color: #ddd;
+  display: flex;
+  font-size: 12px;
+  gap: 7px;
+  padding: 6px 10px;
+  position: absolute;
+  right: 16px;
+  text-decoration: none;
+  top: 16px;
+}
+
+.start-github-link:hover {
+  background: #303030;
+  color: #fff;
+}
+
+#startPageProjectHolder {
+  bottom: 62px;
+  left: 0;
+  overflow: auto;
+  padding: 10px;
+  position: absolute;
+  right: 340px;
+  top: 143px;
+}
+
+#startPageFooter {
+  bottom: 0;
+  height: 42px;
+  left: 0;
+  padding: 10px;
+  position: absolute;
+  right: 340px;
+}
+
+.start-improvements {
+  background: #151515;
+  border-left: 1px solid #292929;
+  bottom: 0;
+  box-sizing: border-box;
+  overflow: auto;
+  padding: 20px 22px;
+  position: absolute;
+  right: 0;
+  top: 143px;
+  width: 340px;
+}
+
+.start-improvements h2 {
+  color: #eee;
+  font-size: 20px;
+  line-height: 1.25;
+  margin: 0 0 8px;
+}
+
+.start-improvements-intro {
+  color: #999;
+  margin: 0 0 12px;
+}
+
+.start-improvement-list {
+  list-style: disc;
+  margin: 0;
+  padding-left: 18px;
+}
+
+.start-improvement-list li {
+  color: #aaa;
+  line-height: 1.45;
+  padding: 5px 0;
+}
+
+.start-improvement-list strong {
+  color: #ddd;
+  font-weight: 500;
+}
+
+@media (max-width: 900px) {
+  #startPageProjectHolder,
+  #startPageFooter {
+    right: 290px;
+  }
+
+  .start-improvements {
+    padding-left: 18px;
+    padding-right: 18px;
+    width: 290px;
+  }
+}
+
 </style>
 
-  <div id="startPageProjectHolder" style="position: absolute; top: 143px; left: 0px; right: 0px; bottom: 62px; padding: 10px; overflow: auto">
+  <div id="startPageProjectHolder">
 
 
 <!--    
@@ -156,12 +288,27 @@
     <div id="browserStorageOld_projects" ></div>
   </div>
 
-  <div style="position: absolute; bottom: 0; left: 0px; right: 0px; height: 42px; padding: 10px">
+  <div id="startPageFooter">
 
     <div style="margin: 4px 0">
       <span style="margin-right: 10px">No Icon: Stored in Browser Storage </span>
     </div>
 
+  </div>
+
+  <div class="start-improvements" role="complementary" aria-labelledby="start-improvements-title">
+    <h2 id="start-improvements-title">What’s new in lvllvl plus</h2>
+    <p class="start-improvements-intro">This version includes:</p>
+    <ul class="start-improvement-list">
+      <li><strong>SVG export</strong> - export text-mode, C64, and vector artwork</li>
+      <li><strong>Faster editing</strong> - focused redraws, cached previews, and quicker startup</li>
+      <li><strong>Crisp rendering</strong> - better alignment at fractional zoom and different display densities</li>
+      <li><strong>Tile palettes</strong> - independent fit modes and precise scaling</li>
+      <li><strong>More reliable saves</strong> - better recovery from browser storage errors</li>
+      <li><strong>Image importing</strong> - retry loading, cancel safely, and keep animation playback working</li>
+      <li><strong>UI improvements</strong> - close/restore animation panel</li>
+      <li><strong>Safer releases</strong> - modern browser tests, stronger content security, and audited dependencies</li>
+    </ul>
   </div>
 
 

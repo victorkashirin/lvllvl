@@ -1,4 +1,9 @@
 import { expect, test } from "@playwright/test";
+import { readFile } from "node:fs/promises";
+
+const packageJson = JSON.parse(
+  await readFile(new URL("../package.json", import.meta.url), "utf8"),
+);
 
 async function open2DProject(page) {
   await page.route(/^https:\/\//, (route) =>
@@ -14,6 +19,33 @@ async function open2DProject(page) {
     g_app.textModeEditor.tileSetManager.getCurrentTileSet(),
   ))).toBe(true);
 }
+
+test("landing page and About show plus release information", async ({ page }) => {
+  await page.goto("/", { waitUntil: "domcontentloaded" });
+  await expect(page.locator("#startPage")).toBeVisible();
+
+  await expect(page.locator(".start-edition")).toHaveText(/plus/i);
+  await expect(page.locator(".lvllvl-version")).toHaveText(`v${packageJson.version}`);
+  await expect(page.locator(".start-improvement-list li")).toHaveCount(8);
+  await expect(page.locator(".start-github-link")).toHaveAttribute(
+    "href",
+    "https://github.com/victorkashirin/lvllvl",
+  );
+
+  const buildInfo = await page.evaluate(() => g_app.getBuildInfo());
+  expect(buildInfo).toMatchObject({ version: packageJson.version });
+  expect(buildInfo.buildDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+
+  await page.evaluate(() => g_app.menuClick("help-about"));
+  const aboutDialog = page.locator(".ui-dialog:visible").filter({
+    hasText: "About lvllvl plus",
+  }).last();
+  await expect(aboutDialog).toContainText(new RegExp(`Version\\s+${packageJson.version}`));
+  await expect(aboutDialog).toContainText(new RegExp(`Build date\\s+${buildInfo.buildDate} UTC`));
+  await expect(aboutDialog.getByRole("link", {
+    name: "View lvllvl plus on GitHub",
+  })).toHaveAttribute("href", "https://github.com/victorkashirin/lvllvl");
+});
 
 test("tile editor, keyboard, desktop menu, and mobile menu share classic history", async ({ page }) => {
   await open2DProject(page);
