@@ -35,7 +35,7 @@ the application's actual coupling:
 
 ## Resulting baseline
 
-`js/main.js` has 306 ordered inputs. The governed production graph has 12 native
+`js/main.js` has 304 ordered inputs. The governed production graph has 12 native
 modules and 13 dependency edges. Textual `g_app` references are expected in the
 classic application and are not a migration score.
 

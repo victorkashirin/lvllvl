@@ -54,8 +54,8 @@ C64DebuggerCompact.prototype = {
   setSize: function(size) {
     switch(size) {
       case 1:
-        UI('c64-size-1').setChecked(true);
-        UI('c64-size-2').setChecked(false);
+        UI('c64debugger-size-1').setChecked(true);
+        UI('c64debugger-size-2').setChecked(false);
         this.c64Size = 1;
         break;
       case 2:
@@ -676,10 +676,10 @@ C64DebuggerCompact.prototype = {
   toggleAudio: function() {
     if(this.c64.getAudioEnabled()) {
       this.c64.stopAudio();
-      UI('c64-sound').setChecked(false);
+      UI('c64debugger-sound').setChecked(false);
     } else {
       this.c64.startAudio();
-      UI('c64-sound').setChecked(true);
+      UI('c64debugger-sound').setChecked(true);
     }
   },
   toggleShowRaster: function() {
@@ -688,7 +688,7 @@ C64DebuggerCompact.prototype = {
 
   setShowRaster: function(show) {
     this.showRaster = show;
-    UI('c64-viewraster').setChecked(show);
+    UI('c64debugger-viewraster').setChecked(show);
     $('#c64CompactShowRaster').prop('checked', show);
     if(show) {
       this.drawRasterPosition();
@@ -699,9 +699,8 @@ C64DebuggerCompact.prototype = {
 
     this.joystickPort = port;
     if(port === 0) {
-      UI('c64-joysticknone').setChecked(true);
-      UI('c64-joystick1').setChecked(false);
-      UI('c64-joystick2').setChecked(false);
+      UI('c64debugger-joystick1').setChecked(false);
+      UI('c64debugger-joystick2').setChecked(false);
 
   //    this.setJoystickEnabled(false);
       html += 'None';
@@ -709,18 +708,17 @@ C64DebuggerCompact.prototype = {
     //  this.setJoystickEnabled(true);
 //      this.c64.setJoystickPort(port - 1);
 
-      UI('c64-joysticknone').setChecked(false);
       if(port == 1) {
         html += 'Port 1';
-        UI('c64-joystick1').setChecked(true);
-        UI('c64-joystick2').setChecked(false);
+        UI('c64debugger-joystick1').setChecked(true);
+        UI('c64debugger-joystick2').setChecked(false);
         $('#c64CompactJoystickPort1').prop('checked', true);
 
       }
       if(port == 2) {
         html += 'Port 2';
-        UI('c64-joystick1').setChecked(false);
-        UI('c64-joystick2').setChecked(true);
+        UI('c64debugger-joystick1').setChecked(false);
+        UI('c64debugger-joystick2').setChecked(true);
         $('#c64CompactJoystickPort2').prop('checked', true);
       }
     }

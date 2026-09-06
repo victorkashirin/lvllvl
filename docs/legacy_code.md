@@ -1,7 +1,7 @@
 # Legacy code removal TODO
 
-Status: prioritized removal backlog backed by the inventory below. No production
-code has been removed.
+Status: P1 cleanup completed on 2026-09-06. P2 and P3 remain a prioritized
+backlog. The research sections below describe the pre-cleanup baseline.
 
 This inventory was added because shortcut scope cannot be designed accurately from the visible 2D image editor alone. The production bundle contains several complete or partial editors that normal navigation does not expose.
 
@@ -35,57 +35,57 @@ tasks.
 
 ### P1 — verified dead or unreferenced
 
-- [ ] **LEG-001 (P1): Remove `src/js/music/patternViewSave.js`.** Confirm it has
+- [x] **LEG-001 (P1): Remove `src/js/music/patternViewSave.js`.** Confirm it has
   no filename or build-graph references, then delete the tracked backup file.
-- [ ] **LEG-002 (P1): Remove `src/js/music/sid/sidplayerbackup.js`.** Confirm it
+- [x] **LEG-002 (P1): Remove `src/js/music/sid/sidplayerbackup.js`.** Confirm it
   has no filename or build-graph references, then delete the backup copy.
-- [ ] **LEG-003 (P1): Remove `src/js/music/sid/sidpatternplayerbackup`.** Confirm
+- [x] **LEG-003 (P1): Remove `src/js/music/sid/sidpatternplayerbackup`.** Confirm
   it has no filename or build-graph references, then delete the extensionless
   backup copy.
-- [ ] **LEG-004 (P1): Remove `src/js/music/sid/sidplayernew`.** Confirm it has no
+- [x] **LEG-004 (P1): Remove `src/js/music/sid/sidplayernew`.** Confirm it has no
   filename or build-graph references, then delete the extensionless experiment.
-- [ ] **LEG-005 (P1): Remove `src/js/c64/c64page.js`.** Confirm the exported C64
+- [x] **LEG-005 (P1): Remove `src/js/c64/c64page.js`.** Confirm the exported C64
   page still uses `src/c64page`, then delete this unused old page source.
-- [ ] **LEG-006 (P1): Remove `src/js/c64/c64pageimages.js`.** Delete it with the
+- [x] **LEG-006 (P1): Remove `src/js/c64/c64pageimages.js`.** Delete it with the
   unused old C64 page source after confirming there are no runtime references.
-- [ ] **LEG-007 (P1): Remove `src/js/sprite/spriteGridView2d.js`.** Confirm current
+- [x] **LEG-007 (P1): Remove `src/js/sprite/spriteGridView2d.js`.** Confirm current
   sprite documents use `TextModeEditor`, then delete this unbundled orphan.
-- [ ] **LEG-008 (P1): Remove `src/js/c64/c64Settings.js`.** Delete the empty file
+- [x] **LEG-008 (P1): Remove `src/js/c64/c64Settings.js`.** Delete the empty file
   and any stale build or source references.
-- [ ] **LEG-009 (P1): Remove the legacy standalone `SpriteEditor`.** Delete
+- [x] **LEG-009 (P1): Remove the legacy standalone `SpriteEditor`.** Delete
   `spriteEditor.js`, its build-graph entry, commented construction/mode code, and
   dead `mode === 'sprite'` keyboard/undo branches without changing the maintained
   2D sprite workflow. `LEG-007` owns deletion of its orphan grid-view file.
-- [ ] **LEG-010 (P1): Remove the NES runtime/debugger shell.** Delete the stale
+- [x] **LEG-010 (P1): Remove the NES runtime/debugger shell.** Delete the stale
   `.nes` loader route, dormant mode/menu/build branches, debugger fields, and null
   dereferences. Preserve the independent 2D NES palette/screen-mode code.
-- [ ] **LEG-011 (P1): Remove the X16 runtime/debugger shell.** Delete stale
+- [x] **LEG-011 (P1): Remove the X16 runtime/debugger shell.** Delete stale
   `x16Debugger` mode, project-output, assembler-runtime, menu, and field references.
   Preserve the working X16 assembly-source exporter.
-- [ ] **LEG-012 (P1): Remove old `C64Interface` integration.** Delete commented
+- [x] **LEG-012 (P1): Remove old `C64Interface` integration.** Delete commented
   construction and stale interface references without changing `C64Debugger`.
   `LEG-008` owns deletion of the empty settings file.
-- [ ] **LEG-013 (P1): Remove the Assembly Import dialog.** Delete its class,
+- [x] **LEG-013 (P1): Remove the Assembly Import dialog.** Delete its class,
   template, initialization, handler, build-graph entry, and commented menu item.
-- [ ] **LEG-014 (P1): Remove the old `ui-menu-assembler-old` menu.** Delete the
+- [x] **LEG-014 (P1): Remove the old `ui-menu-assembler-old` menu.** Delete the
   unused menu markup/styles and construction path while retaining the active
   `ui-menu-c64-assembler` menu.
-- [ ] **LEG-015 (P1): Remove the dead `#startMusic` entry handler.** Delete the
+- [x] **LEG-015 (P1): Remove the dead `#startMusic` entry handler.** Delete the
   click binding that has no matching element in either current start-page
   template; do not remove the music editor in this task.
-- [ ] **LEG-016 (P1): Remove commented `ProjectShare` construction.** Delete the
+- [x] **LEG-016 (P1): Remove commented `ProjectShare` construction.** Delete the
   stale construction lines; there is no implementation to retain.
-- [ ] **LEG-017 (P1): Remove obsolete Audio Options fragments.** Delete the
+- [x] **LEG-017 (P1): Remove obsolete Audio Options fragments.** Delete the
   commented Settings-menu entry and any handler that has no implementation.
-- [ ] **LEG-018 (P1): Remove obsolete C64 Effects fragments.** Delete the
+- [x] **LEG-018 (P1): Remove obsolete C64 Effects fragments.** Delete the
   commented Settings-menu entry and unimplemented handler while retaining live
   C64 export code.
-- [ ] **LEG-019 (P1): Remove obsolete C64 Bytes Free fragments.** Delete the
+- [x] **LEG-019 (P1): Remove obsolete C64 Bytes Free fragments.** Delete the
   commented Tools-menu entry and any unimplemented handler.
-- [ ] **LEG-020 (P1): Remove the obsolete standalone Image Effects entry.** Delete
+- [x] **LEG-020 (P1): Remove the obsolete standalone Image Effects entry.** Delete
   only the commented standalone Tools-menu fragment; retain image effects used by
   import and GIF/PNG export.
-- [ ] **LEG-021 (P1): Remove obsolete 3D OBJ/FBX import fragments.** Delete the
+- [x] **LEG-021 (P1): Remove obsolete 3D OBJ/FBX import fragments.** Delete the
   commented import entries and any unreachable wiring with no matching
   implementation; retain active 3D OBJ and MagicaVoxel export.
 
@@ -145,14 +145,19 @@ tasks.
 
 ### Verification for every cleanup batch
 
-- [ ] Search the source and generated build graph for references to every removed
+- [x] Search the source and generated build graph for references to every removed
   file, constructor, mode, menu ID, template, and asset.
-- [ ] Run `npm run check` and `npm run test:source`.
-- [ ] Run `npm run build` and `npm run test:build`; compare production artifacts
+- [x] Run `npm run check` and `npm run test:source`.
+- [x] Run `npm run build` and `npm run test:build`; compare production artifacts
   for large removals.
-- [ ] Run the relevant Playwright coverage, including current 2D sprite, C64,
+- [x] Run the relevant Playwright coverage, including current 2D sprite, C64,
   assembler, X16 assembly-export, and old-project fixtures when those neighboring
   paths are touched.
+
+The completed P1 batch removed two entries from the classic production graph
+(306 to 304) and reduced `js/main.js` by 7,016 raw bytes. Browser regression
+coverage now verifies legacy `textmode` records plus the maintained sprite, C64,
+assembler, and X16 assembly-export paths.
 
 ## Scope and terminology
 

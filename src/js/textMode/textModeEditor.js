@@ -15,8 +15,6 @@ var TextModeEditor = function() {
   this.importC64Formats = null;
   this.importC64SpriteFormats = null;
   this.importSpriteImage = null;
-  this.importAssembly = null;
-
   this.tools = null;
   this.doc  = null;
 
@@ -361,9 +359,6 @@ TextModeEditor.prototype = {
       _this.frames.init(_this);
       _this.frames.buildInterface(UI('framesPanel'));
       _this.frames.buildMobileInterface(UI('framesMobilePanel'));
-
-        _this.importAssembly = new ImportAssembly();
-        _this.importAssembly.init(_this);
 
         _this.importC64Formats = new ImportC64Formats();
         _this.importC64Formats.init(_this);

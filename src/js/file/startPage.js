@@ -849,14 +849,6 @@ StartPage.prototype = {
 
     });
 
-    $('#startMusic').on('click', function() {
-      var args = {};
-      g_app.newProject(args);
-      g_app.setMode('music');
-
-    });
-
-
     $('#connectToGDriveButton').on('click', function() {
       _this.connectToGDrive();
     }); 

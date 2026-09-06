@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+### Fixed
+
+- Remove the P1 legacy-code backlog: delete unreferenced backup sources, the
+  superseded standalone sprite editor, the broken NES/X16 runtime shells, dormant
+  NES assembler/build targets, the unused assembly-import and old C64-menu paths,
+  and obsolete commented entry points while preserving current 2D sprite editing,
+  C64 debugging, assembler output, old `textmode` records, and X16 assembly-source
+  export.
+- Fix new 2D sprite projects by loading their default C64 colours as a palette
+  preset instead of treating the preset name as raw palette data.
+
 ## 0.497.7 - 2026-09-06
 
 ### Added

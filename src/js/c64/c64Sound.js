@@ -98,7 +98,7 @@ C64Sound.prototype = {
 
       this.audioEnabled = true;
       if(typeof UI != 'undefined') {
-        UI('c64-sound').setChecked(this.audioEnabled);
+        UI('c64debugger-sound').setChecked(this.audioEnabled);
       }
     } catch(err) {
       console.log(err);
@@ -121,7 +121,7 @@ C64Sound.prototype = {
 
     this.audioEnabled = false;
     if(typeof UI != 'undefined') {
-      UI('c64-sound').setChecked(this.audioEnabled);
+      UI('c64debugger-sound').setChecked(this.audioEnabled);
     }
   },
 

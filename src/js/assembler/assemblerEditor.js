@@ -21,8 +21,6 @@ var AssemblerEditor = function() {
 
   this.acmeParser = null;
 
-  this.targetMachine = 'x16';
-
   this.lastEditorLine = false;
 
   // avoid infinite loops on resizing code panel
@@ -966,7 +964,7 @@ AssemblerEditor.prototype = {
       target = 'c64';
     }
 
-    if(target != 'c64' && target != 'x16' && target != 'nes') {
+    if(target != 'c64' && target != 'x16') {
       this.assemblerOutput.clear();
       this.assemblerOutput.addOutputLine({
         text: "Unknown target: '" + target + "'"
@@ -977,15 +975,10 @@ AssemblerEditor.prototype = {
     }
 
     this.build(function(result, path) {
-      /*
-      if(target == 'x16') {
-        g_app.setMode('x16');
-        g_app.x16Debugger.setPRG(result.prg);
-      } else {
-        g_app.setMode('c64');
-        g_app.c64Debugger.setPRG(result.prg);
+      if(target != 'c64') {
+        return;
       }
-*/
+
       if(_this.prefix == 'c64debugger') {
         result.startC64 = true;
         _this.assemblerReport = result.report;
@@ -1006,31 +999,16 @@ AssemblerEditor.prototype = {
       } else {
 
         if(g_app.isMobile()) {
-          if(target == 'x16') {
-            g_app.setMode('x16');
-            g_app.x16Debugger.setPRG(result.prg);
-          } else {
-            g_app.setMode('c64');
-            g_app.c64Debugger.setPRG({
-              prg: result.prg,
-              backLink: _this.path
-            });
-          }
+          g_app.setMode('c64');
+          g_app.c64Debugger.setPRG({
+            prg: result.prg,
+            backLink: _this.path
+          });
     
         } else {
-          g_app.projectNavigator.setPrgHandler(target);
           g_app.projectNavigator.selectDocRecord(path);
         }
       }
-      /*
-      if(_this.targetMachine == 'x16') {
-        g_app.setMode('x16');
-        g_app.x16Debugger.setPRG(result.prg);
-      } else {
-        g_app.setMode('c64');
-        g_app.c64Debugger.setPRG(result.prg);
-      }
-      */
 
     });
   },
@@ -1089,19 +1067,11 @@ AssemblerEditor.prototype = {
   },
 
   build: function(callback) {
-
-    var _this = this;
     this.assemble(function(result) {
-
-
-      var config = _this.readConfig();
 
 
       var prg = bufferToBase64(result.prg);
       var filename = 'build.prg';
-      if(config.target == 'nes') {
-        filename = 'build.nes';
-      }
 
       var path = '/build/' + filename;
       var doc = g_app.doc;
@@ -1123,18 +1093,12 @@ AssemblerEditor.prototype = {
   },
 
   buildAndDownload: function() {
-    var _this = this;
     this.assemble(function(result) {
 
 console.log('build and download result');
 console.log(result);
 
-      var config = _this.readConfig();
-      if(config.target == 'nes') {
-        download(result.prg, 'build.nes', "application/prg");   
-      } else {      
-        download(result.prg, 'build.prg', "application/prg");   
-      }
+      download(result.prg, 'build.prg', "application/prg");
     });
   },
 

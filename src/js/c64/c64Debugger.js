@@ -274,18 +274,12 @@ C64Debugger.prototype = {
       UI('c64debugger-prgloadrun').setChecked(true);
       UI('c64debugger-prginject').setChecked(false);
 
-      UI('c64-prgloadrun').setChecked(true);
-      UI('c64-prginject').setChecked(false);
-
       g_app.setPref('c64-prgstart', 'loadrun');
     }
 
     if(method == 'inject') {
       UI('c64debugger-prgloadrun').setChecked(false);
       UI('c64debugger-prginject').setChecked(true);
-
-      UI('c64-prgloadrun').setChecked(false);
-      UI('c64-prginject').setChecked(true);
 
       g_app.setPref('c64-prgstart', 'inject');
     }
@@ -309,13 +303,6 @@ C64Debugger.prototype = {
 
   setSize: function(size) {
 
-    UI('c64-size-1').setChecked(false);
-    UI('c64-size-2').setChecked(false);
-    UI('c64-size-3').setChecked(false);
-    UI('c64-size-4').setChecked(false);
-    UI('c64-size-fit').setChecked(false);
-    UI('c64-size-fitpixel').setChecked(false);
-
     UI('c64debugger-size-1').setChecked(false);
     UI('c64debugger-size-2').setChecked(false);
     UI('c64debugger-size-3').setChecked(false);
@@ -324,13 +311,11 @@ C64Debugger.prototype = {
     UI('c64debugger-size-fitpixel').setChecked(false);
 
     if(size == 'fit') {
-      UI('c64-size-fit').setChecked(true);
       UI('c64debugger-size-fit').setChecked(true);
       this.c64Fit = true;
       this.c64FitPixel = false;
       this.resizeC64Panel();
     } else if(size == 'fitpixel') {
-      UI('c64-size-fitpixel').setChecked(true);
       UI('c64debugger-size-fitpixel').setChecked(true);
       this.c64FitPixel = true;
       this.c64Fit = false;
@@ -343,7 +328,6 @@ C64Debugger.prototype = {
       this.c64Fit = false;
       this.c64FitPixel = false;
       this.c64Size = size;
-      UI('c64-size-' + this.c64Size).setChecked(true);
       UI('c64debugger-size-' + this.c64Size).setChecked(true);
     }
 
@@ -3403,7 +3387,7 @@ C64Debugger.prototype = {
 
   setShowRaster: function(show) {
     this.showRaster = show;
-    UI('c64-viewraster').setChecked(show);
+    UI('c64debugger-viewraster').setChecked(show);
     $('#c64CompactShowRaster').prop('checked', show);
     if(show) {
       this.drawRasterPosition();

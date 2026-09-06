@@ -24,28 +24,6 @@ var BuildControls = function() {
   this.c64Cfg += '  BSS:      load = MAIN,     type = bss, optional = yes, define = yes;\n';
   this.c64Cfg += '}';
 
-
-  this.nesCfg = '';
-  this.nesCfg += 'MEMORY { \n';
-  this.nesCfg += '  ZP:     start = $00,    size = $0100, type = rw, file = "";\n';
-  this.nesCfg += '  OAM:    start = $0200,  size = $0100, type = rw, file = "";\n';
-  this.nesCfg += '  RAM:    start = $0300,  size = $0500, type = rw, file = "";\n';
-  this.nesCfg += '  HDR:    start = $0000,  size = $0010, type = ro, file = %O, fill = yes, fillval = $00;\n';
-  this.nesCfg += '  PRG:    start = $8000,  size = $8000, type = ro, file = %O, fill = yes, fillval = $00;\n';
-  this.nesCfg += '  CHR:    start = $0000,  size = $2000, type = ro, file = %O, fill = yes, fillval = $00;\n';
-  this.nesCfg += '}\n';
-
-  this.nesCfg += 'SEGMENTS {\n';
-  this.nesCfg += '  ZEROPAGE: load = ZP,  type = zp;\n';
-  this.nesCfg += '  OAM:      load = OAM, type = bss, align = $100;\n';
-  this.nesCfg += '  BSS:      load = RAM, type = bss;\n';
-  this.nesCfg += '  HEADER:   load = HDR, type = ro;\n';
-  this.nesCfg += '  CODE:     load = PRG, type = ro,  start = $8000;\n';
-  this.nesCfg += '  RODATA:   load = PRG, type = ro;\n';
-  this.nesCfg += '  VECTORS:  load = PRG, type = ro,  start = $FFFA;\n';
-  this.nesCfg += '  TILES:    load = CHR, type = ro;\n';
-  this.nesCfg += '}\n';
-
   this.prefix = '';
 
 }
@@ -202,7 +180,6 @@ BuildControls.prototype = {
       html += '  <label class="controlLabel" for="assemblerTarget">Target:</label>';
       html += '  <select name="assemblerTarget" id="assemblerTarget">';
       html += '    <option value="c64" selected="selected">C64</option>';
-      html += '    <option value="nes">NES</option>';
       html += '    <option value="x16">X16</option>';
       html += '  </select>';
       html += '</div>';
@@ -253,7 +230,7 @@ BuildControls.prototype = {
     var config = this.editor.readConfig();
     var target = 'c64';
     var assembler = 'acme';
-    var configFile = 'cfg/nes-asm.cfg';
+    var configFile = 'cfg/c64-asm.cfg';
 
     if(config != null && typeof config.error == 'undefined') {
       if(typeof config.target != 'undefined') {
@@ -319,9 +296,6 @@ BuildControls.prototype = {
     if(type == 'c64') {    
       g_app.doc.createDocRecord(srcFolder + '/cfg', 'c64-asm.cfg', 'cfg', this.c64Cfg);
     } 
-    if(type == 'nes') {
-      g_app.doc.createDocRecord(srcFolder + '/cfg', 'nes-asm.cfg', 'cfg', this.nesCfg);      
-    }
     g_app.projectNavigator.refreshTreeNodeFromPath(srcFolder + '/cfg');
     g_app.projectNavigator.treeRoot.refreshChildren();
 

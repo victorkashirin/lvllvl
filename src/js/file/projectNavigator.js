@@ -84,7 +84,6 @@ var ProjectNavigator = function() {
   this.projectNavigatorPopup = null;
   this.renameDialog = null;
 
-  this.prgHandler = 'c64';
   this.cantDelete = ['/color palettes', '/tile sets', '/screens', '/sprites', '/music', '/scripts', '/build'];
 
 }
@@ -93,12 +92,6 @@ ProjectNavigator.prototype = {
   init: function(editor) {
     this.editor = editor;
     this.currentEditor = g_app.textModeEditor;
-  },
-
-  setPrgHandler: function(handler) {
-    if(handler == 'x16' || handler == 'c64') {
-      this.prgHandler = handler;
-    }
   },
 
   shareProject: function() {
@@ -591,15 +584,15 @@ ProjectNavigator.prototype = {
       }
     }
 
-    var colorPalette = '';
     var colorPaletteId = '';
+    var colorPalettePresetId = '';
     var tileSet = 'petscii';
     var screenMode = 'monochrome';
 
 //      var newDocRecordTileSetId = $('#newDocRecordSpriteTileSet').val();
 //      var colorPaletteId = $('#newDocRecordSpriteColorPalette').val();
     if(colorPaletteId == '') {
-      colorPalette = 'c64_colodore';
+      colorPalettePresetId = 'c64_colodore';
     }
       
       
@@ -615,7 +608,7 @@ ProjectNavigator.prototype = {
       name: name,
       gridWidth: width,
       gridHeight: width,
-      colorPalette: colorPalette,
+      colorPalettePresetId: colorPalettePresetId,
       colorPaletteId: colorPaletteId,
       cellWidth: 24,
       cellHeight: 21,
@@ -1443,20 +1436,10 @@ ProjectNavigator.prototype = {
   
         break;
       case 'prg':
-
-
-          if(this.prgHandler == 'c64') {
-            g_app.setMode('c64');
-            g_app.c64Debugger.showFile(path);
-            this.currentEditor = g_app.c64Debugger;
-          }
-
-          if(this.prgHandler == 'x16') {
-            g_app.setMode('x16');
-            g_app.x16Debugger.showFile(path);
-            this.currentEditor = g_app.x16Debugger;
-          }
-          break;
+        g_app.setMode('c64');
+        g_app.c64Debugger.showFile(path);
+        this.currentEditor = g_app.c64Debugger;
+        break;
       default:
           g_app.setMode('text');
           g_app.textEditor.load(path);

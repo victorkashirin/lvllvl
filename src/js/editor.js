@@ -63,7 +63,6 @@ var Editor = function() {
   this.mainSplitPanel = null;
   this.menuBar = null;
 
-  this.spriteEditor = null;
   this.textModeEditor = null;
   this.music = null;
   this.assemblerEditor = null;
@@ -77,12 +76,7 @@ var Editor = function() {
 
   this.createTemplateLink = null;
 
-//  this.c64 = null;
-
   this.c64Debugger = null;
-  
-  this.nesDebugger = null;
-  this.x16Debugger = null;
   this.dbgFont = null;
 
   this.features = {};
@@ -515,20 +509,12 @@ Editor.prototype = {
       case '2d':
         this.textModeEditor.keyDown(event);
       break;
-      case 'sprite':
-        this.spriteEditor.keyDown(event);
-      break;
       case 'music':
         this.music.keyDown(event);
       break;
       case 'c64':
         this.c64Debugger.keyDown(event);
       break;
-      /*
-      case 'nes':
-        this.nesDebugger.keyDown(event);
-      break;
-      */
       case 'color palette':
         this.colorPaletteEditor.colorPaletteEdit.keyDown(event);
       break;
@@ -550,20 +536,12 @@ Editor.prototype = {
       case '2d':
         this.textModeEditor.keyUp(event);
       break;
-      case 'sprite':
-        this.spriteEditor.keyUp(event);
-      break;
       case 'music':
         this.music.keyUp(event);
       break;
       case 'c64':
         this.c64Debugger.keyUp(event);
       break;
-      /*
-      case 'nes':
-        this.nesDebugger.keyUp(event);
-      break;
-      */
       case 'color palette':
         this.colorPaletteEditor.colorPaletteEdit.keyUp(event);
       break;
@@ -586,9 +564,6 @@ Editor.prototype = {
       case '3d':
       case '2d':
         this.textModeEditor.keyPress(event);
-      break;
-      case 'sprite':
-        this.spriteEditor.keyPress(event);
       break;
       case 'music':
         this.music.keyPress(event);
@@ -815,16 +790,6 @@ Editor.prototype = {
         this.menuBar.showOnly('ui-menu-script');
       break;
 
-      /*
-      case 'sprite':
-        if(this.mainSplitPanel) { 
-          this.mainSplitPanel.setPanelVisible('north', true);
-        }
-
-        UI.setWebGLEnabled(false);
-        this.contentPanel.showOnly('spriteEditor');
-        break;
-        */
       case 'music':
 
         if(this.projectPanel) { 
@@ -876,38 +841,6 @@ Editor.prototype = {
         this.c64Debugger.show();
         break;
 
-        /*
-      case 'nes':
-
-        if(this.projectPanel) { 
-          this.projectPanel.setPanelVisible('north', true);
-        }
-        if(g_app.isMobile()) {
-          $('#mobileMenuUndoRedo').hide();
-        }
-  
-        UI.setWebGLEnabled(false);
-        this.mainPanel.showOnly('projectSplitPanel');
-        this.contentPanel.showOnly('nesdebuggerPanel');
-        this.menuBar.showOnly('ui-menu-nes');
-
-        this.nesDebugger.show();
-        break;
-      case 'x16':
-          if(this.projectPanel) { 
-            this.projectPanel.setPanelVisible('north', true);
-          }
-          if(g_app.isMobile()) {
-            $('#mobileMenuUndoRedo').hide();
-          }
-    
-          UI.setWebGLEnabled(false);
-          this.mainPanel.showOnly('projectSplitPanel');
-          this.contentPanel.showOnly('x16DebuggerPanel');
-          this.x16Debugger.show();
-          break;
-
-          */
       default:
           if(this.projectPanel) { 
             this.projectPanel.setPanelVisible('north', true);
@@ -1092,8 +1025,6 @@ main split panel north is menu
       menu.addItem({ "label": "Save As...", "id": "file-saveas", "shortcut": { "key": 'S',  "cmd": true, "shift": true } });
 
       menu.addItem({ "label": "Download Project...", "id": "file-download", "shortcut": { "key": 'D',  "shift": true, "cmd": true, "shift": true } });
-      //menu.addItem({ "label": "NES", "id": "file-nes" });
-      //menu.addItem({ "label": "X16", "id": "file-x16" });
       //menu.addItem({ "label": "C64", "id": "edit-c64", "shortcut": { "cmd": true, "key": "L"} });
 
       menu.addSeparator({  });
@@ -1225,18 +1156,11 @@ main split panel north is menu
 
 //      menu.addItem({ "label": "ANSI File...", "id": "import-ansi" });
 
-//      menu.addItem({ "label": "Assembly...", "id": "import-assembly" });
 //      menu.addItem({ "label": "PRG...", "id": "import-prg" });
 //      menu.addItem({ "label": "VICE Snapshot...", "id": "import-vice" });
       menu.addItem({ "label": "C64 Formats" + "...", "id": "import-c64formats" });
       menu.addItem({ "label": "C64 Formats" + "...", "id": "import-c64spriteformats" });
       menu.addItem({ "label": "Image" + "...", "id": "import-spriteimage" });
-
-/*
-      menu.addSeparator({ "label": "3d Formats" });
-      menu.addItem({ "label": "OBJ...", "id": "import-obj" });
-      menu.addItem({ "label": "FBX...", "id": "import-fbx" });
-*/
 
       menu = _this.menuBar.addMenu({"label": "Screen", "className": 'ui-menu-tilemode ui-menu-screen' });
       menu.addItem({ "label": "Dimensions" + "...", "id": "file-dimensions" });
@@ -1392,12 +1316,8 @@ main split panel north is menu
 
 
 
-/*
-      menu = _this.menuBar.addMenu({"label": 'Settings'});
-      menu.addItem({ "label": "Audio Options...", "id": "settings-audio" });
-      menu.addItem({ "label": "C64 PRG Code...", "id": "settings-prgcode" });
-      menu.addItem({ "label": "C64 Effects Code...", "id": "settings-c64effects" });
-*/      
+//      menu = _this.menuBar.addMenu({"label": 'Settings'});
+//      menu.addItem({ "label": "C64 PRG Code...", "id": "settings-prgcode" });
 //      menu.addItem({ "label": "Import Shader Code...", "id": "settings-importshader" });
 
       menu = _this.menuBar.addMenu({"label": "Interface", "className": 'ui-menu-tilemode' });
@@ -1422,46 +1342,6 @@ main split panel north is menu
       menu.addItem({ "label": "Export C64 (new)...", "id": "export-c64" });
       menu.addSeparator({  });
       menu.addItem({ "label": "Mobile Mode", "id": "settings-mobilemode" });
-
-      menu = _this.menuBar.addMenu({"label": "C64", "className": 'ui-menu-assembler-old' });
-      menu.addItem({ "label": "Show Raster Position", "id": "c64-viewraster" });
-      menu.addItem({ "label": "Sound Playback", "id": "c64-sound", "checked": true });
-
-      
-      menu.addSeparator({ "label": "Joysticks" });
-//      menu.addItem({ "label": "None", "checked": true, "id": "sticknone" });
-      menu.addItem({ "label": "Port 1", "id": "c64-joystick1" });
-      menu.addItem({ "label": "Port 2", "id": "c64-joystick2" });
-      menu.addItem({ "label": "Swap Joysticks", "id": "c64-joystickswap" });
-      menu.addItem({ "label": "Joystick Settings...", "id": "c64-joysticksettings" });
-      menu.addSeparator({ "label": "1351 Mouse" });
-      menu.addItem({ "label": "Port 1", "id": "c64-mouse1" });
-      menu.addItem({ "label": "Port 2", "id": "c64-mouse2" });
-
-      menu.addSeparator({ "label": "Size" });
-      menu.addItem({ "label": "100%", "id": "c64-size-1" });
-      menu.addItem({ "label": "200%", "id": "c64-size-2" });
-      menu.addItem({ "label": "300%", "id": "c64-size-3" });
-      menu.addItem({ "label": "400%", "id": "c64-size-4" });
-      menu.addItem({ "label": "Fit", "id": "c64-size-fit" });
-      menu.addItem({ "label": "Fit", "id": "c64-size-fitpixel" });
-      menu.addSeparator({  });
-      menu.addItem({ "label": "Load PRG...", "id": "c64-loadprg" });
-      menu.addItem({ "label": "Attach D64...", "id": "c64-attachd64" });
-      
-      menu.addSeparator({ "label": "PRG Start Settings"  });
-      menu.addItem({ "label": "Load/Run", "id": "c64-prgloadrun" });
-      menu.addItem({ "label": "Inject into RAM", "id": "c64-prginject", "checked": true });
-      menu.addItem({ "label": "Random Delay", "id": "c64-randomdelay", "checked": true });
-
-
-      menu.addItem({ "label": "Reset", "id": "c64-reset" });
-
-
-     // menu = _this.menuBar.addMenu({"label": "NES", "className": 'ui-menu-nes' });
-     // menu.addItem({ "label": "Reset Machine", "id": "nesdebugger-reset" });
-      
-
 
       // ------------------------------------------------------------
       menu = _this.menuBar.addMenu({"label": "C64", "className": 'ui-menu-c64 ui-menu-c64-assembler' });
@@ -1587,11 +1467,6 @@ main split panel north is menu
       menu.addItem({ "label": "Export PRG/D64/CRT as a HTML Page...", "id": "c64-export-html-page" });
 //      menu.addItem({ "label": "Download HTML Page", "id": "c64-share-html" });
 
-/*
-      menu = _this.menuBar.addMenu({"label": 'Tools' });
-      menu.addItem({ "label": "Image Effects", "id": "settings-imageeffects" });
-      menu.addItem({ "label": "Show C64 Bytes Free...", "id": "settings-c64bytesfree" });
-*/
       menu = _this.menuBar.addMenu({"label": "Help", "className": 'ui-menu-tilemode' });
 
       menu.addItem({ "label": "Common Actions" + "...", "id": "help-commonactionshortcuts" });
@@ -1665,9 +1540,6 @@ main split panel north is menu
 
 
 
-//    this.projectShare = new ProjectShare();
-//    this.projectShare.init(this.githubClient);
-
     this.textModeEditor = new TextModeEditor();
     this.textModeEditor.init(this.services);
     this.textModeEditor.buildInterface(this.contentPanel);
@@ -1696,10 +1568,6 @@ main split panel north is menu
     this.hexEditor = new HexEditor();
     this.hexEditor.init();
     this.hexEditor.buildInterface(this.contentPanel);
-//    this.spriteEditor = new SpriteEditor();
-//    this.spriteEditor.init();
-//    this.spriteEditor.buildInterface(this.contentPanel);
-
     this.createTemplateLink = new CreateTemplateLink();
     this.createTemplateLink.init();
 
@@ -1721,29 +1589,10 @@ main split panel north is menu
     this.c64Debugger.buildInterface(this.contentPanel);
 
 
-/*
-    this.nesDebugger = new NESDebugger();
-    this.nesDebugger.init();
-    this.nesDebugger.buildInterface(this.contentPanel);
-*/
-
-    /*
-    this.x16Debugger = new X16();
-    this.x16Debugger.init();
-    this.x16Debugger.buildInterface(this.contentPanel);
-
-    */
-
     this.dbgFont = new DbgFont();
     this.dbgFont.init();
 
     this.setFontSize(this.fontSize);
-/*
-    this.c64 = new C64Interface();
-    this.c64.init();
-    this.c64.buildInterface(this.contentPanel);
-*/
-
     this.scripting = new Scripting();
     
     this.scriptingPanel = UI.create("UI.Panel", {"id": "scriptingPanel"});
@@ -1814,13 +1663,6 @@ main split panel north is menu
         this.fileManager.showSaveAsTemplate();
       break;
 
-      case 'file-nes':
-        this.setMode('nes'); 
-      break;
-
-      case 'file-x16':
-        this.setMode('x16');
-      break;
       case 'file-download':
         this.fileManager.showDownload();
       break;
@@ -2122,10 +1964,6 @@ main split panel north is menu
 
       case 'import-image':
         this.openImageImport(undefined, source || 'menu');
-      break;
-
-      case 'import-assembly':
-        this.textModeEditor.importAssembly.start();
       break;
 
       case 'import-c64formats':
@@ -2516,7 +2354,6 @@ main split panel north is menu
         this.showAboutDialog();
       break;
 
-      case 'c64-sound':
       case 'c64debugger-sound':
         c64.sound.toggleAudio();
         break;
@@ -2531,7 +2368,6 @@ main split panel north is menu
       case 'c64-export-html-page':
         this.c64Debugger.exportAsHTMLPage();
         break;
-      case 'c64-loadprg':
       case 'c64debugger-loadprg':
         if(this.mode == 'assembler') {
           if(this.assemblerEditor.debuggerCompact) {  
@@ -2543,7 +2379,6 @@ main split panel north is menu
           this.c64Debugger.choosePRG();
         }
         break;
-      case 'c64-attachd64':
       case 'c64debugger-attachd64':
         if(this.mode == 'assembler') {
           if(this.assemblerEditor.debuggerCompact) {  
@@ -2576,8 +2411,6 @@ main split panel north is menu
         }
         break;
       case 'c64debugger-prgloadrun':
-      case 'c64-prgloadrun':
-        
         if(this.mode == 'c64') {          
           this.c64Debugger.setPRGLoadMethod('loadrun');
         }
@@ -2589,7 +2422,6 @@ main split panel north is menu
         }
         break;
       case 'c64debugger-prginject':
-      case 'c64-prginject':
         if(this.mode == 'c64') {
           this.c64Debugger.setPRGLoadMethod('inject');
         }
@@ -2606,7 +2438,6 @@ main split panel north is menu
           this.c64Debugger.toggleRandomDelay();
         }
         break;
-      case 'c64-reset':
       case 'c64debugger-reset':
         if(this.mode == 'assembler') {
           if(this.assemblerEditor.debuggerCompact) {  
@@ -2630,7 +2461,6 @@ main split panel north is menu
         }
         break;
       
-      case 'c64-viewraster':
       case 'c64debugger-viewraster':
         if(this.mode == 'assembler') {
           if(this.assemblerEditor.debuggerCompact) {  
@@ -2650,44 +2480,38 @@ main split panel north is menu
           this.textModeEditor.setGridVisible(!this.textModeEditor.getGridVisible());
         }
         break;
-      case 'c64-joystick1':
-      case 'c64-joystick2':
       case 'c64debugger-joystick1':
       case 'c64debugger-joystick2':
         var port = 0;
         var enabled = true;
 
-        if(menuItem == 'c64-joystick1' || menuItem == 'c64debugger-joystick1') {
-          enabled = UI('c64-joystick1').getChecked();
+        if(menuItem == 'c64debugger-joystick1') {
+          enabled = UI('c64debugger-joystick1').getChecked();
           port = 1;
-        } else if(menuItem == 'c64-joystick2' || menuItem == 'c64debugger-joystick2') {
-          enabled = UI('c64-joystick2').getChecked();
+        } else if(menuItem == 'c64debugger-joystick2') {
+          enabled = UI('c64debugger-joystick2').getChecked();
           port = 2;
         }
 
         c64.joystick.setPortEnabled(port, !enabled);
         break;
-      case 'c64-joysticksettings':
       case 'c64debugger-joysticksettings':
         c64.joystick.showSettingsDialog();
         break;
-      case 'c64-joystickswap':
       case 'c64debugger-joystickswap':
         c64.joystick.swap();
         break;
 
-      case 'c64-mouse1':
-      case 'c64-mouse2':
       case 'c64debugger-mouse1':
       case 'c64debugger-mouse2':
         var port = 0;
         var enabled = true;
 
-        if(menuItem == 'c64-mouse1' || menuItem == 'c64debugger-mouse1') {
-          enabled = UI('c64-mouse1').getChecked();
+        if(menuItem == 'c64debugger-mouse1') {
+          enabled = UI('c64debugger-mouse1').getChecked();
           port = 1;
-        } else if(menuItem == 'c64-mouse2' || menuItem == 'c64debugger-mouse2') {
-          enabled = UI('c64-mouse2').getChecked();
+        } else if(menuItem == 'c64debugger-mouse2') {
+          enabled = UI('c64debugger-mouse2').getChecked();
           port = 2;
         }
 
@@ -2695,22 +2519,18 @@ main split panel north is menu
 
         break;
 
-      case 'c64-size-1':
-      case 'c64-size-2':
-      case 'c64-size-3':
-      case 'c64-size-4':
       case 'c64debugger-size-1':
       case 'c64debugger-size-2':
       case 'c64debugger-size-3':
       case 'c64debugger-size-4':
             var size = 1;
-        if(menuItem == 'c64-size-1' || menuItem == 'c64debugger-size-1') {
+        if(menuItem == 'c64debugger-size-1') {
           size = 1;
-        } else if(menuItem == 'c64-size-2' || menuItem == 'c64debugger-size-2') {
+        } else if(menuItem == 'c64debugger-size-2') {
           size = 2;
-        } else if(menuItem == 'c64-size-3' || menuItem == 'c64debugger-size-3') {
+        } else if(menuItem == 'c64debugger-size-3') {
           size = 3;
-        } else if(menuItem == 'c64-size-4' || menuItem == 'c64debugger-size-4') {
+        } else if(menuItem == 'c64debugger-size-4') {
           size = 4;
         }
 
@@ -2758,7 +2578,6 @@ main split panel north is menu
         }
         break;
 
-      case 'c64-size-fit':
       case 'c64debugger-size-fit':
         if(this.mode == 'assembler') {
           if(this.assemblerEditor.debuggerCompact) {  
@@ -2771,7 +2590,6 @@ main split panel north is menu
         }
         break;
       case 'c64debugger-size-fitpixel':
-      case 'c64-size-fitpixel':
         if(this.mode == 'assembler') {
           if(this.assemblerEditor.debuggerCompact) {  
             this.assemblerEditor.debuggerCompact.setSize('fitpixel');
@@ -2857,9 +2675,6 @@ main split panel north is menu
     if(this.mode == '3d' || this.mode == '2d') {
       this.textModeEditor.history.undo();
     } 
-    if(this.mode == 'sprite') {
-      this.spriteEditor.history.undo();
-    }
     if(this.mode == 'music') {
       this.music.history.undo();
     }
@@ -2886,9 +2701,6 @@ main split panel north is menu
     if(this.mode == '3d' || this.mode == '2d') {
       this.textModeEditor.history.redo();
     } 
-    if(this.mode == 'sprite') {
-      this.spriteEditor.history.undo();
-    }
     if(this.mode == 'music') {
       this.music.history.redo();
     }
@@ -3196,10 +3008,6 @@ main split panel north is menu
             _this.projectNavigator.refresh();
             _this.setMode('c64');
             break;          
-          case 'nes':
-            _this.projectNavigator.refresh();
-            _this.setMode('nes');
-            break;
         }
 
         // reenable draw
@@ -3251,15 +3059,6 @@ main split panel north is menu
     if(this.mode == 'c64') {
       this.c64Debugger.update();
     }
-    /*
-    if(this.mode == 'x16') {
-      this.x16Debugger.update();
-    }
-
-    if(this.mode == 'nes') {
-      this.nesDebugger.update();
-    }
-*/
     // api callbacks
     if(TextMode.update) {
       TextMode.update();

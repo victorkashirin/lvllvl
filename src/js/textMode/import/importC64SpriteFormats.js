@@ -552,7 +552,6 @@ ImportC64SpriteFormats.prototype = {
     if(port === 0) {
       html += 'None';
     } else {
-//      UI('c64-joysticknone').setChecked(false);
       if(port == 1) {
         html += 'Port 1';
 //        $('#c64CompactJoystickPort1').prop('checked', true);

@@ -35,7 +35,7 @@ does not attempt to type-check or convert the classic tree.
 ## Classic graph policy
 
 `scripts/build-graph.mjs` remains the source of truth for classic script order.
-The current `js/main.js` graph has 306 inputs. Its fixture is a non-growth and
+The current `js/main.js` graph has 304 inputs. Its fixture is a non-growth and
 ordering baseline: new entries require an explicit, reviewed, expiring exception.
 Removing entries is allowed when a real slice no longer needs them.
 

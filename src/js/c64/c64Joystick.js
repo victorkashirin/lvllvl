@@ -228,8 +228,7 @@ C64Joystick.prototype = {
       c64_setMousePortEnabled(0, enabled ? 1 : 0);
 
       if(typeof UI != 'undefined') {
-        if(UI.exists('c64-mouse1')) {
-          UI('c64-mouse1').setChecked(enabled);
+        if(UI.exists('c64debugger-mouse1')) {
           UI('c64debugger-mouse1').setChecked(enabled);
         }
         g_app.setPref('c64mouseportenabled-0', this.mousePortEnabled[0]);
@@ -241,8 +240,7 @@ C64Joystick.prototype = {
       c64_setMousePortEnabled(1, enabled ? 1 : 0);
 
       if(typeof UI != 'undefined') {
-        if(UI.exists('c64-mouse2')) {
-          UI('c64-mouse2').setChecked(enabled);  
+        if(UI.exists('c64debugger-mouse2')) {
           UI('c64debugger-mouse2').setChecked(enabled);
         }
         g_app.setPref('c64mouseportenabled-1', this.mousePortEnabled[1]);
@@ -263,8 +261,7 @@ C64Joystick.prototype = {
       this.portEnabled[0] = enabled;
 
       if(typeof UI != 'undefined') {
-        if(UI.exists('c64-joystick1')) {
-          UI('c64-joystick1').setChecked(enabled);
+        if(UI.exists('c64debugger-joystick1')) {
           UI('c64debugger-joystick1').setChecked(enabled);
         }
         g_app.setPref('c64joystickportenabled-0', this.portEnabled[0]);
@@ -275,8 +272,7 @@ C64Joystick.prototype = {
       this.portEnabled[1] = enabled;
 
       if(typeof UI != 'undefined') {
-        if(UI.exists('c64-joystick2')) {
-          UI('c64-joystick2').setChecked(enabled);  
+        if(UI.exists('c64debugger-joystick2')) {
           UI('c64debugger-joystick2').setChecked(enabled);
         }
         g_app.setPref('c64joystickportenabled-1', this.portEnabled[1]);

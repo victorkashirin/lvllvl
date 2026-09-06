@@ -1,0 +1,135 @@
+{
+  "children": [
+    {
+      "id": "legacy-settings",
+      "name": "settings",
+      "type": "hiddenfile",
+      "data": {
+        "currentFGColor": 1,
+        "currentBGColor": -1
+      },
+      "children": []
+    },
+    {
+      "id": "legacy-palettes",
+      "name": "color palettes",
+      "type": "folder",
+      "data": {},
+      "children": [
+        {
+          "id": "legacy-palette",
+          "name": "Legacy Palette",
+          "type": "color palette",
+          "data": {
+            "colors": [4278190080, 4294967295],
+            "colorsAcross": 2,
+            "colorsDown": 1
+          },
+          "children": []
+        }
+      ]
+    },
+    {
+      "id": "legacy-tiles-folder",
+      "name": "tile sets",
+      "type": "folder",
+      "data": {},
+      "children": [
+        {
+          "id": "legacy-tiles",
+          "name": "Legacy Tiles",
+          "type": "tile set",
+          "data": {
+            "width": 8,
+            "height": 8,
+            "tileData": [
+              {
+                "data": [
+                  [
+                    0, 0, 0, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0, 0, 0, 0
+                  ]
+                ],
+                "props": {
+                  "animated": false,
+                  "ticksPerFrame": 1,
+                  "frameCount": 1,
+                  "frame": 0,
+                  "lastTick": 0
+                }
+              }
+            ],
+            "sortMethods": []
+          },
+          "children": []
+        }
+      ]
+    },
+    {
+      "id": "legacy-screens",
+      "name": "screens",
+      "type": "folder",
+      "data": {},
+      "children": [
+        {
+          "id": "legacy-screen",
+          "name": "Legacy Screen",
+          "type": "textmode",
+          "screenMode": "monochrome",
+          "colorPerMode": "cell",
+          "data": {
+            "width": 1,
+            "height": 1,
+            "layers": [
+              {
+                "type": "background",
+                "label": "Background",
+                "visible": true,
+                "opacity": 1,
+                "compositeOperation": "source-over"
+              },
+              {
+                "type": "grid",
+                "label": "Layer 0",
+                "visible": true,
+                "opacity": 1,
+                "compositeOperation": "source-over",
+                "gridZ": 0
+              }
+            ],
+            "frames": [
+              {
+                "duration": 12,
+                "bgColor": 0,
+                "borderColor": 0,
+                "c64Multi1Color": 0,
+                "c64Multi2Color": 1,
+                "data": [
+                  [
+                    [
+                      { "c": 0, "fc": 1, "bc": -1 }
+                    ]
+                  ]
+                ]
+              }
+            ]
+          },
+          "children": []
+        }
+      ]
+    },
+    { "id": "legacy-sprites", "name": "sprites", "type": "folder", "data": {}, "children": [] },
+    { "id": "legacy-music", "name": "music", "type": "folder", "data": {}, "children": [] },
+    { "id": "legacy-asm", "name": "asm", "type": "folder", "data": {}, "children": [] },
+    { "id": "legacy-scripts", "name": "scripts", "type": "folder", "data": {}, "children": [] },
+    { "id": "legacy-build", "name": "build", "type": "folder", "data": {}, "children": [] },
+    { "id": "legacy-scenes", "name": "3d scenes", "type": "folder", "data": {}, "children": [] },
+    { "id": "legacy-config", "name": "config", "type": "folder", "data": {}, "children": [] }
+  ]
+}

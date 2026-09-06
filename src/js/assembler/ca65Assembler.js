@@ -238,7 +238,7 @@ CA65Assembler.prototype = {
             var filename = file.name;
             var content = file.data;
 
-            if(filename == 'nes.cfg' || filename == 'c64-asm.cfg') {
+            if(filename == 'c64-asm.cfg') {
               // only add the config file
               console.log('link adding: ' + filename);
               options.FS.writeFile(filename, content, { encoding: 'utf8' });
@@ -254,8 +254,6 @@ CA65Assembler.prototype = {
 
       }
     ];    
-//        'arguments': ['-o', 'example.nes', '-C', 'example.cfg', 'example.o'],
-
 //    var configFilename = 'c64-asm.cfg';
 //    var configFile = config.cc65ConfigFile;
 
@@ -263,13 +261,8 @@ CA65Assembler.prototype = {
     options.arguments = [];
     options.arguments.push('-o');
 
-    if(config.target == 'nes') {
-      options.arguments.push('output.nes');    
-    } else {
-      options.arguments.push('output.prg');    
-    }
+    options.arguments.push('output.prg');
 //    options.arguments.push('-C');
-//    options.arguments.push('nes.cfg');
 
     if(configFilename !== false) {
       options.arguments.push('-C');
@@ -304,13 +297,7 @@ CA65Assembler.prototype = {
 //          $('#buildOutputPanel').html(_this.stdout);
           try {
 
-            var outputFile = 'output.prg';
-
-            if(config.target == 'nes') {
-              outputFile = 'output.nes';
-            }
-
-            _this.linkerOutput = ld65['FS'].readFile(outputFile, { encoding: 'binary' });    
+            _this.linkerOutput = ld65['FS'].readFile('output.prg', { encoding: 'binary' });
             //download(_this.linkerOutput, 'test.prg', "application/prg");   
 
             // success!!!

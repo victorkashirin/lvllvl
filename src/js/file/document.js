@@ -24,36 +24,11 @@ var Document = function(dependencies) {
     'nes'
   ];
 
-//  this.nesConfig = '';
-
   this.modified = {};
   this.modifiedRevision = 0;
 }
 
 Document.prototype = {
-  /*
-  initNESConfig: function() {
-    this.nesConfig = 'MEMORY { \n';
-    this.nesConfig += '  ZP:     start = $00,    size = $0100, type = rw, file = "";\n';
-    this.nesConfig += '  OAM:    start = $0200,  size = $0100, type = rw, file = "";\n';
-    this.nesConfig += '  RAM:    start = $0300,  size = $0500, type = rw, file = "";\n';
-    this.nesConfig += '  HDR:    start = $0000,  size = $0010, type = ro, file = %O, fill = yes, fillval = $00;\n';
-    this.nesConfig += '  PRG:    start = $8000,  size = $8000, type = ro, file = %O, fill = yes, fillval = $00;\n';
-    this.nesConfig += '  CHR:    start = $0000,  size = $2000, type = ro, file = %O, fill = yes, fillval = $00;\n';
-    this.nesConfig += '}\n\n';
-
-    this.nesConfig += 'SEGMENTS {\n';
-    this.nesConfig += '  ZEROPAGE: load = ZP,  type = zp;\n';
-    this.nesConfig += '  OAM:      load = OAM, type = bss, align = $100;\n';
-    this.nesConfig += '  BSS:      load = RAM, type = bss;\n';
-    this.nesConfig += '  HEADER:   load = HDR, type = ro;\n';
-    this.nesConfig += '  CODE:     load = PRG, type = ro,  start = $8000;\n';
-    this.nesConfig += '  RODATA:   load = PRG, type = ro;\n';
-    this.nesConfig += '  VECTORS:  load = PRG, type = ro,  start = $FFFA;\n';
-    this.nesConfig += '  TILES:    load = CHR, type = ro;\n';
-    this.nesConfig += '}\n';
-  },
-*/
 /*
   initData: function() {
     alert('is this used???');
@@ -61,8 +36,6 @@ Document.prototype = {
     this.data = {
 
     };
-
-    this.initNESConfig();
 
     var content = '';
 
@@ -99,11 +72,6 @@ Document.prototype = {
               type: "c64asm",
               data: content
             }, 
-            {
-              name: "nes.cfg",
-              type: "c64asm",
-              data: this.nesConfig
-            },
             {
               name: "stdlib.asm",
               type: "c64asm",

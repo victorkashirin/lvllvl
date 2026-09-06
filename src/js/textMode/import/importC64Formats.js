@@ -16,7 +16,6 @@ var ImportC64Formats = function() {
 
   this.visible = false;
 
-//  this.c64 = null;
   this.viceSnapshotReader = null;
   this.importC = null;
   this.importSeq = null;
@@ -753,15 +752,6 @@ ImportC64Formats.prototype = {
     this.canvas.height = 272;    
     this.context = this.canvas.getContext('2d');
 
-    /*
-    if(this.c64 == null) {
-//      this.c64 = new C64JS();//new C64Interface();
-      this.canvas.width = 384;
-      this.canvas.height = 272;    
-//      this.c64.init({ canvas: this.canvas });
-
-    }
-    */
     $('.importC64Settings').hide();
     $('#importC64PRGControls').show();
     $('#importC64FormatsFrames').hide();
@@ -864,14 +854,6 @@ ImportC64Formats.prototype = {
 
   loadD64: function(file) {
 
-    /*
-    if(this.c64 == null) {
-//      this.c64 = new C64JS();//new C64Interface();
-//      this.canvas.width = 384;
-//      this.canvas.height = 272;    
-//      this.c64.init({ canvas: this.canvas });
-    }
-    */
     $('.importC64Settings').hide();
     $('#importC64PRGControls').show();
     $('#importC64FormatsFrames').hide();
@@ -933,7 +915,6 @@ ImportC64Formats.prototype = {
     if(port === 0) {
       html += 'None';
     } else {
-//      UI('c64-joysticknone').setChecked(false);
       if(port == 1) {
         html += 'Port 1';
 //        $('#c64CompactJoystickPort1').prop('checked', true);

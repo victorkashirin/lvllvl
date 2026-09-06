@@ -388,14 +388,6 @@ FileManager.prototype = {
         this.loadCRTFile(file);
         document.getElementById('loadDataForm').reset();  
         break;
-      case 'nes':
-        fileReader.onload = function(e) {
-          var byteArray = new Uint8Array(e.target.result);
-          _this.loadNESFile(byteArray);
-          document.getElementById('loadDataForm').reset();  
-        }
-        fileReader.readAsArrayBuffer(file);
-        break;
       case 'bas':
         this.loadBasFile(file);
         document.getElementById('loadDataForm').reset();  
@@ -445,18 +437,6 @@ FileManager.prototype = {
       });      
     }
   },
-  loadNESFile: function(byteArray) {
-    g_app.doc = g_app.createDocument();
-
-    var _this = this;
-    g_app.newProject({}, function() {
-
-      g_app.projectNavigator.refreshTree();
-      g_app.setMode('nes');
-      g_app.nesDebugger.loadROM(byteArray);
-    });
-  },
-
   loadC64Snapshot: function(file) {
 //    g_app.setMode('c64');
 
