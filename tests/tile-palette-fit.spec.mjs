@@ -189,3 +189,226 @@ test("tile palettes fit their panels and retain a precise manual scale", async (
   expect(wideFit.scale).toBeGreaterThan(10);
   expect(wideFit.contentWidth).toBeLessThanOrEqual(wideFit.viewWidth);
 });
+
+test("a changed bitmap glyph reuses palette slots and uploads only its rectangles", async ({ page }) => {
+  await openDefaultProject(page);
+
+  const result = await page.evaluate(() => {
+    const editor = g_app.textModeEditor;
+    const tileSet = editor.tileSetManager.getCurrentTileSet();
+    const display = editor.tools.drawTools.tilePalette.tilePaletteDisplay;
+    display.drawTilePalette();
+
+    const layout = display.tileLocations;
+    const expectedSlots = display.tileLocations[42].length;
+    const dimensions = display.getScaledTileDimensions(display.getScale());
+    const uploads = [];
+    let imageDataReads = 0;
+    let layoutWrites = 0;
+    const originalPutImageData = display.tileContext.putImageData;
+    const originalGetImageData = display.tileContext.getImageData;
+    const originalGridMapAdd = display.gridMapAdd;
+    display.tileContext.putImageData = function (...args) {
+      uploads.push(args.slice(3));
+      return originalPutImageData.apply(this, args);
+    };
+    display.tileContext.getImageData = function (...args) {
+      imageDataReads += 1;
+      return originalGetImageData.apply(this, args);
+    };
+    display.gridMapAdd = function (...args) {
+      layoutWrites += 1;
+      return originalGridMapAdd.apply(this, args);
+    };
+
+    const changed = tileSet.setPixel(42, 0, 0, !tileSet.getPixel(42, 0, 0), false);
+    tileSet.updateCharacters([42, 42], true);
+    const reusedLayout = display.tileLocations === layout;
+
+    display.tileContext.putImageData = originalPutImageData;
+    display.tileContext.getImageData = originalGetImageData;
+    display.gridMapAdd = originalGridMapAdd;
+    const incremental = originalGetImageData.call(
+      display.tileContext,
+      0,
+      0,
+      display.tileCanvas.width,
+      display.tileCanvas.height,
+    );
+    display.drawTilePalette();
+    const fresh = originalGetImageData.call(
+      display.tileContext,
+      0,
+      0,
+      display.tileCanvas.width,
+      display.tileCanvas.height,
+    );
+    let pixelsMatch = incremental.data.length === fresh.data.length;
+    for (let index = 0; pixelsMatch && index < incremental.data.length; index += 1) {
+      pixelsMatch = incremental.data[index] === fresh.data[index];
+    }
+
+    return {
+      changed,
+      dimensions,
+      expectedSlots,
+      imageDataReads,
+      layoutWrites,
+      pixelsMatch,
+      reusedLayout,
+      uploads,
+    };
+  });
+
+  expect(result.changed).toBe(true);
+  expect(result.imageDataReads).toBe(0);
+  expect(result.layoutWrites).toBe(0);
+  expect(result.reusedLayout).toBe(true);
+  expect(result.uploads).toHaveLength(result.expectedSlots);
+  for (const upload of result.uploads) {
+    expect(upload).toHaveLength(4);
+    expect(upload[2]).toBe(result.dimensions.width);
+    expect(upload[3]).toBe(result.dimensions.height);
+  }
+  expect(result.pixelsMatch).toBe(true);
+});
+
+test("a changed vector glyph cannot leave pixels outside its palette slot", async ({ page }) => {
+  await openDefaultProject(page);
+
+  const result = await page.evaluate(() => {
+    const editor = g_app.textModeEditor;
+    const tileSet = editor.tileSetManager.getCurrentTileSet();
+    const display = editor.tools.drawTools.tilePalette.tilePaletteDisplay;
+    const originalGetFontAscent = tileSet.getFontAscent;
+    const originalGetFontScale = tileSet.getFontScale;
+    const originalGetGlyphPath = tileSet.getGlyphPath;
+    const originalGetType = tileSet.getType;
+    let drawOverhang = true;
+
+    tileSet.getType = () => "vector";
+    tileSet.getFontAscent = () => 0;
+    tileSet.getFontScale = () => 1 / display.getScaledTileDimensions(display.getScale()).width;
+    tileSet.getGlyphPath = (character) => {
+      if (character !== 42 || !drawOverhang) return null;
+      const dimensions = display.getScaledTileDimensions(display.getScale());
+      const path = new Path2D();
+      path.rect(-4, -dimensions.height - 4, dimensions.width + 8, dimensions.height + 8);
+      return path;
+    };
+
+    try {
+      display.drawTilePalette();
+      drawOverhang = false;
+      display.drawTilePalette({ tiles: [42] });
+      const incremental = display.tileContext.getImageData(
+        0,
+        0,
+        display.tileCanvas.width,
+        display.tileCanvas.height,
+      );
+
+      display.drawTilePalette();
+      const fresh = display.tileContext.getImageData(
+        0,
+        0,
+        display.tileCanvas.width,
+        display.tileCanvas.height,
+      );
+      if (incremental.data.length !== fresh.data.length) {
+        return { incrementalLength: incremental.data.length, freshLength: fresh.data.length };
+      }
+      let differentPixels = 0;
+      let firstDifference = -1;
+      let minX = Infinity;
+      let minY = Infinity;
+      let maxX = -1;
+      let maxY = -1;
+      for (let index = 0; index < incremental.data.length; index += 1) {
+        if (incremental.data[index] !== fresh.data[index]) {
+          differentPixels += 1;
+          if (firstDifference === -1) firstDifference = index;
+          const pixel = Math.floor(index / 4);
+          const x = pixel % incremental.width;
+          const y = Math.floor(pixel / incremental.width);
+          minX = Math.min(minX, x);
+          minY = Math.min(minY, y);
+          maxX = Math.max(maxX, x);
+          maxY = Math.max(maxY, y);
+        }
+      }
+      return {
+        bounds: { maxX, maxY, minX, minY },
+        canvas: { height: incremental.height, width: incremental.width },
+        differentPixels,
+        firstDifference,
+        location: display.tileLocations[42],
+        values: firstDifference === -1 ? null : {
+          fresh: Array.from(fresh.data.slice(firstDifference - firstDifference % 4, firstDifference - firstDifference % 4 + 4)),
+          incremental: Array.from(incremental.data.slice(firstDifference - firstDifference % 4, firstDifference - firstDifference % 4 + 4)),
+        },
+      };
+    } finally {
+      tileSet.getFontAscent = originalGetFontAscent;
+      tileSet.getFontScale = originalGetFontScale;
+      tileSet.getGlyphPath = originalGetGlyphPath;
+      tileSet.getType = originalGetType;
+      display.drawTilePalette();
+    }
+  });
+
+  expect(result.differentPixels).toBe(0);
+});
+
+test("a hidden palette defers state-change redraws until reopened", async ({ page }) => {
+  await openDefaultProject(page);
+
+  const result = await page.evaluate(() => {
+    const editor = g_app.textModeEditor;
+    const palette = editor.tools.drawTools.tilePalette;
+    const display = palette.tilePaletteDisplay;
+    const calls = [];
+    const consumedPendingRequests = [];
+    const originalDraw = display.draw;
+    const originalMergePending = palette.mergePendingTilePaletteRedraw;
+    display.draw = function (args) {
+      calls.push(args);
+      return originalDraw.call(this, args);
+    };
+    palette.mergePendingTilePaletteRedraw = function (args) {
+      const hadPending = this.pendingTilePaletteRedraw || this.pendingTilePaletteTiles !== null;
+      const merged = originalMergePending.call(this, args);
+      if (hadPending) consumedPendingRequests.push(merged);
+      return merged;
+    };
+
+    try {
+      editor.setTilePalettePanelVisible("bottom", false);
+      calls.length = 0;
+      palette.setCharPaletteMapType(palette.getTilePaletteMapType());
+      const hiddenCalls = calls.length;
+      const pendingFullRedraw = palette.pendingTilePaletteRedraw;
+
+      editor.setTilePalettePanelVisible("bottom", true);
+      return {
+        consumedPendingRequests,
+        hiddenCalls,
+        pendingFullRedraw,
+        queueCleared:
+          palette.pendingTilePaletteRedraw === false &&
+          palette.pendingTilePaletteTiles === null,
+      };
+    } finally {
+      display.draw = originalDraw;
+      palette.mergePendingTilePaletteRedraw = originalMergePending;
+      editor.setTilePalettePanelVisible("bottom", true);
+    }
+  });
+
+  expect(result.hiddenCalls).toBe(0);
+  expect(result.pendingFullRedraw).toBe(true);
+  expect(result.consumedPendingRequests).toHaveLength(1);
+  expect(result.consumedPendingRequests[0].redrawTiles).toBe(true);
+  expect(result.consumedPendingRequests[0].tiles).toBeUndefined();
+  expect(result.queueCleared).toBe(true);
+});

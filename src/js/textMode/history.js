@@ -193,8 +193,12 @@ History.prototype = {
         }
 
         if(changedCharacters.length > 0) {
-          for(var i = 0; i < changedCharacters.length; i++) {
-            tileSet.updateCharacter(changedCharacters[i]);
+          if(tileSet.updateCharacters) {
+            tileSet.updateCharacters(changedCharacters);
+          } else {
+            for(var i = 0; i < changedCharacters.length; i++) {
+              tileSet.updateCharacter(changedCharacters[i]);
+            }
           }
           this.editor.tileSetManager.tileSetUpdated();
 
@@ -400,8 +404,12 @@ History.prototype = {
       }
 
       if(changedCharacters.length > 0) {
-        for(var i = 0; i < changedCharacters.length; i++) {
-          tileSet.updateCharacter(changedCharacters[i]);
+        if(tileSet.updateCharacters) {
+          tileSet.updateCharacters(changedCharacters);
+        } else {
+          for(var i = 0; i < changedCharacters.length; i++) {
+            tileSet.updateCharacter(changedCharacters[i]);
+          }
         }
         this.editor.tileSetManager.tileSetUpdated();
 

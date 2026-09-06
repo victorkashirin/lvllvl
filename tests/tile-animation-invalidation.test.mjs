@@ -447,6 +447,34 @@ test("batched setPixel mutations do not advance the global render revision", () 
     "selective consumers still receive a per-tile dependency revision");
 });
 
+test("tile publication deduplicates a multi-glyph batch before palette work", () => {
+  const tileSet = new sandbox.TileSet();
+  tileSet.characterGeometries = [];
+  const paletteCalls = [];
+  const invalidations = [];
+  tileSet.editor = {
+    tools: { drawTools: { tilePalette: {
+      drawTilePalette: (args) => paletteCalls.push([...args.tiles]),
+    } } },
+    sideTilePalette: {
+      drawTilePalette: (args) => paletteCalls.push([...args.tiles]),
+    },
+    graphic: {
+      invalidateTiles(tiles) {
+        invalidations.push([...tiles]);
+        return false;
+      },
+    },
+  };
+
+  tileSet.updateCharacters([1, 2, 1, 2], true);
+
+  assert.deepEqual(paletteCalls, [[1, 2], [1, 2]]);
+  assert.deepEqual(invalidations, [[1, 2]]);
+  assert.equal(tileSet.tileRenderRevisions[1], 1);
+  assert.equal(tileSet.tileRenderRevisions[2], 1);
+});
+
 test("selective tile dependency revisions change only layers that use the tile", () => {
   const f = fixture();
   const beforeA = f.layers.a.getFrameRenderState(0, true);

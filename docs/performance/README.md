@@ -427,10 +427,30 @@ fractional-scale grid-contrast tests.
 
 ### R7 — P2: a one-tile palette update scans and uploads whole palettes
 
-**Location:** [tileSet.js:3063–3090](../../src/js/textMode/tileSet/tileSet.js#L3063-L3090);
-[tilePaletteDisplay.js:955–960](../../src/js/textMode/tileSet/tilePaletteDisplay.js#L955-L960),
-[1153–1250](../../src/js/textMode/tileSet/tilePaletteDisplay.js#L1153-L1250),
-[1316–1344](../../src/js/textMode/tileSet/tilePaletteDisplay.js#L1316-L1344).
+**Status: fixed.** Tile updates are deduplicated with sets and animation,
+multi-glyph editing, selection transforms, and history replay publish one palette
+batch. Each palette retains its tile-to-slot layout until dimensions, scale,
+page, map, or stacking changes. Selective bitmap updates jump directly to the
+affected slots in the retained CPU buffer and upload only those dirty rectangles;
+vector palettes clip, clear, and repaint only the same self-contained slots. C64
+ECM redraws the four bounded background aliases that share a glyph. All desktop
+palette redraw entry points pass through the visibility boundary, so hidden
+palettes coalesce pending tile IDs without rendering and flush them when shown.
+
+Source regression tests verify that warm bitmap updates perform no layout scan or
+new readback and issue tile-sized dirty uploads, vector updates visit one changed
+glyph, duplicate IDs remain one batch, and hidden palettes merge deferred work.
+Chromium regressions compare incrementally updated bitmap and overhanging vector
+glyph pixels with forced full redraws while asserting that bitmap updates perform
+no slot-map writes or canvas readbacks. A real panel hide/reopen cycle verifies
+that map/layout state changes remain draw-free while hidden and consume one
+deferred full-redraw request when shown. The observations below describe the
+original bug.
+
+**Location:** [tileSet.js:3084–3142](../../src/js/textMode/tileSet/tileSet.js#L3084-L3142);
+[tilePaletteDisplay.js:895–1492](../../src/js/textMode/tileSet/tilePaletteDisplay.js#L895-L1492);
+[tilePalette.js:847–961](../../src/js/textMode/tools/tilePalette.js#L847-L961);
+[textModeEditorLayout.js:835–863](../../src/js/textMode/textModeEditorLayout.js#L835-L863).
 
 `updateCharacter()` redraws both palettes for each changed tile. Passing
 `tiles: [character]` avoids most bitmap glyph rasterizations, but the display still

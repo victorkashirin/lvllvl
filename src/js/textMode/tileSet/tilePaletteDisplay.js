@@ -63,6 +63,7 @@ var TilePaletteDisplay = function() {
   this.blockStacking = 'horizontal';
 
   this.tileLocations = [];
+  this.tilePaletteLayoutState = false;
 
   this.resizeCanvas = true;
 
@@ -255,7 +256,7 @@ TilePaletteDisplay.prototype = {
     return this.charPaletteMapType;
   },
 
-  setCharPaletteMap: function(charPaletteMap, paletteMapName) {
+  setCharPaletteMap: function(charPaletteMap, paletteMapName, redraw) {
     if(typeof paletteMapName != 'undefined') {
       this.charPaletteMapType = paletteMapName;
     }
@@ -268,11 +269,13 @@ TilePaletteDisplay.prototype = {
       }
     }
 
-    this.draw({ redrawTiles: true });
+    if(redraw !== false) {
+      this.draw({ redrawTiles: true });
+    }
 
   },
 
-  setCharPaletteMapType: function(type) {
+  setCharPaletteMapType: function(type, redraw) {
     
     if(type == 'similar') {
       type = 'petscii';      
@@ -343,7 +346,9 @@ TilePaletteDisplay.prototype = {
       /*,[160,160,160,160,234,224,116,67,32,192,32,221,32,32,32,32,32,32,32]
       */];
 
-      this.draw({ redrawTiles: true });
+      if(redraw !== false) {
+        this.draw({ redrawTiles: true });
+      }
       return;
     }
 
@@ -366,7 +371,9 @@ TilePaletteDisplay.prototype = {
           this.charPaletteMap[j + 8][i] = this.charPaletteMap[j][i] + 128;
         }
       }
-      this.draw({ redrawTiles: true });
+      if(redraw !== false) {
+        this.draw({ redrawTiles: true });
+      }
       return;
 
     } 
@@ -378,7 +385,9 @@ TilePaletteDisplay.prototype = {
           this.charPaletteMap[j + 8][i] = (i + 16) + j * 32;
         }
       }
-      this.draw({ redrawTiles: true });
+      if(redraw !== false) {
+        this.draw({ redrawTiles: true });
+      }
       return;
     } 
 
@@ -393,7 +402,9 @@ TilePaletteDisplay.prototype = {
         }
       }
 
-      this.draw({ redrawTiles: true });
+      if(redraw !== false) {
+        this.draw({ redrawTiles: true });
+      }
       return;      
     }
 
@@ -434,7 +445,9 @@ TilePaletteDisplay.prototype = {
         }
       }
     }
-    this.draw({ redrawTiles: true });
+    if(redraw !== false) {
+      this.draw({ redrawTiles: true });
+    }
   },  
 
   setScale: function(scale) {
@@ -879,6 +892,228 @@ TilePaletteDisplay.prototype = {
   },
 
 
+  tilePaletteLayoutMatches: function(tileSet, tileCount) {
+    var state = this.tilePaletteLayoutState;
+    return state !== false
+      && state.tileSet === tileSet
+      && state.tileCount === tileCount
+      && state.tileWidth === tileSet.getTileWidth()
+      && state.tileHeight === tileSet.getTileHeight()
+      && state.scale === this.tilePaletteScale
+      && state.margin === this.charMargin
+      && state.blockSpacing === this.charPaletteBlockSpacing
+      && state.blockStacking === this.blockStacking
+      && state.canvasScale === this.canvasScale
+      && state.page === this.page
+      && state.map === this.charPaletteMap
+      && state.mapType === this.charPaletteMapType
+      && state.columns === this.columns
+      && state.columnWidth === this.columnWidth
+      && state.columnHeight === this.columnHeight
+      && state.canvasWidth === this.tileCanvas.width
+      && state.canvasHeight === this.tileCanvas.height
+      && this.tileLocations.length === tileCount;
+  },
+
+  rememberTilePaletteLayout: function(tileSet, tileCount) {
+    this.tilePaletteLayoutState = {
+      tileSet: tileSet,
+      tileCount: tileCount,
+      tileWidth: tileSet.getTileWidth(),
+      tileHeight: tileSet.getTileHeight(),
+      scale: this.tilePaletteScale,
+      margin: this.charMargin,
+      blockSpacing: this.charPaletteBlockSpacing,
+      blockStacking: this.blockStacking,
+      canvasScale: this.canvasScale,
+      page: this.page,
+      map: this.charPaletteMap,
+      mapType: this.charPaletteMapType,
+      columns: this.columns,
+      columnWidth: this.columnWidth,
+      columnHeight: this.columnHeight,
+      canvasWidth: this.tileCanvas.width,
+      canvasHeight: this.tileCanvas.height
+    };
+  },
+
+  drawPaletteTileAt: function(ch, drawAtX, drawAtY, state) {
+    var tileSet = state.tileSet;
+    var colorPalette = state.colorPalette;
+    var colorPaletteManager = state.colorPaletteManager;
+    var layer = state.layer;
+    var drawArgs = state.drawArgs;
+    var fgColor = state.fgColor;
+    var bgColor = state.bgColor;
+
+    drawArgs['character'] = ch;
+    if(state.screenMode === TextModeEditor.Mode.C64ECM) {
+      var ecmBGColor = Math.floor(drawArgs['character'] / 64) % 4;
+      var ecmGroup = Math.floor(drawArgs['character'] / 256);
+      drawArgs['bgColorRGB'] = colorPalette.getHex(layer.getC64ECMColor(ecmBGColor));
+      drawArgs['character'] = (drawArgs['character'] % 64) + ecmGroup * 256;
+    }
+
+    if(state.colorPerMode == 'character') {
+      fgColor = tileSet.getTileColor(ch);
+      bgColor = tileSet.getCharacterBGColor(ch);
+
+      drawArgs['colorRGB'] = colorPalette.getHex(fgColor);
+      drawArgs['color'] = fgColor;
+
+      if(!layer || state.screenMode != TextModeEditor.Mode.C64ECM) {
+        if(bgColor != colorPaletteManager.noColor) {
+          drawArgs['bgColorRGB'] = colorPalette.getHex(bgColor);
+        } else {
+          drawArgs['bgColorRGB'] = state.defaultBgColorRGB;
+        }
+      }
+    }
+
+    if(tileSet.getType() == 'vector') {
+      var context = this.tileContext;
+
+      // Keep each cached palette slot self-contained. Vector glyph paths can
+      // extend outside their nominal cell, so an unclipped full draw would
+      // leave pixels that a later selective redraw of that cell cannot clear.
+      context.save();
+      context.beginPath();
+      context.rect(drawAtX, drawAtY, state.drawTileWidth, state.drawTileHeight);
+      context.clip();
+
+      if(bgColor != colorPaletteManager.noColor) {
+        if(this.colors == 'monochrome') {
+          context.fillStyle = styles.textMode.tilePaletteBg;
+        } else {
+          context.fillStyle = '#' + colorPalette.getHexString(bgColor);
+        }
+      } else if(this.colors == 'monochrome') {
+        context.fillStyle = styles.textMode.tilePaletteBg;
+      } else if(state.frameBGColor != -1) {
+        context.fillStyle = '#' + colorPalette.getHexString(state.frameBGColor);
+      } else {
+        context.fillStyle = styles.textMode.tilePaletteBg;
+      }
+      context.fillRect(drawAtX, drawAtY, state.drawTileWidth, state.drawTileHeight);
+
+      var path = tileSet.getGlyphPath(ch);
+      if(path) {
+        var cellSize = state.drawTileWidth;
+        var fontScale = tileSet.getFontScale();
+        var scale = cellSize * fontScale;
+        var ascent = tileSet.getFontAscent();
+
+        if(this.colors == 'monochrome') {
+          context.fillStyle = styles.textMode.tilePaletteFg;
+        } else {
+          context.fillStyle = '#' + colorPalette.getHexString(fgColor);
+        }
+        context.strokeStyle = context.fillStyle;
+        context.setTransform(scale, 0, 0, -scale, drawAtX, drawAtY + ascent * scale);
+
+        if(state.flipH) {
+          context.translate(1 / (2 * fontScale), -1 / (2 * fontScale) + ascent);
+          context.scale(-1, 1);
+          context.translate(-1 / (2 * fontScale), 1 / (2 * fontScale) - ascent);
+        }
+        if(state.flipV) {
+          context.translate(1 / (2 * fontScale), -1 / (2 * fontScale) + ascent);
+          context.scale(1, -1);
+          context.translate(-1 / (2 * fontScale), 1 / (2 * fontScale) - ascent);
+        }
+        if(state.rotateZ != 0) {
+          context.translate(1 / (2 * fontScale), -1 / (2 * fontScale) + ascent);
+          context.rotate(state.rotateZ * 90 * Math.PI / 180);
+          context.translate(-1 / (2 * fontScale), 1 / (2 * fontScale) - ascent);
+        }
+
+        context.fill(path);
+        context.setTransform(1, 0, 0, 1, 0, 0);
+      }
+      context.restore();
+      return;
+    }
+
+    drawArgs['flipH'] = state.flipH;
+    drawArgs['flipV'] = state.flipV;
+    drawArgs['rotZ'] = state.rotateZ;
+    drawArgs['x'] = drawAtX;
+    drawArgs['y'] = drawAtY;
+    drawArgs['scale'] = this.tilePaletteScale;
+    tileSet.drawCharacter(drawArgs);
+
+    if(this.selectedCharacters.length > 0 && ch == this.selectedCharacters[0]) {
+      drawArgs['x'] = 0;
+      drawArgs['y'] = 0;
+      drawArgs['scale'] = 1;
+      drawArgs['imageData'] = this.singleTileImageData;
+      tileSet.drawCharacter(drawArgs);
+      this.singleTileContext.putImageData(this.singleTileImageData, 0, 0);
+      drawArgs['imageData'] = this.tilePaletteImageData;
+    }
+  },
+
+  drawAlteredTilePalette: function(alteredTiles, state) {
+    var changed = new Set(alteredTiles);
+
+    // C64 ECM palette entries select their background with the upper two bits
+    // while sharing the same glyph data. A base-glyph update therefore affects
+    // at most four directly indexed slots per 256-tile group.
+    if(state.screenMode === TextModeEditor.Mode.C64ECM) {
+      var aliases = [];
+      changed.forEach(function(ch) {
+        var groupStart = Math.floor(ch / 256) * 256;
+        var base = ch % 64;
+        for(var background = 0; background < 4; background++) {
+          aliases.push(groupStart + base + background * 64);
+        }
+      });
+      for(var aliasIndex = 0; aliasIndex < aliases.length; aliasIndex++) {
+        changed.add(aliases[aliasIndex]);
+      }
+    }
+
+    var uploaded = [];
+    changed.forEach(function(ch) {
+      if(ch < 0 || ch >= this.tileLocations.length) {
+        return;
+      }
+      var locations = this.tileLocations[ch];
+      for(var locationIndex = 0; locationIndex < locations.length; locationIndex++) {
+        var location = locations[locationIndex];
+        this.drawPaletteTileAt(ch, location.paletteX, location.paletteY, state);
+        if(state.tileSet.getType() != 'vector') {
+          uploaded.push(location);
+        }
+      }
+    }, this);
+
+    // Keep the retained CPU buffer, but copy only the slots whose glyph pixels
+    // changed instead of uploading the complete palette for every update.
+    for(var uploadIndex = 0; uploadIndex < uploaded.length; uploadIndex++) {
+      var dirty = uploaded[uploadIndex];
+      this.tileContext.putImageData(
+        this.tilePaletteImageData,
+        0,
+        0,
+        dirty.paletteX,
+        dirty.paletteY,
+        state.drawTileWidth,
+        state.drawTileHeight
+      );
+    }
+
+    if(state.tileSet.getType() == 'vector' && this.selectedCharacters.length > 0
+        && changed.has(this.selectedCharacters[0])) {
+      state.drawArgs['character'] = this.selectedCharacters[0];
+      state.drawArgs['x'] = 0;
+      state.drawArgs['y'] = 0;
+      state.drawArgs['scale'] = this.singleTileScale;
+      state.drawArgs['context'] = this.singleTileContext;
+      state.tileSet.drawCharacter(state.drawArgs);
+    }
+  },
+
   drawTilePalette: function(args) {
 
     var colorPaletteManager = this.editor.colorPaletteManager;
@@ -950,13 +1185,6 @@ TilePaletteDisplay.prototype = {
     var tileCount = tileSet.getTileCount();
     var blankTile = tileSet.getBlankTile();
 
-
-
-    this.tileLocations = [];
-    for(var i = 0; i < tileCount; i++) {
-      this.tileLocations.push([]);
-    }
-//    this.tileLocations.length = tileSet.getTileCount();
 
 
     // columns is columns of the charpalette map
@@ -1057,6 +1285,16 @@ TilePaletteDisplay.prototype = {
     // should work out if the canvas is big enough??
     this.checkCanvasSize();
 
+    var useCachedLayout = alteredTiles !== false
+      && this.tilePaletteLayoutMatches(tileSet, tileCount);
+    if(!useCachedLayout) {
+      alteredTiles = false;
+      this.tileLocations = [];
+      for(var i = 0; i < tileCount; i++) {
+        this.tileLocations.push([]);
+      }
+    }
+
     if(alteredTiles === false) {
       // redrawing everything
       this.tileContext.clearRect(0, 0, this.tileCanvas.width, this.tileCanvas.height);    
@@ -1141,6 +1379,30 @@ TilePaletteDisplay.prototype = {
     var drawTileWidth = scaledTileDimensions.width;
     var drawTileHeight = scaledTileDimensions.height;
 
+    var drawState = {
+      tileSet: tileSet,
+      colorPalette: colorPalette,
+      colorPaletteManager: colorPaletteManager,
+      layer: layer,
+      screenMode: screenMode,
+      colorPerMode: colorPerMode,
+      flipH: flipH,
+      flipV: flipV,
+      rotateZ: rotateZ,
+      fgColor: fgColor,
+      bgColor: bgColor,
+      frameBGColor: frameBGColor,
+      defaultBgColorRGB: defaultBgColorRGB,
+      drawTileWidth: drawTileWidth,
+      drawTileHeight: drawTileHeight,
+      drawArgs: args
+    };
+
+    if(alteredTiles !== false) {
+      this.drawAlteredTilePalette(alteredTiles, drawState);
+      return;
+    }
+
 
     var tilesPerPage = this.columnWidth * this.columnHeight;
     var firstTile = tilesPerPage * this.page;
@@ -1180,38 +1442,6 @@ TilePaletteDisplay.prototype = {
             ch = blankTile;
           }
 
-          var drawTile = true;
-          if(alteredTiles !== false) {
-            drawTile = alteredTiles.indexOf(ch) !== -1;
-          }
-
-
-          args['character'] = ch;
-          if(screenMode === TextModeEditor.Mode.C64ECM) {
-            var ecmBGColor = Math.floor(args['character'] / 64) % 4;
-            var ecmGroup = Math.floor(args['character'] / 256);
-            args['bgColorRGB'] = colorPalette.getHex(layer.getC64ECMColor(ecmBGColor));
-            args['character'] = (args['character'] % 64) + ecmGroup * 256;
-
-          }
-
-
-          if(colorPerMode == 'character') {
-            var fgColor = tileSet.getTileColor(ch);
-            var bgColor = tileSet.getCharacterBGColor(ch);
-
-            args['colorRGB'] = colorPalette.getHex(fgColor);
-            args['color'] = fgColor;
-
-            if(!layer || screenMode != TextModeEditor.Mode.C64ECM) {
-              if(bgColor != colorPaletteManager.noColor) {
-                args['bgColorRGB'] = colorPalette.getHex(bgColor);
-              } else {
-                args['bgColorRGB'] = defaultBgColorRGB;
-              }
-            }
-          }
-
           var tilePosition = this.getTilePosition(x, y, column, this.tilePaletteScale);
           var drawAtX = tilePosition.x;
           var drawAtY = tilePosition.y;
@@ -1219,7 +1449,9 @@ TilePaletteDisplay.prototype = {
          if(ch !== false && ch >= 0) {
             this.tileLocations[ch].push({
                 x: drawAtX * this.canvasScale,
-                y: drawAtY * this.canvasScale
+                y: drawAtY * this.canvasScale,
+                paletteX: drawAtX,
+                paletteY: drawAtY
             });
           }
          /*
@@ -1229,110 +1461,15 @@ TilePaletteDisplay.prototype = {
           };
           */
 
-          if(alteredTiles === false) {
-            if(this.charMargin > 1) { 
-              this.gridMapAdd(drawAtX - this.charMargin / 2, drawAtY - this.charMargin / 2, 
-                              drawTileWidth + this.charMargin, drawTileHeight + this.charMargin, 
-                              ch, charPaletteMapX, charPaletteMapY);
-            } else {
-              this.gridMapAdd(drawAtX, drawAtY, drawTileWidth, drawTileHeight, 
-                ch, charPaletteMapX, charPaletteMapY);
-            }
-          }
-          if(tileSet.getType() == 'vector') {
-
-            var context = this.tileContext;
-
-            // clear the background
-            if(bgColor != this.editor.colorPaletteManager.noColor) {
-
-              if(this.colors == 'monochrome') {
-                context.fillStyle = styles.textMode.tilePaletteBg;
-              } else {               
-                context.fillStyle =  '#' + colorPalette.getHexString(bgColor);// '#eeeeee';
-              }
-            } else {
-              if(this.colors == 'monochrome') {
-                context.fillStyle = styles.textMode.tilePaletteBg;
-              } else {               
-                if(frameBGColor != -1) {
-                  context.fillStyle =  '#' + colorPalette.getHexString(frameBGColor);
-                } else {
-                  context.fillStyle = styles.textMode.tilePaletteBg;
-
-                }
-              }
-            }
-            context.fillRect(drawAtX, drawAtY, drawTileWidth, drawTileHeight);
-
-            
-            var path = tileSet.getGlyphPath(ch);
-            if(path) {
-            
-              var cellSize = drawTileWidth;
-              var fontScale = tileSet.getFontScale();
-
-              var scale = cellSize * tileSet.getFontScale();
-              //var ascent = tileSet.getFontAscent() * scale;
-              var ascent = tileSet.getFontAscent() ;
-
-              if(this.colors == 'monochrome') {
-                context.fillStyle = styles.textMode.tilePaletteFg;
-              } else {                   
-                context.fillStyle = '#' + colorPalette.getHexString(fgColor);//'#000000';    //  
-              }
-              context.strokeStyle = context.fillStyle;
-
-              context.setTransform(scale,0,0,-scale, drawAtX, drawAtY + ascent * scale);
-
-//              context.setTransform(scale,0,0,-scale, drawAtX, drawAtY + ascent);
-              if(flipH) {
-                context.translate(1 / (2 * fontScale),  -1 / (2*fontScale)  + ascent  );              
-                context.scale(-1,1);
-                context.translate(-1 / (2 * fontScale), 1 / (2 * fontScale) - ascent );                
-              }
-  
-              if(flipV) {
-                context.translate(1 / (2 * fontScale),  -1 / (2*fontScale)  + ascent  );              
-                context.scale(1,-1);
-                context.translate(-1 / (2 * fontScale), 1 / (2 * fontScale) - ascent );                
-              }            
-  
-              if(rotateZ != 0) {
-                context.translate(1 / (2 * fontScale),  -1 / (2*fontScale)  + ascent  );
-                context.rotate(rotateZ * 90 * Math.PI / 180);            
-                context.translate(-1 / (2 * fontScale), 1 / (2 * fontScale) - ascent );                
-              }
-  
-              context.fill(path);
-              context.setTransform(1,0,0,1,0,0);              
-            }
-
-
-
+          if(this.charMargin > 1) {
+            this.gridMapAdd(drawAtX - this.charMargin / 2, drawAtY - this.charMargin / 2,
+                            drawTileWidth + this.charMargin, drawTileHeight + this.charMargin,
+                            ch, charPaletteMapX, charPaletteMapY);
           } else {
-            args['flipH'] = flipH;
-            args['flipV'] = flipV;
-            args['rotZ'] = rotateZ;
-            args['x'] = drawAtX;
-            args['y'] = drawAtY;
-            args['scale'] = this.tilePaletteScale ;//* this.canvasScale;
-
-
-            if(drawTile) {
-              tileSet.drawCharacter(args);
-            }
-
-            if(this.selectedCharacters.length > 0 && ch == this.selectedCharacters[0]) {
-              args['x'] = 0;
-              args['y'] = 0;
-              args['scale'] = 1;
-              args['imageData'] = this.singleTileImageData;
-              tileSet.drawCharacter(args);
-              this.singleTileContext.putImageData(this.singleTileImageData, 0, 0);
-              args['imageData'] = this.tilePaletteImageData;            
-            }
+            this.gridMapAdd(drawAtX, drawAtY, drawTileWidth, drawTileHeight,
+              ch, charPaletteMapX, charPaletteMapY);
           }
+          this.drawPaletteTileAt(ch, drawAtX, drawAtY, drawState);
 
 
         }
@@ -1352,6 +1489,7 @@ TilePaletteDisplay.prototype = {
       tileSet.drawCharacter(args);
 
     }
+    this.rememberTilePaletteLayout(tileSet, tileCount);
   },
 
   setXScroll: function(scrollX) {

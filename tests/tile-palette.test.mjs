@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-async function createTilePalette({ preferences = {}, prefix = "" } = {}) {
+async function createTilePalette({ preferences = {}, prefix = "", visible = true } = {}) {
   const source = await readFile(
     path.join(projectRoot, "src/js/textMode/tools/tilePalette.js"),
     "utf8",
@@ -50,11 +50,15 @@ async function createTilePalette({ preferences = {}, prefix = "" } = {}) {
       return Object.keys(preferences)[index] ?? null;
     },
   };
+  let paletteVisible = visible;
   const context = vm.createContext({
     $: jquery,
     UI: { isMobile: { any: () => false } },
     localStorage,
     g_app: {
+      isMobile() {
+        return false;
+      },
       getPref(key) {
         return Object.hasOwn(preferences, key) ? String(preferences[key]) : null;
       },
@@ -69,6 +73,7 @@ async function createTilePalette({ preferences = {}, prefix = "" } = {}) {
 
   const display = {
     drawCalls: [],
+    mapTypeCalls: [],
     scale: 2,
     draw(args) {
       this.drawCalls.push(args);
@@ -91,10 +96,18 @@ async function createTilePalette({ preferences = {}, prefix = "" } = {}) {
     setScale(scale) {
       this.scale = scale;
     },
+    setCharPaletteMapType(type, redraw) {
+      this.mapTypeCalls.push({ redraw, type });
+      if (redraw !== false) this.draw({ redrawTiles: true });
+    },
   };
   const palette = new context.TilePalette();
   palette.prefix = prefix;
   palette.editor = {
+    getTilePalettePanelVisible() {
+      return paletteVisible;
+    },
+    graphic: { getType: () => "textmode" },
     tileSetManager: {
       getCurrentTileSet() {
         return {
@@ -105,8 +118,18 @@ async function createTilePalette({ preferences = {}, prefix = "" } = {}) {
     },
   };
   palette.tilePaletteDisplay = display;
+  palette.tileHeight = 8;
+  palette.tileWidth = 8;
 
-  return { controlState, display, palette, preferences };
+  return {
+    controlState,
+    display,
+    palette,
+    preferences,
+    setVisible(value) {
+      paletteVisible = value;
+    },
+  };
 }
 
 test("manual tile palette scales preserve fractional values", async () => {
@@ -226,4 +249,39 @@ test("manual tile palette scale is capped at 1000 percent", async () => {
   assert.equal(fixture.display.scale, 10);
   assert.equal(fixture.preferences["tilepalette.scale_8x8"], "10");
   assert.equal(fixture.controlState.get("#tilePaletteScale").value, 1000);
+});
+
+test("hidden tile palettes defer and merge selective redraws until shown", async () => {
+  const fixture = await createTilePalette({ visible: false });
+  fixture.palette.tileWidth = 8;
+  fixture.palette.tileHeight = 8;
+
+  fixture.palette.drawTilePalette({ redrawTiles: true, tiles: [3] });
+  fixture.palette.drawTilePalette({ redrawTiles: true, tiles: [4, 3] });
+
+  assert.equal(fixture.display.drawCalls.length, 0);
+
+  fixture.setVisible(true);
+  fixture.palette.drawTilePalette();
+
+  assert.equal(fixture.display.drawCalls.length, 1);
+  assert.equal(fixture.display.drawCalls[0].redrawTiles, true);
+  assert.deepEqual(Array.from(fixture.display.drawCalls[0].tiles), [3, 4]);
+});
+
+test("hidden palette state changes use the deferred redraw boundary", async () => {
+  const fixture = await createTilePalette({ visible: false });
+
+  fixture.palette.setCharPaletteMapType("columns");
+
+  assert.deepEqual(fixture.display.mapTypeCalls, [{ redraw: false, type: "columns" }]);
+  assert.equal(fixture.display.drawCalls.length, 0);
+  assert.equal(fixture.palette.pendingTilePaletteRedraw, true);
+
+  fixture.setVisible(true);
+  fixture.palette.drawTilePalette();
+
+  assert.equal(fixture.display.drawCalls.length, 1);
+  assert.equal(fixture.display.drawCalls[0].redrawTiles, true);
+  assert.equal(fixture.display.drawCalls[0].tiles, undefined);
 });

@@ -847,12 +847,18 @@ TextModeEditor.prototype.setTilePalettePanelVisible = function(paneltype, visibl
     g_app.setPref(type + ".sideTilePaletteVisible", visible ? "yes": "no");
 
     this.updateEastInfoPanel();
+    if(visible && this.sideTilePalette) {
+      this.sideTilePalette.drawTilePalette();
+    }
   } else {
 
 
     UI('tilePaletteSplitPanel').setPanelVisible('center', visible, 300, true);
     g_app.setPref(type + ".tilePaletteVisible", visible ? "yes": "no");
     this.updateBottomPanel();
+    if(visible && this.tools && this.tools.drawTools && this.tools.drawTools.tilePalette) {
+      this.tools.drawTools.tilePalette.drawTilePalette();
+    }
   }
 }
 

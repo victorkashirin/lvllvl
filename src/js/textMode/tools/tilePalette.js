@@ -20,6 +20,9 @@ var TilePalette = function() {
   this.fitToWidth = false;
   this.fitPreferenceLoaded = false;
 
+  this.pendingTilePaletteRedraw = false;
+  this.pendingTilePaletteTiles = null;
+
   // the tile info is being displayed for
   this.tileInfoTile = false;
 }
@@ -490,9 +493,9 @@ TilePalette.prototype = {
 
       $('#' + this.prefix + 'charPaletteSortOrder').val('custom');      
       
-      this.tilePaletteDisplay.setCharPaletteMap(this.tileSortMap, 'custom');
+      this.tilePaletteDisplay.setCharPaletteMap(this.tileSortMap, 'custom', false);
 
-      this.tilePaletteDisplay.draw({ redrawTiles: true });
+      this.drawTilePalette({ redrawTiles: true });
       this.updateFitToWidthScale();
 
     } else {
@@ -515,7 +518,7 @@ TilePalette.prototype = {
       tileSet.setPaletteMap('custom', { data: map, rowsPerColumn: 8 });
 
       this.tilePaletteDisplay.setMode('grid');
-      this.tilePaletteDisplay.draw({ redrawTiles: true });      
+      this.drawTilePalette({ redrawTiles: true });
       this.updateFitToWidthScale();
     }
   },
@@ -560,7 +563,7 @@ TilePalette.prototype = {
 
       this.tilePaletteDisplay.setTileMargin(margin);
       if(!this.updateFitToWidthScale()) {
-        this.tilePaletteDisplay.draw({ redrawTiles: true });
+        this.drawTilePalette({ redrawTiles: true });
       }
       $('#' + this.prefix + 'tilePaletteTileMargin').html(margin);
     }
@@ -576,7 +579,7 @@ TilePalette.prototype = {
     if(tileCount > 0) {
       tileSet.setTileCount(tileCount);
     }
-    this.tilePaletteDisplay.draw({ redrawTiles: true });
+    this.drawTilePalette({ redrawTiles: true });
     this.updateFitToWidthScale();
     this.updateTileCountHTML();
 
@@ -592,7 +595,8 @@ TilePalette.prototype = {
   },
 
   setCharPaletteMapType: function(type) {
-    this.tilePaletteDisplay.setCharPaletteMapType(type);
+    this.tilePaletteDisplay.setCharPaletteMapType(type, false);
+    this.drawTilePalette({ redrawTiles: true });
     this.updateFitToWidthScale();
 
     $('#charPaletteSortOrder').val(type);      
@@ -672,7 +676,7 @@ TilePalette.prototype = {
 
     if(this.fitToWidth) {
       if(!this.updateFitToWidthScale()) {
-        this.tilePaletteDisplay.draw();
+        this.drawTilePalette();
       }
     } else {
       // Leaving Fit freezes its current computed percentage as the new manual
@@ -696,7 +700,7 @@ TilePalette.prototype = {
     this.updateScaleControl();
 
     if(scaleChanged) {
-      this.tilePaletteDisplay.draw({ redrawTiles: true });
+      this.drawTilePalette({ redrawTiles: true });
     }
 
     return scaleChanged;
@@ -747,7 +751,7 @@ TilePalette.prototype = {
     }
 
     this.tilePaletteDisplay.setScale(newScale);
-    this.tilePaletteDisplay.draw({ redrawTiles: true });
+    this.drawTilePalette({ redrawTiles: true });
     this.updateScaleControl();
 
   },
@@ -776,7 +780,7 @@ TilePalette.prototype = {
       }
     }
     if(!this.updateFitToWidthScale()) {
-      this.tilePaletteDisplay.draw();
+      this.drawTilePalette();
     }
   },
 
@@ -842,9 +846,82 @@ TilePalette.prototype = {
 
   drawCharPalette: function() {
     console.error('draw char palette!!');
-    this.tilePaletteDisplay.draw();
+    this.drawTilePalette();
   },
+
+  isTilePaletteVisible: function() {
+    if(typeof g_app != 'undefined' && g_app.isMobile && g_app.isMobile()) {
+      return true;
+    }
+    if(this.editor && typeof this.editor.getTilePalettePanelVisible == 'function') {
+      return this.editor.getTilePalettePanelVisible(this.prefix == 'side' ? 'side' : 'bottom');
+    }
+    return true;
+  },
+
+  queueTilePaletteRedraw: function(args) {
+    if(!args || args.redrawTiles === false || typeof args.redrawTiles == 'undefined') {
+      return;
+    }
+    if(typeof args.tiles == 'undefined') {
+      this.pendingTilePaletteRedraw = true;
+      this.pendingTilePaletteTiles = null;
+      return;
+    }
+    if(this.pendingTilePaletteRedraw) {
+      return;
+    }
+    if(this.pendingTilePaletteTiles == null) {
+      this.pendingTilePaletteTiles = new Set();
+    }
+    for(var i = 0; i < args.tiles.length; i++) {
+      this.pendingTilePaletteTiles.add(args.tiles[i]);
+    }
+  },
+
+  mergePendingTilePaletteRedraw: function(args) {
+    if(!this.pendingTilePaletteRedraw && this.pendingTilePaletteTiles == null) {
+      return args;
+    }
+
+    var merged = {};
+    if(args) {
+      for(var property in args) {
+        if(Object.prototype.hasOwnProperty.call(args, property)) {
+          merged[property] = args[property];
+        }
+      }
+    }
+
+    var currentRequestsFullRedraw = merged.redrawTiles !== false
+      && typeof merged.redrawTiles != 'undefined'
+      && typeof merged.tiles == 'undefined';
+    if(this.pendingTilePaletteRedraw || currentRequestsFullRedraw) {
+      merged.redrawTiles = true;
+      delete merged.tiles;
+    } else {
+      var tiles = new Set(this.pendingTilePaletteTiles);
+      if(merged.tiles) {
+        for(var i = 0; i < merged.tiles.length; i++) {
+          tiles.add(merged.tiles[i]);
+        }
+      }
+      merged.redrawTiles = true;
+      merged.tiles = Array.from(tiles);
+    }
+
+    this.pendingTilePaletteRedraw = false;
+    this.pendingTilePaletteTiles = null;
+    return merged;
+  },
+
   drawTilePalette: function(args) {
+    if(!this.isTilePaletteVisible()) {
+      this.queueTilePaletteRedraw(args);
+      return;
+    }
+    args = this.mergePendingTilePaletteRedraw(args);
+
     var tileSet = this.editor.tileSetManager.getCurrentTileSet();
     if(tileSet == null) {
       return;

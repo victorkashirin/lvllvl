@@ -1262,6 +1262,7 @@ TileEditorGrid.prototype = {
 
   updateCharacter: function(character) {
     var c64ECM = false;
+    var changedCharacters = [];
     var layer = this.editor.layers.getSelectedLayerObject();
     if(layer && layer.getType() == 'grid' && layer.getScreenMode() == TextModeEditor.Mode.C64ECM) {
       c64ECM = true;
@@ -1275,13 +1276,10 @@ TileEditorGrid.prototype = {
           if(c64ECM) {
             var ecmGroup = Math.floor(this.characters[y][x] / 256);
             var c = (this.characters[y][x] % 64) + ecmGroup * 256;
-            this.tileSet.updateCharacter(c);
-            this.tileSet.updateCharacter(c + 64);
-            this.tileSet.updateCharacter(c + 128);
-            this.tileSet.updateCharacter(c + 192);
+            changedCharacters.push(c, c + 64, c + 128, c + 192);
 
           } else {
-            this.tileSet.updateCharacter(this.characters[y][x]);
+            changedCharacters.push(this.characters[y][x]);
           }
         }
       }
@@ -1289,12 +1287,17 @@ TileEditorGrid.prototype = {
       if(c64ECM) {
         var ecmGroup = Math.floor(character / 256);
         character = character % 64 + ecmGroup * 256;
-        this.tileSet.updateCharacter(character);
-        this.tileSet.updateCharacter(character + 64);
-        this.tileSet.updateCharacter(character + 128);
-        this.tileSet.updateCharacter(character + 192);
+        changedCharacters.push(character, character + 64, character + 128, character + 192);
       } else {
-        this.tileSet.updateCharacter(character);
+        changedCharacters.push(character);
+      }
+    }
+
+    if(this.tileSet.updateCharacters) {
+      this.tileSet.updateCharacters(changedCharacters);
+    } else {
+      for(var i = 0; i < changedCharacters.length; i++) {
+        this.tileSet.updateCharacter(changedCharacters[i]);
       }
     }
 

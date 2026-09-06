@@ -114,6 +114,185 @@ async function createTestTileSet() {
   return tileSet;
 }
 
+async function createPaletteRenderFixture({
+  screenMode = "textmode",
+  type = "bitmap",
+} = {}) {
+  const source = await readFile(
+    path.join(projectRoot, "src/js/textMode/tileSet/tilePaletteDisplay.js"),
+    "utf8",
+  );
+  const putImageDataCalls = [];
+  const drawnCharacters = [];
+  const glyphPaths = [];
+  const vectorFills = [];
+  const vectorClipRectangles = [];
+  let imageDataReads = 0;
+
+  const createContext = () => ({
+    beginPath() {},
+    clip() {},
+    clearRect() {},
+    drawImage() {},
+    fill(path) {
+      vectorFills.push(path);
+    },
+    fillRect() {},
+    getImageData(x, y, width, height) {
+      imageDataReads += 1;
+      return { data: new Uint8ClampedArray(width * height * 4), width, height };
+    },
+    putImageData(...args) {
+      putImageDataCalls.push(args);
+    },
+    rect(...rectangle) {
+      vectorClipRectangles.push(rectangle);
+    },
+    restore() {},
+    rotate() {},
+    save() {},
+    scale() {},
+    setTransform() {},
+    stroke() {},
+    translate() {},
+  });
+  const displayContext = createContext();
+  const tileContext = createContext();
+  const createCanvas = () => {
+    const context = createContext();
+    return {
+      context,
+      height: 0,
+      style: {},
+      width: 0,
+      getContext() {
+        return context;
+      },
+    };
+  };
+  const context = vm.createContext({
+    ColorUtils: {
+      hexStringToInt() {
+        return 0xdddddd;
+      },
+    },
+    TextModeEditor: {
+      Mode: {
+        C64ECM: "c64ecm",
+        C64MULTICOLOR: "c64multicolor",
+        TEXTMODE: "textmode",
+      },
+    },
+    UI: {
+      devicePixelRatio: 1,
+      getContextNoSmoothing(canvas) {
+        return canvas.context;
+      },
+    },
+    document: {
+      createElement() {
+        return createCanvas();
+      },
+    },
+    styles: {
+      textMode: { tilePaletteBg: "#111", tilePaletteFg: "#ddd" },
+      tilePalette: { highlightOutline: "#fff", selectOutline: "#0ff" },
+      ui: { scrollbar: "#aaa", scrollbarHolder: "#111", scrollbarWidth: 10 },
+    },
+  });
+  vm.runInContext(source, context, {
+    filename: "src/js/textMode/tileSet/tilePaletteDisplay.js",
+  });
+
+  const tileCount = 256;
+  const colorPalette = {
+    getHex(index) {
+      return index;
+    },
+    getHexString(index) {
+      return index.toString(16).padStart(6, "0");
+    },
+  };
+  const tileSet = {
+    drawCharacter(args) {
+      drawnCharacters.push(args.character);
+    },
+    getBlankTile: () => 0,
+    getCharacterBGColor: () => -1,
+    getFontAscent: () => 1,
+    getFontScale: () => 1,
+    getGlyphPath(character) {
+      glyphPaths.push(character);
+      return { character };
+    },
+    getTileColor: () => 1,
+    getTileCount: () => tileCount,
+    getTileHeight: () => 8,
+    getTileWidth: () => 8,
+    getType: () => type,
+  };
+  const layer = {
+    getC64ECMColor: (index) => index,
+    getColorPerMode: () => "cell",
+    getHasTileFlip: () => false,
+    getHasTileRotate: () => false,
+    getScreenMode: () => screenMode,
+    getTransparentColorIndex: () => 0,
+    getType: () => "grid",
+  };
+  const display = new context.TilePaletteDisplay();
+  display.editor = {
+    colorPaletteManager: {
+      getCurrentColorPalette: () => colorPalette,
+      noColor: -1,
+    },
+    currentTile: {
+      flipH: false,
+      flipV: false,
+      getBGColor: () => -1,
+      getColor: () => 1,
+      rotZ: 0,
+    },
+    graphic: { getBackgroundColor: () => 0 },
+    layers: { getSelectedLayerObject: () => layer },
+    tileSetManager: {
+      getCurrentTileSet: () => tileSet,
+      noTile: -1,
+    },
+  };
+  display.canvas = {
+    context: displayContext,
+    height: 300,
+    style: {},
+    width: 600,
+    getContext() {
+      return displayContext;
+    },
+  };
+  display.context = displayContext;
+  display.tileCanvas = {
+    context: tileContext,
+    height: 0,
+    width: 0,
+    getContext() {
+      return tileContext;
+    },
+  };
+  display.tileContext = tileContext;
+  display.charPaletteMapType = "source";
+  display.resizeCanvas = false;
+
+  return {
+    display,
+    drawnCharacters,
+    getImageDataReads: () => imageDataReads,
+    glyphPaths,
+    putImageDataCalls,
+    vectorClipRectangles,
+    vectorFills,
+  };
+}
+
 test("tile palette selection follows non-square tile dimensions", async () => {
   const { display, rectangles } = await createTilePaletteDisplay({
     tileWidth: 8,
@@ -346,4 +525,93 @@ test("fit-to-width remains pixel-aligned across panel sizes", async () => {
     assert.ok(dimensions.width <= availableWidth, `overflow at ${availableWidth}px`);
     assert.equal(Number.isInteger(8 * scale), true, `fractional tile at ${availableWidth}px`);
   }
+});
+
+test("selective bitmap updates reuse the slot map and upload only changed tiles", async () => {
+  const fixture = await createPaletteRenderFixture();
+  fixture.display.drawTilePalette();
+  const locations = fixture.display.tileLocations;
+  const readsAfterWarmup = fixture.getImageDataReads();
+  fixture.drawnCharacters.length = 0;
+  fixture.putImageDataCalls.length = 0;
+  let positionLookups = 0;
+  const originalGetTilePosition = fixture.display.getTilePosition;
+  fixture.display.getTilePosition = function (...args) {
+    positionLookups += 1;
+    return originalGetTilePosition.apply(this, args);
+  };
+
+  fixture.display.drawTilePalette({ tiles: [17, 18, 17] });
+
+  assert.equal(fixture.display.tileLocations, locations);
+  assert.equal(positionLookups, 0);
+  assert.equal(fixture.getImageDataReads(), readsAfterWarmup);
+  assert.deepEqual(fixture.drawnCharacters, [17, 18]);
+  assert.equal(fixture.putImageDataCalls.length, 2);
+  for (const upload of fixture.putImageDataCalls) {
+    assert.equal(upload.length, 7);
+    assert.equal(upload[5], 16);
+    assert.equal(upload[6], 16);
+  }
+});
+
+test("selective updates rebuild the slot map after a layout change", async () => {
+  const fixture = await createPaletteRenderFixture();
+  fixture.display.drawTilePalette();
+  const locations = fixture.display.tileLocations;
+  const readsAfterWarmup = fixture.getImageDataReads();
+  fixture.putImageDataCalls.length = 0;
+  let positionLookups = 0;
+  const originalGetTilePosition = fixture.display.getTilePosition;
+  fixture.display.getTilePosition = function (...args) {
+    positionLookups += 1;
+    return originalGetTilePosition.apply(this, args);
+  };
+  fixture.display.setScale(3);
+
+  fixture.display.drawTilePalette({ tiles: [17] });
+
+  assert.notEqual(fixture.display.tileLocations, locations);
+  assert.equal(positionLookups, 256);
+  assert.equal(fixture.getImageDataReads(), readsAfterWarmup + 1);
+  assert.equal(fixture.putImageDataCalls.length, 1);
+  assert.equal(fixture.putImageDataCalls[0].length, 3);
+});
+
+test("selective vector updates repaint only changed glyph slots", async () => {
+  const fixture = await createPaletteRenderFixture({ type: "vector" });
+  fixture.display.drawTilePalette();
+  const readsAfterWarmup = fixture.getImageDataReads();
+  fixture.glyphPaths.length = 0;
+  fixture.vectorClipRectangles.length = 0;
+  fixture.vectorFills.length = 0;
+
+  fixture.display.drawTilePalette({ tiles: [42] });
+
+  assert.equal(fixture.getImageDataReads(), readsAfterWarmup);
+  assert.deepEqual(fixture.glyphPaths, [42]);
+  assert.equal(fixture.vectorClipRectangles.length, 1);
+  assert.deepEqual(
+    fixture.vectorClipRectangles[0],
+    [
+      fixture.display.tileLocations[42][0].x,
+      fixture.display.tileLocations[42][0].y,
+      16,
+      16,
+    ],
+  );
+  assert.equal(fixture.vectorFills.length, 1);
+  assert.equal(fixture.putImageDataCalls.length, 0);
+});
+
+test("selective C64 ECM updates repaint the four slots sharing a glyph", async () => {
+  const fixture = await createPaletteRenderFixture({ screenMode: "c64ecm" });
+  fixture.display.drawTilePalette();
+  fixture.drawnCharacters.length = 0;
+  fixture.putImageDataCalls.length = 0;
+
+  fixture.display.drawTilePalette({ tiles: [1] });
+
+  assert.deepEqual(fixture.drawnCharacters, [1, 1, 1, 1]);
+  assert.equal(fixture.putImageDataCalls.length, 4);
 });

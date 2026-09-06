@@ -1199,12 +1199,10 @@ LayerGrid.prototype = {
         tileSet.setToVector(tileSetPreset, function() {
           _this._setMode(screenMode);        
         
-          var tilePaletteDisplay = _this.editor.tools.drawTools.tilePalette.tilePaletteDisplay;
-          var sideTilePaletteDisplay = _this.editor.sideTilePalette.tilePaletteDisplay;    
   //        _this.editor.tileSetManager.updateSortMethods();
 
-          tilePaletteDisplay.draw({ redrawTiles: true });
-          sideTilePaletteDisplay.draw({ redrawTiles: true });    
+          _this.editor.tools.drawTools.tilePalette.drawTilePalette({ redrawTiles: true });
+          _this.editor.sideTilePalette.drawTilePalette({ redrawTiles: true });
 
           if(typeof callback != 'undefined') {
             callback();

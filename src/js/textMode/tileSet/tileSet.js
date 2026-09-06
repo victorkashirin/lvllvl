@@ -3090,8 +3090,12 @@ TileSet.prototype = {
   // per tile.
   updateCharacters: function(characters, selective) {
     var unique = [];
+    var seen = new Set();
     for(var i = 0; i < characters.length; i++) {
-      if(unique.indexOf(characters[i]) === -1) { unique.push(characters[i]); }
+      if(!seen.has(characters[i])) {
+        seen.add(characters[i]);
+        unique.push(characters[i]);
+      }
     }
     if(unique.length === 0) { return false; }
 

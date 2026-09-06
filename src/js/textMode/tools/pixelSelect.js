@@ -817,8 +817,14 @@ PixelSelect.prototype = {
     if(history) {
       this.editor.history.endEntry();
     }
-    for(var i = 0; i < modifiedTiles; i++) {
-      tileSet.updateCharacter(modifiedTiles[i]);
+    if(modifiedTiles.length > 0) {
+      if(tileSet.updateCharacters) {
+        tileSet.updateCharacters(modifiedTiles, true);
+      } else {
+        for(var i = 0; i < modifiedTiles.length; i++) {
+          tileSet.updateCharacter(modifiedTiles[i]);
+        }
+      }
     }
 
     this.editor.graphic.invalidateAllCells();
@@ -1134,8 +1140,14 @@ PixelSelect.prototype = {
 
 
     
-    for(var i = 0; i < modifiedTiles; i++) {
-      tileSet.updateCharacter(modifiedTiles[i]);
+    if(modifiedTiles.length > 0) {
+      if(tileSet.updateCharacters) {
+        tileSet.updateCharacters(modifiedTiles, true);
+      } else {
+        for(var i = 0; i < modifiedTiles.length; i++) {
+          tileSet.updateCharacter(modifiedTiles[i]);
+        }
+      }
     }
     this.editor.graphic.invalidateAllCells();     
     this.editor.graphic.redraw();

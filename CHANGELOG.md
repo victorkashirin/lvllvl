@@ -4,6 +4,11 @@
 
 ### Fixed
 
+- Batch animated, edited, transformed, and history-restored tile IDs before
+  refreshing tile palettes. Reuse tile-to-slot layouts, redraw bitmap/vector
+  glyphs through direct slot lookups, restrict bitmap uploads to dirty tile
+  rectangles, clip vector glyphs to their slots, and route all desktop palette
+  redraw entry points through coalesced hidden-panel deferral.
 - Bound pixel, tile, and block-grid line selection to the artwork/viewport/
   dirty-region intersection, preserving world alignment and clipped stroke edges
   at fractional zoom and device ratios instead of visiting offscreen grid lines.
