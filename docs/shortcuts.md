@@ -587,6 +587,8 @@ These decisions should be made before implementation expands beyond the core ser
 
 Recommended defaults are: reserve sequence support in the model, allow multiple bindings, use semantic keys by default, make physical keys an advanced option, warn rather than claim exhaustive blocking of reserved combinations, and show effective user bindings wherever the application presents shortcut help.
 
+The inventory of hidden, conditional, and legacy application surfaces has moved to [`docs/legacy_code.md`](legacy_code.md).
+
 ## Final recommendation
 
 Build the command, context, conflict, and persistence model inside the application. Use TanStack Hotkeys only if a short integration spike confirms that its alpha API and the repository's packaging constraints are acceptable; otherwise use tinykeys or a focused internal normalizer behind the same adapter boundary.
