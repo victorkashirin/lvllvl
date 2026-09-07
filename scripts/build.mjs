@@ -24,10 +24,11 @@ import { browserPolicy } from "./browser-policy.mjs";
 import { buildGraph, copiedScripts } from "./build-graph.mjs";
 import { verifyProductionLegacyGraph } from "./legacy-graph-policy.mjs";
 import { verifyModuleBoundaries } from "./module-boundaries.mjs";
-import { versionModuleImports } from "./module-versioning.mjs";
+import { rewriteModuleImports, versionModuleImports } from "./module-versioning.mjs";
 import {
   assetDirectories,
   buildDirectory,
+  bundledModuleDependencies,
   packageAssetFiles,
   packageAssetTransforms,
   packageSourceMapsWithEmbeddedSources,
@@ -379,10 +380,55 @@ async function copyRuntimeAssets() {
   }
 }
 
+async function bundleModuleDependencies() {
+  for (const [specifier, dependency] of Object.entries(bundledModuleDependencies)) {
+    const virtualId = `\0lvllvl-runtime-dependency:${specifier}`;
+    const packageEntry = path.join(projectRoot, dependency.entry);
+    const runtimeBundle = await rollup({
+      input: virtualId,
+      onwarn(warning, warn) {
+        // TanStack's public index re-exports optional manager classes that use
+        // @tanstack/store. They are removed by tree-shaking below.
+        if (warning.code === "UNRESOLVED_IMPORT") return;
+        warn(warning);
+      },
+      plugins: [{
+        name: "lvllvl-runtime-dependency",
+        resolveId(id) { return id === virtualId ? id : null },
+        load(id) {
+          if (id !== virtualId) return null;
+          return `export { ${dependency.exports.join(", ")} } from ${JSON.stringify(packageEntry)};`;
+        },
+      }],
+      treeshake: { moduleSideEffects: false },
+    });
+    try {
+      const generated = await runtimeBundle.generate({ format: "es" });
+      const chunk = generated.output.find((entry) => entry.type === "chunk");
+      if (!chunk?.code || chunk.imports.length > 0) {
+        throw new Error(`Runtime dependency ${specifier} did not produce a self-contained module`);
+      }
+      const destination = path.join(buildRoot, dependency.output);
+      await mkdir(path.dirname(destination), { recursive: true });
+      await writeFile(destination, `${chunk.code}\n`);
+    } finally {
+      await runtimeBundle.close();
+    }
+  }
+}
+
 async function copyDeclaredScripts(scripts) {
   for (const [output, source] of Object.entries(scripts)) {
     let content = renderVersion(await readFile(path.join(sourceRoot, source), "utf8"));
-    if (output.endsWith(".mjs")) content = versionModuleImports(content, version);
+    if (output.endsWith(".mjs")) {
+      const replacements = Object.fromEntries(Object.entries(bundledModuleDependencies)
+        .map(([specifier, dependency]) => {
+          let relative = path.posix.relative(path.posix.dirname(output), dependency.output);
+          if (!relative.startsWith(".")) relative = `./${relative}`;
+          return [specifier, relative];
+        }));
+      content = versionModuleImports(rewriteModuleImports(content, replacements), version);
+    }
     await mkdir(path.join(buildRoot, path.posix.dirname(output)), { recursive: true });
     await writeFile(path.join(buildRoot, output), `${content}\n`);
   }
@@ -485,6 +531,7 @@ async function build() {
     await writeBuildInfo();
     await buildHtmlCache();
     await buildDeclaredGraph();
+    await bundleModuleDependencies();
     await copyDeclaredScripts(copiedScripts);
     await copyDeclaredScripts(moduleScripts);
 

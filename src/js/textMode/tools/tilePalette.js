@@ -73,21 +73,21 @@ TilePalette.prototype = {
 
     html += '<div class="tile-rotation" id="' + this.prefix + 'charpalette-rotationinfo" style="display: flex; align-items: center;  margin-right: 8px">';
     html += '<div id="' + this.prefix + 'charpalette-rotation" class="tile-rotation-amount" style="width: 30px; text-align: right; margin-right: 10px"></div>';
-    html += '<div id="' + this.prefix + 'charpalette-rotatebutton" class="ui-button ui-button-small"  data-label="Tile Rotate" title="Tile Rotate (R)"><img src="icons/svg/glyphicons-basic-493-rotate.svg"></div>';
+    html += '<div id="' + this.prefix + 'charpalette-rotatebutton" class="ui-button ui-button-small" data-label="Tile Rotate" data-shortcut-command="textMode.tile.rotate" data-shortcut-label="Tile Rotate" title="Tile Rotate"><img src="icons/svg/glyphicons-basic-493-rotate.svg"></div>';
     html += '</div>';
 
 
     html += '<div class="tile-fliph" id="' + this.prefix + 'charpalette-fliphinfo" style="display: flex; align-items: center; margin-right: 8px">';
     html += '<div class="gridinfo-label">Flip&nbsp;H</div>';
     html += '<div id="' + this.prefix + 'charpalette-fliph" class="tile-flipped-x" style="width: 10px; text-align: center"></div>';    
-    html += '<div id="' + this.prefix + 'charpalette-fliphbutton" class="ui-button ui-button-small" style="margin-left: 4px" data-label="Tile Flip X" title="Tile Flip X (F)"><img src="icons/svg/glyphicons-basic-747-reflect-y.svg"></div>';
+    html += '<div id="' + this.prefix + 'charpalette-fliphbutton" class="ui-button ui-button-small" style="margin-left: 4px" data-label="Tile Flip X" data-shortcut-command="textMode.tile.flipHorizontal" data-shortcut-label="Tile Flip X" title="Tile Flip X"><img src="icons/svg/glyphicons-basic-747-reflect-y.svg"></div>';
     html += '</div>';
 
 
     html += '<div class="tile-flipv" id="' + this.prefix + 'charpalette-flipvinfo" style="display:flex; align-items: center;">';
     html += '<div class="gridinfo-label">Flip&nbsp;V</div>';
     html += '<div id="' + this.prefix + 'charpalette-flipv"  class="tile-flipped-y" style="width: 10px; text-align: center"></div>';
-    html += '<div id="' + this.prefix + 'charpalette-flipvbutton" class="ui-button ui-button-small"  style="margin-left: 4px" data-label="Tile Flip Y" title="Tile Flip Y (G)"><img src="icons/svg/glyphicons-basic-748-reflect-x.svg"></div>';
+    html += '<div id="' + this.prefix + 'charpalette-flipvbutton" class="ui-button ui-button-small" style="margin-left: 4px" data-label="Tile Flip Y" data-shortcut-command="textMode.tile.flipVertical" data-shortcut-label="Tile Flip Y" title="Tile Flip Y"><img src="icons/svg/glyphicons-basic-748-reflect-x.svg"></div>';
     html += '</div>';
 
 
@@ -208,6 +208,9 @@ TilePalette.prototype = {
     UI.on('ready', function() {
 
       _this.canvas = document.getElementById(_this.prefix + 'charPaletteCanvas');
+      if(g_app.updateEditorShortcutLabels) {
+        g_app.updateEditorShortcutLabels();
+      }
       _this.uiComponent.on('resize', function() {
         _this.resize();
       });
@@ -1007,6 +1010,10 @@ TilePalette.prototype = {
   },
 
   keyDown: function(event) {
+
+    if(g_app.services && g_app.services.commands) {
+      return;
+    }
 
     switch(event.keyCode) {
 

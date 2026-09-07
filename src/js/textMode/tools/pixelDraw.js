@@ -110,6 +110,13 @@ PixelDraw.prototype = {
   },
 
   getToolLabel: function(id) {
+    var commandService = g_app.services && g_app.services.commands;
+    var commandIds = {
+      draw: 'textMode.pixelTool.draw', pen: 'textMode.pixelTool.draw',
+      erase: 'textMode.pixelTool.erase', eyedropper: 'textMode.pixelTool.eyedropper',
+      line: 'textMode.pixelTool.shape', rect: 'textMode.pixelTool.shape',
+      oval: 'textMode.pixelTool.shape', select: 'textMode.pixelTool.select'
+    };
     var tools = {
       "draw": { label: "Pencil", "key": keys.textMode.toolsPencil.key },
       "pen":  { label: "Pencil", "key": keys.textMode.toolsPencil.key },
@@ -130,7 +137,10 @@ PixelDraw.prototype = {
     };
 
     if(tools.hasOwnProperty(id)) {
-      return tools[id].label + " (Shift + " + tools[id].key + ")";
+      var shortcut = commandService && commandIds[id] && commandService.hasCommand(commandIds[id])
+        ? commandService.formatBindings(commandIds[id])
+        : "Shift+" + tools[id].key;
+      return tools[id].label + (shortcut ? " (" + shortcut + ")" : "");
     }
     return id;
 
@@ -247,6 +257,9 @@ PixelDraw.prototype = {
 
 
   keyDown: function(event) {
+    if(g_app.services && g_app.services.commands) {
+      return;
+    }
     var keyCode = event.keyCode;
     var c = String.fromCharCode(keyCode).toUpperCase();
 

@@ -1140,21 +1140,16 @@ Editor.prototype = {
 
   keyDown: function(event) {
 
-
-    if(event.keyCode == 89 && (event.metaKey || event.ctrlKey))  {
-      // ctrl-y
-      this.redo();
-    }
-
     if(!this.allowKeyShortcuts) {
       return;
     }
 
-    if(this.handleOverviewZoomShortcut(event)) {
+    var commandServiceActive = this.services && this.services.commands;
+    if(!commandServiceActive && this.handleOverviewZoomShortcut(event)) {
       return;
     }
 
-    if(this.isOverviewShortcut(event) && this.canStartOverviewMode(event)) {
+    if(!commandServiceActive && this.isOverviewShortcut(event) && this.canStartOverviewMode(event)) {
       event.preventDefault();
       this.setOverviewMode(true);
       return;
@@ -1183,7 +1178,8 @@ Editor.prototype = {
   keyUp: function(event) {
 
 
-    if(this.overviewMode && (event.key == 'Tab' || event.keyCode == 9)) {
+    var commandServiceActive = this.services && this.services.commands;
+    if(!commandServiceActive && this.overviewMode && (event.key == 'Tab' || event.keyCode == 9)) {
       event.preventDefault();
       this.setOverviewMode(false);
       return;
@@ -1631,6 +1627,775 @@ main split panel north is menu
 
   },
 
+  getMenuCommandId: function(menuItemId) {
+    var aliases = {
+      'colorpaletteedit-redo': 'edit.redo',
+      'colorpaletteedit-undo': 'edit.undo',
+      'edit-copy': 'edit.copy',
+      'edit-cut': 'edit.cut',
+      'edit-deselect': 'edit.deselect',
+      'edit-paste': 'edit.paste',
+      'edit-redo': 'edit.redo',
+      'edit-selectall': 'edit.selectAll',
+      'edit-undo': 'edit.undo',
+      'help-commonactionshortcuts': 'help.commonActions',
+      'help-keyboardshortcuts': 'help.keyboardReference',
+      'screen-referenceimage': 'textMode.referenceImage',
+      'show-project-explorer': 'view.projectExplorer',
+      'view-project-explorer': 'view.projectExplorer'
+    };
+    if(aliases.hasOwnProperty(menuItemId)) {
+      return aliases[menuItemId];
+    }
+
+    var prefixNamespaces = [
+      ['file-', 'project.'],
+      ['edit-', 'edit.'],
+      ['view-', 'view.'],
+      ['screen-', 'textMode.screen.'],
+      ['mode-', 'textMode.mode.'],
+      ['colorpermode-', 'textMode.colorMode.'],
+      ['layers-', 'textMode.layers.'],
+      ['charactersets-', 'textMode.tiles.'],
+      ['tileset-', 'textMode.tiles.'],
+      ['colors-', 'textMode.colors.'],
+      ['colorpalette-', 'textMode.colors.'],
+      ['import-', 'import.'],
+      ['export-', 'export.'],
+      ['c64debugger-', 'debugger.'],
+      ['c64-', 'debugger.'],
+      ['settings-', 'settings.'],
+      ['help-', 'help.']
+    ];
+    for(var i = 0; i < prefixNamespaces.length; i++) {
+      if(menuItemId.indexOf(prefixNamespaces[i][0]) === 0) {
+        return prefixNamespaces[i][1] + menuItemId.substring(prefixNamespaces[i][0].length);
+      }
+    }
+    return 'application.' + menuItemId;
+  },
+
+  getMenuCommandContexts: function(menu) {
+    var classNames = typeof menu.className == 'string' ? menu.className.split(/\s+/) : [];
+    var hasClass = function(className) {
+      return classNames.indexOf(className) !== -1;
+    };
+    var modes = [];
+    if(hasClass('ui-menu-tilemode')) {
+      modes.push('2d');
+    }
+    if(hasClass('ui-menu-3d')) {
+      modes.push('3d');
+    }
+    if(hasClass('ui-menu-colorpalette')) {
+      modes.push('color palette');
+    }
+    if(hasClass('ui-menu-tileset')) {
+      modes.push('tile set');
+    }
+    if(hasClass('ui-menu-script')) {
+      modes.push('script', 'json', 'text', 'hex');
+    }
+    var baseContext = {
+      modal: 'none',
+      popupOpen: false,
+      shortcutsAllowed: true
+    };
+    modes = modes.filter(function(mode, index) {
+      return modes.indexOf(mode) === index;
+    });
+    var graphicType = hasClass('ui-menu-screen')
+      ? { not: 'sprite' }
+      : (hasClass('ui-menu-sprite') ? 'sprite' : null);
+    // Mode classes are alternatives, while screen/sprite further qualifies
+    // only tile mode. Represent that CSS behavior as explicit OR clauses.
+    if(graphicType !== null && modes.indexOf('2d') !== -1) {
+      var contexts = [Object.assign({}, baseContext, {
+        editorMode: '2d',
+        graphicType: graphicType
+      })];
+      var otherModes = modes.filter(function(mode) { return mode != '2d'; });
+      if(otherModes.length > 0) {
+        contexts.push(Object.assign({}, baseContext, {
+          editorMode: otherModes.length == 1 ? otherModes[0] : otherModes
+        }));
+      }
+      return contexts;
+    }
+    if(modes.length > 0) {
+      baseContext.editorMode = modes.length == 1 ? modes[0] : modes;
+    }
+    return [baseContext];
+  },
+
+  registerEditorCommands: function() {
+    if(!this.services || !this.services.commands || !this.textModeEditor) {
+      return;
+    }
+
+    var _this = this;
+    var commandService = this.services.commands;
+    var textMode = this.textModeEditor;
+    var baseTextContext = {
+      editorMode: ['2d', '3d'],
+      focus: 'canvas',
+      modal: 'none',
+      popupOpen: false,
+      shortcutsAllowed: true,
+      textTyping: false
+    };
+    var binding = function(key, modifiers) {
+      return commandService.bindingFromLegacyShortcut(Object.assign({ key: key }, modifiers || {}));
+    };
+    var context = function(values) {
+      return [Object.assign({}, baseTextContext, values || {})];
+    };
+    var register = function(args) {
+      var keys = Array.isArray(args.keys) ? args.keys : [args.key];
+      var defaultBindings = keys.map(function(key) {
+        var defaultBinding = binding(key, args.modifiers);
+        if(defaultBinding && args.repeat) {
+          defaultBinding = Object.assign({}, defaultBinding, { repeat: true });
+        }
+        return defaultBinding;
+      }).filter(function(defaultBinding) { return defaultBinding !== null; });
+      commandService.registerCommand({
+        id: args.id,
+        title: args.title,
+        category: args.category,
+        contexts: args.contexts,
+        defaultBindings: defaultBindings,
+        execute: args.execute,
+        isEnabled: args.isEnabled,
+        release: args.release
+      });
+    };
+
+    register({
+      id: 'textMode.preview.hold',
+      title: 'Preview Artwork',
+      category: 'View',
+      contexts: context({
+        deviceType: 'desktop',
+        editorMode: '2d',
+        pointerCanvas: true
+      }),
+      key: 'Tab',
+      execute: function() { _this.setOverviewMode(true); },
+      release: function() { _this.setOverviewMode(false); }
+    });
+
+    register({
+      id: 'textMode.canvas.placeSelectedTile',
+      title: 'Place Selected Tile',
+      category: 'Canvas',
+      contexts: context({ textEditorMode: 'tile', textTool: ['pen', 'block'] }),
+      keys: ['Enter', 'Insert'],
+      execute: function() { textMode.grid.grid2d.setCursorCells(); }
+    });
+
+    var cursorDirections = [
+      { id: 'left', title: 'Move Grid Cursor Left', key: 'ArrowLeft', dx: -1, dy: 0 },
+      { id: 'right', title: 'Move Grid Cursor Right', key: 'ArrowRight', dx: 1, dy: 0 },
+      { id: 'up', title: 'Move Grid Cursor Up', key: 'ArrowUp', dx: 0, dy: -1 },
+      { id: 'down', title: 'Move Grid Cursor Down', key: 'ArrowDown', dx: 0, dy: 1 }
+    ];
+    cursorDirections.forEach(function(direction) {
+      register({
+        id: 'textMode.canvas.cursor.' + direction.id,
+        title: direction.title,
+        category: 'Canvas',
+        contexts: context({ textEditorMode: 'tile', textTool: ['pen', 'block'], selectionActive: false }),
+        key: direction.key,
+        repeat: true,
+        execute: function() {
+          var stepX = 1;
+          var stepY = 1;
+          var layer = textMode.layers.getSelectedLayerObject();
+          if(layer && layer.getType() == 'grid' && layer.getBlockModeEnabled()) {
+            stepX = layer.getBlockWidth();
+            stepY = layer.getBlockHeight();
+          }
+          textMode.grid.grid2d.moveCursor(direction.dx * stepX, direction.dy * stepY);
+          textMode.grid.grid2d.setCursorEnabled(true);
+        }
+      });
+    });
+
+    var getSelectionTool = function() {
+      return textMode.getEditorMode() == 'pixel'
+        ? textMode.tools.drawTools.pixelSelect
+        : textMode.tools.drawTools.select;
+    };
+    var nudgeSelection = function(dx, dy, args) {
+      var selectTool = getSelectionTool();
+      if(textMode.getEditorMode() == 'pixel') {
+        selectTool.nudgeSelection(dx, dy, args);
+      } else {
+        selectTool.nudgeSelection(dx, dy, 0, args);
+      }
+    };
+    register({
+      id: 'textMode.selection.clear',
+      title: 'Clear Selection Contents',
+      category: 'Selection',
+      contexts: context({ textEditorMode: ['tile', 'pixel'], selectionActive: true }),
+      keys: ['Delete', 'Backspace'],
+      execute: function() { getSelectionTool().clear(); }
+    });
+
+    cursorDirections.forEach(function(direction) {
+      register({
+        id: 'textMode.selection.nudge.' + direction.id,
+        title: 'Nudge Selection ' + direction.title.replace('Move Grid Cursor ', ''),
+        category: 'Selection',
+        contexts: context({ textEditorMode: ['tile', 'pixel'], selectionActive: true }),
+        key: direction.key,
+        repeat: true,
+        execute: function() { nudgeSelection(direction.dx, direction.dy, {}); }
+      });
+      register({
+        id: 'textMode.selection.move.' + direction.id,
+        title: 'Move Selection Contents ' + direction.title.replace('Move Grid Cursor ', ''),
+        category: 'Selection',
+        contexts: context({ textEditorMode: ['tile', 'pixel'], selectionActive: true }),
+        key: direction.key,
+        modifiers: { cmd: true },
+        repeat: true,
+        execute: function() { nudgeSelection(direction.dx, direction.dy, { moveCut: true, moveCopy: false }); }
+      });
+      register({
+        id: 'textMode.selection.copy.' + direction.id,
+        title: 'Copy Selection Contents ' + direction.title.replace('Move Grid Cursor ', ''),
+        category: 'Selection',
+        contexts: context({ textEditorMode: ['tile', 'pixel'], selectionActive: true }),
+        key: direction.key,
+        modifiers: { alt: true },
+        repeat: true,
+        execute: function() { nudgeSelection(direction.dx, direction.dy, { moveCut: false, moveCopy: true }); }
+      });
+      ['move', 'copy'].forEach(function(operation) {
+        register({
+          id: 'textMode.canvas.' + operation + 'Contents.' + direction.id,
+          title: (operation == 'move' ? 'Move' : 'Copy') + ' Canvas Contents ' +
+            direction.title.replace('Move Grid Cursor ', ''),
+          category: 'Canvas',
+          contexts: context({ textEditorMode: ['tile', 'pixel'], selectionActive: false }),
+          key: direction.key,
+          modifiers: operation == 'move' ? { cmd: true } : { alt: true },
+          repeat: true,
+          execute: function() {
+            var selectTool = getSelectionTool();
+            var args = { moveCut: operation == 'move', moveCopy: operation == 'copy' };
+            if(textMode.getEditorMode() == 'pixel') {
+              selectTool.nudgeSelection(direction.dx, direction.dy, args);
+              return;
+            }
+            selectTool.selectAll();
+            selectTool.nudgeSelection(direction.dx, -direction.dy, 0, args);
+            selectTool.unselectAll();
+          }
+        });
+      });
+    });
+
+    for(var colorIndex = 0; colorIndex < 16; colorIndex++) {
+      (function(index) {
+        register({
+          id: 'textMode.color.select.' + (index + 1),
+          title: 'Select Colour ' + (index + 1),
+          category: 'Palettes',
+          contexts: context({ textEditorMode: ['tile', 'pixel'] }),
+          key: String((index % 8) + 1),
+          modifiers: { alt: true, shift: index >= 8 },
+          execute: function() { textMode.currentTile.setColor(index); }
+        });
+      })(colorIndex);
+    }
+
+    register({
+      id: 'textMode.playback.toggle',
+      title: 'Play / Pause Animation',
+      category: 'Animation',
+      contexts: context(),
+      key: 'Space',
+      execute: function() { textMode.frames.play(); }
+    });
+
+    var tools = [
+      { id: 'pencil', title: 'Pencil', key: 'N', tile: 'pen', pixel: 'pen' },
+      { id: 'erase', title: 'Eraser', key: 'L', tile: 'erase', pixel: 'erase' },
+      { id: 'fill', title: 'Fill Bucket', key: 'K', tile: 'fill', pixel: 'fill' },
+      { id: 'eyedropper', title: 'Eyedropper', key: 'I', tile: 'eyedropper', pixel: 'eyedropper' },
+      { id: 'marquee', title: 'Marquee', key: 'M', tile: 'select', pixel: 'select' },
+      { id: 'shape', title: 'Cycle Shape Tool', key: 'U', tile: 'shape', pixel: 'shape' },
+      { id: 'zoom', title: 'Zoom Tool', key: 'Z', tile: 'zoom', pixel: 'zoom' },
+      { id: 'hand', title: 'Hand Tool', key: 'H', tile: 'hand', pixel: 'hand' },
+      { id: 'move', title: 'Move Tool', key: 'V', tile: 'move', pixel: 'move' },
+      { id: 'pixel', title: 'Pixel Tool', key: 'P', tile: 'pixel' },
+      { id: 'characterPixel', title: 'Character Pixel Tool', key: 'O', tile: 'charpixel' },
+      { id: 'type', title: 'Type Tool', key: 'T', tile: 'type' },
+      { id: 'block', title: 'Meta Tile Tool', key: 'B', tile: 'block' }
+    ];
+    tools.forEach(function(tool) {
+      var supportsPixelMode = typeof tool.pixel == 'string';
+      register({
+        id: 'textMode.tool.' + tool.id,
+        title: tool.title,
+        category: 'Text Tools',
+        contexts: context({ textEditorMode: supportsPixelMode ? ['tile', 'pixel'] : 'tile' }),
+        key: tool.key,
+        execute: function() {
+          if(textMode.getEditorMode() == 'pixel' && supportsPixelMode) {
+            if(tool.pixel == 'shape') {
+              textMode.tools.pixelDrawTools.toggleShape();
+            } else {
+              textMode.tools.pixelDrawTools.setDrawTool(tool.pixel);
+            }
+            return;
+          }
+          if(tool.tile == 'shape') {
+            textMode.tools.drawTools.toggleShape();
+          } else {
+            if(tool.tile == 'type') {
+              textMode.tools.drawTools.setTypingCursorToCurrentCursor();
+            }
+            textMode.tools.drawTools.setDrawTool(tool.tile);
+          }
+        }
+      });
+    });
+
+    var pixelSubtools = [
+      { id: 'draw', title: 'Pixel Pencil', key: 'N', execute: function() { textMode.tools.drawTools.pixelDraw.setTool('draw'); } },
+      { id: 'erase', title: 'Pixel Eraser', key: 'L', execute: function() { textMode.tools.drawTools.pixelDraw.setTool('erase'); } },
+      { id: 'eyedropper', title: 'Pixel Eyedropper', key: 'I', execute: function() { textMode.tools.drawTools.pixelDraw.setTool('eyedropper'); } },
+      { id: 'select', title: 'Pixel Marquee', key: 'M', execute: function() { textMode.tools.drawTools.pixelDraw.setTool('select'); } },
+      { id: 'shape', title: 'Cycle Pixel Shape Tool', key: 'U', execute: function() { textMode.tools.drawTools.pixelDraw.toggleShape(); } }
+    ];
+    pixelSubtools.forEach(function(command) {
+      register({
+        id: 'textMode.pixelTool.' + command.id,
+        title: command.title,
+        category: 'Text Tools',
+        contexts: context({ textEditorMode: 'tile', textTool: 'pixel' }),
+        key: command.key,
+        modifiers: { shift: true },
+        execute: command.execute
+      });
+    });
+
+    var drawingTools = ['pen', 'erase', 'fill', 'eyedropper', 'line', 'rect', 'oval'];
+    register({
+      id: 'textMode.tile.flipHorizontal', title: 'Flip Current Tile Horizontally', category: 'Tile', key: 'F',
+      contexts: context({ textEditorMode: 'tile', textTool: drawingTools }),
+      execute: function() { textMode.currentTile.flipH2d(); }
+    });
+    register({
+      id: 'textMode.tile.flipVertical', title: 'Flip Current Tile Vertically', category: 'Tile', key: 'G',
+      contexts: context({ textEditorMode: 'tile', textTool: drawingTools }),
+      execute: function() { textMode.currentTile.flipV2d(); }
+    });
+    register({
+      id: 'textMode.lineSegment.horizontal', title: 'Horizontal Line Segment', category: 'Text Tools', key: 'F',
+      contexts: context({ textEditorMode: 'tile', textTool: 'linesegment' }),
+      execute: function() { textMode.tools.drawTools.lineSegmentDraw.setMode('horizontal'); }
+    });
+    register({
+      id: 'textMode.lineSegment.vertical', title: 'Vertical Line Segment', category: 'Text Tools', key: 'G',
+      contexts: context({ textEditorMode: 'tile', textTool: 'linesegment' }),
+      execute: function() { textMode.tools.drawTools.lineSegmentDraw.setMode('vertical'); }
+    });
+
+    var selectionCommands = [
+      {
+        id: 'drawWithSelection', title: 'Draw Using Selection', key: 'D',
+        execute: function() {
+          var drawTools = textMode.tools.drawTools;
+          drawTools.select.selectionToPen();
+          drawTools.select.unselectAll();
+          drawTools.setDrawTool('pen');
+        }
+      },
+      { id: 'flipHorizontal', title: 'Flip Selection Horizontally', key: 'F', execute: function() { textMode.tools.drawTools.select.flipH(); } },
+      { id: 'flipVertical', title: 'Flip Selection Vertically', key: 'G', execute: function() { textMode.tools.drawTools.select.flipV(); } },
+      { id: 'fill', title: 'Fill Selection', key: 'C', execute: function() { textMode.tools.drawTools.select.fill(); } }
+    ];
+    selectionCommands.forEach(function(command) {
+      register({
+        id: 'textMode.selection.' + command.id,
+        title: command.title,
+        category: 'Selection',
+        contexts: context({ textEditorMode: 'tile', textTool: 'select' }),
+        key: command.key,
+        execute: command.execute
+      });
+    });
+
+    register({
+      id: 'textMode.picker.tiles', title: 'Show Tile Picker', category: 'Palettes', key: '/',
+      contexts: context({ textEditorMode: 'tile' }),
+      execute: function() { textMode.gridView2d.showCharacterPicker(); }
+    });
+    register({
+      id: 'textMode.picker.colors', title: 'Show Colour Picker', category: 'Palettes', key: '?',
+      modifiers: { shift: true },
+      contexts: context({ textEditorMode: 'tile' }),
+      execute: function() { textMode.gridView2d.showColorPicker(); }
+    });
+    register({
+      id: 'textMode.colors.switch', title: 'Switch Foreground and Background Colours', category: 'Palettes', key: 'X',
+      contexts: context({ textEditorMode: 'tile' }),
+      execute: function() { textMode.currentTile.switchColors(); }
+    });
+
+    var paletteDirections = [
+      { id: 'left', title: 'Move Palette Selection Left', key: 'A', dx: -1, dy: 0 },
+      { id: 'right', title: 'Move Palette Selection Right', key: 'D', dx: 1, dy: 0 },
+      { id: 'up', title: 'Move Palette Selection Up', key: 'W', dx: 0, dy: -1 },
+      { id: 'down', title: 'Move Palette Selection Down', key: 'S', dx: 0, dy: 1 }
+    ];
+    paletteDirections.forEach(function(direction) {
+      register({
+        id: 'textMode.tilePalette.' + direction.id,
+        title: direction.title,
+        category: 'Palettes',
+        contexts: context({
+          focus: ['canvas', 'palette'],
+          spriteFramesVisible: false,
+          textEditorMode: 'tile',
+          textTool: drawingTools
+        }),
+        key: direction.key,
+        repeat: true,
+        execute: function() {
+          textMode.tools.drawTools.tilePalette.tilePaletteDisplay.moveSelection(direction.dx, direction.dy);
+        }
+      });
+      register({
+        id: 'textMode.blockPalette.' + direction.id,
+        title: direction.title.replace('Palette', 'Meta Tile Palette'),
+        category: 'Palettes',
+        contexts: context({ focus: ['canvas', 'palette'], spriteFramesVisible: false, textEditorMode: 'tile', textTool: 'block' }),
+        key: direction.key,
+        repeat: true,
+        execute: function() {
+          var drawTools = textMode.tools.drawTools;
+          drawTools.blockPalette.moveSelection(direction.dx, direction.dy);
+          if(textMode.sideTilePalette && textMode.sideTilePalette.tilePaletteDisplay) {
+            textMode.sideTilePalette.tilePaletteDisplay.moveSelection(direction.dx, direction.dy);
+          }
+        }
+      });
+      register({
+        id: 'textMode.colorPalette.' + direction.id,
+        title: direction.title.replace('Palette', 'Colour Palette'),
+        category: 'Palettes',
+        contexts: context({ focus: ['canvas', 'palette'] }),
+        key: direction.key,
+        modifiers: { shift: true },
+        repeat: true,
+        execute: function() { textMode.colorPalettePanel.moveSelection(direction.dx, direction.dy); }
+      });
+    });
+
+    register({
+      id: 'textMode.tilePalette.recentNext', title: 'Next Recent Tile', category: 'Palettes', key: 'E',
+      contexts: context({ focus: ['canvas', 'palette'], spriteFramesVisible: false, textEditorMode: 'tile', textTool: drawingTools }),
+      repeat: true,
+      execute: function() { textMode.tools.drawTools.tilePalette.selectRecent(1); }
+    });
+    register({
+      id: 'textMode.tilePalette.recentPrevious', title: 'Previous Recent Tile', category: 'Palettes', key: 'Q',
+      contexts: context({ focus: ['canvas', 'palette'], spriteFramesVisible: false, textEditorMode: 'tile', textTool: drawingTools }),
+      repeat: true,
+      execute: function() { textMode.tools.drawTools.tilePalette.selectRecent(-1); }
+    });
+    register({
+      id: 'textMode.tile.rotate', title: 'Rotate Current Tile', category: 'Tile', key: 'R',
+      contexts: context({ focus: ['canvas', 'palette'], spriteFramesVisible: false, textEditorMode: 'tile', textTool: drawingTools }),
+      execute: function() { textMode.tools.drawTools.tilePalette.rotateCharacter(); }
+    });
+    register({
+      id: 'textMode.colorPalette.recentNext', title: 'Next Recent Colour', category: 'Palettes', key: 'E',
+      modifiers: { shift: true }, contexts: context({ focus: ['canvas', 'palette'] }),
+      repeat: true,
+      execute: function() { textMode.colorPalettePanel.selectRecent(1); }
+    });
+    register({
+      id: 'textMode.colorPalette.recentPrevious', title: 'Previous Recent Colour', category: 'Palettes', key: 'Q',
+      modifiers: { shift: true }, contexts: context({ focus: ['canvas', 'palette'] }),
+      repeat: true,
+      execute: function() { textMode.colorPalettePanel.selectRecent(-1); }
+    });
+
+    var frameDirections = [
+      { id: 'previous', title: 'Previous Frame', key: ',', execute: function() { textMode.frames.prevFrame(); } },
+      { id: 'next', title: 'Next Frame', key: '.', execute: function() { textMode.frames.nextFrame(); } }
+    ];
+    frameDirections.forEach(function(command) {
+      register({
+        id: 'textMode.frame.' + command.id,
+        title: command.title,
+        category: 'Animation',
+        contexts: context({ focus: ['canvas', 'timeline'] }),
+        key: command.key,
+        repeat: true,
+        execute: command.execute
+      });
+    });
+
+    var spriteTimelineCommands = [
+      { id: 'previousFrame', title: 'Previous Sprite Frame', key: 'A', execute: function() { textMode.frames.prevFrame(); } },
+      { id: 'nextFrame', title: 'Next Sprite Frame', key: 'D', execute: function() { textMode.frames.nextFrame(); } },
+      { id: 'previousLayer', title: 'Previous Sprite Layer', key: 'W', execute: function() { textMode.layers.moveSelect(1); } },
+      { id: 'nextLayer', title: 'Next Sprite Layer', key: 'S', execute: function() { textMode.layers.moveSelect(-1); } }
+    ];
+    spriteTimelineCommands.forEach(function(command) {
+      register({
+        id: 'textMode.spriteTimeline.' + command.id,
+        title: command.title,
+        category: 'Animation',
+        contexts: context({ focus: ['canvas', 'timeline'], spriteFramesVisible: true }),
+        key: command.key,
+        repeat: true,
+        execute: command.execute
+      });
+    });
+
+    var multicolorCommands = [
+      { id: 'background', title: 'Use Background Colour', key: '1', type: 'background' },
+      { id: 'foreground', title: 'Use Foreground Colour', key: '2', type: 'cell' },
+      { id: 'multi1', title: 'Use Multicolour 1', key: '3', type: 'multi1' },
+      { id: 'multi2', title: 'Use Multicolour 2', key: '4', type: 'multi2' }
+    ];
+    multicolorCommands.forEach(function(command) {
+      register({
+        id: 'textMode.multicolor.' + command.id,
+        title: command.title,
+        category: 'Palettes',
+        contexts: context({ screenMode: 'c64multicolor' }),
+        key: command.key,
+        execute: function() { textMode.tools.drawTools.pixelDraw.setC64MultiColorType(command.type); }
+      });
+    });
+
+    if(this.colorPaletteEditor && this.colorPaletteEditor.colorPaletteEdit) {
+      var paletteEditorTools = [
+        { id: 'pencil', title: 'Pencil', key: 'N', tool: 'pen' },
+        { id: 'erase', title: 'Eraser', key: 'L', tool: 'erase' },
+        { id: 'eyedropper', title: 'Eyedropper', key: 'I', tool: 'eyedropper' },
+        { id: 'move', title: 'Move Tool', key: 'V', tool: 'move' },
+        { id: 'marquee', title: 'Marquee', key: 'M', tool: 'select' }
+      ];
+      paletteEditorTools.forEach(function(tool) {
+        register({
+          id: 'colorPalette.tool.' + tool.id,
+          title: tool.title,
+          category: 'Colour Palette Tools',
+          contexts: [{ editorMode: 'color palette', focus: 'canvas', modal: 'none', popupOpen: false, shortcutsAllowed: true }],
+          key: tool.key,
+          execute: function() { _this.colorPaletteEditor.colorPaletteEdit.setColorPaletteTool(tool.tool); }
+        });
+      });
+    }
+  },
+
+  updateEditorShortcutLabels: function() {
+    if(!this.services || !this.services.commands) {
+      return;
+    }
+    var commandService = this.services.commands;
+    var elements = document.querySelectorAll('[data-shortcut-command]');
+    for(var i = 0; i < elements.length; i++) {
+      var element = elements[i];
+      var commandId = element.getAttribute('data-shortcut-command');
+      if(!commandId || !commandService.hasCommand(commandId)) {
+        continue;
+      }
+      var label = element.getAttribute('data-shortcut-label') || '';
+      var shortcut = commandService.formatBindings(commandId);
+      var ariaShortcuts = commandService.getEffectiveBindings(commandId).map(function(value) {
+        return commandService.formatAriaBinding(value);
+      }).filter(function(value) { return value !== ''; }).join(' ');
+      var suffix = element.matches && element.matches('[data-shortcut-suffix]')
+        ? element
+        : (element.querySelector && element.querySelector('[data-shortcut-suffix]'));
+      if(suffix) {
+        suffix.textContent = shortcut ? ' (' + shortcut + ')' : '';
+      }
+      if(label) {
+        element.setAttribute('title', shortcut ? label + ' (' + shortcut + ')' : label);
+      }
+      if(ariaShortcuts) {
+        element.setAttribute('aria-keyshortcuts', ariaShortcuts);
+      } else {
+        element.removeAttribute('aria-keyshortcuts');
+      }
+    }
+    var drawTools = this.textModeEditor && this.textModeEditor.tools
+      ? this.textModeEditor.tools.drawTools
+      : null;
+    if(drawTools && drawTools.tool) {
+      var currentToolLabel = drawTools.getToolLabel(drawTools.tool);
+      var currentToolIds = ['currentTool', 'currentPopupTool', 'toolSettingsCurrentTool'];
+      for(var labelIndex = 0; labelIndex < currentToolIds.length; labelIndex++) {
+        var currentToolElement = document.getElementById(currentToolIds[labelIndex]);
+        if(currentToolElement) {
+          currentToolElement.textContent = currentToolLabel;
+        }
+      }
+      var pixelDraw = drawTools.pixelDraw;
+      var currentPixelDrawTool = document.getElementById('currentPixelDrawTool');
+      if(pixelDraw && pixelDraw.toolType && currentPixelDrawTool) {
+        currentPixelDrawTool.textContent = pixelDraw.getToolLabel(pixelDraw.toolType);
+      }
+      var pixelToolLabel = document.getElementById('pixelToolLabel');
+      if(pixelDraw && pixelDraw.toolType && pixelToolLabel) {
+        pixelToolLabel.textContent = pixelDraw.getToolLabel(pixelDraw.toolType);
+      }
+    }
+    var colorPaletteEdit = this.colorPaletteEditor && this.colorPaletteEditor.colorPaletteEdit;
+    if(colorPaletteEdit && colorPaletteEdit.currentTool) {
+      var paletteToolLabel = document.getElementById('colorPaletteEditorCurrentTool');
+      if(paletteToolLabel) {
+        paletteToolLabel.textContent = colorPaletteEdit.getToolLabel(colorPaletteEdit.currentTool);
+      }
+    }
+  },
+
+  registerMenuCommands: function() {
+    if(!this.services || !this.services.commands || !this.menuBar) {
+      return;
+    }
+    var _this = this;
+    var commandService = this.services.commands;
+    var menuItems = [];
+    this.menuBar.commandService = commandService;
+
+    var registerItem = function(menu, menuItem) {
+      if(menuItem.type != 'item' || !menuItem.uiID) {
+        return;
+      }
+      var commandId = _this.getMenuCommandId(menuItem.uiID);
+      var keyboardPolicy = commandId == 'project.save' || commandId == 'project.saveas'
+        ? 'global'
+        : 'local';
+      var menuClasses = typeof menu.className == 'string'
+        ? menu.className.split(/\s+/).filter(function(value) { return value !== ''; })
+        : [];
+      var supportedEditorMenuClasses = [
+        'ui-menu-tilemode',
+        'ui-menu-3d',
+        'ui-menu-colorpalette',
+        'ui-menu-tileset',
+        'ui-menu-script'
+      ];
+      var excludedModeClasses = ['ui-menu-music', 'ui-menu-c64', 'ui-menu-c64-assembler'];
+      var excludedOnlyMenu = menuClasses.some(function(value) {
+        return excludedModeClasses.indexOf(value) !== -1;
+      }) &&
+        !menuClasses.some(function(value) { return supportedEditorMenuClasses.indexOf(value) !== -1; });
+      // Music, Ace-only actions, emulator/debugger input, and joystick actions
+      // remain outside the editor shortcut catalog.
+      if(excludedOnlyMenu || commandId.indexOf('debugger.') === 0) {
+        return;
+      }
+      // Shared menus such as Project are also visible in the assembler. The
+      // command service owns their editor-mode dispatch, while the legacy menu
+      // accelerator remains as an assembler-only fallback.
+      menuItem.legacyShortcutModes = [];
+      if(menuClasses.indexOf('ui-menu-c64-assembler') !== -1) {
+        menuItem.legacyShortcutModes.push('assembler');
+      }
+      var defaultBindings = [];
+      if(menuItem.shortcut !== false) {
+        var defaultBinding = commandService.bindingFromLegacyShortcut(menuItem.shortcut);
+        if(defaultBinding) {
+          defaultBindings.push(defaultBinding);
+        }
+      }
+      if(commandId == 'edit.redo') {
+        var alternateRedo = commandService.bindingFromLegacyShortcut({ cmd: true, key: 'Y' });
+        if(alternateRedo) {
+          defaultBindings.push(alternateRedo);
+        }
+      }
+      menuItem.commandId = commandId;
+      menuItems.push(menuItem);
+      var commandContexts = _this.getMenuCommandContexts(menu);
+      if(keyboardPolicy == 'global') {
+        commandContexts = commandContexts.map(function(commandContext) {
+          commandContext = Object.assign({}, commandContext);
+          delete commandContext.shortcutsAllowed;
+          return commandContext;
+        });
+      }
+      commandService.registerCommand({
+        id: commandId,
+        title: menuItem.label,
+        category: menu.label || 'Application',
+        contexts: commandContexts,
+        defaultBindings: defaultBindings,
+        execute: function(details) {
+          _this.menuClick(menuItem.uiID, 'command', details && details.source);
+        },
+        isEnabled: function() {
+          return menuItem.enabled && menuItem.visible;
+        },
+        keyboardPolicy: keyboardPolicy
+      });
+    };
+
+    for(var i = 0; i < this.menuBar.menus.length; i++) {
+      var menu = this.menuBar.menus[i];
+      for(var j = 0; j < menu.menuItems.length; j++) {
+        registerItem(menu, menu.menuItems[j]);
+      }
+    }
+
+    var updateLabels = function() {
+      for(var itemIndex = 0; itemIndex < menuItems.length; itemIndex++) {
+        var menuItem = menuItems[itemIndex];
+        var effectiveBindings = commandService.getEffectiveBindings(menuItem.commandId);
+        menuItem.setShortcutText(effectiveBindings.map(function(binding) {
+          return commandService.formatBinding(binding);
+        }).join(' / '));
+        var menuElement = document.getElementById(menuItem.id);
+        if(menuElement) {
+          var ariaShortcuts = effectiveBindings.map(function(binding) {
+            return commandService.formatAriaBinding(binding);
+          }).filter(function(value) { return value !== ''; }).join(' ');
+          if(ariaShortcuts) {
+            menuElement.setAttribute('aria-keyshortcuts', ariaShortcuts);
+          } else {
+            menuElement.removeAttribute('aria-keyshortcuts');
+          }
+          var shortcutLabel = commandService.formatBindings(menuItem.commandId);
+          menuElement.title = shortcutLabel ? menuItem.label + ' (' + shortcutLabel + ')' : menuItem.label;
+        }
+      }
+    };
+    this.registerEditorCommands();
+    var updateAllLabels = function() {
+      updateLabels();
+      _this.updateEditorShortcutLabels();
+    };
+    commandService.onDidChange(updateAllLabels);
+    commandService.finalizeRegistration();
+    this.menuBar.shortcuts = this.menuBar.shortcuts.filter(function(shortcut) {
+      return shortcut.menuItem.commandId === null || shortcut.menuItem.legacyShortcutModes.length > 0;
+    });
+    updateAllLabels();
+    window.setTimeout(updateAllLabels, 0);
+  },
+
+  showKeyboardShortcuts: function() {
+    if(this.services && this.services.shortcutSettings) {
+      this.services.shortcutSettings.show();
+    }
+  },
+
   buildInterface: function() {
     var isMobile = this.isMobile();
     this.mainPanel = UI.create("UI.Panel", { "id": "mainPanel" });
@@ -1883,7 +2648,7 @@ main split panel north is menu
       UI('colorpermode-block').setEnabled(false);
 
       menu.addSeparator({ "label": "Reference Image" });
-      menu.addItem({ "label": "Set Reference Image" + "...", "id": "screen-referenceimage", "shortcut": { "cmd": true, "key": "I"} });
+      menu.addItem({ "label": "Set Reference Image" + "...", "id": "screen-referenceimage", "shortcut": { "cmd": true, "alt": true, "key": "I"} });
 
       menu = _this.menuBar.addMenu({"label": "Sprite", "className": 'ui-menu-tilemode ui-menu-sprite' });
       menu.addItem({ "label": "Dimensions" + "...", "id": "file-spritedimensions" });
@@ -1991,10 +2756,6 @@ main split panel north is menu
 //      menu.addItem({ "label": "Project View" + "...", "id": "view-project", "shortcut": { "cmd": true, "key": "P" } });
 
 
-
-//      menu = _this.menuBar.addMenu({"label": 'Settings'});
-//      menu.addItem({ "label": "C64 PRG Code...", "id": "settings-prgcode" });
-//      menu.addItem({ "label": "Import Shader Code...", "id": "settings-importshader" });
 
       menu = _this.menuBar.addMenu({"label": "Interface", "className": 'ui-menu-tilemode' });
       menu.addItem({ "label": "Zen Mode", "id": "view-zenmode", "checked": false, "shortcut": { "alt": true, "shift": true, "key": "Z" } });
@@ -2145,11 +2906,14 @@ main split panel north is menu
       menu.addItem({ "label": "Export PRG/D64/CRT as a HTML Page...", "id": "c64-export-html-page" });
 //      menu.addItem({ "label": "Download HTML Page", "id": "c64-share-html" });
 
-      menu = _this.menuBar.addMenu({"label": "Help", "className": 'ui-menu-tilemode' });
+      menu = _this.menuBar.addMenu({
+        "label": "Help",
+        "className": 'ui-menu-tilemode ui-menu-3d ui-menu-colorpalette ui-menu-tileset ui-menu-script'
+      });
 
       menu.addItem({ "label": "Common Actions" + "...", "id": "help-commonactionshortcuts" });
 
-      menu.addItem({ "label": "Mouse / Keyboard shortcuts" + "...", "id": "help-keyboardshortcuts" });
+      menu.addItem({ "label": "Keyboard Shortcuts" + "...", "id": "help-keyboardshortcuts" });
 
       if(SHOWUNFINISHED) {
         menu.addItem({ "label": "Scripting API" + "...", "id": "help-scriptingapi" });
@@ -2161,6 +2925,7 @@ main split panel north is menu
       _this.menuBar.on('itemclick', function(id, source) {
         _this.menuClick(id, source);
       });
+      _this.registerMenuCommands();
 
 //      _this.setMode('start'); 
 
@@ -2307,7 +3072,17 @@ main split panel north is menu
 //    this.tabPanel.setTabLabel(0, docRecord.name);
   },
 
-  menuClick: function(menuItem, source) {
+  menuClick: function(menuItem, source, commandSource) {
+    if(source != 'command' && this.services && this.services.commands) {
+      var commandId = this.getMenuCommandId(menuItem);
+      if(this.services.commands.hasCommand(commandId)) {
+        this.services.commands.execute(commandId, { source: source || 'menu' });
+        return;
+      }
+    }
+    if(source == 'command') {
+      source = commandSource || 'menu';
+    }
     var _this = this;
     switch(menuItem) {
       case 'file-new':
@@ -2361,7 +3136,7 @@ main split panel north is menu
       break;
       case 'edit-redo':
       case 'edit-musicredo':
-      case 'colorpaletteedit-undo':
+      case 'colorpaletteedit-redo':
         this.redo();
       break;
 
@@ -3028,7 +3803,7 @@ main split panel north is menu
         window.open('./docs/common-action-shortcuts.html', 'common-action-shortcuts');
         break;
       case 'help-keyboardshortcuts':
-        window.open('./docs/keyboard-shortcuts.html', 'keyboard-shortcuts');
+        this.showKeyboardShortcuts();
       break;
       case 'help-scriptingapi':
         window.open('./docs/api.html', 'scripting-api');

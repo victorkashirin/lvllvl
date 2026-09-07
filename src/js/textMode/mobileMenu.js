@@ -98,6 +98,7 @@ MobileMenu.prototype = {
       { "label": "Toggle Grid", "id": "togglegrid", "icon": '<img height="25" src="icons/material/grid_on-24px.svg"/>' },
       { "label": "Toggle Show Previous Frame", "id": "toggleprev" },
       { "label": "Show Expanded Controls", "id": "minimalinterface" },
+      { "label": "Keyboard Shortcuts", "id": "keyboardshortcuts" },
       { "label": "Switch to Desktop Mode", "id": "desktopview" },
       { "label": "About lvllvl plus", "id": "about" },
     ];
@@ -622,6 +623,11 @@ MobileMenu.prototype = {
           g_app.mobileRestoreInterface();
         }
         break;
+      case 'keyboardshortcuts':
+        if(g_app.services && g_app.services.commands) {
+          g_app.services.commands.execute('help.keyboardReference', { source: 'mobile-menu' });
+        }
+      break;
       case 'desktopview':
         if(confirm("Are you sure you want to switch to desktop mode?")) {
           g_app.setDeviceType('desktop');

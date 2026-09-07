@@ -15,10 +15,11 @@ import {
   formatModuleDependencyReport,
   verifyModuleBoundaries,
 } from "./module-boundaries.mjs";
-import { versionModuleImports } from "./module-versioning.mjs";
+import { rewriteModuleImports, versionModuleImports } from "./module-versioning.mjs";
 
 import {
   buildDirectory,
+  bundledModuleDependencies,
   packageAssetFiles,
   packageAssetTransforms,
   packageSourceMapsWithEmbeddedSources,
@@ -76,6 +77,7 @@ const coreFiles = [
 const runtimeRequestFiles = new Set(Object.values(runtimeFeatureRequests).flat());
 const requiredFiles = new Set([
   ...coreFiles,
+  ...Object.values(bundledModuleDependencies).map(({ output }) => output),
   ...runtimeAssetFiles,
   ...runtimeRequestFiles,
 ]);
@@ -286,9 +288,19 @@ async function verifyBuildGraph() {
   for (const [output, source] of Object.entries(declaredScripts)) {
     const sourceContent = await readFile(path.join(sourceRoot, source), "utf8");
     const rendered = sourceContent.split("{v}").join(version);
-    const expectedContent = output.endsWith(".mjs")
-      ? versionModuleImports(rendered, version)
-      : rendered;
+    let expectedContent = rendered;
+    if (output.endsWith(".mjs")) {
+      const replacements = Object.fromEntries(Object.entries(bundledModuleDependencies)
+        .map(([specifier, dependency]) => {
+          let relative = path.posix.relative(path.posix.dirname(output), dependency.output);
+          if (!relative.startsWith(".")) relative = `./${relative}`;
+          return [specifier, relative];
+        }));
+      expectedContent = versionModuleImports(
+        rewriteModuleImports(rendered, replacements),
+        version,
+      );
+    }
     const expected = `${expectedContent}\n`;
     const actual = await readFile(path.join(buildRoot, output), "utf8");
     if (actual !== expected) throw new Error(`${output} differs from its declared source`);

@@ -255,6 +255,10 @@ ColorPalettePanel.prototype = {
 
   keyDown: function(event) {
 
+    if(g_app.services && g_app.services.commands) {
+      return;
+    }
+
     //          if(event.shiftKey) {
 
     switch(event.keyCode) {

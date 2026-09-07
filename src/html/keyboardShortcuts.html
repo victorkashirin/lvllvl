@@ -1,0 +1,74 @@
+<div id="keyboardShortcutsRoot" class="keyboard-shortcuts">
+  <div class="keyboard-shortcuts-toolbar">
+    <label class="keyboard-shortcuts-search-label" for="keyboardShortcutsSearch">
+      <span>Search commands and shortcuts</span>
+      <input id="keyboardShortcutsSearch" type="text" autocomplete="off"
+        placeholder="Type a command, shortcut, or context">
+    </label>
+    <label class="keyboard-shortcuts-filter">
+      <input id="keyboardShortcutsModifiedOnly" type="checkbox"> Modified only
+    </label>
+    <label class="keyboard-shortcuts-filter">
+      <input id="keyboardShortcutsBoundOnly" type="checkbox"> Bound only
+    </label>
+    <label class="keyboard-shortcuts-filter">
+      <input id="keyboardShortcutsConflictsOnly" type="checkbox"> Conflicts only
+    </label>
+    <button type="button" class="ui-button" data-action="import">Import</button>
+    <button type="button" class="ui-button" data-action="export">Export</button>
+    <button type="button" class="ui-button" data-action="reset-all">Reset All</button>
+    <input id="keyboardShortcutsImportFile" class="keyboard-shortcuts-file-input"
+      type="file" accept="application/json,.json" aria-label="Import keyboard shortcuts">
+  </div>
+
+  <div class="keyboard-shortcuts-summary">
+    <span id="keyboardShortcutsCount"></span>
+  </div>
+
+  <div id="keyboardShortcutsTableHolder" class="keyboard-shortcuts-table-holder" tabindex="0">
+    <table class="keyboard-shortcuts-table">
+      <thead>
+        <tr>
+          <th scope="col">Command</th>
+          <th scope="col">Shortcut</th>
+          <th scope="col">When</th>
+          <th scope="col">Source</th>
+          <th scope="col"><span class="visually-hidden">Warnings</span></th>
+          <th scope="col">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="keyboardShortcutsTableBody"></tbody>
+    </table>
+  </div>
+
+  <div id="keyboardShortcutsRecorder" class="keyboard-shortcuts-recorder" role="dialog"
+    aria-labelledby="keyboardShortcutsRecorderTitle" hidden>
+    <div class="keyboard-shortcuts-recorder-heading">
+      <strong id="keyboardShortcutsRecorderTitle">Record shortcut</strong>
+      <button type="button" class="keyboard-shortcuts-icon-button"
+        data-action="cancel-recording" aria-label="Cancel shortcut recording">×</button>
+    </div>
+    <button id="keyboardShortcutsRecorderCapture" type="button"
+      class="keyboard-shortcuts-recorder-capture" aria-label="Press the new keyboard shortcut"
+      aria-describedby="keyboardShortcutsRecorderMessage">
+      <span id="keyboardShortcutsRecorderDisplay">Press a shortcut</span>
+    </button>
+    <label class="keyboard-shortcuts-physical">
+      <input id="keyboardShortcutsPhysicalKey" type="checkbox">
+      Use physical key position (layout independent)
+    </label>
+    <div id="keyboardShortcutsRecorderMessage" class="keyboard-shortcuts-recorder-message"
+      aria-live="polite"></div>
+    <div id="keyboardShortcutsConflictActions" class="keyboard-shortcuts-conflict-actions" hidden>
+      <button id="keyboardShortcutsReplaceConflicts" type="button"
+        class="ui-button ui-button-primary" data-action="replace-conflicts">
+        Replace Conflicts
+      </button>
+      <button type="button" class="ui-button" data-action="keep-conflicts">Keep Both</button>
+      <button type="button" class="ui-button" data-action="cancel-recording">Cancel</button>
+    </div>
+  </div>
+
+  <div id="keyboardShortcutsStatus" class="keyboard-shortcuts-status" role="status"
+    aria-live="polite"></div>
+</div>

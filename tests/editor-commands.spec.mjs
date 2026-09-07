@@ -147,9 +147,7 @@ test("zen mode reveals edge controls, keeps shortcuts active, and restores the l
     right: g_app.textModeEditor.textModeEditorPanel.eastSize,
     tabs: UI("tabSplitPanel").northSize,
     tools: g_app.textModeEditor.textModeEditorPanel.westSize,
-    zoomShortcut: g_app.menuBar.shortcuts.find(
-      ({ menuItem }) => menuItem.uiID === "view-zoomin",
-    ).menuItem.isShortcutAvailable(),
+    zoomShortcut: g_app.services.commands.formatBindings("view.zoomin").length > 0,
   }))).toEqual({
     bottom: 0,
     gridInfo: before.gridInfo,
@@ -593,6 +591,15 @@ test("maintained editors work without the retired runtime shells", async ({ page
     currentEditor: g_app.projectNavigator.getCurrentEditor() === g_app.assemblerEditor,
     mode: g_app.getMode(),
   }))).toEqual({ currentEditor: true, mode: "assembler" });
+
+  await page.evaluate(() => {
+    window.__assemblerSaveCount = 0;
+    g_app.fileManager.save = () => { window.__assemblerSaveCount++ };
+    document.activeElement?.blur();
+  });
+  const modifier = await page.evaluate(() => UI.os === "Mac OS" ? "Meta" : "Control");
+  await page.keyboard.press(`${modifier}+s`);
+  expect(await page.evaluate(() => window.__assemblerSaveCount)).toBe(1);
 
   await page.evaluate((path) => {
     g_app.projectNavigator.showDocRecord(path, { forceReload: true });

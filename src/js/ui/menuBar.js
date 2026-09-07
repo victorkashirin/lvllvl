@@ -15,6 +15,9 @@ UI.MenuItem = function() {
       this.menu = args.menu;
     }
 
+    this.commandId = null;
+    this.shortcutLabel = null;
+
     if(typeof args.label === 'undefined') {
       this.label = '';
     } else {
@@ -46,7 +49,7 @@ UI.MenuItem = function() {
     if(typeof args.shortcut === 'undefined') {
       this.shortcut = false;
     } else {
-      this.shortcut = args.shortcut;
+      this.shortcut = Object.assign({}, args.shortcut);
       if(typeof this.shortcut.cmd == 'undefined') {
         this.shortcut.cmd = false;
       }
@@ -61,12 +64,7 @@ UI.MenuItem = function() {
       }
        
 
-      if(UI.os !== 'Mac OS' && this.shortcut.cmd) {
-        this.shortcut.cmd = false;
-        this.shortcut.ctrl = true;
-      }
-
-      if(this.shortcut.key != 'undefined') {
+      if(typeof this.shortcut.key !== 'undefined') {
         if(this.shortcut.key.length == 1) {
           this.shortcut.keyLowerCase = this.shortcut.key.toLowerCase();
           this.shortcut.charCode = this.shortcut.key.toLowerCase().charCodeAt(0);
@@ -80,6 +78,9 @@ UI.MenuItem = function() {
 
 
   this.getShortcutHTML = function() {
+    if(this.shortcutLabel !== null) {
+      return this.shortcutLabel;
+    }
     var shortcutHtml = '';
     if(this.shortcut !== false) {
       var shortcutHtml = '';
@@ -118,6 +119,14 @@ UI.MenuItem = function() {
       }
     }
     return shortcutHtml;
+  }
+
+  this.setShortcutText = function(shortcutLabel) {
+    this.shortcutLabel = shortcutLabel;
+    var element = document.querySelector('#' + this.id + ' .ui-menu-item-shortcut');
+    if(element !== null) {
+      element.textContent = shortcutLabel === '' ? '' : '\u00a0\u00a0\u00a0\u00a0' + shortcutLabel;
+    }
   }
 
 
@@ -206,7 +215,11 @@ UI.MenuItem = function() {
     }
 
     if(this.enabled) {
-      this.menuBar.trigger('itemclick', this.uiID, source);
+      if(this.commandId !== null && this.menuBar.commandService) {
+        this.menuBar.commandService.execute(this.commandId, { source: source || 'menu' });
+      } else {
+        this.menuBar.trigger('itemclick', this.uiID, source);
+      }
       this.trigger('click', this.uiID);
 
       if(this.menu !== false) {
@@ -383,6 +396,7 @@ UI.MenuBar = function() {
   this.menuShownId = false;
   this.menuBarItemShownId = false;  
   this.element = null;
+  this.commandService = null;
 
   this.init = function(args) {
     UI.menuComponents.push(this);
@@ -403,6 +417,7 @@ UI.MenuBar = function() {
 
 
   this.setShortcutEnabled = function(shortcut, enabled) {
+    shortcut = Object.assign({}, shortcut);
     if(typeof shortcut.cmd == 'undefined') {
       shortcut.cmd = false;
     }
@@ -412,17 +427,21 @@ UI.MenuBar = function() {
     if(typeof shortcut.ctrl == 'undefined') {
       shortcut.ctrl = false;
     }
-
-    if(UI.os !== 'Mac OS' && shortcut.cmd) {
-      shortcut.cmd = false;
-      shortcut.ctrl = true;
+    if(typeof shortcut.alt == 'undefined') {
+      shortcut.alt = false;
     }
 
     for(var i = 0; i < this.shortcuts.length; i++) {
-      if(this.shortcuts[i].shortcut.key == shortcut.key 
-        && this.shortcuts[i].shortcut.shift == shortcut.shift
-        && this.shortcuts[i].shortcut.cmd == shortcut.cmd
-        && this.shortcuts[i].shortcut.ctrl == shortcut.ctrl) {
+      var registered = this.shortcuts[i].shortcut;
+      var registeredCtrl = registered.ctrl || (registered.cmd && UI.os !== 'Mac OS');
+      var registeredMeta = registered.cmd && UI.os === 'Mac OS';
+      var requestedCtrl = shortcut.ctrl || (shortcut.cmd && UI.os !== 'Mac OS');
+      var requestedMeta = shortcut.cmd && UI.os === 'Mac OS';
+      if(registered.key == shortcut.key
+        && registered.shift == shortcut.shift
+        && registeredMeta == requestedMeta
+        && registeredCtrl == requestedCtrl
+        && registered.alt == shortcut.alt) {
         this.shortcuts[i].enabled = enabled;
       }
 
@@ -477,6 +496,7 @@ UI.MenuBar = function() {
     menu.menuBarItemId = UI.getID();
     menu.label = args.label;
     menu.menuBar = this;
+    menu.className = typeof args.className === 'string' ? args.className : '';
 
     this.menus.push(menu);
 
@@ -622,12 +642,21 @@ UI.MenuBar = function() {
     var altDown = event.altKey;
 
     for(var i = 0; i < this.shortcuts.length; i++) {
+      var shortcut = this.shortcuts[i].shortcut;
+      var legacyModes = this.shortcuts[i].menuItem.legacyShortcutModes;
+      if(Array.isArray(legacyModes)
+        && (legacyModes.length === 0 || typeof g_app == 'undefined'
+          || legacyModes.indexOf(g_app.mode) === -1)) {
+        continue;
+      }
+      var expectedCtrl = shortcut.ctrl || (shortcut.cmd && UI.os !== 'Mac OS');
+      var expectedMeta = shortcut.cmd && UI.os === 'Mac OS';
 
       if(this.shortcuts[i].enabled && this.shortcuts[i].menuItem.isShortcutAvailable() &&
-          c == this.shortcuts[i].shortcut.keyLowerCase) {
-        if(this.shortcuts[i].shortcut.cmd == cmdDown && this.shortcuts[i].shortcut.shift == shiftDown 
-           && this.shortcuts[i].shortcut.ctrl == ctrlDown
-           && this.shortcuts[i].shortcut.alt == altDown) {
+          c == shortcut.keyLowerCase) {
+        if(expectedMeta == cmdDown && shortcut.shift == shiftDown
+           && expectedCtrl == ctrlDown
+           && shortcut.alt == altDown) {
 
           this.shortcuts[i].menuItem.click(undefined, 'keyboard');
           event.preventDefault();
@@ -663,12 +692,21 @@ UI.MenuBar = function() {
     var altDown = event.altKey;
 
     for(var i = 0; i < this.shortcuts.length; i++) {
+      var shortcut = this.shortcuts[i].shortcut;
+      var legacyModes = this.shortcuts[i].menuItem.legacyShortcutModes;
+      if(Array.isArray(legacyModes)
+        && (legacyModes.length === 0 || typeof g_app == 'undefined'
+          || legacyModes.indexOf(g_app.mode) === -1)) {
+        continue;
+      }
+      var expectedCtrl = shortcut.ctrl || (shortcut.cmd && UI.os !== 'Mac OS');
+      var expectedMeta = shortcut.cmd && UI.os === 'Mac OS';
 
       if(this.shortcuts[i].enabled && this.shortcuts[i].menuItem.isShortcutAvailable() &&
-          c == this.shortcuts[i].shortcut.keyLowerCase) {
-        if(this.shortcuts[i].shortcut.cmd == cmdDown && this.shortcuts[i].shortcut.shift == shiftDown
-           && this.shortcuts[i].shortcut.ctrl == ctrlDown
-           && this.shortcuts[i].shortcut.alt == altDown ) {
+          c == shortcut.keyLowerCase) {
+        if(expectedMeta == cmdDown && shortcut.shift == shiftDown
+           && expectedCtrl == ctrlDown
+           && shortcut.alt == altDown ) {
           event.preventDefault();
           return true;
         }

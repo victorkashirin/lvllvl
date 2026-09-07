@@ -76,6 +76,10 @@ DrawTools.prototype = {
   initToolSettingEvents: function() {
     var _this = this;
 
+    if(g_app.updateEditorShortcutLabels) {
+      g_app.updateEditorShortcutLabels();
+    }
+
     this.initToolSettingsCurrentTileEvents();
 
     var toolsPanelVisible = g_app.getPref("textmode.toolsPanelVisible") !== 'no';
@@ -277,33 +281,39 @@ DrawTools.prototype = {
   },
 
   getTools: function() {
+    var commandService = g_app.services && g_app.services.commands;
+    var shortcut = function(commandId, fallback) {
+      return commandService && commandService.hasCommand(commandId)
+        ? (commandService.formatBindings(commandId) || false)
+        : fallback;
+    };
     this.toolMap = {
-      "pen": { label: TextStore.get("Pencil"), "isMobileTool": true, "icon": 'icons/pen@2x.png', "mobileIcon": 'icons/svg/glyphicons-basic-31-pencil.svg', key: keys.textMode.toolsPencil.key },
-      "erase": { label: TextStore.get("Blank"), "isMobileTool": true, "icon": 'icons/erase@2x.png', "mobileIcon": 'icons/svg/glyphicons-basic-250-eraser.svg', "key": keys.textMode.toolsErase.key },
-      "fill": { label: TextStore.get("Fill Bucket"), "isMobileTool": true, "icon": 'icons/fill@2x.png', "mobileIcon": 'icons/svg/glyphicons-basic-245-fill.svg', "key": keys.textMode.toolsBucket.key },
-      "eyedropper": { label: TextStore.get("Eyedropper"), "isMobileTool": true, "icon": 'icons/eyedropper@2x.png', "mobileIcon": 'icons/svg/glyphicons-basic-91-eyedropper.svg', "key": keys.textMode.toolsEyedropper.key },
-      "line": { label: TextStore.get("Line"), "isMobileTool": true, "icon": 'icons/line@2x.png', "mobileIcon": 'icons/svg/slash.svg', "key": keys.textMode.toolsShape.key },
-      "rect": { label: TextStore.get("Rect"), "isMobileTool": true, "icon": 'icons/rect@2x.png', "mobileIcon": 'icons/svg/square.svg', "key": keys.textMode.toolsShape.key },
-      "oval": { label: TextStore.get("Oval"), "isMobileTool": true, "icon": 'icons/oval@2x.png', "mobileIcon": 'icons/svg/circle.svg', "key": keys.textMode.toolsShape.key },
-      "select": { label: TextStore.get("Marquee"), "isMobileTool": true, "icon": 'icons/select@2x.png', "mobileIcon": 'icons/select@2x.png', "key": keys.textMode.toolsMarquee.key },
-      "charpixel": { label: TextStore.get("Char Pixel"), "isMobileTool": true, "icon": 'icons/charpixel@2x.png', "mobileIcon": 'icons/svg/glyphicons-basic-31-pencil.svg', "key": keys.textMode.toolsCharPixel.key },
+      "pen": { label: TextStore.get("Pencil"), commandId: 'textMode.tool.pencil', "isMobileTool": true, "icon": 'icons/pen@2x.png', "mobileIcon": 'icons/svg/glyphicons-basic-31-pencil.svg', key: shortcut('textMode.tool.pencil', keys.textMode.toolsPencil.key) },
+      "erase": { label: TextStore.get("Blank"), commandId: 'textMode.tool.erase', "isMobileTool": true, "icon": 'icons/erase@2x.png', "mobileIcon": 'icons/svg/glyphicons-basic-250-eraser.svg', "key": shortcut('textMode.tool.erase', keys.textMode.toolsErase.key) },
+      "fill": { label: TextStore.get("Fill Bucket"), commandId: 'textMode.tool.fill', "isMobileTool": true, "icon": 'icons/fill@2x.png', "mobileIcon": 'icons/svg/glyphicons-basic-245-fill.svg', "key": shortcut('textMode.tool.fill', keys.textMode.toolsBucket.key) },
+      "eyedropper": { label: TextStore.get("Eyedropper"), commandId: 'textMode.tool.eyedropper', "isMobileTool": true, "icon": 'icons/eyedropper@2x.png', "mobileIcon": 'icons/svg/glyphicons-basic-91-eyedropper.svg', "key": shortcut('textMode.tool.eyedropper', keys.textMode.toolsEyedropper.key) },
+      "line": { label: TextStore.get("Line"), commandId: 'textMode.tool.shape', "isMobileTool": true, "icon": 'icons/line@2x.png', "mobileIcon": 'icons/svg/slash.svg', "key": shortcut('textMode.tool.shape', keys.textMode.toolsShape.key) },
+      "rect": { label: TextStore.get("Rect"), commandId: 'textMode.tool.shape', "isMobileTool": true, "icon": 'icons/rect@2x.png', "mobileIcon": 'icons/svg/square.svg', "key": shortcut('textMode.tool.shape', keys.textMode.toolsShape.key) },
+      "oval": { label: TextStore.get("Oval"), commandId: 'textMode.tool.shape', "isMobileTool": true, "icon": 'icons/oval@2x.png', "mobileIcon": 'icons/svg/circle.svg', "key": shortcut('textMode.tool.shape', keys.textMode.toolsShape.key) },
+      "select": { label: TextStore.get("Marquee"), commandId: 'textMode.tool.marquee', "isMobileTool": true, "icon": 'icons/select@2x.png', "mobileIcon": 'icons/select@2x.png', "key": shortcut('textMode.tool.marquee', keys.textMode.toolsMarquee.key) },
+      "charpixel": { label: TextStore.get("Char Pixel"), commandId: 'textMode.tool.characterPixel', "isMobileTool": true, "icon": 'icons/charpixel@2x.png', "mobileIcon": 'icons/svg/glyphicons-basic-31-pencil.svg', "key": shortcut('textMode.tool.characterPixel', keys.textMode.toolsCharPixel.key) },
       "linesegment": { label: TextStore.get("Line Segment"), "isMobileTool": false, "icon": 'icons/linesegment@2x.png', "mobileIcon": 'icons/svg/glyphicons-basic-31-pencil.svg', "key": false },
 
 //        "invert": { label: TextStore.get("Invert"), "icon": 'icons/linesegment@2x.png', "mobileIcon": 'icons/svg/glyphicons-basic-31-pencil.svg', "key": false },
 //        "corners": { label: TextStore.get("Corners"), "icon": 'icons/linesegment@2x.png', "mobileIcon": 'icons/svg/glyphicons-basic-31-pencil.svg', "key": false },
 
       // icons/linesegment@2x.png      
-      "type": { label: TextStore.get("Type"), "isMobileTool": false, "icon": 'icons/type@2x.png', "mobileIcon": 'icons/svg/glyphicons-basic-31-pencil.svg', "key": keys.textMode.toolsType.key },
-      "pixel": { label: TextStore.get("Pixel"), "isMobileTool": true, "icon": 'icons/pixel@2x.png', "mobileIcon": 'icons/pixel.png', "key": keys.textMode.toolsPixel.key },
-      "block": { label: TextStore.get("Meta Tile"), "isMobileTool": true, "icon": 'icons/block@2x.png', "mobileIcon": 'icons/svg/glyphicons-basic-31-pencil.svg', "key": keys.textMode.toolsBlock.key },
-      "zoom": { label: TextStore.get("Zoom"), "isMobileTool": false, "icon": 'icons/zoom@2x.png', "mobileIcon": 'icons/svg/glyphicons-basic-31-pencil.svg', "key": keys.textMode.toolsZoom.key },
-      "hand": { label: TextStore.get("Hand"), "isMobileTool": true, "icon": 'icons/hand@2x.png', "mobileIcon": 'icons/svg/glyphicons-basic-457-hand-open.svg', "key": keys.textMode.toolsHand.key },
-      "move": { label: TextStore.get("Move"), "isMobileTool": true, "icon": 'icons/move@2x.png', "mobileIcon": 'icons/svg/glyphicons-basic-31-pencil.svg', "key": keys.textMode.toolsMove.key },
+      "type": { label: TextStore.get("Type"), commandId: 'textMode.tool.type', "isMobileTool": false, "icon": 'icons/type@2x.png', "mobileIcon": 'icons/svg/glyphicons-basic-31-pencil.svg', "key": shortcut('textMode.tool.type', keys.textMode.toolsType.key) },
+      "pixel": { label: TextStore.get("Pixel"), commandId: 'textMode.tool.pixel', "isMobileTool": true, "icon": 'icons/pixel@2x.png', "mobileIcon": 'icons/pixel.png', "key": shortcut('textMode.tool.pixel', keys.textMode.toolsPixel.key) },
+      "block": { label: TextStore.get("Meta Tile"), commandId: 'textMode.tool.block', "isMobileTool": true, "icon": 'icons/block@2x.png', "mobileIcon": 'icons/svg/glyphicons-basic-31-pencil.svg', "key": shortcut('textMode.tool.block', keys.textMode.toolsBlock.key) },
+      "zoom": { label: TextStore.get("Zoom"), commandId: 'textMode.tool.zoom', "isMobileTool": false, "icon": 'icons/zoom@2x.png', "mobileIcon": 'icons/svg/glyphicons-basic-31-pencil.svg', "key": shortcut('textMode.tool.zoom', keys.textMode.toolsZoom.key) },
+      "hand": { label: TextStore.get("Hand"), commandId: 'textMode.tool.hand', "isMobileTool": true, "icon": 'icons/hand@2x.png', "mobileIcon": 'icons/svg/glyphicons-basic-457-hand-open.svg', "key": shortcut('textMode.tool.hand', keys.textMode.toolsHand.key) },
+      "move": { label: TextStore.get("Move"), commandId: 'textMode.tool.move', "isMobileTool": true, "icon": 'icons/move@2x.png', "mobileIcon": 'icons/svg/glyphicons-basic-31-pencil.svg', "key": shortcut('textMode.tool.move', keys.textMode.toolsMove.key) },
       "rotate": { label: TextStore.get("Rotate"), "isMobileTool": false, "icon": '', "mobileIcon": 'icons/svg/glyphicons-basic-494-rotate-horizontal.svg' },
       "pixelselect": { label: TextStore.get("Marquee"), "isMobileTool": false, "icon": '', "mobileIcon": 'icons/select@2x.png', "key": false },
-      "pixelzoom": { label: TextStore.get("Zoom"), "isMobileTool": false, "icon": '', "mobileIcon": 'icons/svg/glyphicons-basic-31-pencil.svg', "key": keys.textMode.toolsZoom.key },
-      "pixelhand": { label: TextStore.get("Hand"), "isMobileTool": false, "icon": '', "mobileIcon": 'icons/svg/glyphicons-basic-457-hand-open.svg', "key": keys.textMode.toolsHand.key },
-      "pixelmove": { label: TextStore.get("Move"), "isMobileTool": false, "icon": '', "mobileIcon": 'icons/svg/glyphicons-basic-31-pencil.svg', "key": keys.textMode.toolsMove.key }
+      "pixelzoom": { label: TextStore.get("Zoom"), commandId: 'textMode.tool.zoom', "isMobileTool": false, "icon": '', "mobileIcon": 'icons/svg/glyphicons-basic-31-pencil.svg', "key": shortcut('textMode.tool.zoom', keys.textMode.toolsZoom.key) },
+      "pixelhand": { label: TextStore.get("Hand"), commandId: 'textMode.tool.hand', "isMobileTool": false, "icon": '', "mobileIcon": 'icons/svg/glyphicons-basic-457-hand-open.svg', "key": shortcut('textMode.tool.hand', keys.textMode.toolsHand.key) },
+      "pixelmove": { label: TextStore.get("Move"), commandId: 'textMode.tool.move', "isMobileTool": false, "icon": '', "mobileIcon": 'icons/svg/glyphicons-basic-31-pencil.svg', "key": shortcut('textMode.tool.move', keys.textMode.toolsMove.key) }
     };
 
 
@@ -477,6 +487,10 @@ DrawTools.prototype = {
 
   initEvents: function() {
     var _this = this;
+
+    if(g_app.updateEditorShortcutLabels) {
+      g_app.updateEditorShortcutLabels();
+    }
 
     $('#tileToolsCloseButton').on('click', function() {
       _this.editor.setToolsVisible(false);
@@ -1320,6 +1334,10 @@ DrawTools.prototype = {
   initSelectEvents: function() {
     var _this = this;
 
+    if(g_app.updateEditorShortcutLabels) {
+      g_app.updateEditorShortcutLabels();
+    }
+
     $('#selectX1').on('keyup', function() {
       _this.select.setSelectionFromInput();
     });
@@ -1486,6 +1504,9 @@ DrawTools.prototype = {
     UI.on('ready', function() {
       UI('pixelControls').setVisible(false);
       pixelPanel.load('html/textMode/pixelTools.html', function() {
+        if(g_app.updateEditorShortcutLabels) {
+          g_app.updateEditorShortcutLabels();
+        }
       });
     });
 
@@ -1633,6 +1654,7 @@ DrawTools.prototype = {
     var cl = String.fromCharCode(keyCode).toLowerCase();
     var tool = this.tool;
     var grid2d = this.editor.grid.grid2d;
+    var commandServiceActive = g_app.services && g_app.services.commands;
 
     if(this.isTyping()) {
       event.preventDefault();
@@ -1646,13 +1668,15 @@ DrawTools.prototype = {
 
     var layer = this.editor.layers.getSelectedLayerObject();
 
-    if(this.editor.spriteFrames.getVisible()) {
+    if(!commandServiceActive && this.editor.spriteFrames.getVisible()) {
       if(this.editor.spriteFrames.keyDown(event)) {
         return;
       }
     }
 
-    this.editor.colorPalettePanel.keyDown(event);
+    if(!commandServiceActive) {
+      this.editor.colorPalettePanel.keyDown(event);
+    }
 
     if(this.editor.getEditorMode() == 'pixel') {
       this.editor.tools.pixelDrawTools.keyDown(event);
@@ -1663,7 +1687,7 @@ DrawTools.prototype = {
       this.pixelDraw.keyDown(event);    
     }
 
-    if(!event.shiftKey) {
+    if(!commandServiceActive && !event.shiftKey) {
       switch(c) {
         case keys.textMode.toolsPencil.key:
           this.setDrawTool('pen');
@@ -1715,28 +1739,30 @@ DrawTools.prototype = {
        || this.tool == 'line' 
        || this.tool == 'rect' 
        || this.tool == 'oval') {
-      switch(c) {
-        case keys.textMode.drawTileFlipH.key:
-          this.editor.currentTile.flipH2d();
-        break;
-        case keys.textMode.drawTileFlipV.key:
-          this.editor.currentTile.flipV2d();
-        break;
+      if(!commandServiceActive) {
+        switch(c) {
+          case keys.textMode.drawTileFlipH.key:
+            this.editor.currentTile.flipH2d();
+          break;
+          case keys.textMode.drawTileFlipV.key:
+            this.editor.currentTile.flipV2d();
+          break;
 
-        case keys.textMode.drawCharacter.key: 
-          this.toggleDrawCharacter();
-        break;
-        case keys.textMode.drawFGColor.key: 
-          this.toggleDrawFGColor();
-        break;
-        case keys.textMode.drawBGColor.key: 
-          this.toggleDrawBGColor();
-        break;
+          case keys.textMode.drawCharacter.key:
+            this.toggleDrawCharacter();
+          break;
+          case keys.textMode.drawFGColor.key:
+            this.toggleDrawFGColor();
+          break;
+          case keys.textMode.drawBGColor.key:
+            this.toggleDrawBGColor();
+          break;
+        }
+        this.tilePalette.keyDown(event);
       }
-      this.tilePalette.keyDown(event);       
     }
 
-    if(this.tool == 'pen' || this.tool == 'block') {
+    if(!commandServiceActive && (this.tool == 'pen' || this.tool == 'block')) {
       var dx = 1;
       var dy = 1;
 
@@ -1769,13 +1795,13 @@ DrawTools.prototype = {
           break;
         case 'enter':
         case 'insert':
-          grid2d.setCursorCells();          
+          grid2d.setCursorCells();
           break;
       }
     }
 
 
-    if(this.tool == 'linesegment') {
+    if(!commandServiceActive && this.tool == 'linesegment') {
       switch(c) { 
         case keys.textMode.lineSegmentHorizontal.key:
           this.lineSegmentDraw.setMode('horizontal');
@@ -1786,7 +1812,7 @@ DrawTools.prototype = {
       }
     }
 
-    if(this.tool == 'block') {
+    if(!commandServiceActive && this.tool == 'block') {
       if(this.blockPalette) {
         this.blockPalette.keyDown(event);      
       }
@@ -1797,7 +1823,7 @@ DrawTools.prototype = {
     }
 
 
-    if(!this.isTyping()) {
+    if(!commandServiceActive && !this.isTyping()) {
       switch(event.key) {
         case keys.textMode.showColorPicker.key:
           this.editor.gridView2d.showColorPicker();
@@ -1816,7 +1842,7 @@ DrawTools.prototype = {
     }
 
 
-    if(this.tool == 'select') {
+    if(!commandServiceActive && this.tool == 'select') {
       if(!event.shiftKey && !event.altKey && !event.metaKey) {
         switch(c) {
           case keys.textMode.selectDrawWithSelection.key:
@@ -1837,7 +1863,7 @@ DrawTools.prototype = {
       }
     }
 
-    if(this.editor.getScreenMode() === TextModeEditor.Mode.C64MULTICOLOR) {
+    if(!commandServiceActive && this.editor.getScreenMode() === TextModeEditor.Mode.C64MULTICOLOR) {
       switch(c) {
         case keys.textMode.c64MultiFG.key:
           this.pixelDraw.setC64MultiColorType('cell');
@@ -1854,10 +1880,12 @@ DrawTools.prototype = {
       }
     }
 
-    if(this.select.isActive())  {
-      this.selectToolKeypress(event);
-    } else {
-      this.screenMoveKeypress(event);
+    if(!commandServiceActive) {
+      if(this.select.isActive())  {
+        this.selectToolKeypress(event);
+      } else {
+        this.screenMoveKeypress(event);
+      }
     }
     this.editor.gridView2d.setMouseCursor(event);
   },

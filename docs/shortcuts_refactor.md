@@ -1,0 +1,224 @@
+# Keyboard shortcuts refactoring plan
+
+## Execution contract
+
+Use this plan when implementing or reviewing the remaining shortcut refactor. It replaces `shortcut_issues.md` and `code_flaws.md`; historical `SC-*` and `CQ-*` IDs below provide traceability without separate work queues.
+
+**Scope:** remaining P2 correctness/integration work and P3 maintenance, performance, and presentation work. Findings originated in static review. Subsequent changes may already satisfy individual requirements; inspect the linked symbols before editing. In particular, layout metadata and delayed-execution input-policy checks have already received follow-up changes. This consolidation does not certify runtime behavior.
+
+**Preserve:** the domain/application/adapter separation, injected dependencies, application-owned commands, explicit unresolved conflicts, versioned overrides, existing global/local input policy, and the current dialog framework. Retain persisted command IDs and preference compatibility throughout the refactor.
+
+### Working procedure
+
+1. Start at the first unfinished phase in the table. Read its source locations and compare current behavior with its gate. Keep already-correct implementations and record the evidence.
+2. Implement one root-cause change set at a time, including its related behavioral fixes. Finish the gate before advancing; change this order only with explicit user agreement. Phases 1–5 stabilize behavior; broad catalog extraction starts in phase 6.
+3. Request approval before writing or running tests, naming the narrow cases and why they cover the change. Extend relevant existing tests instead of creating a broad matrix. Validation targets below are a plan, not authorization to execute tests.
+4. Mark a phase complete only when its gate is met and validation evidence is recorded. If validation awaits approval, leave it unchecked and record the blocker. Distinguish static inspection, manual observation, and executed tests.
+5. Update this plan's progress and source links after each phase. Update `CHANGELOG.md` for implemented fixes/features; documentation-only changes need no changelog entry. Preserve unrelated working-tree changes.
+
+**Procedure gate:** each completed phase has a short record of changed symbols, validation performed/results, and any explicitly deferred work. This table is the sole completion checklist.
+
+## Execution sequence
+
+| Done | Phase | Priority | Consolidated findings |
+| --- | --- | --- | --- |
+| [ ] | [1. Input ownership and modal migration](#phase-1--input-ownership-and-modal-migration) | P2 | SC-03, SC-04; CQ-03 |
+| [ ] | [2. Binding semantics, repeat, and aliases](#phase-2--binding-semantics-repeat-and-aliases) | P2 | SC-05, SC-06, SC-13; CQ-04, CQ-05 |
+| [ ] | [3. Dispatcher lifecycle](#phase-3--dispatcher-lifecycle) | P2 | SC-07, SC-08, SC-09; CQ-06 |
+| [ ] | [4. Atomic edits and observable outcomes](#phase-4--atomic-edits-and-observable-outcomes) | P2 | SC-12; CQ-07 service work, CQ-08 |
+| [ ] | [5. Recorder state, accessibility, and presentation](#phase-5--recorder-state-accessibility-and-presentation) | P2 / P3 | SC-10, SC-11, SC-16; CQ-07 dialog work |
+| [ ] | [6. Catalog ownership and legacy cleanup](#phase-6--catalog-ownership-and-legacy-cleanup) | P2 / P3 | SC-14; CQ-01, CQ-02 |
+| [ ] | [7. API and data ownership](#phase-7--api-and-data-ownership) | P3 | CQ-09 |
+| [ ] | [8. Derived-data caching](#phase-8--derived-data-caching) | P3 | SC-15; CQ-10 |
+| [ ] | [9. Build boundary hardening](#phase-9--build-boundary-hardening) | P3 | CQ-11 |
+
+## Phase 1 — Input ownership and modal migration
+
+**Why first:** dispatcher lifecycle and catalog extraction need a reliable definition of which surface owns an event. Service availability currently substitutes for migration ownership in legacy handlers.
+
+**Read:** [shortcutContext](../src/js/bootstrap.mjs#L30), [keyboardPolicyAllows](../src/js/modules/application/commandService.mjs#L413), [menu contexts](../src/js/editor.js#L1678), [colour command registration](../src/js/editor.js#L1905), [palette key handling](../src/js/textMode/color/colorPaletteEdit.js#L2291), and [Tools.keyDown](../src/js/textMode/tools.js#L58).
+
+**Remaining behavior:**
+
+- **SC-03:** palette-local undo/redo and N/L/I/V/M are disabled whenever the service exists, while replacements target standalone `color palette` mode rather than the dialog's palette instance.
+- **SC-04:** Alt+1…8 / Alt+Shift+1…8 colour selection inherits typing suppression, while the earlier handler that ran before character insertion is disabled.
+
+**Actions, in order:**
+
+1. Define a shared context type and one adapter for translating DOM/legacy state into it. Distinguish editable text, focusable controls, canvas typing, passive canvas focus, and modal identity. Treat unknown focus deliberately rather than assuming canvas; `tabindex` alone does not establish editing ownership.
+2. Preserve the existing global/local protections while expressing colour-during-typing as a narrow exception. Separate action prerequisites from keyboard activation restrictions; menu invocation still needs valid prerequisites without inheriting text-entry suppression.
+3. Assign ownership per surface/action. Either register modal palette commands against the actual instance or retain that modal's local handlers until a replacement exists. Keep one handler owner per event.
+4. Replace partial context snapshots from the broad empty catch with a deliberate safe fallback and rate-limited diagnostics for unexpected failures.
+
+**Validation target:** one focused browser workflow covering standalone versus modal palette tool selection and undo/redo, plus permitted colour changes during canvas typing without character insertion.
+
+**Gate:** each affected surface has an explicit event owner; modal actions target the modal instance; permitted colour shortcuts work during typing; other input-boundary protections remain intact.
+
+## Phase 2 — Binding semantics, repeat, and aliases
+
+**Depends on:** phase 1's context contract. This phase defines event identity; phase 3 uses that identity for release tracking.
+
+**Read:** [normalizeBinding](../src/js/modules/domain/keybindings.mjs#L111), [chordsCanCoincide](../src/js/modules/domain/keybindings.mjs#L220), [chordFromKeyboardEvent](../src/js/modules/domain/keybindings.mjs#L271), [eventMatchesChord](../src/js/modules/domain/keybindings.mjs#L305), [bindingFromEvent](../src/js/modules/application/commandService.mjs#L307), [chooseCandidate](../src/js/modules/application/commandService.mjs#L532), [bindingPrecedence](../src/js/modules/application/commandService.mjs#L697), [setBinding](../src/js/modules/application/commandService.mjs#L864), and [legacy overview zoom](../src/js/editor.js#L1148).
+
+**Behavior to resolve:**
+
+- **SC-05:** recorded bindings default to `repeat: false`; replacing a repeating movement/palette/frame binding can turn held navigation into a single action.
+- **SC-06:** the original review found Option+1 recorded as `¡` could also match Alt+1 through layout fallback without a conflict warning. Current code retains `layoutCode`/`layoutKey` and adds fallback analysis. Verify and complete that implementation rather than duplicate it.
+- **SC-13:** the replacement zoom binding omits the previously supported Ctrl/Cmd+Shift+= (`+`) variant, potentially letting browser zoom handle it.
+
+**Actions, in order:**
+
+1. Establish one event representation carrying semantic key, physical code, modifiers, repeat, and composition information. Keep TanStack behavior behind the keybinding boundary; specify dead-key and layout-change handling.
+2. Align conflict/prefix analysis with dispatch equivalence, including recorded complementary layout metadata. Report uncertainty as layout-dependent instead of claiming definite independence. Share the precedence comparator between dispatch and conflict explanations; preserve explicit unresolved ties.
+3. Separate captured shortcut identity from repeat/hold policy. Put capability on the command or define explicit inheritance for replacement bindings. Preserve the meaning of existing exported settings.
+4. Restore the plus variant as a built-in alias of `view.zoomin`. A custom override or clear must replace the complete default alias set consistently.
+
+**Validation target:** narrow unit cases for re-recording a repeating binding, layout-fallback collisions and ranking parity, plus the zoom alias under assign/clear/reset. Use realistic `key`/`code`/modifier values.
+
+**Gate:** rebinding changes key identity without silently changing action behavior; dispatch and conflict explanations agree for the supported layout cases; uncertain collisions are identified; both default zoom variants belong to the same override lifecycle.
+
+## Phase 3 — Dispatcher lifecycle
+
+**Depends on:** phase 1's context ownership and phase 2's event identity.
+
+**Read:** [executeKeyboardCandidate](../src/js/modules/application/commandService.mjs#L425), [releaseActiveCommands and keyup matching](../src/js/modules/application/commandService.mjs#L481), [handleKeyDown](../src/js/modules/application/commandService.mjs#L594), and [Preview blur handling](../src/js/editor.js#L485).
+
+**Remaining behavior:**
+
+- **SC-07:** binding Preview to Shift+1 (`!`), then releasing Shift before 1, can leave Preview held because keyup reports `1` rather than `!`.
+- **SC-08:** releasing/repressing Ctrl between imported Ctrl+K, Ctrl+C chords can cancel the sequence on the modifier-only keydown and trigger its fallback.
+- **SC-09:** pending timers and held-command bookkeeping need explicit lifecycle cancellation. The newer delayed-execution input-policy recheck is useful but does not replace cleanup on focus/window/editor transitions; the earlier unchecked-focus example is not the current contract.
+
+**Actions, in order:**
+
+1. Make idle, pending sequence, recording, and held-command transitions explicit in a small internal state helper. Capture the actual activating physical key, including for delayed fallback bookkeeping; release against that identity rather than reconstructing it from the stored shortcut.
+2. Ignore modifier-only events while waiting for a continuation. Define cancellation for Escape, composition, binding changes, and relevant focus/context invalidation.
+3. Wire focus loss, window blur, visibility loss, mode/modal changes, recording start, and teardown through dispatcher cleanup. Cancel pending work without executing fallback; release successful held activations exactly once and make repeated cleanup harmless.
+4. Keep stale timers unable to act on later state. Preserve supported imported sequences; if sequence support is deliberately deferred, obtain agreement and reject unsupported imports explicitly rather than discarding preferences.
+
+**Validation target:** extend the existing timer/held-command harness for modifier repress, shifted-key release order, cancellation before timeout, delayed fallback release, and repeated cleanup.
+
+**Gate:** every successful held activation has one release; cancelled pending work cannot fire later; modifier-only events preserve valid sequences; service state and visible editor state remain synchronized after lifecycle transitions.
+
+## Phase 4 — Atomic edits and observable outcomes
+
+**Depends on:** stable binding semantics and lifecycle behavior. Define the mutation/result contract here before restructuring recorder control flow.
+
+**Read:** [save and notify](../src/js/modules/application/commandService.mjs#L221), [execute](../src/js/modules/application/commandService.mjs#L370), [replaceConflicts](../src/js/modules/application/commandService.mjs#L909), [importConfiguration](../src/js/modules/application/commandService.mjs#L937), [storage adapter](../src/js/modules/infrastructure/keybindingStorageAdapter.mjs#L8), and [commitRecording](../src/js/modules/feature-adapters/keyboardShortcutsDialog.mjs#L391).
+
+**Problem:** conflict replacement removes bindings and saves/notifies before assignment performs another save/notify. Observers see an intermediate configuration. **SC-12:** persistence errors are logged or silently skipped while the UI announces a successful save. Execution booleans also blur acceptance, handler rejection, and asynchronous completion.
+
+**Actions, in order:**
+
+1. Expose one edit operation that computes replacements, validates the complete next configuration, applies it coherently, attempts persistence once, and emits one change notification. Include assign, clear, reset, and import in the result contract.
+2. Distinguish durable success, session-only application, and rejection. Prefer usable session-only changes with an explicit warning when storage is unavailable; make any rollback policy deliberate. Ensure subscribers receive the complete state and persistence outcome.
+3. Have dialog status messages consume these results immediately; reserve “saved” for durable success.
+4. Define command execution as acceptance versus completion explicitly. Normalize legacy false/Promise results in adapters, surface rejection/failure, and keep keyboard event consumption synchronous. Diagnose enabled-predicate failures without flooding logs.
+
+**Validation target:** focused service/storage cases proving one complete replacement update, one persistence attempt/notification, unavailable/quota-failing storage outcomes, and the intended sync/async command result contract.
+
+**Gate:** no observer sees half a conflict-replacement edit; every preference operation exposes persistence status; callers distinguish action acceptance from rejection/completion; the UI never labels session-only changes as durably saved.
+
+## Phase 5 — Recorder state, accessibility, and presentation
+
+**Depends on:** phase 4's complete edit/result operation.
+
+**Read:** [render](../src/js/modules/feature-adapters/keyboardShortcutsDialog.mjs#L286), [cancelRecording](../src/js/modules/feature-adapters/keyboardShortcutsDialog.mjs#L344), [startRecording and commitRecording](../src/js/modules/feature-adapters/keyboardShortcutsDialog.mjs#L375), [handleRecordingKeyDown](../src/js/modules/feature-adapters/keyboardShortcutsDialog.mjs#L532), [dialog markup](../src/html/keyboardShortcuts.html), and [table header CSS](../src/css/main.css#L1745).
+
+**Remaining behavior:**
+
+- **SC-10:** synchronous rerender removes the recording anchor and calls `cancelRecording(false)` during commit, losing the command ID needed for focus restoration.
+- **SC-11:** capture takes focus immediately and records Tab/Shift+Tab, blocking reliable keyboard access to physical-key options.
+- **SC-16, P3:** sticky styling applies to every `th`, including body command cells and group headings that compete with column headers. Fix this locally while changing the dialog rather than waiting for broader cleanup.
+
+**Actions, in order:**
+
+1. Keep recorder state and its intended command/focus target independent of DOM nodes. Rendering consumes state; explicit controller transitions handle commit, cancel, or command removal.
+2. Complete commit/cancel state changes using phase 4's result, then restore focus to the replacement row control after rendering. Apply the same rule to ordinary and conflict-replacing commits.
+3. Expose options before capture, with an explicit keyboard-accessible transition into capture. Allow deliberate Tab recording while preserving navigation outside capture mode.
+4. Scope column-header stickiness to `thead th`; use separate offsets only if sticky groups are intentionally retained. Preserve semantic row headers and existing safe text rendering.
+
+**Validation target:** one focused keyboard-only browser flow for selecting physical mode, capture/cancel, ordinary and conflict-replacing commits, row focus, and success/error announcements. Include a manual scroll check for header alignment.
+
+**Gate:** keyboard users can choose options, record, cancel/commit, and return to the edited row; rendering cannot silently cancel an in-progress mutation; scrolling keeps labels aligned with their action cells.
+
+## Phase 6 — Catalog ownership and legacy cleanup
+
+**Depends on:** phases 1–5. Extract stable behavior instead of combining a large move with dispatcher redesign.
+
+**Read:** [getMenuCommandId](../src/js/editor.js#L1630), [registerEditorCommands](../src/js/editor.js#L1731), [updateEditorShortcutLabels](../src/js/editor.js#L2204), [registerMenuCommands](../src/js/editor.js#L2267), [registerCommand](../src/js/modules/application/commandService.mjs#L248), [legacy defaults](../src/js/styles.js#L18), and [DrawTools.getTools](../src/js/textMode/tools/drawTools.js#L283).
+
+**Problem:** `Editor` mixes catalog definitions, actions, context inference, menu discovery, and label synchronization. **SC-14:** tool names/defaults/label maps have multiple owners. Persisted identity is inferred from menu names; duplicate registrations merge contexts/predicates while retaining the first handler and metadata.
+
+**Actions, in order:**
+
+1. Define stable command IDs, titles/categories, default alias sets, and actions once. Attach explicit menu/tool aliases so presentation renames cannot rename preference keys.
+2. Separate command definition from adding activations/UI bindings. Reject incompatible duplicate definitions and consolidate redundant context/enabled representations while preserving the input/action distinction from phase 1.
+3. Move catalog registration and legacy action callbacks into focused feature adapters; isolate menu enumeration and label synchronization. Keep `CommandService` as the public facade and `Editor` as setup/action host. Extract cohesive responsibilities rather than introducing many trivial classes or rewriting the entire legacy menu switch.
+4. Generate label/default mappings from shared metadata. Remove a legacy implementation only after all remaining consumers and surfaces are accounted for; explicitly retain independent systems that are outside the migration.
+
+**Validation target:** existing representative command/menu/label tests plus a targeted alias-registration and preference-ID compatibility check. Use real action results where dispatch-only stubs would hide routing errors.
+
+**Gate:** adding a tool binding has one metadata owner; menu renames preserve overrides; additional UI aliases cannot silently change handlers; each removed fallback has a documented replacement or no remaining consumers.
+
+## Phase 7 — API and data ownership
+
+**Depends on:** phase 4's mutation API and phase 6's registration model.
+
+**Read:** [readOverrides](../src/js/modules/application/commandService.mjs#L104), [setBinding/removeBinding](../src/js/modules/application/commandService.mjs#L864), [normalizeBinding](../src/js/modules/domain/keybindings.mjs#L111), and [dialog JSDoc types](../src/js/modules/feature-adapters/keyboardShortcutsDialog.mjs#L1).
+
+**Problem:** one custom shortcut per command is exposed through ignored indexes and collection operations that truncate input. Broad/duplicated types and shallow ownership allow callers to misunderstand or bypass the intended model. These are maintenance risks, not demonstrated external-mutation bugs.
+
+**Actions, in order:**
+
+1. Make the public override API express assign, clear, reset, and atomic replace-conflicts; keep built-in alias collections internal. Remove ignored indexes after updating callers.
+2. Reuse shared JSDoc context/summary/conflict/recording types. Validate supported context conditions at registration/import boundaries; normalize and own data once, exposing safe views instead of mutable internal maps. A TypeScript conversion is unnecessary.
+3. Distinguish tolerant startup recovery from interactive import diagnostics. Report skipped/invalid entries and truncation; define unknown-command handling and migration so registration order cannot silently delete preferences.
+
+**Validation target:** narrowly cover invalid imports, unknown IDs, existing preference round trips, and the intended public mutation boundary; reuse earlier transaction coverage.
+
+**Gate:** public APIs match the single-custom-shortcut model; import outcomes explain discarded input; shared data cannot bypass mutation notifications/persistence; existing preference semantics survive.
+
+## Phase 8 — Derived-data caching
+
+**Depends on:** stable ownership and mutation invalidation from phases 6–7.
+
+**Read:** [matchingCandidatesForEvent](../src/js/modules/application/commandService.mjs#L556), [getCommands](../src/js/modules/application/commandService.mjs#L823), [groupedRows](../src/js/modules/feature-adapters/keyboardShortcutsDialog.mjs#L169), and [render](../src/js/modules/feature-adapters/keyboardShortcutsDialog.mjs#L286).
+
+**Problem — SC-15:** search/filter changes recompute all-pairs conflicts and rebuild rows; dispatch repeatedly clones/normalizes bindings and signatures. The unnecessary work is visible statically; user-visible latency has not been measured.
+
+**Actions, in order:**
+
+1. Cache normalized effective bindings/signatures and static conflict summaries by catalog/override revision. Include relevant platform/layout inputs in invalidation.
+2. Filter cached summaries for search. Recompute focus/mode availability separately and keep dynamic enabled predicates current.
+3. Reduce unnecessary row/label replacement while preserving phase 5's focus/scroll guarantees. Measure before adding tries, workers, virtualization, or other indexing infrastructure.
+
+**Validation target:** a small cache-invalidation check showing search does not rebuild conflicts, edits do invalidate them, and context/availability changes remain live. Measure affected paths rather than asserting an unobserved performance gain.
+
+**Gate:** search leaves the static conflict graph unchanged; binding/catalog/layout changes invalidate the correct derived data; mode/focus changes update availability without stale enablement or rebuilding preference data.
+
+## Phase 9 — Build boundary hardening
+
+**Depends on:** the settled domain exports/imports from earlier phases; perform this as a separate build-only change set.
+
+**Read:** [dependency mapping](../scripts/build-config.mjs#L7), [bundleModuleDependencies](../scripts/build.mjs#L383), [external module allowance](../scripts/build-graph.mjs#L418), and [verification import rewriting](../scripts/verify-build.mjs#L293).
+
+**Problem:** all `UNRESOLVED_IMPORT` warnings are suppressed for a known optional dependency case; package allowances are broader than the intended importer; dependency mapping/rewrite knowledge is spread across build paths. The self-contained chunk check is valuable, and this review does not establish a broken bundle.
+
+**Actions, in order:**
+
+1. Narrow the warning exception to the known optional dependency/importer, or use a supported entry that avoids irrelevant re-exports. Keep unexpected unresolved imports visible and retain the self-contained-output check.
+2. Centralize specifier/output mapping and relative import rewriting, while retaining sufficiently independent verification to detect a wrong transformation.
+3. Restrict TanStack imports to the intended keybinding boundary where architecture tooling permits.
+
+**Validation target:** the relevant dependency-bundle/build-boundary verification only; obtain approval for any test execution and use existing checks where sufficient.
+
+**Gate:** valid bundles remain self-contained; unexpected unresolved imports surface; architectural exceptions cover only intended consumers; dependency updates require one authoritative mapping change.
+
+## Validation reference
+
+Start with [keyboard-shortcuts.test.mjs](../tests/keyboard-shortcuts.test.mjs) for normalization, ranking, persistence, repeat, sequences, and timers; use [keyboard-shortcuts.spec.mjs](../tests/keyboard-shortcuts.spec.mjs) for real focus, modal ownership, and recorder workflows. Inspect current test names/scripts when preparing an approval request rather than copying commands into this plan.
+
+Some existing browser tests stub handlers and blur the active element. Those establish dispatch parity, not real editing results or focus ownership. Select checks by the phase's contract, use actual focus where it matters, and keep the test scope proportional to the risk.
+
+**Final completion gate:** all phase gates are satisfied with recorded evidence or explicitly accepted deferrals. The consolidated outcome is consistent keyboard semantics, explicit lifecycle/input ownership, coherent preference edits, accessible recording, and a maintainable catalog—not merely fewer files or passing dispatch-only tests.

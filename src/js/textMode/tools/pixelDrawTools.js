@@ -15,6 +15,10 @@ PixelDrawTools.prototype = {
   initEvents: function() {
     var _this = this;
 
+    if(g_app.updateEditorShortcutLabels) {
+      g_app.updateEditorShortcutLabels();
+    }
+
     $('.pixelDrawTool').on('click', function() {
       var id = $(this).attr('id');
       var dashPos = id.lastIndexOf('_');
@@ -285,6 +289,13 @@ PixelDrawTools.prototype = {
 
 
   getToolLabel: function(id) {
+    var commandService = g_app.services && g_app.services.commands;
+    var commandIds = {
+      pen: 'textMode.tool.pencil', erase: 'textMode.tool.erase', fill: 'textMode.tool.fill',
+      eyedropper: 'textMode.tool.eyedropper', line: 'textMode.tool.shape', rect: 'textMode.tool.shape',
+      oval: 'textMode.tool.shape', pixelselect: 'textMode.tool.marquee', zoom: 'textMode.tool.zoom',
+      hand: 'textMode.tool.hand', move: 'textMode.tool.move'
+    };
     this.toolMap = {
       "pen": { label: "Pencil", "mobileIcon": 'icons/svg/glyphicons-basic-31-pencil.svg', key: keys.textMode.toolsPencil.key },
       "erase": { label: "Blank", "mobileIcon": 'icons/svg/glyphicons-basic-250-eraser.svg', "key": keys.textMode.toolsErase.key },
@@ -304,7 +315,10 @@ PixelDrawTools.prototype = {
     };
 
     if(this.toolMap.hasOwnProperty(id)) {
-      return this.toolMap[id].label + " (" + this.toolMap[id].key + ")";
+      var shortcut = commandService && commandIds[id] && commandService.hasCommand(commandIds[id])
+        ? commandService.formatBindings(commandIds[id])
+        : this.toolMap[id].key;
+      return this.toolMap[id].label + (shortcut ? " (" + shortcut + ")" : "");
     }
     return id;
 
@@ -380,9 +394,10 @@ PixelDrawTools.prototype = {
     var keyCode = event.keyCode;
     var c = String.fromCharCode(keyCode).toUpperCase();
     var tool = this.editor.tools.drawTools.tool;
+    var commandServiceActive = g_app.services && g_app.services.commands;
 
 
-    if(!event.shiftKey) {
+    if(!commandServiceActive && !event.shiftKey) {
       switch(c) {
         case keys.textMode.toolsPencil.key:
           this.setDrawTool('pen');
@@ -416,10 +431,12 @@ PixelDrawTools.prototype = {
 
 //    if(tool == 'pixelselect') {
    // if(this.editor.tools.drawTools.pixelSelect.isActive()) {
+    if(!commandServiceActive) {
       this.selectToolKeypress(event);
+    }
          
 
-    if(this.editor.getScreenMode() == TextModeEditor.Mode.C64MULTICOLOR) {
+    if(!commandServiceActive && this.editor.getScreenMode() == TextModeEditor.Mode.C64MULTICOLOR) {
       switch(c) {
         case keys.textMode.c64MultiFG.key:
           this.editor.tools.drawTools.pixelDraw.setC64MultiColorType('cell');

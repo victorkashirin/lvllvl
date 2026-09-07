@@ -1,6 +1,10 @@
 # Configurable keyboard shortcuts
 
-Status: research and implementation recommendation. No implementation has been started.
+Status: implemented for the editor-facing scope described below. The application
+command service, menu and mode-local editor command migrations, browser-local
+overrides, live labels, generated help view, and keyboard-shortcuts editor are
+active. Music, Ace commands, emulated-machine input, and joystick mappings
+remain deliberately separate as listed under non-goals.
 
 ## Executive summary
 
@@ -15,13 +19,13 @@ The recommended route is:
 5. Build a VS Code-inspired editor with the application's existing `UI.Dialog` and `UI.HTMLPanel` components.
 6. Migrate discrete application actions first, then mode-specific shortcuts incrementally.
 
-There is no maintained library that provides a drop-in VS Code-like keybindings editor. [TanStack Hotkeys](https://tanstack.com/hotkeys/latest) is the best headless dependency candidate because it provides recording, normalization, formatting, scopes, sequences, held keys, and basic conflict handling. Its documentation currently marks it as alpha, so it should be pinned and isolated behind a narrow adapter. If that risk or its build integration is unacceptable, [tinykeys](https://github.com/jamiebuilds/tinykeys) is the conservative alternative, at the cost of implementing more behavior locally.
+There is no maintained library that provides a drop-in VS Code-like keybindings editor. The implementation pins [TanStack Hotkeys](https://tanstack.com/hotkeys/latest) and uses its core event parsing, key normalization, and layout-aware matching behind the application-owned keybinding module. The production build tree-shakes those APIs into a self-contained browser module. lvllvl continues to own physical-key bindings, command contexts, conflict analysis, persistence, and the settings UI.
 
 The command catalog, context model, conflict analysis, persistence format, settings UI, and migration plan must remain application-owned regardless of the low-level keyboard library.
 
 ## Goals
 
-- Let users add, replace, remove, and reset application shortcuts.
+- Let users assign one custom shortcut, clear it, or restore built-in defaults.
 - Present conflicts at edit time instead of resolving them silently by registration order.
 - Allow the same key to be reused in contexts that cannot be active together.
 - Use one binding definition for dispatch, menu labels, tooltips, help, and accessibility metadata.
@@ -141,7 +145,9 @@ The application has suitable UI primitives:
 
 There is no reusable data-grid or search-list component. Existing searchable lists are hand-built from inputs and DOM lists/tables, for example [`src/js/assemblerUtils/mos6502Opcodes.js`](../src/js/assemblerUtils/mos6502Opcodes.js#L15).
 
-A global Settings menu exists but is commented out in [`src/js/editor.js`](../src/js/editor.js#L1334). It is the natural location for a global **Keyboard Shortcuts...** command. The active Interface menu is tile-mode-specific and should not own application-wide preferences.
+The editor's **Help > Keyboard Shortcuts...** command and mobile-menu shortcut
+entry open the configurable shortcut dialog without adding a single-purpose
+top-level Settings menu.
 
 ### Architecture constraints
 
@@ -211,7 +217,11 @@ Limitations:
 - The application still needs stable command IDs, user override semantics, context data, conflict presentation, storage, and menu integration.
 - The current build rules require a deliberate way to package/import it.
 
-Recommendation: perform a small integration spike, pin the chosen version, and hide it behind an application-owned adapter. It must not become the source of truth for commands or saved preferences.
+Implementation: version 0.8.0 is pinned. The domain keybinding module delegates
+event parsing, semantic normalization, and runtime semantic matching to its core
+APIs. The build emits only those tree-shaken APIs as a self-contained browser
+module. TanStack does not become the source of truth for commands or saved
+preferences.
 
 ### 2. Lumino Commands
 
@@ -298,8 +308,6 @@ Stable IDs, rather than menu IDs or translated labels, are required for persiste
 - `view.*`
 - `textMode.*`
 - `frames.*`
-- `music.*`
-- `debugger.*`
 
 The descriptor owns command metadata and execution. It should not own mutable user binding state.
 
@@ -347,7 +355,7 @@ Recommended policy:
 
 Use a deliberately small structured context model rather than opaque JavaScript callbacks. Initial context keys should include only values required by migrated commands, such as:
 
-- `editorMode`: tile, sprite, music, debugger, assembler, etc.
+- `editorMode`: tile, sprite, colour palette, tile set, script, etc.
 - `focus`: canvas, textInput, codeEditor, palette, timeline, debuggerPanel, etc.
 - `modal`: none or the active modal class.
 - `popupOpen`.
@@ -386,7 +394,10 @@ Runtime resolution should be deterministic. A reasonable order is:
 4. Global context.
 5. Explicit priority only where the context model cannot express the difference.
 
-User overrides replace or augment defaults before resolution. Array registration order and DOM layout must never decide a tie silently.
+A user override replaces the built-in shortcut set with one binding, or with no
+binding when cleared. Commands may retain multiple built-in compatibility
+aliases. Array registration order and DOM layout must never decide a tie
+silently.
 
 ### Event normalization and dispatch
 
@@ -428,17 +439,19 @@ Implement a resizable `UI.Dialog` with an `UI.HTMLPanel` template. The main view
 Recommended columns and controls:
 
 - Command name and category.
-- Effective shortcut or shortcuts.
+- Effective shortcut, with built-in aliases grouped into one keycap.
 - Activation context.
 - Default/user source.
 - Conflict or warning indicator.
-- Record/add binding.
-- Remove binding.
+- Current-editor-first grouping by function, followed by separate groups for
+  other editor modes.
+- Assign or change the single custom binding.
+- Clear binding.
 - Reset command.
 - Reset all.
 - Modified-only filter.
+- Bound-only filter.
 - Conflicts-only filter.
-- “Show commands using this shortcut.”
 
 Use semantic buttons, inputs, table/list roles, visible focus, and screen-reader labels rather than clickable focusable `div` elements. Generate `aria-keyshortcuts` for command controls where meaningful.
 
@@ -509,8 +522,8 @@ Migrating menus first gives broad visible value and removes the current first-ma
 
 ### Phase 4: settings editor
 
-- Add the global Settings/Keyboard Shortcuts entry.
-- Build search, filtering, recording, add/remove/reset, and conflict presentation.
+- Use the existing Help and mobile-menu shortcut entries.
+- Build search, filtering, recording, assign/clear/reset, and conflict presentation.
 - Apply changes live to dispatch and labels.
 - Persist and restore overrides.
 - Add accessibility and responsive-layout coverage.
@@ -518,15 +531,16 @@ Migrating menus first gives broad visible value and removes the current first-ma
 ### Phase 5: text-mode and mode-local commands
 
 - Migrate text tools, selection operations, palette navigation, and frame commands in small groups.
+- Represent momentary editor actions such as artwork Preview with paired press
+  and release handlers so rebinding preserves hold behavior.
 - Replace hardcoded toolbar and popup labels with catalog data.
 - Move locally encoded activation conditions into structured contexts where practical.
 - Keep held/released interaction state separate unless the command engine explicitly supports it.
 
 ### Phase 6: other modes and generated help
 
-- Migrate music and debugger application commands.
-- Decide which Ace commands should remain internal and which global application commands must operate while Ace has focus.
-- Reuse the recorder for joystick mapping only if its semantics are extended without coupling joystick input to command dispatch.
+- Keep music, debugger/emulator, Ace, and joystick input on their existing
+  independent paths and outside this editor-facing shortcut catalog.
 - Generate or replace static keyboard help from the effective registry.
 
 ## Test strategy
@@ -551,7 +565,7 @@ The in-memory persistence-port pattern in [`tests/persistence-services.test.mjs`
 ### Browser tests
 
 - Open and navigate the settings editor entirely by keyboard.
-- Record, cancel, clear/unbind, add, replace, and reset bindings.
+- Record, cancel, assign, clear, replace conflicts, and reset bindings.
 - Show a hard conflict and a context-separated reuse correctly.
 - Apply a changed binding immediately without reload.
 - Update menu labels and other generated labels immediately.
@@ -581,16 +595,23 @@ These decisions should be made before implementation expands beyond the core ser
 2. Whether physical-key bindings are user-selectable initially or only supported internally.
 3. Whether hard conflicts may be kept with an explicit precedence warning or must be replaced/resolved.
 4. Which browser/OS-reserved combinations are blocked versus merely warned about.
-5. Whether users may assign multiple bindings to every command.
-6. Whether import/export of user bindings is required before account synchronization exists.
-7. Whether the static help page shows defaults or the user's effective bindings.
+5. Whether import/export of user bindings is required before account synchronization exists.
+6. Whether the static help page shows defaults or the user's effective bindings.
 
-Recommended defaults are: reserve sequence support in the model, allow multiple bindings, use semantic keys by default, make physical keys an advanced option, warn rather than claim exhaustive blocking of reserved combinations, and show effective user bindings wherever the application presents shortcut help.
+Implemented defaults are: reserve sequence support in the model, allow one
+user binding while preserving built-in compatibility aliases, use semantic keys
+by default, make physical keys an advanced option, warn rather than claim
+exhaustive blocking of reserved combinations, and show effective user bindings
+wherever the application presents shortcut help.
 
 The inventory of hidden, conditional, and legacy application surfaces has moved to [`docs/legacy_code.md`](legacy_code.md).
 
 ## Final recommendation
 
-Build the command, context, conflict, and persistence model inside the application. Use TanStack Hotkeys only if a short integration spike confirms that its alpha API and the repository's packaging constraints are acceptable; otherwise use tinykeys or a focused internal normalizer behind the same adapter boundary.
+Build the command, context, conflict, and persistence model inside the
+application. Use the pinned TanStack Hotkeys core for low-level semantic
+normalization and matching, isolated behind the domain keybinding module. Keep
+lvllvl's physical-key extension and application-specific resolution rules on
+the application side of that boundary.
 
 The first production migration should cover discrete menu actions, because they already have identifiable actions and visible labels, and because it removes real first-match conflicts. The VS Code-inspired settings editor should be built immediately after that foundation. Text-mode and other specialized handlers can then move incrementally without forcing a risky all-at-once keyboard rewrite.

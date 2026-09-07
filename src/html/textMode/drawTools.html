@@ -15,15 +15,15 @@
 
   <div id="toolIconHolder" style="padding: 8px">
     <div>
-      <div class="drawTool drawToolSelected" id="drawTool_pen"><img width="20" src="icons/pen@2x.png" title="Pencil (n)"/></div>
-      <div class="drawTool" id="drawTool_erase"><img width="20" src="icons/erase@2x.png" title="Blank (l)"/></div>
-      <div class="drawTool" id="drawTool_fill"><img width="20" src="icons/fill@2x.png" title="Fill Bucket (k)"/></div>
-      <div class="drawTool" id="drawTool_eyedropper"><img width="20" src="icons/eyedropper@2x.png" title="Eyedropper (i)"/></div>
-      <div class="drawTool" id="drawTool_line"><img width="20" src="icons/line@2x.png" title="Line (u)"/></div>
-      <div class="drawTool" id="drawTool_rect"><img width="20" src="icons/rect@2x.png" title="Rect (u)"/></div>
-      <div class="drawTool" id="drawTool_oval"><img width="20" src="icons/oval@2x.png" title="Oval (u)"/></div>
-      <div class="drawTool" id="drawTool_select"><img width="20" src="icons/select@2x.png"  title="Marquee (m)"/></div>      
-      <div class="drawTool" id="drawTool_charpixel"><img width="20" src="icons/charpixel@2x.png" title="Char Pixel (o)"/></div>            
+      <div class="drawTool drawToolSelected" id="drawTool_pen"><img width="20" src="icons/pen@2x.png" data-shortcut-command="textMode.tool.pencil" data-shortcut-label="Pencil" title="Pencil"/></div>
+      <div class="drawTool" id="drawTool_erase"><img width="20" src="icons/erase@2x.png" data-shortcut-command="textMode.tool.erase" data-shortcut-label="Blank" title="Blank"/></div>
+      <div class="drawTool" id="drawTool_fill"><img width="20" src="icons/fill@2x.png" data-shortcut-command="textMode.tool.fill" data-shortcut-label="Fill Bucket" title="Fill Bucket"/></div>
+      <div class="drawTool" id="drawTool_eyedropper"><img width="20" src="icons/eyedropper@2x.png" data-shortcut-command="textMode.tool.eyedropper" data-shortcut-label="Eyedropper" title="Eyedropper"/></div>
+      <div class="drawTool" id="drawTool_line"><img width="20" src="icons/line@2x.png" data-shortcut-command="textMode.tool.shape" data-shortcut-label="Line" title="Line"/></div>
+      <div class="drawTool" id="drawTool_rect"><img width="20" src="icons/rect@2x.png" data-shortcut-command="textMode.tool.shape" data-shortcut-label="Rectangle" title="Rectangle"/></div>
+      <div class="drawTool" id="drawTool_oval"><img width="20" src="icons/oval@2x.png" data-shortcut-command="textMode.tool.shape" data-shortcut-label="Oval" title="Oval"/></div>
+      <div class="drawTool" id="drawTool_select"><img width="20" src="icons/select@2x.png" data-shortcut-command="textMode.tool.marquee" data-shortcut-label="Marquee" title="Marquee"/></div>
+      <div class="drawTool" id="drawTool_charpixel"><img width="20" src="icons/charpixel@2x.png" data-shortcut-command="textMode.tool.characterPixel" data-shortcut-label="Char Pixel" title="Char Pixel"/></div>
       <div class="drawTool" id="drawTool_linesegment"><img width="20" src="icons/linesegment@2x.png" title="Line Segments"/></div>
 
       <!--
@@ -31,12 +31,12 @@
       <div class="drawTool" id="drawTool_corners"><img width="20" src="icons/linesegment@2x.png" title="Corners"/></div>
 -->
 
-      <div class="drawTool" id="drawTool_type"><img width="20" src="icons/type@2x.png" title="Type (t)"/></div>            
-      <div class="drawTool" id="drawTool_pixel"><img width="20" src="icons/pixel@2x.png" title="Pixel (p)"/></div>      
-      <div class="drawTool" id="drawTool_block"><img width="20" src="icons/block@2x.png" title="Meta Tile (b)"/></div>            
-      <div class="drawTool" id="drawTool_zoom"><img width="20" src="icons/zoom@2x.png" title="Zoom (z)"/></div>      
-      <div class="drawTool" id="drawTool_hand"><img width="20" src="icons/hand@2x.png" title="Hand (h)"/></div>      
-      <div class="drawTool" id="drawTool_move"><img width="20" src="icons/move@2x.png" title="Move (v)"/></div>      
+      <div class="drawTool" id="drawTool_type"><img width="20" src="icons/type@2x.png" data-shortcut-command="textMode.tool.type" data-shortcut-label="Type" title="Type"/></div>
+      <div class="drawTool" id="drawTool_pixel"><img width="20" src="icons/pixel@2x.png" data-shortcut-command="textMode.tool.pixel" data-shortcut-label="Pixel" title="Pixel"/></div>
+      <div class="drawTool" id="drawTool_block"><img width="20" src="icons/block@2x.png" data-shortcut-command="textMode.tool.block" data-shortcut-label="Meta Tile" title="Meta Tile"/></div>
+      <div class="drawTool" id="drawTool_zoom"><img width="20" src="icons/zoom@2x.png" data-shortcut-command="textMode.tool.zoom" data-shortcut-label="Zoom" title="Zoom"/></div>
+      <div class="drawTool" id="drawTool_hand"><img width="20" src="icons/hand@2x.png" data-shortcut-command="textMode.tool.hand" data-shortcut-label="Hand" title="Hand"/></div>
+      <div class="drawTool" id="drawTool_move"><img width="20" src="icons/move@2x.png" data-shortcut-command="textMode.tool.move" data-shortcut-label="Move" title="Move"/></div>
     </div>
 
     <div id="currentTool" style="font-size: 10px; white-space: nowrap; margin-top: 2px"></div>
@@ -48,7 +48,7 @@
     <div  id="cellForegroundColor" class="foregroundColor colorSetting"></div>
     <div style="display: block; position: absolute; top: 34px; left: 22px; width: 28px; height: 28px; background-color: #000000; z-index: 5;" id="cellBackgroundColor" class="cellBackgroundColor colorSetting"></div>
 
-    <img src="icons/switch.png" id="switchColors" title="Switch Colours (x)"/>
+    <img src="icons/switch.png" id="switchColors" data-shortcut-command="textMode.colors.switch" data-shortcut-label="Switch Colours" title="Switch Colours"/>
   </div>
 
   <div id="drawTools-c64multicolor" style="padding: 0px 8px 0px 8px; display: none">

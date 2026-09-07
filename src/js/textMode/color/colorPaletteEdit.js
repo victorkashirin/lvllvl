@@ -532,14 +532,35 @@ ColorPaletteEdit.prototype = {
   },
 
   getToolLabel: function(key) {
-    var label = key;
-
-    label = this.editor.tools.drawTools.getToolLabel(key);
-    return label;
+    var commandIds = {
+      pen: 'colorPalette.tool.pencil',
+      erase: 'colorPalette.tool.erase',
+      eyedropper: 'colorPalette.tool.eyedropper',
+      move: 'colorPalette.tool.move',
+      select: 'colorPalette.tool.marquee'
+    };
+    var labels = {
+      pen: 'Pencil',
+      erase: 'Blank',
+      eyedropper: 'Eyedropper',
+      move: 'Move',
+      select: 'Marquee'
+    };
+    var commandService = g_app.services && g_app.services.commands;
+    var commandId = commandIds[key];
+    if(this.prefix == 'colorPaletteEditor' && commandService && commandService.hasCommand(commandId)) {
+      var shortcut = commandService.formatBindings(commandId);
+      return (labels[key] || key) + (shortcut ? ' (' + shortcut + ')' : '');
+    }
+    return this.editor.tools.drawTools.getToolLabel(key);
   },
 
   initEvents: function() {
     var _this = this;
+
+    if(g_app.updateEditorShortcutLabels) {
+      g_app.updateEditorShortcutLabels();
+    }
 
 
     $('.colorPaletteTool').on('click', function() {
@@ -2267,9 +2288,10 @@ ColorPaletteEdit.prototype = {
   keyDown: function(event) {
 
     var keyCode = event.keyCode;
+    var commandServiceActive = g_app.services && g_app.services.commands;
     
 
-    if(typeof event.key != 'undefined') {
+    if(!commandServiceActive && typeof event.key != 'undefined') {
       if(event.ctrlKey || event.metaKey) {
         switch(event.key.toUpperCase()) {
           case 'Z':
@@ -2285,23 +2307,24 @@ ColorPaletteEdit.prototype = {
 
     var c = String.fromCharCode(keyCode).toUpperCase();
 
-    switch(c) {
-      case keys.textMode.toolsPencil.key:
-        this.setColorPaletteTool('pen');
-      break;
-      case keys.textMode.toolsErase.key:
-        this.setColorPaletteTool('erase');
-      break;
-      case keys.textMode.toolsEyedropper.key:
-        this.setColorPaletteTool('eyedropper');      
-      break;
-      case keys.textMode.toolsMove.key:
-        this.setColorPaletteTool('move');      
-      break;
-      case keys.textMode.toolsMarquee.key:
-        this.setColorPaletteTool('select');      
-      break;
-
+    if(!commandServiceActive) {
+      switch(c) {
+        case keys.textMode.toolsPencil.key:
+          this.setColorPaletteTool('pen');
+        break;
+        case keys.textMode.toolsErase.key:
+          this.setColorPaletteTool('erase');
+        break;
+        case keys.textMode.toolsEyedropper.key:
+          this.setColorPaletteTool('eyedropper');
+        break;
+        case keys.textMode.toolsMove.key:
+          this.setColorPaletteTool('move');
+        break;
+        case keys.textMode.toolsMarquee.key:
+          this.setColorPaletteTool('select');
+        break;
+      }
     }
 
     this.setMouseCursor(event);

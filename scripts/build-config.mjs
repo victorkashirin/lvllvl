@@ -1,6 +1,21 @@
 export const sourceDirectory = "src";
 export const buildDirectory = "dist";
 
+// Native application modules are copied rather than bundled. Dependencies in
+// this list are tree-shaken into self-contained browser modules, and bare
+// source imports are rewritten to the corresponding production URL.
+export const bundledModuleDependencies = Object.freeze({
+  "@tanstack/hotkeys": Object.freeze({
+    entry: "node_modules/@tanstack/hotkeys/dist/index.js",
+    exports: Object.freeze([
+      "matchesKeyboardEvent",
+      "normalizeKeyName",
+      "parseKeyboardEvent",
+    ]),
+    output: "js/vendor/tanstack-hotkeys.mjs",
+  }),
+});
+
 // Release source maps ship beside the production bundle. They include the
 // original first-party sources so deployed stack traces remain actionable.
 export const sourceMapPolicy = {

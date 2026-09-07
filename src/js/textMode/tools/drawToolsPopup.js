@@ -59,9 +59,7 @@ DrawToolsPopup.prototype = {
             html += '<div class="popup-tool" id="popup-tool-' + toolKey + '" data-tool="' + toolKey + '">';
             html += '<img width="20" src="' + tool.icon + '"/>';
             html += '<span class="popup-tool-label">' + tool.label + '</span>';
-            if(tool.key !== false) {
-              html += '<span class="popup-tool-shortcut">(' + tool.key + ')</span>';
-            }
+            html += '<span class="popup-tool-shortcut" data-shortcut-command="' + (tool.commandId || '') + '" data-shortcut-suffix>' + (tool.key !== false ? ' (' + tool.key + ')' : '') + '</span>';
             html += '</div>';
           }
         }
@@ -124,6 +122,9 @@ DrawToolsPopup.prototype = {
     });
 
     this.initEvents();
+    if(g_app.updateEditorShortcutLabels) {
+      g_app.updateEditorShortcutLabels();
+    }
     if(typeof callback != 'undefined') {
       callback();
     }

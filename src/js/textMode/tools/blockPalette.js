@@ -455,6 +455,10 @@ BlockPalette.prototype = {
 
   keyDown: function(event) {
 
+    if(g_app.services && g_app.services.commands) {
+      return;
+    }
+
     switch(event.keyCode) {
 
       case keys.textMode.tilePaletteLeft.keyCode:

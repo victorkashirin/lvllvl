@@ -14,10 +14,10 @@
   ];
   var allowedAttributes = [
     'accept', 'alt', 'border', 'checked', 'class', 'cols', 'colspan', 'disabled',
-    'draggable', 'for', 'height', 'href', 'id', 'inputmode', 'label', 'max',
+    'autocomplete', 'draggable', 'for', 'height', 'hidden', 'href', 'id', 'inputmode', 'label', 'max',
     'maxlength', 'min', 'multiple', 'name', 'placeholder', 'readonly', 'rel',
     'role', 'rows', 'rowspan', 'selected', 'size', 'spellcheck', 'src', 'step',
-    'style', 'tabindex', 'target', 'title', 'type', 'valign', 'value', 'width'
+    'scope', 'style', 'tabindex', 'target', 'title', 'type', 'valign', 'value', 'width'
   ];
   var baseConfig = {
     ALLOWED_ATTR: allowedAttributes,

@@ -460,12 +460,13 @@ function matchingLayer(filename, layers) {
     .sort((left, right) => right.root.length - left.root.length)[0];
 }
 
-function resolveModuleImport(importer, specifier) {
+function resolveModuleImport(importer, specifier, externalModules = new Set()) {
   if (/[?#]/.test(specifier)) {
     throw new Error(`${importer} imports a source module with a query or fragment: ${specifier}`);
   }
   const withoutQuery = specifier.split(/[?#]/, 1)[0];
   if (!withoutQuery.startsWith(".")) {
+    if (externalModules.has(withoutQuery)) return null;
     throw new Error(`${importer} imports unsupported external module ${specifier}`);
   }
   return path.posix.normalize(path.posix.join(path.posix.dirname(importer), withoutQuery));
@@ -630,6 +631,7 @@ export async function verifyModuleBoundaries({ graph = moduleGraph, sourceRoot =
   const layers = moduleLayers(graph);
   const publicEntries = new Set(graph.publicEntries ?? []);
   const generatedEntries = new Set(graph.generatedEntries ?? []);
+  const externalModules = new Set(graph.externalModules ?? []);
   const dynamicImportEntries = graph.dynamicImportEntries ?? {};
   for (const filename of publicEntries) {
     if (!declaredFiles.has(filename)) {
@@ -664,8 +666,8 @@ export async function verifyModuleBoundaries({ graph = moduleGraph, sourceRoot =
     const parsedImports = moduleImports(ast, filename);
     const resolvedDynamicImports = parsedImports.dynamicImports.map((entry) => ({
       ...entry,
-      filename: resolveModuleImport(filename, entry.specifier),
-    }));
+      filename: resolveModuleImport(filename, entry.specifier, externalModules),
+    })).filter((entry) => entry.filename !== null);
     for (const entry of resolvedDynamicImports) {
       if (entry.computed && !declaredDynamicEntries.has(entry.filename)) {
         throw new Error(
@@ -679,8 +681,8 @@ export async function verifyModuleBoundaries({ graph = moduleGraph, sourceRoot =
       }
     }
     const importedFiles = [...new Set(parsedImports.imports.map((specifier) =>
-      resolveModuleImport(filename, specifier),
-    ))];
+      resolveModuleImport(filename, specifier, externalModules),
+    ).filter((imported) => imported !== null))];
     dependencies.set(filename, importedFiles);
 
     if (!(graph.globalAccess ?? []).includes(filename)) {

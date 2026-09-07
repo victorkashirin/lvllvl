@@ -43,3 +43,21 @@ export function versionModuleImports(source, version) {
   }
   return versioned;
 }
+
+/**
+ * @param {string} source
+ * @param {Record<string, string>} replacements
+ */
+export function rewriteModuleImports(source, replacements) {
+  const ast = parse(source, { ecmaVersion: "latest", sourceType: "module" });
+  const rewrittenSpecifiers = importSpecifiers(ast)
+    .filter(({ value }) => typeof value === "string" && replacements[value])
+    .sort((left, right) => right.end - left.end);
+
+  let rewritten = source;
+  for (const specifier of rewrittenSpecifiers) {
+    rewritten = `${rewritten.slice(0, specifier.start + 1)}` +
+      `${replacements[specifier.value]}${rewritten.slice(specifier.end - 1)}`;
+  }
+  return rewritten;
+}

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { versionModuleImports } from "../scripts/module-versioning.mjs";
+import { rewriteModuleImports, versionModuleImports } from "../scripts/module-versioning.mjs";
 
 test("production module imports receive one encoded release version", () => {
   const source = [
@@ -23,6 +23,23 @@ test("production module imports receive one encoded release version", () => {
       'const unrelated = "./not-an-import.mjs";',
       'const example = `import "./example.mjs"`;',
       '// import "./comment.mjs";',
+      "",
+    ].join("\n"),
+  );
+});
+
+test("production module imports can target a bundled dependency", () => {
+  const source = [
+    'import { parseKeyboardEvent } from "@tanstack/hotkeys";',
+    'const packageName = "@tanstack/hotkeys";',
+    "",
+  ].join("\n");
+
+  assert.equal(
+    rewriteModuleImports(source, { "@tanstack/hotkeys": "../../vendor/tanstack-hotkeys.mjs" }),
+    [
+      'import { parseKeyboardEvent } from "../../vendor/tanstack-hotkeys.mjs";',
+      'const packageName = "@tanstack/hotkeys";',
       "",
     ].join("\n"),
   );

@@ -4,6 +4,17 @@
 
 ### Added
 
+- Add configurable, context-aware keyboard shortcuts for application menu
+  commands, text and colour-palette tools, selections, palette navigation,
+  and animation frames, with live menu, tool, and accessibility
+  labels, conflict analysis, semantic or physical key recording, searchable
+  settings, browser-local overrides, and import, export, assign, clear, reset,
+  and bound-only filtering controls. Group the current editor's commands first
+  by function, then group commands for other modes separately. Use a single
+  custom shortcut per command, present built-in aliases in one centred keycap,
+  and include configurable held artwork Preview and Enter/Insert canvas tile
+  placement. Use pinned TanStack Hotkeys core parsing, normalization, and
+  layout-aware matching behind the application-owned command and context model.
 - Add FROGBLOCK, Kitchen Sink, Microbe-2, and Pixelchunk to the custom text-mode
   tile sets, including in-app attribution and bundled license texts. Join
   FROGBLOCK's normal and inverted glyph sheets into one preset, and remove
@@ -16,10 +27,31 @@
 
 ### Fixed
 
+- Detect layout-dependent shortcut conflicts using the same semantic-key and
+  physical-code fallback rules as runtime dispatch, preventing translated
+  Option/Alt bindings from silently disabling both affected commands, and flag
+  imported overrides without recorded layout metadata for re-recording.
+- Keep Project Save and Save As available while editing code or text, while
+  preventing destructive or printable menu shortcuts from overriding active
+  canvas typing. Disable stale legacy accelerators for command-owned menu
+  actions, and allow input-safe function-key bindings for global commands.
 - Render bitmap and vector glyphs on the device-pixel lattice at fractional
   canvas and tile-palette zooms, preserve fractional display pixel ratios,
   refresh canvas backing stores when that ratio changes, and keep small
   scroll-zoom deltas accumulating smoothly between displayed zoom steps.
+- Make the advertised Delete accelerator work, route Ctrl/Cmd+Y through the
+  normal shortcut context and focus rules, include Alt in legacy shortcut
+  matching, make colour-palette Redo dispatch correctly, and remove the
+  tile-mode Ctrl/Cmd+I collision by assigning Set Reference Image to
+  Ctrl/Cmd+Alt+I.
+- Keep shared Project accelerators working in the assembler, make Preview zoom
+  obey changed or cleared bindings, expose grid-cursor, selection movement,
+  canvas-content movement, and Alt colour-selection commands in shortcut
+  settings, correctly release held sequence fallbacks, and apply shortcut ARIA
+  metadata only to controls that execute the associated command.
+- Keep the shortcut recorder in a positioned overlay anchored to the edited
+  shortcut without resizing or scrolling the command list, and remove the
+  single-item Settings menu while retaining Help and mobile-menu access.
 
 ## 0.497.8 - 2026-09-07
 

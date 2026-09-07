@@ -1817,8 +1817,9 @@ TextModeEditor.prototype = {
 
   keyDown: function(event) {    
     var typing = this.tools.drawTools.isTyping();
+    var commandServiceActive = g_app.services && g_app.services.commands;
 
-    if(event.keyCode == keys.textMode.play.keyCode && !typing) {
+    if(!commandServiceActive && event.keyCode == keys.textMode.play.keyCode && !typing) {
       // if its space and not typing, then space means play/pause
       this.frames.play();
     }

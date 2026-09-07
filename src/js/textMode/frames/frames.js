@@ -411,6 +411,9 @@ Frames.prototype = {
 
 
   keyDown: function(event) {
+    if(g_app.services && g_app.services.commands) {
+      return;
+    }
     var keyCode = event.keyCode;
     if(keyCode == 46) {
       // del key

@@ -490,6 +490,9 @@ currentTileSplitPanel
     characterControls.on('loaded', function() {
       _this.initRotationToolEvents();
       _this.initOrientationToolEvents();
+      if(g_app.updateEditorShortcutLabels) {
+        g_app.updateEditorShortcutLabels();
+      }
     });
 
     var characterControlsHeight = 24;

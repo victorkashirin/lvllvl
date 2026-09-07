@@ -7,6 +7,7 @@
 - update dependencies
 - magic wand
 - sketch layer with pen
+- navigate tile/color picker with arrows
 
 + improve mobile mode
 + tab for preview mode

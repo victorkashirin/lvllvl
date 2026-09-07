@@ -59,6 +59,8 @@ UI.onKeyDown = null;
 UI.onKeyUp = null;
 UI.onKeyPress = null;
 UI.onUpdate = null;
+UI.commandKeyDown = null;
+UI.commandKeyUp = null;
 
 UI.browserEditOperations = false;
 UI.canProcessKeyEvents = true;
@@ -748,6 +750,10 @@ UI.findMouseInComponent = function(event) {
 UI.keyDown = function(event) {
   if(true) {//UI.canProcessKeyEvents) {
 
+    if(typeof UI.commandKeyDown == 'function' && UI.commandKeyDown(event)) {
+      return;
+    }
+
     var keyCode = event.keyCode;
     if(keyCode == 9) { // tab
   //    return;
@@ -799,6 +805,9 @@ UI.keyDown = function(event) {
 UI.keyUp = function(event) {
   if(true) {//UI.canProcessKeyEvents) {
 
+    if(typeof UI.commandKeyUp == 'function' && UI.commandKeyUp(event)) {
+      return;
+    }
 
     var keyCode = event.keyCode;
     if(keyCode == 9) { // tab

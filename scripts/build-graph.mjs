@@ -417,7 +417,8 @@ export const buildGraph = {
 // injected through a layer-specific public entry point.
 export const moduleGraph = {
   entry: "js/bootstrap.mjs",
-  generatedEntries: ["js/features/image-import.js"],
+  externalModules: ["@tanstack/hotkeys"],
+  generatedEntries: ["js/features/image-import.js", "js/vendor/tanstack-hotkeys.mjs"],
   dynamicImportEntries: {
     "js/modules/infrastructure/imageImportModuleLoader.mjs": ["js/features/image-import.js"],
   },
@@ -452,16 +453,20 @@ export const moduleGraph = {
   ],
   publicEntries: [
     "js/modules/application/documentSession.mjs",
+    "js/modules/application/commandService.mjs",
     "js/modules/application/featureRegistry.mjs",
     "js/modules/application/persistenceService.mjs",
+    "js/modules/domain/keybindings.mjs",
     "js/modules/domain/documentRevisionState.mjs",
     "js/modules/domain/svgExport.mjs",
     "js/modules/feature-adapters/imageImportCoordinator.mjs",
     "js/modules/feature-adapters/imageImportFeature.mjs",
+    "js/modules/feature-adapters/keyboardShortcutsDialog.mjs",
     "js/modules/feature-adapters/legacySvgExportAdapter.mjs",
     "js/modules/feature-adapters/legacyRemoteProviderFacades.mjs",
     "js/modules/infrastructure/browserStorageAdapter.mjs",
     "js/modules/infrastructure/imageImportModuleLoader.mjs",
+    "js/modules/infrastructure/keybindingStorageAdapter.mjs",
   ],
   cycleExceptions: [],
 };

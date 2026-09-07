@@ -54,7 +54,8 @@ Tools.prototype = {
 
     // changing colours works across all modes.
     var commodoreKey = event.altKey;
-    if(commodoreKey) {
+    var commandServiceActive = g_app.services && g_app.services.commands;
+    if(!commandServiceActive && commodoreKey) {
       var color = false;
       if(event.keyCode >= 49 && event.keyCode <= 56) {
         color = event.keyCode - 49;

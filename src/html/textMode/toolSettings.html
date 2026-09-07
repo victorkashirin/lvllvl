@@ -9,9 +9,9 @@
   </div>
 
   <div style="display: flex" id="drawToolSettings-tileOrientation">
-    <div class="ui-button ui-button-dark" data-label="Tile Flip X" title="Tile Flip X (F)" id="tileFlipH"><img src="icons/svg/glyphicons-basic-747-reflect-y.svg"></div>
-    <div class="ui-button ui-button-dark" data-label="Tile Flip Y" title="Tile Flip Y (G)" id="tileFlipV"><img src="icons/svg/glyphicons-basic-748-reflect-x.svg"></div>
-    <div class="ui-button ui-button-dark" data-label="Tile Rotate (R)" title="Tile Rotate (R)" id="tileRotate"><img src="icons/svg/glyphicons-basic-493-rotate.svg"></div>
+    <div class="ui-button ui-button-dark" data-label="Tile Flip X" data-shortcut-command="textMode.tile.flipHorizontal" data-shortcut-label="Tile Flip X" title="Tile Flip X" id="tileFlipH"><img src="icons/svg/glyphicons-basic-747-reflect-y.svg"></div>
+    <div class="ui-button ui-button-dark" data-label="Tile Flip Y" data-shortcut-command="textMode.tile.flipVertical" data-shortcut-label="Tile Flip Y" title="Tile Flip Y" id="tileFlipV"><img src="icons/svg/glyphicons-basic-748-reflect-x.svg"></div>
+    <div class="ui-button ui-button-dark" data-label="Tile Rotate" data-shortcut-command="textMode.tile.rotate" data-shortcut-label="Tile Rotate" title="Tile Rotate" id="tileRotate"><img src="icons/svg/glyphicons-basic-493-rotate.svg"></div>
   </div>
 
 
@@ -142,12 +142,12 @@
   <div id="lineSegmentToolSettings" class="toolSettings" > 
     <label class="rb-container" id="lineSegmentToolMode_horizontal">
       <input type="radio" name="lineSegmentToolMode" value="horizontal" checked="checked"> 
-      <span class="rb-label">Horizontal (F)</span>
+      <span class="rb-label" data-shortcut-command="textMode.lineSegment.horizontal" data-shortcut-label="Horizontal">Horizontal<span data-shortcut-suffix></span></span>
       <span class="checkmark"/>
     </label>
     <label class="rb-container" id="lineSegmentToolMode_vertical">
       <input type="radio" name="lineSegmentToolMode" value="vertical"> 
-      <span class="rb-label">Vertical (G)</span>
+      <span class="rb-label" data-shortcut-command="textMode.lineSegment.vertical" data-shortcut-label="Vertical">Vertical<span data-shortcut-suffix></span></span>
       <span class="checkmark"/>
     </label>
     <label class="rb-container" id="lineSegmentToolMode_fromleft">
