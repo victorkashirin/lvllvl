@@ -180,6 +180,7 @@ var CharacterSetPresets = [
     category: "6x8",
     characterSets: [
       { "name": "Kitchen Sink", "id": "kitchen-sink", width: 6, height: 8, "type": "custom", "author": "Retroshark and Polyducks", "authorlink": ' (<a target="_blank" href="https://polyducks.itch.io/kitchen-sink-textmode-font">https://polyducks.itch.io/kitchen-sink-textmode-font</a>)', "licence": '<a target="_blank" href="charsets/kitchen-sink-license.txt">Custom license; attribution required</a>' },
+      { "name": "Lexis", "id": "lexis", width: 6, height: 8, "type": "custom", "author": "Damian Vila", "authorlink": ' (<a target="_blank" href="https://damianvila.com">https://damianvila.com</a>)', "licence": '<a target="_blank" href="https://creativecommons.org/publicdomain/zero/1.0/">CC0 1.0 Universal</a>', "notes": "Tiles follow ascending Unicode order from U+0020; combining marks are isolated for palette use" },
     ]
   },
   {

@@ -10,6 +10,9 @@
   Pixelchunk's source-sheet padding while reflowing its 8-by-8 tiles to the
   editor's 16-column layout, adapting transparency for bitmap import, and
   presenting its release-page license as CC0 1.0.
+- Add Damian Vila's 6-by-8 Lexis font as a custom text-mode tile set, reflowing
+  its 985 Unicode-mapped glyphs into the editor's 16-column palette while
+  keeping combining marks isolated in their own tiles.
 
 ## 0.497.8 - 2026-09-07
 
