@@ -595,32 +595,210 @@ test("lifecycle cleanup during execution does not register a stale held activati
     false);
 });
 
+test("conflict replacement commits one complete durable edit", () => {
+  let stored = null;
+  let saveCalls = 0;
+  const storage = {
+    load: () => null,
+    save(value) {
+      saveCalls++;
+      stored = value;
+      return true;
+    },
+  };
+  const { commands } = createCommandHarness({ storage });
+  register(commands, "tool.pencil", keybinding("n"), () => {});
+  register(commands, "tool.eraser", keybinding("l"), () => {});
+  const notifications = [];
+  commands.onDidChange((result) => notifications.push({
+    eraser: commands.formatBindings("tool.eraser"),
+    pencil: commands.formatBindings("tool.pencil"),
+    result,
+  }));
+
+  const result = commands.replaceConflicts("tool.pencil", keybinding("l"));
+
+  assert.equal(result.status, "durable");
+  assert.equal(result.persistence, "saved");
+  assert.deepEqual(result.changedCommandIds, ["tool.eraser", "tool.pencil"]);
+  assert.equal(saveCalls, 1);
+  assert.equal(notifications.length, 1);
+  assert.deepEqual({ eraser: notifications[0].eraser, pencil: notifications[0].pencil }, {
+    eraser: "",
+    pencil: "L",
+  });
+  assert.equal(notifications[0].result, result);
+  assert.deepEqual(Object.keys(notifications[0].result.configuration.overrides).sort(), [
+    "tool.eraser",
+    "tool.pencil",
+  ]);
+  assert.deepEqual(JSON.parse(stored).overrides, result.configuration.overrides);
+});
+
+test("subscriber failures do not reject a committed preference edit", () => {
+  const { commands, errors, storage } = createCommandHarness();
+  register(commands, "tool.draw", keybinding("n"), () => {});
+  let delivered = null;
+  commands.onDidChange(() => {
+    throw new Error("subscriber failed");
+  });
+  commands.onDidChange((result) => {
+    delivered = result;
+  });
+
+  const result = commands.setBinding("tool.draw", 0, keybinding("p"));
+
+  assert.equal(result.status, "durable");
+  assert.equal(result.applied, true);
+  assert.equal(delivered, result);
+  assert.equal(commands.formatBindings("tool.draw"), "P");
+  assert.equal(JSON.parse(storage.value).overrides["tool.draw"][0].sequence[0].key, "p");
+  assert.deepEqual(errors.map(({ operation, error }) => ({
+    message: error.message,
+    operation,
+  })), [{
+    message: "subscriber failed",
+    operation: "notify keyboard shortcut change",
+  }]);
+});
+
+test("preference edits expose session-only and rejected persistence outcomes", () => {
+  const unavailable = createCommandHarness({
+    storage: createKeybindingStorageAdapter(null),
+  });
+  register(unavailable.commands, "tool.draw", keybinding("n"), () => {});
+  const unavailableNotifications = [];
+  unavailable.commands.onDidChange((result) => unavailableNotifications.push(result));
+  const unavailableResult = unavailable.commands.unbindCommand("tool.draw");
+  assert.equal(unavailableResult.status, "session-only");
+  assert.equal(unavailableResult.persistence, "unavailable");
+  assert.equal(unavailableResult.applied, true);
+  assert.deepEqual(unavailable.commands.getEffectiveBindings("tool.draw"), []);
+  assert.equal(unavailableNotifications[0].status, "session-only");
+
+  let saveCalls = 0;
+  const quota = createCommandHarness({
+    storage: {
+      load: () => null,
+      save() {
+        saveCalls++;
+        throw new Error("quota exceeded");
+      },
+    },
+  });
+  register(quota.commands, "tool.draw", keybinding("n"), () => {});
+  const quotaResult = quota.commands.setBinding("tool.draw", 0, keybinding("p"));
+  assert.equal(quotaResult.status, "session-only");
+  assert.equal(quotaResult.persistence, "failed");
+  assert.match(quotaResult.error.message, /quota exceeded/);
+  assert.equal(quota.commands.formatBindings("tool.draw"), "P");
+  assert.equal(saveCalls, 1);
+  assert.equal(quota.errors.length, 1);
+
+  const rejectedResult = quota.commands.importConfiguration(JSON.stringify({
+    version: 1,
+    overrides: { "tool.draw": [{ sequence: [] }] },
+  }));
+  assert.equal(rejectedResult.status, "rejected");
+  assert.equal(rejectedResult.persistence, "not-needed");
+  assert.equal(rejectedResult.applied, false);
+  assert.equal(quota.commands.formatBindings("tool.draw"), "P");
+  assert.equal(saveCalls, 1);
+
+  assert.equal(quota.commands.resetCommand("tool.draw").status, "session-only");
+  assert.equal(quota.commands.resetAll().status, "session-only");
+});
+
+test("execution separates synchronous acceptance from eventual completion", async () => {
+  const { commands, errors } = createCommandHarness();
+  register(commands, "action.reject", keybinding("r"), () => false);
+  register(commands, "action.fail", keybinding("f"), () => {
+    throw new Error("sync failure");
+  });
+  register(commands, "action.asyncReject", keybinding("a"), async () => false);
+  register(commands, "action.asyncFail", keybinding("x"), async () => {
+    throw new Error("async failure");
+  });
+
+  const rejected = commands.execute("action.reject");
+  assert.deepEqual({
+    accepted: rejected.accepted,
+    asynchronous: rejected.asynchronous,
+    status: rejected.status,
+  }, {
+    accepted: false,
+    asynchronous: false,
+    status: "rejected",
+  });
+  assert.equal((await rejected.completion).status, "rejected");
+
+  const failed = commands.execute("action.fail");
+  assert.equal(failed.accepted, false);
+  assert.equal(failed.status, "failed");
+  assert.equal((await failed.completion).status, "failed");
+
+  const event = keyboardEvent("a", { code: "KeyA" });
+  const dispatched = commands.handleKeyDown(event);
+  assert.equal(dispatched.status, "executed");
+  assert.equal(dispatched.execution.accepted, true);
+  assert.equal(dispatched.execution.asynchronous, true);
+  assert.deepEqual(event.state, { prevented: 1, stopped: 1 });
+  assert.equal((await dispatched.execution.completion).status, "rejected");
+
+  const asyncFailure = commands.execute("action.asyncFail");
+  assert.equal(asyncFailure.accepted, true);
+  assert.equal(asyncFailure.asynchronous, true);
+  assert.equal((await asyncFailure.completion).status, "failed");
+  assert.deepEqual(errors.map(({ operation }) => operation), [
+    "execute action.fail",
+    "execute action.asyncFail",
+  ]);
+});
+
+test("enabled-predicate failures reject execution and report once", () => {
+  const { commands, errors } = createCommandHarness();
+  let checks = 0;
+  register(commands, "action.disabled", keybinding("d"), () => {}, [{}], {
+    isEnabled() {
+      checks++;
+      throw new Error("predicate failure");
+    },
+  });
+
+  assert.equal(commands.execute("action.disabled").accepted, false);
+  assert.equal(commands.execute("action.disabled").accepted, false);
+  assert.equal(checks, 2);
+  assert.equal(errors.length, 1);
+  assert.equal(errors[0].operation, "check whether action.disabled is enabled");
+});
+
 test("persists only overrides and supports unbind, reset, import, and corrupt-data quarantine", () => {
   const first = createCommandHarness();
   register(first.commands, "tool.draw", keybinding("n"), () => {});
-  first.commands.setBinding("tool.draw", 0, keybinding("p", { shift: true }));
+  assert.equal(first.commands.setBinding("tool.draw", 0,
+    keybinding("p", { shift: true })).status, "durable");
   assert.equal(JSON.parse(first.storage.value).version, 1);
   assert.equal(JSON.parse(first.storage.value).overrides["tool.draw"][0].sequence[0].key, "p");
 
   const reloaded = createCommandHarness({ storage: createMemoryStorage(first.storage.value) });
   register(reloaded.commands, "tool.draw", keybinding("n"), () => {});
   assert.equal(reloaded.commands.formatBindings("tool.draw"), "Shift+P");
-  reloaded.commands.unbindCommand("tool.draw");
+  assert.equal(reloaded.commands.unbindCommand("tool.draw").status, "durable");
   assert.deepEqual(reloaded.commands.getEffectiveBindings("tool.draw"), []);
-  reloaded.commands.resetCommand("tool.draw");
+  assert.equal(reloaded.commands.resetCommand("tool.draw").status, "durable");
   assert.equal(reloaded.commands.formatBindings("tool.draw"), "N");
 
-  reloaded.commands.importConfiguration(JSON.stringify({
+  assert.equal(reloaded.commands.importConfiguration(JSON.stringify({
     version: 1,
     overrides: { "tool.draw": [keybinding("p"), keybinding("q")] },
-  }));
+  })).status, "durable");
   assert.equal(reloaded.commands.formatBindings("tool.draw"), "P");
   assert.equal(reloaded.commands.getEffectiveBindings("tool.draw").length, 1);
 
-  reloaded.commands.importConfiguration(JSON.stringify({
+  assert.equal(reloaded.commands.importConfiguration(JSON.stringify({
     version: 1,
     overrides: { "tool.draw": [] },
-  }));
+  })).status, "durable");
   assert.deepEqual(reloaded.commands.getEffectiveBindings("tool.draw"), []);
 
   const corruptStorage = createMemoryStorage("{not json");
@@ -646,6 +824,8 @@ test("browser storage adapter isolates failures and quarantines invalid document
     raw: "invalid",
     reason: "bad format",
   });
+  assert.equal(adapter.save("valid"), true);
+  assert.equal(values.get("shortcuts"), "valid");
 
   const unavailable = createKeybindingStorageAdapter({
     getItem() { throw new Error("denied") },

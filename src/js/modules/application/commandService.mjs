@@ -83,8 +83,47 @@ const keyboardActivationContextKeys = new Set([
 /**
  * @typedef {object} KeybindingStorage
  * @property {() => string | null} load
- * @property {(value: string) => void} save
+ * @property {(value: string) => boolean | void} save
  * @property {(value: string, reason: string) => void} [quarantine]
+ */
+
+/**
+ * @typedef {object} ShortcutConfiguration
+ * @property {number} version
+ * @property {Record<string, Keybinding[]>} overrides
+ */
+
+/**
+ * @typedef {object} ShortcutEditResult
+ * @property {boolean} applied
+ * @property {string[]} changedCommandIds
+ * @property {ShortcutConfiguration} configuration
+ * @property {Error | null} error
+ * @property {string} operation
+ * @property {"failed" | "not-needed" | "saved" | "unavailable"} persistence
+ * @property {"durable" | "rejected" | "session-only"} status
+ * @property {string | null} reason
+ */
+
+/**
+ * @typedef {object} CommandCompletion
+ * @property {Error | null} error
+ * @property {"completed" | "failed" | "rejected"} status
+ * @property {unknown} value
+ */
+
+/**
+ * `accepted` is the synchronous dispatch decision. `completion` reports the
+ * eventual handler outcome without making keyboard event consumption await it.
+ *
+ * @typedef {object} CommandExecutionResult
+ * @property {boolean} accepted
+ * @property {boolean} asynchronous
+ * @property {string} commandId
+ * @property {Promise<CommandCompletion>} completion
+ * @property {Error | null} error
+ * @property {"accepted" | "failed" | "rejected"} status
+ * @property {string | null} reason
  */
 
 /**
@@ -109,8 +148,53 @@ function cloneBinding(value) {
   };
 }
 
-/** @param {unknown} value @returns {Record<string, Keybinding[]>} */
-function readOverrides(value) {
+/** @param {Record<string, Keybinding[]>} overrides @returns {ShortcutConfiguration} */
+function configurationSnapshot(overrides) {
+  /** @type {Record<string, Keybinding[]>} */
+  const snapshot = {};
+  for (const [commandId, bindings] of Object.entries(overrides)) {
+    snapshot[commandId] = bindings.map((binding) => /** @type {Keybinding} */ (cloneBinding(binding)));
+  }
+  return { version: persistenceVersion, overrides: snapshot };
+}
+
+/** @param {unknown} error @param {string} fallback */
+function errorValue(error, fallback) {
+  return error instanceof Error ? error : new Error(error == null ? fallback : String(error));
+}
+
+/**
+ * @param {string} commandId
+ * @param {boolean} accepted
+ * @param {"accepted" | "failed" | "rejected"} status
+ * @param {boolean} asynchronous
+ * @param {CommandCompletion | Promise<CommandCompletion>} completion
+ * @param {string | null} [reason]
+ * @param {Error | null} [error]
+ * @returns {CommandExecutionResult}
+ */
+function commandExecutionResult(
+  commandId,
+  accepted,
+  status,
+  asynchronous,
+  completion,
+  reason = null,
+  error = null,
+) {
+  return Object.freeze({
+    accepted,
+    asynchronous,
+    commandId,
+    completion: Promise.resolve(completion),
+    error,
+    reason,
+    status,
+  });
+}
+
+/** @param {unknown} value @param {{strict?: boolean}} [options] @returns {Record<string, Keybinding[]>} */
+function readOverrides(value, options = {}) {
   if (!value || typeof value !== "object") throw new TypeError("Shortcut preferences must be an object");
   const documentValue = /** @type {{version?: unknown, overrides?: unknown}} */ (value);
   if (documentValue.version !== persistenceVersion || !documentValue.overrides ||
@@ -122,9 +206,15 @@ function readOverrides(value) {
   for (const [commandId, rawBindings] of Object.entries(
     /** @type {Record<string, unknown>} */ (documentValue.overrides),
   )) {
-    if (!/^[a-z][a-zA-Z0-9.-]+$/.test(commandId) || !Array.isArray(rawBindings)) continue;
+    if (!/^[a-z][a-zA-Z0-9.-]+$/.test(commandId) || !Array.isArray(rawBindings)) {
+      if (options.strict) throw new TypeError(`Invalid shortcut override: ${commandId}`);
+      continue;
+    }
     const bindings = rawBindings.map(normalizeBinding);
-    if (bindings.some((binding) => binding === null)) continue;
+    if (bindings.some((binding) => binding === null)) {
+      if (options.strict) throw new TypeError(`Invalid shortcut binding: ${commandId}`);
+      continue;
+    }
     // A user customization is one shortcut (or an empty array when cleared).
     // Commands may still declare multiple built-in compatibility aliases.
     overrides[commandId] = /** @type {Keybinding[]} */ (bindings.slice(0, 1));
@@ -366,8 +456,13 @@ export class CommandService {
     this.commands = new Map();
     /** @type {Record<string, Keybinding[]>} */
     this.overrides = {};
-    /** @type {Set<() => void>} */
+    /** @type {Set<(result: ShortcutEditResult) => void>} */
     this.listeners = new Set();
+    /** @type {WeakSet<Function>} */
+    this.reportedEnabledPredicateFailures = new WeakSet();
+    this.sessionOnlyEdits = false;
+    /** @type {Error | null} */
+    this.lastPersistenceError = null;
     this.dispatcher = new CommandDispatcherState(clearTimer);
     this.load();
   }
@@ -388,28 +483,42 @@ export class CommandService {
     }
   }
 
-  save() {
-    /** @type {Record<string, Keybinding[]>} */
-    const overrides = {};
-    for (const [commandId, bindings] of Object.entries(this.overrides)) {
-      overrides[commandId] = bindings.map((binding) => /** @type {Keybinding} */ (cloneBinding(binding)));
-    }
+  /** @param {Record<string, Keybinding[]>} overrides */
+  persist(overrides) {
     try {
-      this.storage.save(JSON.stringify({ version: persistenceVersion, overrides }));
+      const saved = this.storage.save(JSON.stringify(configurationSnapshot(overrides)));
+      if (saved === false) {
+        return {
+          error: new Error("Keyboard shortcut storage is unavailable."),
+          persistence: /** @type {const} */ ("unavailable"),
+        };
+      }
+      return { error: null, persistence: /** @type {const} */ ("saved") };
     } catch (error) {
       this.reportError("save keyboard shortcuts", error);
+      return {
+        error: errorValue(error, "Could not save keyboard shortcuts."),
+        persistence: /** @type {const} */ ("failed"),
+      };
     }
   }
 
-  /** @param {() => void} listener */
+  /** @param {(result: ShortcutEditResult) => void} listener */
   onDidChange(listener) {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
   }
 
-  notify() {
+  /** @param {ShortcutEditResult} result */
+  notify(result) {
     this.cleanup({ source: "binding-change" });
-    for (const listener of this.listeners) listener();
+    for (const listener of this.listeners) {
+      try {
+        listener(result);
+      } catch (error) {
+        this.reportError("notify keyboard shortcut change", error);
+      }
+    }
   }
 
   /**
@@ -475,14 +584,13 @@ export class CommandService {
   }
 
   finalizeRegistration() {
-    let changed = false;
-    for (const commandId of Object.keys(this.overrides)) {
+    const next = configurationSnapshot(this.overrides).overrides;
+    for (const commandId of Object.keys(next)) {
       if (!this.commands.has(commandId)) {
-        delete this.overrides[commandId];
-        changed = true;
+        delete next[commandId];
       }
     }
-    if (changed) this.save();
+    return this.commitEdit("prune", next);
   }
 
   /** @param {Record<string, unknown>} shortcut */
@@ -541,32 +649,75 @@ export class CommandService {
   activeContext(command, context) {
     return command.activations
       .filter((activation) => contextMatches(activation.when, context) && (() => {
-        try { return activation.isEnabled(); } catch { return false; }
+        return this.enabledPredicate(command.id, activation.isEnabled);
       })())
       .sort((left, right) => contextSpecificity(right.when) - contextSpecificity(left.when))[0]?.when || null;
+  }
+
+  /** @param {string} commandId @param {() => boolean} predicate */
+  enabledPredicate(commandId, predicate) {
+    try {
+      return predicate() !== false;
+    } catch (error) {
+      if (!this.reportedEnabledPredicateFailures.has(predicate)) {
+        this.reportedEnabledPredicateFailures.add(predicate);
+        this.reportError(`check whether ${commandId} is enabled`, error);
+      }
+      return false;
+    }
   }
 
   /** @param {CommandDescriptor} command @param {Record<string, unknown>} [context] */
   commandEnabled(command, context = this.getContext()) {
     return command.actionActivations.some((activation) => {
       if (!contextMatches(activation.when, context)) return false;
-      try { return activation.isEnabled(); } catch { return false; }
+      return this.enabledPredicate(command.id, activation.isEnabled);
     });
   }
 
-  /** @param {string} commandId @param {{source?: string}} [details] @param {Record<string, unknown>} [context] */
+  /**
+   * A synchronous `false` from a legacy handler rejects activation. Promises
+   * are accepted immediately, then normalized into an observable completion.
+   * This keeps DOM event consumption synchronous while exposing async failure.
+   *
+   * @param {string} commandId
+   * @param {{source?: string}} [details]
+   * @param {Record<string, unknown>} [context]
+   * @returns {CommandExecutionResult}
+   */
   execute(commandId, details = {}, context = this.getContext()) {
     const command = this.commands.get(commandId);
-    if (!command || !this.commandEnabled(command, context)) return false;
+    if (!command) {
+      const completion = { error: null, status: /** @type {const} */ ("rejected"), value: false };
+      return commandExecutionResult(commandId, false, "rejected", false, completion, "unknown-command");
+    }
+    if (!this.commandEnabled(command, context)) {
+      const completion = { error: null, status: /** @type {const} */ ("rejected"), value: false };
+      return commandExecutionResult(commandId, false, "rejected", false, completion, "disabled");
+    }
     try {
       const result = command.execute(details);
       if (result && typeof /** @type {{then?: unknown}} */ (result).then === "function") {
-        Promise.resolve(result).catch((error) => this.reportError(`execute ${commandId}`, error));
+        const completion = Promise.resolve(result).then((value) => value === false
+          ? { error: null, status: /** @type {const} */ ("rejected"), value }
+          : { error: null, status: /** @type {const} */ ("completed"), value }, (error) => {
+          const failure = errorValue(error, `Command ${commandId} failed.`);
+          this.reportError(`execute ${commandId}`, failure);
+          return { error: failure, status: /** @type {const} */ ("failed"), value: undefined };
+        });
+        return commandExecutionResult(commandId, true, "accepted", true, completion);
       }
-      return true;
+      if (result === false) {
+        const completion = { error: null, status: /** @type {const} */ ("rejected"), value: result };
+        return commandExecutionResult(commandId, false, "rejected", false, completion, "handler-rejected");
+      }
+      const completion = { error: null, status: /** @type {const} */ ("completed"), value: result };
+      return commandExecutionResult(commandId, true, "accepted", false, completion);
     } catch (error) {
-      this.reportError(`execute ${commandId}`, error);
-      return false;
+      const failure = errorValue(error, `Command ${commandId} failed.`);
+      this.reportError(`execute ${commandId}`, failure);
+      const completion = { error: failure, status: /** @type {const} */ ("failed"), value: undefined };
+      return commandExecutionResult(commandId, false, "failed", false, completion, "handler-failed", failure);
     }
   }
 
@@ -610,7 +761,7 @@ export class CommandService {
    * @param {PhysicalKeyIdentity | null} activationKey
    */
   executeKeyboardCandidate(candidate, target, activationKey) {
-    if (!candidate) return false;
+    if (!candidate) return null;
     const context = this.getContext(target);
     if (!this.commandEnabled(candidate.command, context) || !this.keyboardPolicyAllows(
       candidate.command,
@@ -619,18 +770,20 @@ export class CommandService {
       context,
       target,
     ) || !this.activeContext(candidate.command, context) ||
-        (candidate.binding.when && !contextMatches(candidate.binding.when, context))) return false;
+        (candidate.binding.when && !contextMatches(candidate.binding.when, context))) return null;
     const stillBound = this.getEffectiveBindings(candidate.command.id)
       .some((binding) => bindingsEqual(binding, candidate.binding, this.platform) &&
         contextSignature(binding.when || {}) === contextSignature(candidate.binding.when || {}));
     const lifecycleRevision = this.dispatcher.lifecycleRevision;
-    const executed = stillBound && this.execute(candidate.command.id, { source: "keyboard" }, context);
-    if (executed && candidate.command.release) {
+    const execution = stillBound
+      ? this.execute(candidate.command.id, { source: "keyboard" }, context)
+      : null;
+    if (execution?.accepted && candidate.command.release) {
       const cleanupDetails = this.dispatcher.cleanupAfter(lifecycleRevision);
       if (cleanupDetails) this.releaseCommand(candidate.command, cleanupDetails);
       else this.dispatcher.hold(candidate.command, activationKey);
     }
-    return executed;
+    return execution;
   }
 
   /**
@@ -642,16 +795,16 @@ export class CommandService {
    * @param {unknown} [target]
    */
   executePendingFallback(pending, target) {
-    const executed = this.executeKeyboardCandidate(
+    const execution = this.executeKeyboardCandidate(
       pending?.fallback || null,
       target,
       pending?.fallbackKey || null,
     );
-    if (executed && pending?.fallbackReleased && pending.fallback?.command.release) {
+    if (execution?.accepted && pending?.fallbackReleased && pending.fallback?.command.release) {
       const held = this.dispatcher.takeHeld(pending.fallback.command.id, pending.fallbackKey);
       if (held) this.releaseCommand(held.command, { source: "keyboard" });
     }
-    return executed;
+    return execution?.accepted === true;
   }
 
   /** @param {CommandDescriptor} command @param {{source?: string}} details */
@@ -865,14 +1018,14 @@ export class CommandService {
       return { handled: true, status: "pending" };
     }
     if (!selected) return { handled: true, status: "conflict" };
-    const executed = this.executeKeyboardCandidate(
+    const execution = this.executeKeyboardCandidate(
       selected,
       event.target,
       physicalKeyIdentity(shortcutEvent),
     );
-    return executed
-      ? { commandId: selected.command.id, handled: true, status: "executed" }
-      : { handled: true, status: "disabled" };
+    return execution?.accepted
+      ? { commandId: selected.command.id, execution, handled: true, status: "executed" }
+      : { execution, handled: true, status: execution?.status === "failed" ? "failed" : "rejected" };
   }
 
   /**
@@ -1075,82 +1228,215 @@ export class CommandService {
       .sort((left, right) => left.category.localeCompare(right.category) || left.title.localeCompare(right.title));
   }
 
-  /** @param {string} commandId @param {Keybinding[]} bindings */
-  setBindings(commandId, bindings) {
-    if (!this.commands.has(commandId)) throw new Error(`Unknown command: ${commandId}`);
-    const normalized = bindings.map(normalizeBinding);
-    if (normalized.some((binding) => binding === null)) throw new TypeError("Invalid keybinding");
-    this.overrides[commandId] = uniqueBindings(
-      /** @type {Keybinding[]} */ (normalized),
-      this.platform,
-    ).slice(0, 1);
-    this.save();
-    this.notify();
+  /** @param {string} operation @param {string | null} reason @param {unknown} error */
+  rejectedEdit(operation, reason, error) {
+    return Object.freeze({
+      applied: false,
+      changedCommandIds: [],
+      configuration: configurationSnapshot(this.overrides),
+      error: errorValue(error, "The shortcut change was rejected."),
+      operation,
+      persistence: /** @type {const} */ ("not-needed"),
+      reason,
+      status: /** @type {const} */ ("rejected"),
+    });
   }
 
-  /** @param {string} commandId @param {number} _index @param {Keybinding} binding @param {{takePrecedence?: boolean}} [options] */
-  setBinding(commandId, _index, binding, options = {}) {
-    const normalized = normalizeBinding(binding);
-    if (!normalized) throw new TypeError("Invalid keybinding");
-    let nextBinding = normalized;
-    if (options.takePrecedence) {
-      const priorities = this.analyzeBinding(commandId, normalized)
-        .filter((conflict) => conflict.type === "hard")
-        .map((conflict) => {
-          const conflictBindings = this.getEffectiveBindings(String(conflict.commandId));
-          return conflictBindings[Number(conflict.bindingIndex)]?.priority || 0;
-        });
-      nextBinding = /** @type {Keybinding} */ (normalizeBinding({
-        ...normalized,
-        priority: Math.max(0, ...priorities) + 1,
-      }));
+  /** @param {string} operation */
+  unchangedEdit(operation) {
+    return Object.freeze({
+      applied: false,
+      changedCommandIds: [],
+      configuration: configurationSnapshot(this.overrides),
+      error: this.lastPersistenceError,
+      operation,
+      persistence: /** @type {const} */ ("not-needed"),
+      reason: null,
+      status: /** @type {"durable" | "session-only"} */ (
+        this.sessionOnlyEdits ? "session-only" : "durable"
+      ),
+    });
+  }
+
+  /** @param {Record<string, Keybinding[]>} overrides */
+  validateOverrides(overrides) {
+    /** @type {Record<string, Keybinding[]>} */
+    const validated = {};
+    for (const [commandId, bindings] of Object.entries(overrides)) {
+      if (!this.commands.has(commandId)) throw new Error(`Unknown command: ${commandId}`);
+      if (!Array.isArray(bindings)) throw new TypeError("Invalid keybinding collection");
+      const normalized = bindings.map(normalizeBinding);
+      if (normalized.some((binding) => binding === null)) throw new TypeError("Invalid keybinding");
+      validated[commandId] = uniqueBindings(
+        /** @type {Keybinding[]} */ (normalized),
+        this.platform,
+      ).slice(0, 1);
     }
-    this.setBindings(commandId, [nextBinding]);
+    return validated;
+  }
+
+  /** @param {string} operation @param {Record<string, Keybinding[]>} next */
+  commitEdit(operation, next) {
+    let validated;
+    try {
+      validated = this.validateOverrides(next);
+    } catch (error) {
+      return this.rejectedEdit(operation, "invalid-configuration", error);
+    }
+    const previousConfiguration = configurationSnapshot(this.overrides);
+    const nextConfiguration = configurationSnapshot(validated);
+    const commandIds = new Set([
+      ...Object.keys(previousConfiguration.overrides),
+      ...Object.keys(nextConfiguration.overrides),
+    ]);
+    const changedCommandIds = Array.from(commandIds).filter((commandId) =>
+      JSON.stringify(previousConfiguration.overrides[commandId]) !==
+        JSON.stringify(nextConfiguration.overrides[commandId])).sort();
+    if (!changedCommandIds.length) return this.unchangedEdit(operation);
+
+    // Persistence failure deliberately does not roll back a usable in-memory
+    // edit. Subscribers see the complete committed configuration and whether
+    // it is durable in the same single notification.
+    this.overrides = validated;
+    const persistence = this.persist(validated);
+    this.sessionOnlyEdits = persistence.persistence !== "saved";
+    this.lastPersistenceError = persistence.error;
+    const result = Object.freeze({
+      applied: true,
+      changedCommandIds,
+      configuration: nextConfiguration,
+      error: persistence.error,
+      operation,
+      persistence: persistence.persistence,
+      reason: null,
+      status: /** @type {"durable" | "session-only"} */ (
+        persistence.persistence === "saved" ? "durable" : "session-only"
+      ),
+    });
+    this.notify(result);
+    return result;
+  }
+
+  /**
+   * Apply one complete preference edit. Conflict removal and assignment share
+   * the same draft, validation, persistence attempt, and notification.
+   *
+   * @param {{type: string, commandId?: string, binding?: Keybinding, bindings?: Keybinding[], index?: number, replaceConflicts?: boolean, takePrecedence?: boolean, text?: string}} edit
+   * @returns {ShortcutEditResult}
+   */
+  editBindings(edit) {
+    const operation = typeof edit?.type === "string" ? edit.type : "unknown";
+    try {
+      const next = configurationSnapshot(this.overrides).overrides;
+      if (operation === "import") {
+        const imported = readOverrides(JSON.parse(String(edit.text ?? "")), { strict: true });
+        /** @type {Record<string, Keybinding[]>} */
+        const known = {};
+        for (const [commandId, bindings] of Object.entries(imported)) {
+          if (this.commands.has(commandId)) known[commandId] = bindings;
+        }
+        return this.commitEdit(operation, known);
+      }
+      if (operation === "reset-all") return this.commitEdit(operation, {});
+
+      const commandId = String(edit.commandId || "");
+      if (!this.commands.has(commandId)) throw new Error(`Unknown command: ${commandId}`);
+      if (operation === "clear") {
+        next[commandId] = [];
+      } else if (operation === "reset") {
+        delete next[commandId];
+      } else if (operation === "remove") {
+        const bindings = this.getEffectiveBindings(commandId);
+        const index = Number(edit.index);
+        if (!Number.isInteger(index) || index < 0 || index >= bindings.length) {
+          return this.rejectedEdit(operation, "binding-not-found", new Error("Shortcut binding not found."));
+        }
+        bindings.splice(index, 1);
+        next[commandId] = bindings;
+      } else if (operation === "assign") {
+        const requested = edit.bindings || (edit.binding ? [edit.binding] : []);
+        const normalized = requested.map(normalizeBinding);
+        if (normalized.some((binding) => binding === null) || normalized.length === 0) {
+          throw new TypeError("Invalid keybinding");
+        }
+        let bindings = /** @type {Keybinding[]} */ (normalized);
+        const binding = bindings[0];
+        if (binding && edit.takePrecedence) {
+          const priorities = this.analyzeBinding(commandId, binding)
+            .filter((conflict) => conflict.type === "hard")
+            .map((conflict) => this.getEffectiveBindings(String(conflict.commandId))[
+              Number(conflict.bindingIndex)
+            ]?.priority || 0);
+          bindings = [/** @type {Keybinding} */ (normalizeBinding({
+            ...binding,
+            priority: Math.max(0, ...priorities) + 1,
+          }))];
+        }
+        if (binding && edit.replaceConflicts) {
+          /** @type {Map<string, number[]>} */
+          const removals = new Map();
+          for (const conflict of this.analyzeBinding(commandId, binding)
+            .filter((value) => value.type === "hard" && value.commandId !== commandId)) {
+            const conflictId = String(conflict.commandId);
+            if (!removals.has(conflictId)) removals.set(conflictId, []);
+            removals.get(conflictId)?.push(Number(conflict.bindingIndex));
+          }
+          for (const [conflictId, indexes] of removals) {
+            const conflictBindings = this.getEffectiveBindings(conflictId);
+            for (const index of indexes.sort((left, right) => right - left)) {
+              conflictBindings.splice(index, 1);
+            }
+            next[conflictId] = conflictBindings;
+          }
+        }
+        next[commandId] = bindings;
+      } else {
+        throw new TypeError(`Unknown shortcut edit: ${operation}`);
+      }
+      return this.commitEdit(operation, next);
+    } catch (error) {
+      return this.rejectedEdit(operation, "invalid-edit", error);
+    }
+  }
+
+  /** @param {string} commandId @param {Keybinding[]} bindings */
+  setBindings(commandId, bindings) {
+    return bindings.length
+      ? this.editBindings({ bindings, commandId, type: "assign" })
+      : this.editBindings({ commandId, type: "clear" });
+  }
+
+  /** @param {string} commandId @param {number} _index @param {Keybinding} binding @param {{replaceConflicts?: boolean, takePrecedence?: boolean}} [options] */
+  setBinding(commandId, _index, binding, options = {}) {
+    return this.editBindings({
+      binding,
+      commandId,
+      replaceConflicts: options.replaceConflicts === true,
+      takePrecedence: options.takePrecedence === true,
+      type: "assign",
+    });
   }
 
   /** @param {string} commandId @param {number} index */
   removeBinding(commandId, index) {
-    const bindings = this.getEffectiveBindings(commandId);
-    if (index < 0 || index >= bindings.length) return;
-    bindings.splice(index, 1);
-    this.setBindings(commandId, bindings);
+    return this.editBindings({ commandId, index, type: "remove" });
   }
 
   /** @param {string} commandId */
-  unbindCommand(commandId) { this.setBindings(commandId, []); }
+  unbindCommand(commandId) { return this.editBindings({ commandId, type: "clear" }); }
 
   /** @param {string} commandId */
   resetCommand(commandId) {
-    if (!Object.prototype.hasOwnProperty.call(this.overrides, commandId)) return;
-    delete this.overrides[commandId];
-    this.save();
-    this.notify();
+    return this.editBindings({ commandId, type: "reset" });
   }
 
   resetAll() {
-    this.overrides = {};
-    this.save();
-    this.notify();
+    return this.editBindings({ type: "reset-all" });
   }
 
   /** @param {string} commandId @param {Keybinding} binding */
   replaceConflicts(commandId, binding) {
-    const conflicts = this.analyzeBinding(commandId, binding)
-      .filter((conflict) => conflict.type === "hard" && conflict.commandId !== commandId);
-    /** @type {Map<string, number[]>} */
-    const removals = new Map();
-    for (const conflict of conflicts) {
-      const id = String(conflict.commandId);
-      if (!removals.has(id)) removals.set(id, []);
-      removals.get(id)?.push(Number(conflict.bindingIndex));
-    }
-    for (const [id, indexes] of removals) {
-      const bindings = this.getEffectiveBindings(id);
-      for (const index of indexes.sort((left, right) => right - left)) bindings.splice(index, 1);
-      this.overrides[id] = bindings.slice(0, 1);
-    }
-    this.save();
-    this.notify();
+    return this.setBinding(commandId, 0, binding, { replaceConflicts: true });
   }
 
   exportConfiguration() {
@@ -1163,14 +1449,6 @@ export class CommandService {
 
   /** @param {string} text */
   importConfiguration(text) {
-    const imported = readOverrides(JSON.parse(text));
-    /** @type {Record<string, Keybinding[]>} */
-    const known = {};
-    for (const [id, bindings] of Object.entries(imported)) {
-      if (this.commands.has(id)) known[id] = bindings;
-    }
-    this.overrides = known;
-    this.save();
-    this.notify();
+    return this.editBindings({ text, type: "import" });
   }
 }

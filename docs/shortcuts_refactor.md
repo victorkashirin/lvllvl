@@ -25,7 +25,7 @@ Use this plan when implementing or reviewing the remaining shortcut refactor. It
 | [x] | [1. Input ownership and modal migration](#phase-1--input-ownership-and-modal-migration) | P2 | SC-03, SC-04; CQ-03 |
 | [x] | [2. Binding semantics, repeat, and aliases](#phase-2--binding-semantics-repeat-and-aliases) | P2 | SC-05, SC-06, SC-13; CQ-04, CQ-05 |
 | [x] | [3. Dispatcher lifecycle](#phase-3--dispatcher-lifecycle) | P2 | SC-07, SC-08, SC-09; CQ-06 |
-| [ ] | [4. Atomic edits and observable outcomes](#phase-4--atomic-edits-and-observable-outcomes) | P2 | SC-12; CQ-07 service work, CQ-08 |
+| [x] | [4. Atomic edits and observable outcomes](#phase-4--atomic-edits-and-observable-outcomes) | P2 | SC-12; CQ-07 service work, CQ-08 |
 | [ ] | [5. Recorder state, accessibility, and presentation](#phase-5--recorder-state-accessibility-and-presentation) | P2 / P3 | SC-10, SC-11, SC-16; CQ-07 dialog work |
 | [ ] | [6. Catalog ownership and legacy cleanup](#phase-6--catalog-ownership-and-legacy-cleanup) | P2 / P3 | SC-14; CQ-01, CQ-02 |
 | [ ] | [7. API and data ownership](#phase-7--api-and-data-ownership) | P3 | CQ-09 |
@@ -172,7 +172,7 @@ sequence cancellation on text-editor mode changes. No Phase 3 work is deferred.
 
 **Depends on:** stable binding semantics and lifecycle behavior. Define the mutation/result contract here before restructuring recorder control flow.
 
-**Read:** [save and notify](../src/js/modules/application/commandService.mjs#L221), [execute](../src/js/modules/application/commandService.mjs#L370), [replaceConflicts](../src/js/modules/application/commandService.mjs#L909), [importConfiguration](../src/js/modules/application/commandService.mjs#L937), [storage adapter](../src/js/modules/infrastructure/keybindingStorageAdapter.mjs#L8), and [commitRecording](../src/js/modules/feature-adapters/keyboardShortcutsDialog.mjs#L391).
+**Read:** [persist and notify](../src/js/modules/application/commandService.mjs#L487), [execute](../src/js/modules/application/commandService.mjs#L682), [editBindings](../src/js/modules/application/commandService.mjs#L1321), [importConfiguration](../src/js/modules/application/commandService.mjs#L1445), [storage adapter](../src/js/modules/infrastructure/keybindingStorageAdapter.mjs#L8), and [commitRecording](../src/js/modules/feature-adapters/keyboardShortcutsDialog.mjs#L420).
 
 **Problem:** conflict replacement removes bindings and saves/notifies before assignment performs another save/notify. Observers see an intermediate configuration. **SC-12:** persistence errors are logged or silently skipped while the UI announces a successful save. Execution booleans also blur acceptance, handler rejection, and asynchronous completion.
 
@@ -186,6 +186,32 @@ sequence cancellation on text-editor mode changes. No Phase 3 work is deferred.
 **Validation target:** focused service/storage cases proving one complete replacement update, one persistence attempt/notification, unavailable/quota-failing storage outcomes, and the intended sync/async command result contract.
 
 **Gate:** no observer sees half a conflict-replacement edit; every preference operation exposes persistence status; callers distinguish action acceptance from rejection/completion; the UI never labels session-only changes as durably saved.
+
+**Progress record (2026-09-07):** Added the application-owned
+`ShortcutEditResult` contract and `editBindings`/`commitEdit` path for assign,
+clear, reset, reset-all, conflict replacement, and import. Edits are now built
+against a complete draft, normalized and validated before application, then
+persisted once and delivered to subscribers in one notification containing the
+complete override snapshot and persistence outcome. Conflict removal and the
+replacement assignment therefore cannot expose an intermediate state. Storage
+unavailability and quota failures deliberately retain a usable session-only
+configuration, while invalid edits are rejected without mutation; the browser
+storage adapter now reports absence explicitly. Dialog messages consume the
+result immediately and reserve “saved” for durable changes. Command execution
+now returns a synchronous acceptance decision plus an awaitable completion;
+legacy synchronous `false`, resolving `false`, thrown errors, and rejected
+promises have distinct rejected or failed outcomes while keyboard consumption
+remains synchronous. Enabled-predicate exceptions are rejected safely and
+reported once per predicate to avoid diagnostic flooding. The focused shortcut
+unit suite passed (23 tests), covering one-save/one-notification atomic
+replacement, complete subscriber state, durable/session-only/rejected edits,
+unavailable and quota-failing storage, synchronous and asynchronous execution,
+subscriber exception isolation, and predicate diagnostics. Module TypeScript
+checking, module-boundary and legacy-graph policy checks, and the production
+build passed. All 9 focused
+Chromium shortcut workflows passed, including durable replacement and an
+injected quota failure that the dialog correctly labels session-only. No Phase
+4 work is deferred.
 
 ## Phase 5 — Recorder state, accessibility, and presentation
 

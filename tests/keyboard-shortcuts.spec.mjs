@@ -91,7 +91,11 @@ test("active canvas typing owns destructive and printable menu shortcuts", async
       popupOpen: true,
       shortcutsAllowed: false,
     });
-    return { cropCount, validModeWithInputOwned, wrongMode };
+    return {
+      cropCount,
+      validModeWithInputOwned: validModeWithInputOwned.accepted,
+      wrongMode: wrongMode.accepted,
+    };
   })).toEqual({ cropCount: 1, validModeWithInputOwned: true, wrongMode: false });
 });
 
@@ -305,6 +309,36 @@ test("shortcut settings replace conflicts and drive the editor from one binding"
   ).overrides)).toMatchObject({
     "textMode.tool.erase": [],
     "textMode.tool.pencil": [{ sequence: [{ key: "l" }] }],
+  });
+});
+
+test("shortcut settings identify changes that are only applied for this session", async ({ page }) => {
+  await open2DProject(page);
+  await openShortcutSettings(page);
+  await page.locator("#keyboardShortcutsSearch").fill("Pencil");
+  const pencilRow = page.locator('tr[data-command-id="textMode.tool.pencil"]');
+
+  await page.evaluate(() => {
+    window.__shortcutOriginalSetItem = Storage.prototype.setItem;
+    Storage.prototype.setItem = function(key, value) {
+      if (key === "lvllvl.keyboardShortcuts") {
+        throw new DOMException("Injected quota failure", "QuotaExceededError");
+      }
+      return window.__shortcutOriginalSetItem.call(this, key, value);
+    };
+  });
+  await pencilRow.locator('[data-action="clear"]').click();
+
+  await expect(page.locator("#keyboardShortcutsStatus")).toHaveText(
+    "Shortcut cleared for this session, but could not be saved.",
+  );
+  await expect(page.locator("#keyboardShortcutsStatus")).toHaveAttribute("data-kind", "warning");
+  await expect(pencilRow.locator(".keyboard-shortcuts-binding-unassigned")).toHaveText("Assign");
+  expect(await page.evaluate(() => localStorage.getItem("lvllvl.keyboardShortcuts"))).toBeNull();
+
+  await page.evaluate(() => {
+    Storage.prototype.setItem = window.__shortcutOriginalSetItem;
+    delete window.__shortcutOriginalSetItem;
   });
 });
 

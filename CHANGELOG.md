@@ -27,6 +27,12 @@
 
 ### Fixed
 
+- Isolate keyboard-shortcut change subscriber failures so committed edits keep
+  their persistence outcome and remaining subscribers are still notified.
+- Apply shortcut assignments and conflict replacement as one validated change,
+  report durable, session-only, and rejected preference outcomes to the UI and
+  subscribers, and expose synchronous command acceptance separately from
+  asynchronous completion and failure.
 - Release held shortcuts by the physical key that activated them, keep
   multi-chord shortcuts pending while modifiers are released and pressed
   again, and cancel pending or held dispatcher state safely across focus,

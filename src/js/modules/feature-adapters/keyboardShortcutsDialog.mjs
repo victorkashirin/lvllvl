@@ -68,6 +68,29 @@ export function createKeyboardShortcutsDialog({
     status.setAttribute("data-kind", kind);
   }
 
+  /**
+   * @param {import("../application/commandService.mjs").ShortcutEditResult} result
+   * @param {string} durableMessage
+   * @param {string} sessionMessage
+   * @param {string} rejectedMessage
+   */
+  function showEditOutcome(result, durableMessage, sessionMessage, rejectedMessage) {
+    if (result.status === "rejected") {
+      setStatus(rejectedMessage, "error");
+      return false;
+    }
+    if (result.status === "session-only") {
+      setStatus(sessionMessage, "warning");
+      return true;
+    }
+    if (!result.applied) {
+      setStatus(durableMessage);
+      return true;
+    }
+    setStatus(durableMessage);
+    return true;
+  }
+
   /** @param {string} tag @param {string} [className] @param {string} [text] */
   function createElement(tag, className = "", text = "") {
     const created = document.createElement(tag);
@@ -400,10 +423,17 @@ export function createKeyboardShortcutsDialog({
     const commandId = recording.commandId;
     const binding = recording.binding;
     const analysis = commands.analyzeBinding(commandId, binding);
-    if (behavior === "replace") commands.replaceConflicts(commandId, binding);
-    commands.setBinding(commandId, 0, binding, {
+    const result = commands.editBindings({
+      binding,
+      commandId,
+      replaceConflicts: behavior === "replace",
       takePrecedence: behavior === "precedence",
+      type: "assign",
     });
+    if (result.status === "rejected") {
+      setStatus("Shortcut could not be changed.", "error");
+      return;
+    }
     const savedBinding = commands.getEffectiveBindings(commandId)[0];
     const remainingHardConflicts = behavior === "precedence" && savedBinding
       ? commands.analyzeBinding(commandId, savedBinding).filter((conflict) => conflict.type === "hard")
@@ -416,26 +446,29 @@ export function createKeyboardShortcutsDialog({
     const contextReuse = analysis.some((conflict) => conflict.type === "context-separated");
     const remainsShadowed = remainingHardConflicts.some((conflict) => conflict.precedence === "existing");
     const hasUnresolved = remainingHardConflicts.some((conflict) => conflict.precedence === "unresolved");
-    let status = "Shortcut saved.";
+    const durable = result.status === "durable";
+    let status = durable
+      ? "Shortcut saved."
+      : "Shortcut applied for this session, but could not be saved.";
     /** @type {"info" | "warning" | "error"} */
-    let statusKind = "info";
+    let statusKind = durable ? "info" : "warning";
     if (remainsShadowed) {
-      status = "Shortcut saved. A more specific command still takes precedence in its context.";
+      status += " A more specific command still takes precedence in its context.";
       statusKind = "warning";
     } else if (hasUnresolved) {
-      status = "Shortcut saved, but part of the conflict is still unresolved.";
+      status += " Part of the conflict is still unresolved.";
       statusKind = "warning";
     } else if (layoutPossible || layoutUnknown) {
-      status = "Shortcut saved, but a possible keyboard-layout conflict could not be verified. Re-record it to verify conflicts.";
+      status += " A possible keyboard-layout conflict could not be verified. Re-record it to verify conflicts.";
       statusKind = "warning";
     } else if (reserved) {
-      status = "Shortcut saved. It may be intercepted by the browser or operating system.";
+      status += " It may be intercepted by the browser or operating system.";
       statusKind = "warning";
     } else if (prefix) {
-      status = "Shortcut saved; it overlaps the start of another shortcut sequence.";
+      status += " It overlaps the start of another shortcut sequence.";
       statusKind = "warning";
     } else if (contextReuse) {
-      status = "Shortcut saved; the same key is used in a separate context.";
+      status += " The same key is used in a separate context.";
     }
     setStatus(status, statusKind);
     render();
@@ -497,11 +530,19 @@ export function createKeyboardShortcutsDialog({
     if (action === "change") {
       startRecording(commandId, index, target);
     } else if (action === "clear") {
-      commands.unbindCommand(commandId);
-      setStatus("Shortcut cleared.");
+      showEditOutcome(
+        commands.unbindCommand(commandId),
+        "Shortcut cleared and saved.",
+        "Shortcut cleared for this session, but could not be saved.",
+        "Shortcut could not be cleared.",
+      );
     } else if (action === "reset") {
-      commands.resetCommand(commandId);
-      setStatus("Default shortcut restored.");
+      showEditOutcome(
+        commands.resetCommand(commandId),
+        "Default shortcut restored and saved.",
+        "Default shortcut restored for this session, but could not be saved.",
+        "Default shortcut could not be restored.",
+      );
     } else if (action === "cancel-recording") {
       cancelRecording();
       setStatus("Shortcut recording cancelled.");
@@ -511,8 +552,13 @@ export function createKeyboardShortcutsDialog({
       commitRecording("precedence");
     } else if (action === "reset-all") {
       if (confirmAction("Reset all keyboard shortcuts to their defaults?")) {
-        commands.resetAll();
-        setStatus("All default shortcuts restored.");
+        const result = commands.resetAll();
+        showEditOutcome(
+          result,
+          result.applied ? "All default shortcuts restored and saved." : "All shortcuts already use their defaults.",
+          "All defaults restored for this session, but could not be saved.",
+          "Default shortcuts could not be restored.",
+        );
       }
     } else if (action === "export") {
       downloadText("lvllvl-keyboard-shortcuts.json", commands.exportConfiguration());
@@ -529,8 +575,15 @@ export function createKeyboardShortcutsDialog({
     const file = input.files?.[0];
     if (!file) return;
     try {
-      commands.importConfiguration(await file.text());
-      setStatus("Keyboard shortcuts imported.");
+      const result = commands.importConfiguration(await file.text());
+      if (!showEditOutcome(
+        result,
+        result.applied ? "Keyboard shortcuts imported and saved." : "Keyboard shortcuts already match the import.",
+        "Keyboard shortcuts imported for this session, but could not be saved.",
+        "Could not import shortcuts: the file is not valid.",
+      )) {
+        reportError("import keyboard shortcuts", result.error);
+      }
       render();
     } catch (error) {
       setStatus("Could not import shortcuts: the file is not valid.", "error");

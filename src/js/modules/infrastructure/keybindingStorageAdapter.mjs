@@ -22,8 +22,9 @@ export function createKeybindingStorageAdapter(storage, options = {}) {
     },
     /** @param {string} value */
     save(value) {
-      if (!storage) return;
+      if (!storage) return false;
       storage.setItem(key, value);
+      return true;
     },
   });
 }
