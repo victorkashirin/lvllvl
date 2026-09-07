@@ -384,6 +384,42 @@ test("Preview and tile placement are listed and honor their effective bindings",
   expect(await page.evaluate(() => g_app.textModeEditor.gridView2d.getScale())).toBe(overviewScale);
   await page.keyboard.up("5");
   await expect(page.locator("body")).not.toHaveClass(/\boverview-mode\b/);
+
+  await page.keyboard.down("5");
+  await expect(page.locator("body")).toHaveClass(/\boverview-mode\b/);
+  await page.evaluate(() => window.dispatchEvent(new Event("blur")));
+  await expect(page.locator("body")).not.toHaveClass(/\boverview-mode\b/);
+  expect(await page.evaluate(() => g_app.services.commands.activeCommands.size)).toBe(0);
+  await page.keyboard.up("5");
+
+  await page.keyboard.down("5");
+  await expect(page.locator("body")).toHaveClass(/\boverview-mode\b/);
+  await page.evaluate(() => g_app.setDeviceType("mobile"));
+  await expect(page.locator("body")).not.toHaveClass(/\boverview-mode\b/);
+  expect(await page.evaluate(() => g_app.services.commands.activeCommands.size)).toBe(0);
+  await page.keyboard.up("5");
+  await page.evaluate(() => g_app.setDeviceType("desktop"));
+
+  await page.locator(`#${gridCanvasId}`).hover();
+  await page.evaluate(() => {
+    const commands = g_app.services.commands;
+    const chord = commands.bindingFromLegacyShortcut({ key: "5" }).sequence[0];
+    commands.setBinding("textMode.preview.hold", 0, { sequence: [chord, chord] });
+    window.__shortcutOriginalEditorMode = g_app.textModeEditor.getEditorMode();
+  });
+  await page.keyboard.down("5");
+  expect(await page.evaluate(() => g_app.services.commands.pending !== null)).toBe(true);
+  await page.evaluate(() => g_app.textModeEditor.setEditorMode(
+    window.__shortcutOriginalEditorMode === "pixel" ? "tile" : "pixel",
+  ));
+  expect(await page.evaluate(() => g_app.services.commands.pending)).toBeNull();
+  await page.keyboard.up("5");
+  await page.evaluate(() => {
+    const commands = g_app.services.commands;
+    g_app.textModeEditor.setEditorMode(window.__shortcutOriginalEditorMode);
+    commands.setBinding("textMode.preview.hold", 0,
+      commands.bindingFromLegacyShortcut({ key: "5" }));
+  });
 });
 
 test("canvas, selection, and colour actions dispatch only through configurable commands", async ({ page }) => {

@@ -66,6 +66,20 @@ const shortcutSettings = createKeyboardShortcutsDialog({
 
 legacy.UI.commandKeyDown = (/** @type {KeyboardEvent} */ event) => commands.handleKeyDown(event).handled;
 legacy.UI.commandKeyUp = (/** @type {KeyboardEvent} */ event) => commands.handleKeyUp(event).handled;
+legacy.UI.commandContextChanged = (/** @type {string} */ source) => commands.cleanup({ source });
+
+const cleanupCommandDispatcher = (/** @type {Event} */ event) =>
+  commands.cleanup({ source: event.type });
+const disposeCommandDispatcher = (/** @type {Event} */ event) =>
+  commands.dispose({ source: event.type });
+const cleanupHiddenCommandDispatcher = () => {
+  if (globalThis.document.hidden) commands.cleanup({ source: "visibilitychange" });
+};
+globalThis.addEventListener("blur", cleanupCommandDispatcher);
+globalThis.addEventListener("pagehide", disposeCommandDispatcher);
+globalThis.document.addEventListener("compositionstart", cleanupCommandDispatcher);
+globalThis.document.addEventListener("focusout", cleanupCommandDispatcher);
+globalThis.document.addEventListener("visibilitychange", cleanupHiddenCommandDispatcher);
 
 const featureHost = Object.freeze({
   async copyText(/** @type {string} */ value) {

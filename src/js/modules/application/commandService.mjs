@@ -17,7 +17,6 @@ import {
   formatAriaBinding,
   formatBinding,
   isRiskyBinding,
-  normalizeKey,
   normalizeBinding,
   resolvePrimaryModifier,
   shortcutKeyboardEvent,
@@ -231,6 +230,122 @@ function compareCandidatePrecedence(left, right) {
   return left.command.priority - right.command.priority;
 }
 
+/**
+ * @typedef {object} PhysicalKeyIdentity
+ * @property {"code" | "key"} kind
+ * @property {string} value
+ */
+
+/**
+ * Key releases must follow the key that actually activated a command. In
+ * particular, a shifted printable key can have a different `key` value by the
+ * time its keyup arrives, while its physical `code` remains stable.
+ *
+ * @param {import("../domain/keybindings.mjs").ShortcutKeyboardEvent} event
+ * @returns {PhysicalKeyIdentity | null}
+ */
+function physicalKeyIdentity(event) {
+  if (event.modifierOnly) return null;
+  if (event.code) return Object.freeze({ kind: "code", value: event.code });
+  if (event.key) return Object.freeze({ kind: "key", value: event.key });
+  return null;
+}
+
+/** @param {PhysicalKeyIdentity | null} left @param {PhysicalKeyIdentity | null} right */
+function physicalKeysEqual(left, right) {
+  return Boolean(left && right && left.kind === right.kind && left.value === right.value);
+}
+
+/** @param {string} commandId @param {PhysicalKeyIdentity} key */
+function heldActivationId(commandId, key) {
+  return `${commandId}\u0000${key.kind}:${key.value}`;
+}
+
+/**
+ * Own the mutable dispatcher lifecycle in one place. Pending sequences and
+ * held commands may coexist, while recording excludes both. Taking pending or
+ * held work removes it before callbacks run, making cleanup re-entrant and
+ * repeated cleanup harmless.
+ */
+class CommandDispatcherState {
+  /** @param {(timer: unknown) => void} clearTimer */
+  constructor(clearTimer) {
+    this.clearTimer = clearTimer;
+    this.recording = false;
+    this.lifecycleRevision = 0;
+    /** @type {{source?: string}} */
+    this.lastCleanupDetails = {};
+    /** @type {Map<string, {command: CommandDescriptor, key: PhysicalKeyIdentity}>} */
+    this.heldCommands = new Map();
+    /** @type {{paths: string[][], fallback: {command: CommandDescriptor, binding: Keybinding} | null, fallbackKey: PhysicalKeyIdentity | null, fallbackReleased: boolean, timer: unknown} | null} */
+    this.pending = null;
+  }
+
+  /** @param {boolean} recording */
+  setRecording(recording) { this.recording = recording === true; }
+
+  /** @param {{source?: string}} details */
+  markCleanup(details) {
+    this.lifecycleRevision++;
+    this.lastCleanupDetails = { ...details };
+  }
+
+  /** @param {number} revision @returns {{source?: string} | null} */
+  cleanupAfter(revision) {
+    return this.lifecycleRevision === revision ? null : this.lastCleanupDetails;
+  }
+
+  /** @param {{paths: string[][], fallback: {command: CommandDescriptor, binding: Keybinding} | null, fallbackKey: PhysicalKeyIdentity | null, fallbackReleased: boolean, timer: unknown}} pending */
+  setPending(pending) {
+    this.cancelPending();
+    this.pending = pending;
+  }
+
+  /** @param {object | null} [expected] */
+  takePending(expected = null) {
+    if (!this.pending || (expected && this.pending !== expected)) return null;
+    const pending = this.pending;
+    this.pending = null;
+    if (pending.timer !== null && pending.timer !== undefined) this.clearTimer(pending.timer);
+    return pending;
+  }
+
+  cancelPending() { return Boolean(this.takePending()); }
+
+  /** @param {CommandDescriptor} command @param {PhysicalKeyIdentity | null} key */
+  hold(command, key) {
+    if (!key) return false;
+    const id = heldActivationId(command.id, key);
+    if (this.heldCommands.has(id)) return false;
+    this.heldCommands.set(id, { command, key });
+    return true;
+  }
+
+  /** @param {string} commandId @param {PhysicalKeyIdentity | null} key */
+  takeHeld(commandId, key) {
+    if (!key) return null;
+    const id = heldActivationId(commandId, key);
+    const held = this.heldCommands.get(id) || null;
+    if (held) this.heldCommands.delete(id);
+    return held;
+  }
+
+  /** @param {PhysicalKeyIdentity | null} key */
+  takeHeldForKey(key) {
+    if (!key) return [];
+    const matches = Array.from(this.heldCommands.entries())
+      .filter(([, held]) => physicalKeysEqual(held.key, key));
+    for (const [id] of matches) this.heldCommands.delete(id);
+    return matches.map(([, held]) => held);
+  }
+
+  takeAllHeld() {
+    const held = Array.from(this.heldCommands.values());
+    this.heldCommands.clear();
+    return held;
+  }
+}
+
 export class CommandService {
   /** @param {CommandServiceDependencies} dependencies */
   constructor({ platform, storage, getContext, setTimer, clearTimer, reportError = () => {} }) {
@@ -253,13 +368,13 @@ export class CommandService {
     this.overrides = {};
     /** @type {Set<() => void>} */
     this.listeners = new Set();
-    this.recording = false;
-    /** @type {Map<string, {command: CommandDescriptor, binding: Keybinding}>} */
-    this.activeCommands = new Map();
-    /** @type {{paths: string[][], fallback: {command: CommandDescriptor, binding: Keybinding} | null, fallbackReleased: boolean, timer: unknown} | null} */
-    this.pending = null;
+    this.dispatcher = new CommandDispatcherState(clearTimer);
     this.load();
   }
+
+  get recording() { return this.dispatcher.recording; }
+  get pending() { return this.dispatcher.pending; }
+  get activeCommands() { return this.dispatcher.heldCommands; }
 
   load() {
     const raw = this.storage.load();
@@ -293,7 +408,7 @@ export class CommandService {
   }
 
   notify() {
-    this.cancelPending();
+    this.cleanup({ source: "binding-change" });
     for (const listener of this.listeners) listener();
   }
 
@@ -457,19 +572,14 @@ export class CommandService {
 
   /** @param {boolean} recording */
   setRecording(recording) {
-    this.recording = recording === true;
-    if (this.recording) {
-      this.cancelPending();
-      this.releaseActiveCommands({ source: "recording" });
-    }
+    const next = recording === true;
+    if (next && !this.dispatcher.recording) this.cleanup({ source: "recording" });
+    this.dispatcher.setRecording(next);
   }
 
-  isRecording() { return this.recording; }
+  isRecording() { return this.dispatcher.recording; }
 
-  cancelPending() {
-    if (this.pending?.timer) this.clearTimer(this.pending.timer);
-    this.pending = null;
-  }
+  cancelPending() { return this.dispatcher.cancelPending(); }
 
   /**
    * Only explicitly global commands with an input-safe chord may cross an
@@ -494,8 +604,12 @@ export class CommandService {
     return globalChordCanCrossInputBoundary(chord, this.platform);
   }
 
-  /** @param {{command: CommandDescriptor, binding: Keybinding} | null} candidate @param {unknown} [target] */
-  executeKeyboardCandidate(candidate, target) {
+  /**
+   * @param {{command: CommandDescriptor, binding: Keybinding} | null} candidate
+   * @param {unknown} target
+   * @param {PhysicalKeyIdentity | null} activationKey
+   */
+  executeKeyboardCandidate(candidate, target, activationKey) {
     if (!candidate) return false;
     const context = this.getContext(target);
     if (!this.commandEnabled(candidate.command, context) || !this.keyboardPolicyAllows(
@@ -509,12 +623,12 @@ export class CommandService {
     const stillBound = this.getEffectiveBindings(candidate.command.id)
       .some((binding) => bindingsEqual(binding, candidate.binding, this.platform) &&
         contextSignature(binding.when || {}) === contextSignature(candidate.binding.when || {}));
+    const lifecycleRevision = this.dispatcher.lifecycleRevision;
     const executed = stillBound && this.execute(candidate.command.id, { source: "keyboard" }, context);
     if (executed && candidate.command.release) {
-      this.activeCommands.set(candidate.command.id, {
-        binding: /** @type {Keybinding} */ (cloneBinding(candidate.binding)),
-        command: candidate.command,
-      });
+      const cleanupDetails = this.dispatcher.cleanupAfter(lifecycleRevision);
+      if (cleanupDetails) this.releaseCommand(candidate.command, cleanupDetails);
+      else this.dispatcher.hold(candidate.command, activationKey);
     }
     return executed;
   }
@@ -524,14 +638,18 @@ export class CommandService {
    * key was released while the dispatcher waited for a longer sequence, pair
    * the delayed press with an immediate release.
    *
-   * @param {{fallback: {command: CommandDescriptor, binding: Keybinding} | null, fallbackReleased: boolean} | null} pending
+   * @param {{fallback: {command: CommandDescriptor, binding: Keybinding} | null, fallbackKey: PhysicalKeyIdentity | null, fallbackReleased: boolean} | null} pending
    * @param {unknown} [target]
    */
   executePendingFallback(pending, target) {
-    const executed = this.executeKeyboardCandidate(pending?.fallback || null, target);
+    const executed = this.executeKeyboardCandidate(
+      pending?.fallback || null,
+      target,
+      pending?.fallbackKey || null,
+    );
     if (executed && pending?.fallbackReleased && pending.fallback?.command.release) {
-      this.activeCommands.delete(pending.fallback.command.id);
-      this.releaseCommand(pending.fallback.command, { source: "keyboard" });
+      const held = this.dispatcher.takeHeld(pending.fallback.command.id, pending.fallbackKey);
+      if (held) this.releaseCommand(held.command, { source: "keyboard" });
     }
     return executed;
   }
@@ -553,8 +671,7 @@ export class CommandService {
 
   /** @param {{source?: string}} [details] */
   releaseActiveCommands(details = {}) {
-    const active = Array.from(this.activeCommands.values());
-    this.activeCommands.clear();
+    const active = this.dispatcher.takeAllHeld();
     let released = 0;
     for (const { command } of active) {
       if (this.releaseCommand(command, details)) released++;
@@ -562,28 +679,36 @@ export class CommandService {
     return released;
   }
 
-  /** @param {import("../domain/keybindings.mjs").KeyChord} chord @param {unknown} eventValue */
-  chordMatchesKeyUp(chord, eventValue) {
-    const event = /** @type {{code?: string, key?: string}} */ (eventValue);
-    return chord.code
-      ? chord.code === event.code
-      : chord.key === normalizeKey(event.key);
+  /**
+   * Cancel delayed work and release held activations. Pending fallbacks are
+   * deliberately discarded rather than executed during lifecycle changes.
+   *
+   * @param {{source?: string}} [details]
+   */
+  cleanup(details = {}) {
+    this.dispatcher.markCleanup(details);
+    this.dispatcher.cancelPending();
+    return this.releaseActiveCommands(details);
+  }
+
+  /** @param {{source?: string}} [details] */
+  dispose(details = { source: "teardown" }) {
+    this.dispatcher.setRecording(false);
+    return this.cleanup(details);
   }
 
   /** @param {unknown} eventValue */
   handleKeyUp(eventValue) {
     if (!eventValue || typeof eventValue !== "object") return { handled: false, status: "ignored" };
     const event = /** @type {{preventDefault?: () => void, stopImmediatePropagation?: () => void, stopPropagation?: () => void}} */ (eventValue);
-    const matches = Array.from(this.activeCommands.entries()).filter(([, { binding }]) => {
-      const chord = binding.sequence[binding.sequence.length - 1];
-      return Boolean(chord && this.chordMatchesKeyUp(chord, eventValue));
-    });
+    const shortcutEvent = shortcutKeyboardEvent(eventValue);
+    const releasedKey = shortcutEvent ? physicalKeyIdentity(shortcutEvent) : null;
+    const matches = this.dispatcher.takeHeldForKey(releasedKey);
     if (!matches.length) {
       const pending = this.pending;
       const fallback = pending?.fallback;
-      const fallbackChord = fallback?.binding.sequence[fallback.binding.sequence.length - 1];
-      if (pending && fallback?.command.release && fallbackChord &&
-          this.chordMatchesKeyUp(fallbackChord, eventValue)) {
+      if (pending && fallback?.command.release &&
+          physicalKeysEqual(pending.fallbackKey, releasedKey)) {
         pending.fallbackReleased = true;
         this.consumeEvent(event);
         return { handled: true, status: "pending" };
@@ -592,10 +717,9 @@ export class CommandService {
     }
     this.consumeEvent(event);
     const commandIds = [];
-    for (const [commandId, { command }] of matches) {
-      this.activeCommands.delete(commandId);
+    for (const { command } of matches) {
       this.releaseCommand(command, { source: "keyboard" });
-      commandIds.push(commandId);
+      commandIds.push(command.id);
     }
     return { commandIds, handled: true, status: "released" };
   }
@@ -682,6 +806,9 @@ export class CommandService {
       this.consumeEvent(event);
       return { handled: true, status: "pending" };
     }
+    if (this.pending && shortcutEvent.modifierOnly) {
+      return { handled: false, status: "pending" };
+    }
     const context = this.getContext(event.target);
     const inputOwner = resolvedInputOwner(context, event.target);
     if (context.browserEditOperations === true && (shortcutEvent.meta || shortcutEvent.ctrl) &&
@@ -719,19 +846,30 @@ export class CommandService {
         seenPaths.add(signature);
         pendingPaths.push(candidate.path);
       }
-      /** @type {{paths: string[][], fallback: {command: CommandDescriptor, binding: Keybinding} | null, fallbackReleased: boolean, timer: unknown} | null} */
+      const fallbackKey = selected ? physicalKeyIdentity(shortcutEvent) : null;
+      /** @type {{paths: string[][], fallback: {command: CommandDescriptor, binding: Keybinding} | null, fallbackKey: PhysicalKeyIdentity | null, fallbackReleased: boolean, timer: unknown} | null} */
       let pending = null;
       const timer = this.setTimer(() => {
-        if (this.pending !== pending) return;
-        this.pending = null;
-        this.executePendingFallback(pending);
+        const current = this.dispatcher.takePending(pending);
+        if (!current) return;
+        this.executePendingFallback(current);
       }, 1000);
-      pending = { paths: pendingPaths, fallback: selected, fallbackReleased: false, timer };
-      this.pending = pending;
+      pending = {
+        paths: pendingPaths,
+        fallback: selected,
+        fallbackKey,
+        fallbackReleased: false,
+        timer,
+      };
+      this.dispatcher.setPending(pending);
       return { handled: true, status: "pending" };
     }
     if (!selected) return { handled: true, status: "conflict" };
-    const executed = this.executeKeyboardCandidate(selected, event.target);
+    const executed = this.executeKeyboardCandidate(
+      selected,
+      event.target,
+      physicalKeyIdentity(shortcutEvent),
+    );
     return executed
       ? { commandId: selected.command.id, handled: true, status: "executed" }
       : { handled: true, status: "disabled" };

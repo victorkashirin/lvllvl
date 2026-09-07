@@ -61,6 +61,7 @@ UI.onKeyPress = null;
 UI.onUpdate = null;
 UI.commandKeyDown = null;
 UI.commandKeyUp = null;
+UI.commandContextChanged = null;
 
 UI.browserEditOperations = false;
 UI.canProcessKeyEvents = true;
@@ -374,10 +375,15 @@ UI.showPopup = function(thePopup, x, y) {
   
   UI.popup = component;
   UI.capturedMouseComponent = component;
+  if(typeof UI.commandContextChanged == 'function') {
+    UI.commandContextChanged('popup');
+  }
 
 }
 
 UI.hidePopup = function(thePopup) {
+
+  var hadPopup = UI.popup !== null || UI.capturedMouseComponent != null;
 
   if(typeof thePopup == 'undefined') {
     thePopup = UI.popup;
@@ -395,6 +401,9 @@ UI.hidePopup = function(thePopup) {
   UI.capturedMouseComponent = null;  
   UI.mouseDownInComponent = null;//false;
   UI.mouseInComponent = null;
+  if(hadPopup && typeof UI.commandContextChanged == 'function') {
+    UI.commandContextChanged('popup');
+  }
 
   
 }
@@ -410,6 +419,9 @@ UI.showDialog = function(theDialog) {
 
   UI.mouseInComponent = theDialog;
   UI.canProcessMenuKeys = false;
+  if(typeof UI.commandContextChanged == 'function') {
+    UI.commandContextChanged('modal');
+  }
 
 }
 
@@ -431,6 +443,9 @@ UI.closeDialog = function(theDialog) {
     UI.canProcessMenuKeys = true;
   }
   theDialog.close();
+  if(typeof UI.commandContextChanged == 'function') {
+    UI.commandContextChanged('modal');
+  }
 }
 
 UI.closeAllDialogs = function() {
@@ -453,6 +468,9 @@ UI.runReadyFunctions = function() {
 
 
 UI.setAllowBrowserEditOperations = function(set) {
+  if(UI.browserEditOperations != set && typeof UI.commandContextChanged == 'function') {
+    UI.commandContextChanged('input-policy');
+  }
   UI.browserEditOperations = set;
 }
 

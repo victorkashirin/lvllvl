@@ -95,6 +95,7 @@ function createCommandHarness(options = {}) {
   };
   const storage = options.storage || createMemoryStorage();
   const timers = new Map();
+  const timerCallbacks = [];
   let nextTimer = 0;
   const errors = [];
   const commands = new CommandService({
@@ -105,6 +106,7 @@ function createCommandHarness(options = {}) {
     setTimer(callback) {
       const timer = ++nextTimer;
       timers.set(timer, callback);
+      timerCallbacks.push(callback);
       return timer;
     },
     storage,
@@ -119,6 +121,7 @@ function createCommandHarness(options = {}) {
       callbacks.forEach((callback) => callback());
     },
     storage,
+    timerCallbacks,
     timers,
   };
 }
@@ -392,6 +395,53 @@ test("handles sequences, timeout fallback, cancellation, repeat, and recording s
   assert.deepEqual(executed, ["sequence", "single", "repeat"]);
 });
 
+test("keeps an imported modified sequence pending across modifier release and repress", () => {
+  const { commands, timers } = createCommandHarness();
+  const executed = [];
+  register(commands, "key.single", keybinding("k", { ctrl: true }),
+    () => executed.push("single"));
+  register(commands, "key.sequence", null, () => executed.push("sequence"));
+  commands.importConfiguration(JSON.stringify({
+    version: 1,
+    overrides: {
+      "key.sequence": [{
+        sequence: ["k", "c"].map((key) => ({
+          alt: false,
+          code: null,
+          ctrl: true,
+          key,
+          meta: false,
+          mod: false,
+          shift: false,
+        })),
+      }],
+    },
+  }));
+
+  assert.equal(commands.handleKeyDown(keyboardEvent("k", {
+    code: "KeyK",
+    ctrl: true,
+  })).status, "pending");
+  assert.equal(commands.handleKeyUp(keyboardEvent("Control", {
+    code: "ControlLeft",
+  })).handled, false);
+  const modifierDown = keyboardEvent("Control", {
+    code: "ControlLeft",
+    ctrl: true,
+  });
+  assert.deepEqual(commands.handleKeyDown(modifierDown), {
+    handled: false,
+    status: "pending",
+  });
+  assert.deepEqual(modifierDown.state, { prevented: 0, stopped: 0 });
+  assert.equal(timers.size, 1);
+  assert.equal(commands.handleKeyDown(keyboardEvent("c", {
+    code: "KeyC",
+    ctrl: true,
+  })).commandId, "key.sequence");
+  assert.deepEqual(executed, ["sequence"]);
+});
+
 test("re-recording a repeatable command changes key identity without changing repeat behavior", () => {
   const first = createCommandHarness();
   const executed = [];
@@ -440,21 +490,109 @@ test("releases held commands when their main key is released", () => {
   assert.equal(commands.handleKeyUp(keyboardEvent("h")).handled, false);
 });
 
-test("releases a held fallback whose key went up while a sequence was pending", () => {
-  const { commands, fireTimers } = createCommandHarness();
+test("releases a shifted held command by its activating physical key", () => {
+  const { commands } = createCommandHarness();
   const events = [];
-  register(commands, "view.preview", keybinding("g"),
+  register(commands, "view.preview", keybinding("!", { shift: true }),
     () => events.push("start"), [{}], {
       release: () => events.push("end"),
     });
-  register(commands, "view.sequence", sequence("g", "g"), () => events.push("sequence"));
 
-  assert.equal(commands.handleKeyDown(keyboardEvent("g")).status, "pending");
-  assert.equal(commands.handleKeyUp(keyboardEvent("g")).status, "pending");
+  assert.equal(commands.handleKeyDown(keyboardEvent("!", {
+    code: "Digit1",
+    shift: true,
+  })).status, "executed");
+  assert.equal(commands.handleKeyUp(keyboardEvent("Shift", {
+    code: "ShiftLeft",
+  })).handled, false);
+  assert.deepEqual(events, ["start"]);
+  assert.equal(commands.handleKeyUp(keyboardEvent("1", {
+    code: "Digit1",
+  })).status, "released");
+  assert.deepEqual(events, ["start", "end"]);
+});
+
+test("releases a held fallback whose key went up while a sequence was pending", () => {
+  const { commands, fireTimers } = createCommandHarness();
+  const events = [];
+  const shifted = keybinding("!", { shift: true });
+  register(commands, "view.preview", shifted,
+    () => events.push("start"), [{}], {
+      release: () => events.push("end"),
+    });
+  register(commands, "view.sequence", normalizeBinding({
+    sequence: [shifted.sequence[0], shifted.sequence[0]],
+  }), () => events.push("sequence"));
+
+  assert.equal(commands.handleKeyDown(keyboardEvent("!", {
+    code: "Digit1",
+    shift: true,
+  })).status, "pending");
+  assert.equal(commands.handleKeyUp(keyboardEvent("Shift", {
+    code: "ShiftLeft",
+  })).handled, false);
+  assert.equal(commands.handleKeyUp(keyboardEvent("1", {
+    code: "Digit1",
+  })).status, "pending");
   fireTimers();
 
   assert.deepEqual(events, ["start", "end"]);
   assert.equal(commands.activeCommands.size, 0);
+});
+
+test("lifecycle cleanup cancels stale pending work and releases held commands once", () => {
+  const { commands, timerCallbacks, timers } = createCommandHarness();
+  const events = [];
+  register(commands, "key.single", keybinding("g"), () => events.push("single"));
+  register(commands, "key.sequence", sequence("g", "g"), () => events.push("sequence"));
+  register(commands, "view.preview", keybinding("h"), () => events.push("start"), [{}], {
+    release: ({ source } = {}) => events.push(`end:${source}`),
+  });
+
+  assert.equal(commands.handleKeyDown(keyboardEvent("g", { code: "KeyG" })).status, "pending");
+  const staleTimer = timerCallbacks[0];
+  assert.equal(commands.cleanup({ source: "focusout" }), 0);
+  assert.equal(timers.size, 0);
+
+  assert.equal(commands.handleKeyDown(keyboardEvent("g", { code: "KeyG" })).status, "pending");
+  staleTimer();
+  assert.ok(commands.pending, "a stale callback must not clear newer pending state");
+  assert.equal(commands.handleKeyDown(keyboardEvent("g", { code: "KeyG" })).commandId,
+    "key.sequence");
+  assert.deepEqual(events, ["sequence"]);
+
+  assert.equal(commands.handleKeyDown(keyboardEvent("h", { code: "KeyH" })).status, "executed");
+  assert.equal(commands.cleanup({ source: "blur" }), 1);
+  assert.equal(commands.cleanup({ source: "visibilitychange" }), 0);
+  assert.deepEqual(events, ["sequence", "start", "end:blur"]);
+  assert.equal(commands.handleKeyUp(keyboardEvent("h", { code: "KeyH" })).handled, false);
+
+  commands.handleKeyDown(keyboardEvent("h", { code: "KeyH" }));
+  commands.setBinding("view.preview", 0, keybinding("j"));
+  assert.deepEqual(events.slice(-2), ["start", "end:binding-change"]);
+
+  commands.handleKeyDown(keyboardEvent("j", { code: "KeyJ" }));
+  assert.equal(commands.dispose(), 1);
+  assert.equal(commands.dispose(), 0);
+  assert.deepEqual(events.slice(-2), ["start", "end:teardown"]);
+});
+
+test("lifecycle cleanup during execution does not register a stale held activation", () => {
+  const { commands } = createCommandHarness();
+  const events = [];
+  register(commands, "view.preview", keybinding("h"), () => {
+    events.push("start");
+    commands.cleanup({ source: "modal" });
+  }, [{}], {
+    release: ({ source } = {}) => events.push(`end:${source}`),
+  });
+
+  assert.equal(commands.handleKeyDown(keyboardEvent("h", { code: "KeyH" })).status,
+    "executed");
+  assert.deepEqual(events, ["start", "end:modal"]);
+  assert.equal(commands.activeCommands.size, 0);
+  assert.equal(commands.handleKeyUp(keyboardEvent("h", { code: "KeyH" })).handled,
+    false);
 });
 
 test("persists only overrides and supports unbind, reset, import, and corrupt-data quarantine", () => {

@@ -1126,6 +1126,9 @@ Editor.prototype = {
 
   // really setting whether the editors get keyboard events..
   setAllowKeyShortcuts: function(allow) {
+    if(this.allowKeyShortcuts != allow && this.services && this.services.commands) {
+      this.services.commands.cleanup({ source: 'input-policy' });
+    }
     this.allowKeyShortcuts = allow;
 
     switch(this.mode) { 
@@ -1239,6 +1242,10 @@ Editor.prototype = {
       return;
     }
 
+    if(deviceType != this.deviceType && this.services && this.services.commands) {
+      this.services.commands.cleanup({ source: 'device-type' });
+    }
+
     if(deviceType != this.deviceType && this.overviewMode) {
       this.setOverviewMode(false);
     }
@@ -1300,6 +1307,9 @@ Editor.prototype = {
     if(this.services && this.services.imageImportCoordinator &&
         this.services.imageImportCoordinator.isActive()) {
       void this.closeImageImport();
+    }
+    if(mode != this.mode && this.services && this.services.commands) {
+      this.services.commands.cleanup({ source: 'editor-mode' });
     }
     this.mode = mode;
 

@@ -24,7 +24,7 @@ Use this plan when implementing or reviewing the remaining shortcut refactor. It
 | --- | --- | --- | --- |
 | [x] | [1. Input ownership and modal migration](#phase-1--input-ownership-and-modal-migration) | P2 | SC-03, SC-04; CQ-03 |
 | [x] | [2. Binding semantics, repeat, and aliases](#phase-2--binding-semantics-repeat-and-aliases) | P2 | SC-05, SC-06, SC-13; CQ-04, CQ-05 |
-| [ ] | [3. Dispatcher lifecycle](#phase-3--dispatcher-lifecycle) | P2 | SC-07, SC-08, SC-09; CQ-06 |
+| [x] | [3. Dispatcher lifecycle](#phase-3--dispatcher-lifecycle) | P2 | SC-07, SC-08, SC-09; CQ-06 |
 | [ ] | [4. Atomic edits and observable outcomes](#phase-4--atomic-edits-and-observable-outcomes) | P2 | SC-12; CQ-07 service work, CQ-08 |
 | [ ] | [5. Recorder state, accessibility, and presentation](#phase-5--recorder-state-accessibility-and-presentation) | P2 / P3 | SC-10, SC-11, SC-16; CQ-07 dialog work |
 | [ ] | [6. Catalog ownership and legacy cleanup](#phase-6--catalog-ownership-and-legacy-cleanup) | P2 / P3 | SC-14; CQ-01, CQ-02 |
@@ -125,7 +125,7 @@ reset. Module TypeScript checking also passed. No Phase 2 work is deferred.
 
 **Depends on:** phase 1's context ownership and phase 2's event identity.
 
-**Read:** [executeKeyboardCandidate](../src/js/modules/application/commandService.mjs#L425), [releaseActiveCommands and keyup matching](../src/js/modules/application/commandService.mjs#L481), [handleKeyDown](../src/js/modules/application/commandService.mjs#L594), and [Preview blur handling](../src/js/editor.js#L485).
+**Read:** [executeKeyboardCandidate](../src/js/modules/application/commandService.mjs#L594), [releaseActiveCommands and keyup matching](../src/js/modules/application/commandService.mjs#L656), [handleKeyDown](../src/js/modules/application/commandService.mjs#L768), and [Preview blur handling](../src/js/editor.js#L485).
 
 **Remaining behavior:**
 
@@ -143,6 +143,30 @@ reset. Module TypeScript checking also passed. No Phase 2 work is deferred.
 **Validation target:** extend the existing timer/held-command harness for modifier repress, shifted-key release order, cancellation before timeout, delayed fallback release, and repeated cleanup.
 
 **Gate:** every successful held activation has one release; cancelled pending work cannot fire later; modifier-only events preserve valid sequences; service state and visible editor state remain synchronized after lifecycle transitions.
+
+**Progress record (2026-09-07):** Added the internal
+`CommandDispatcherState` to own recording, pending-sequence timers, and held
+activations. Held commands and delayed fallbacks now retain the physical
+`KeyboardEvent.code` that activated them (with a semantic fallback for
+code-less events), so releasing Shift before a shifted printable key still
+ends the command. Modifier-only keydowns no longer cancel a pending imported
+sequence or execute its fallback. Escape, composition, binding changes,
+recording start, focus loss, window blur, visibility loss, application and
+text-editor mode, device type, modal/popup and input-policy changes, and page
+teardown now converge on an idempotent dispatcher cleanup that discards
+pending fallbacks and releases held activations once. A lifecycle revision
+also pairs an activation immediately when its handler triggers cleanup before
+held-state registration. Timer callbacks verify pending-state identity before
+acting, so cancelled callbacks cannot affect a later sequence. The focused
+Node shortcut suite passed (18 tests), covering modifier repress, shifted-key
+release order, delayed fallback release, cancellation before timeout, stale
+callbacks, binding changes, repeated cleanup, and cleanup triggered during a
+held command's execution. Module TypeScript checking,
+the module-boundary and legacy-graph policy checks, and the production build
+and deterministic build-artifact verification passed. The focused Chromium
+Preview workflow also passed, including window blur and device-type
+synchronization of the held-command state and visible overview, plus pending
+sequence cancellation on text-editor mode changes. No Phase 3 work is deferred.
 
 ## Phase 4 — Atomic edits and observable outcomes
 

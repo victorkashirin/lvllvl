@@ -1696,6 +1696,9 @@ TextModeEditor.prototype = {
 
   setEditorMode: function(editorMode) {
 
+    if(editorMode != this.editorMode && typeof UI.commandContextChanged == 'function') {
+      UI.commandContextChanged('text-editor-mode');
+    }
     this.editorMode = editorMode;
 
     if(editorMode == 'pixel') {

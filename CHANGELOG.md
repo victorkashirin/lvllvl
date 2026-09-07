@@ -27,6 +27,12 @@
 
 ### Fixed
 
+- Release held shortcuts by the physical key that activated them, keep
+  multi-chord shortcuts pending while modifiers are released and pressed
+  again, and cancel pending or held dispatcher state safely across focus,
+  visibility, modal, editor-mode, device-type, input-policy, recording,
+  binding, and teardown transitions, including transitions triggered from
+  inside a held command.
 - Preserve repeat behavior when reassigning held navigation shortcuts, align
   layout-dependent conflict warnings and precedence explanations with runtime
   dispatch, keep uncertain layout matches advisory and non-destructive, and
