@@ -27,6 +27,10 @@
 
 ### Fixed
 
+- Cache effective keyboard bindings, platform-resolved signatures, and conflict
+  summaries by catalog and preference revision while keeping context and enabled
+  checks live. Reuse shortcut-search summaries and rows so filtering does not
+  rebuild conflict analysis or unchanged command labels.
 - Match the keyboard-shortcut API and storage model to one custom binding per
   command, hide persistence and dispatcher internals behind safe views, validate
   and freeze shared shortcut/context data at its boundaries, report invalid or

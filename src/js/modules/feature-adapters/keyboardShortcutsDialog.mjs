@@ -41,6 +41,14 @@ export function createKeyboardShortcutsDialog({
   /** @type {ShortcutRecorderState | null} */
   let recording = null;
   let retainedCommandId = "";
+  /** @type {readonly ShortcutSummary[]} */
+  let commandSummaries = Object.freeze([]);
+  /** @type {WeakMap<ShortcutSummary, HTMLElement>} */
+  const commandRows = new WeakMap();
+  /** @type {WeakMap<ShortcutSummary, string>} */
+  const commandSearchText = new WeakMap();
+  /** @type {Map<string, {count: string, row: HTMLElement}>} */
+  const groupRows = new Map();
 
   /** @param {string} id */
   function element(id) {
@@ -158,13 +166,17 @@ export function createKeyboardShortcutsDialog({
   /** @param {ShortcutSummary} summary @param {string} query */
   function commandMatches(summary, query) {
     if (!query) return true;
-    const haystack = [
-      summary.category,
-      summary.contextLabel,
-      summary.id,
-      summary.title,
-      ...summary.bindings.map((binding) => commands.formatBinding(binding)),
-    ].join(" ").toLocaleLowerCase();
+    let haystack = commandSearchText.get(summary);
+    if (!haystack) {
+      haystack = [
+        summary.category,
+        summary.contextLabel,
+        summary.id,
+        summary.title,
+        ...summary.bindings.map((binding) => commands.formatBinding(binding)),
+      ].join(" ").toLocaleLowerCase();
+      commandSearchText.set(summary, haystack);
+    }
     return haystack.includes(query);
   }
 
@@ -243,31 +255,48 @@ export function createKeyboardShortcutsDialog({
     });
     /** @type {HTMLElement[]} */
     const rows = [];
+    /** @type {Map<string, {bound: number, count: number}>} */
+    const counts = new Map();
+    for (const summary of sorted) {
+      const key = `${commandScope(summary)}\u0000${summary.category}`;
+      const count = counts.get(key) || { bound: 0, count: 0 };
+      count.count++;
+      if (summary.bindings.length) count.bound++;
+      counts.set(key, count);
+    }
     let groupKey = "";
     for (const summary of sorted) {
       const scope = commandScope(summary);
       const nextGroupKey = `${scope}\u0000${summary.category}`;
       if (nextGroupKey !== groupKey) {
         groupKey = nextGroupKey;
-        const groupCommands = sorted.filter((candidate) =>
-          commandScope(candidate) === scope && candidate.category === summary.category,
-        );
-        const boundCount = groupCommands.filter((candidate) => candidate.bindings.length > 0).length;
-        const groupRow = createElement("tr", "keyboard-shortcuts-group");
-        const heading = createElement("th", "keyboard-shortcuts-group-heading");
-        heading.setAttribute("colspan", "6");
-        heading.setAttribute("scope", "rowgroup");
-        heading.appendChild(createElement("span", "keyboard-shortcuts-group-scope", scope));
-        heading.appendChild(createElement("span", "keyboard-shortcuts-group-function", summary.category));
-        heading.appendChild(createElement(
-          "span",
-          "keyboard-shortcuts-group-count",
-          `${groupCommands.length} command${groupCommands.length === 1 ? "" : "s"} · ${boundCount} bound`,
-        ));
-        groupRow.appendChild(heading);
-        rows.push(groupRow);
+        const groupCount = counts.get(groupKey) || { bound: 0, count: 0 };
+        const countText = `${groupCount.count} command${groupCount.count === 1 ? "" : "s"} · ${groupCount.bound} bound`;
+        let cachedGroup = groupRows.get(groupKey);
+        if (!cachedGroup) {
+          const groupRow = createElement("tr", "keyboard-shortcuts-group");
+          const heading = createElement("th", "keyboard-shortcuts-group-heading");
+          heading.setAttribute("colspan", "6");
+          heading.setAttribute("scope", "rowgroup");
+          heading.appendChild(createElement("span", "keyboard-shortcuts-group-scope", scope));
+          heading.appendChild(createElement("span", "keyboard-shortcuts-group-function", summary.category));
+          heading.appendChild(createElement("span", "keyboard-shortcuts-group-count", countText));
+          groupRow.appendChild(heading);
+          cachedGroup = { count: countText, row: groupRow };
+          groupRows.set(groupKey, cachedGroup);
+        } else if (cachedGroup.count !== countText) {
+          const count = cachedGroup.row.querySelector(".keyboard-shortcuts-group-count");
+          if (count) count.textContent = countText;
+          cachedGroup.count = countText;
+        }
+        rows.push(cachedGroup.row);
       }
-      rows.push(createCommandRow(summary));
+      let commandRow = commandRows.get(summary);
+      if (!commandRow) {
+        commandRow = createCommandRow(summary);
+        commandRows.set(summary, commandRow);
+      }
+      rows.push(commandRow);
     }
     return rows;
   }
@@ -349,7 +378,8 @@ export function createKeyboardShortcutsDialog({
     const boundOnly = /** @type {HTMLInputElement | null} */ (element("keyboardShortcutsBoundOnly"));
     const conflictsOnly = /** @type {HTMLInputElement | null} */ (element("keyboardShortcutsConflictsOnly"));
     const query = String(search?.value || "").trim().toLocaleLowerCase();
-    const allCommands = commands.getCommands();
+    commandSummaries = commands.getCommands();
+    const allCommands = commandSummaries;
     const focusCommandId = recording?.commandId || retainedCommandId;
     const summaries = allCommands.filter((summary) => {
       if (summary.id === focusCommandId) return true;
@@ -361,9 +391,15 @@ export function createKeyboardShortcutsDialog({
     });
     const body = element("keyboardShortcutsTableBody");
     if (!body) return;
-    body.replaceChildren(...groupedRows(summaries));
+    const nextRows = groupedRows(summaries);
+    const currentRows = Array.from(body.children);
+    if (currentRows.length !== nextRows.length ||
+        currentRows.some((row, index) => row !== nextRows[index])) {
+      body.replaceChildren(...nextRows);
+    }
     const count = element("keyboardShortcutsCount");
-    if (count) count.textContent = `${summaries.length} of ${allCommands.length} commands`;
+    const countText = `${summaries.length} of ${allCommands.length} commands`;
+    if (count && count.textContent !== countText) count.textContent = countText;
     renderRecorder(allCommands);
     positionActiveRecorder();
   }
@@ -408,7 +444,7 @@ export function createKeyboardShortcutsDialog({
   }
 
   /** @param {readonly ShortcutSummary[]} [summaries] */
-  function renderRecorder(summaries = commands.getCommands()) {
+  function renderRecorder(summaries = commandSummaries) {
     const panel = element("keyboardShortcutsRecorder");
     if (!panel) return;
     panel.hidden = !recording;
@@ -484,7 +520,7 @@ export function createKeyboardShortcutsDialog({
 
   /** @param {string} commandId */
   function startRecording(commandId) {
-    const summary = commands.getCommands().find((candidate) => candidate.id === commandId);
+    const summary = commandSummaries.find((candidate) => candidate.id === commandId);
     if (!summary) return;
     retainedCommandId = "";
     recording = {
@@ -692,7 +728,8 @@ export function createKeyboardShortcutsDialog({
   }
 
   function handleCommandsChanged() {
-    if (recording && !commands.getCommands().some((summary) => summary.id === recording?.commandId)) {
+    commandSummaries = commands.getCommands();
+    if (recording && !commandSummaries.some((summary) => summary.id === recording?.commandId)) {
       cancelRecording(false);
       setStatus("Shortcut recording ended because the command is no longer available.", "warning");
       return;

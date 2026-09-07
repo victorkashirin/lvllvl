@@ -2,7 +2,6 @@ import {
   bindingCoincidence,
   bindingFromLegacyShortcut,
   bindingHasUnknownLayout,
-  bindingIsPrefix,
   bindingPrefixCoincidence,
   bindingSignature,
   bindingsEqual,
@@ -81,6 +80,39 @@ const alwaysEnabled = () => true;
  * @property {boolean} modified
  * @property {string} source
  * @property {string} title
+ */
+
+/** @typedef {Omit<CommandSummary, "availableInCurrentMode">} StaticCommandSummary */
+
+/**
+ * @typedef {object} EffectiveCommandBindings
+ * @property {readonly Keybinding[]} bindings
+ * @property {readonly (readonly string[])[]} signatures
+ */
+
+/**
+ * @typedef {object} EffectiveBindingCache
+ * @property {number} catalogRevision
+ * @property {number} overrideRevision
+ * @property {"mac" | "other"} platform
+ * @property {Map<string, Readonly<EffectiveCommandBindings>>} byCommand
+ */
+
+/**
+ * @typedef {object} CommandSummaryCache
+ * @property {EffectiveBindingCache} bindingCache
+ * @property {Map<string, readonly BindingConflict[]>} conflictsByCommand
+ * @property {unknown} currentMode
+ * @property {readonly CommandSummary[] | null} currentModeSummaries
+ * @property {readonly StaticCommandSummary[]} summaries
+ */
+
+/**
+ * @typedef {object} CommandDerivedData
+ * @property {number} catalogRevision
+ * @property {number} overrideRevision
+ * @property {EffectiveBindingCache | null} bindings
+ * @property {CommandSummaryCache | null} summaries
  */
 
 /**
@@ -482,6 +514,20 @@ const listenerStores = new WeakMap();
 const dispatcherStores = new WeakMap();
 /** @type {WeakMap<object, KeybindingStorage>} */
 const storageStores = new WeakMap();
+/** @type {WeakMap<object, CommandDerivedData>} */
+const derivedDataStores = new WeakMap();
+
+/** @type {readonly Keybinding[]} */
+const emptyBindings = Object.freeze([]);
+/** @type {readonly (readonly string[])[]} */
+const emptyBindingSignatures = Object.freeze([]);
+/** @type {readonly BindingConflict[]} */
+const emptyConflicts = Object.freeze([]);
+/** @type {Readonly<EffectiveCommandBindings>} */
+const emptyEffectiveBindings = Object.freeze({
+  bindings: emptyBindings,
+  signatures: emptyBindingSignatures,
+});
 
 /** @param {object} service */
 function commandsFor(service) {
@@ -516,6 +562,85 @@ function storageFor(service) {
   const storage = storageStores.get(service);
   if (!storage) throw new Error("Shortcut persistence is not initialized");
   return storage;
+}
+
+/** @param {object} service */
+function derivedDataFor(service) {
+  const derived = derivedDataStores.get(service);
+  if (!derived) throw new Error("Command derived-data storage is not initialized");
+  return derived;
+}
+
+/** @param {object} service */
+function invalidateCatalogData(service) {
+  const derived = derivedDataFor(service);
+  derived.catalogRevision++;
+  derived.bindings = null;
+  derived.summaries = null;
+}
+
+/** @param {object} service */
+function invalidateOverrideData(service) {
+  const derived = derivedDataFor(service);
+  derived.overrideRevision++;
+  derived.bindings = null;
+  derived.summaries = null;
+}
+
+/**
+ * Effective bindings are normalized and frozen when they cross the catalog or
+ * preference boundary. Cache their arrays and platform-resolved signatures so
+ * dispatch and presentation do not rebuild them for every event or search.
+ * Captured layout metadata lives inside each binding, so catalog/override
+ * revisions also cover the layout inputs used by conflict analysis.
+ *
+ * @param {CommandService} service
+ * @returns {EffectiveBindingCache}
+ */
+function effectiveBindingCacheFor(service) {
+  const derived = derivedDataFor(service);
+  const cached = derived.bindings;
+  if (cached && cached.catalogRevision === derived.catalogRevision &&
+      cached.overrideRevision === derived.overrideRevision &&
+      cached.platform === service.platform) return cached;
+
+  /** @type {Map<string, Readonly<EffectiveCommandBindings>>} */
+  const byCommand = new Map();
+  const overrides = overridesFor(service);
+  for (const command of commandsFor(service).values()) {
+    let bindings = command.defaultBindings;
+    if (overrides.has(command.id)) {
+      const override = overrides.get(command.id) || null;
+      bindings = override ? Object.freeze([override]) : emptyBindings;
+    }
+    const signatures = Object.freeze(bindings.map((binding) =>
+      Object.freeze(bindingSignature(binding, service.platform))));
+    byCommand.set(command.id, Object.freeze({ bindings, signatures }));
+  }
+  const next = {
+    byCommand,
+    catalogRevision: derived.catalogRevision,
+    overrideRevision: derived.overrideRevision,
+    platform: service.platform,
+  };
+  derived.bindings = next;
+  derived.summaries = null;
+  return next;
+}
+
+/** @param {CommandService} service @param {string} commandId */
+function effectiveCommandBindingsFor(service, commandId) {
+  return effectiveBindingCacheFor(service).byCommand.get(commandId) || emptyEffectiveBindings;
+}
+
+/** @param {readonly string[]} left @param {readonly string[]} right */
+function bindingSignaturesEqual(left, right) {
+  return left.length === right.length && left.every((part, index) => part === right[index]);
+}
+
+/** @param {readonly string[]} prefix @param {readonly string[]} value */
+function bindingSignatureIsPrefix(prefix, value) {
+  return prefix.length < value.length && prefix.every((part, index) => part === value[index]);
 }
 
 /** @param {CommandService} service */
@@ -639,6 +764,7 @@ function commitEdit(service, operation, next, diagnostics = null) {
   // edit. Subscribers see the complete committed configuration and whether
   // it is durable in the same single notification.
   overrideStores.set(service, new Map(next));
+  invalidateOverrideData(service);
   const persistence = persistShortcutOverrides(service, overridesFor(service));
   service.sessionOnlyEdits = persistence.persistence !== "saved";
   service.lastPersistenceError = persistence.error;
@@ -659,6 +785,83 @@ function commitEdit(service, operation, next, diagnostics = null) {
   return result;
 }
 
+/**
+ * @param {CommandService} service
+ * @param {string} commandId
+ * @returns {readonly BindingConflict[]}
+ */
+function buildCommandConflictSummary(service, commandId) {
+  /** @type {BindingConflict[]} */
+  const results = [];
+  /** @type {Set<string>} */
+  const seen = new Set();
+  const customized = service.isModified(commandId);
+  for (const binding of service.getEffectiveBindings(commandId)) {
+    for (const conflict of service.analyzeBinding(commandId, binding)) {
+      if (conflict.type === "duplicate" && conflict.commandId === commandId) continue;
+      // Built-in bindings predate recorded layout metadata. Only surface the
+      // uncertainty for user overrides that can be fixed by re-recording.
+      if (["layout-possible", "layout-unknown"].includes(conflict.type) && !customized) continue;
+      const signature = `${conflict.type}:${conflict.commandId}:${conflict.bindingIndex ?? ""}`;
+      if (!seen.has(signature)) {
+        seen.add(signature);
+        results.push(conflict);
+      }
+    }
+  }
+  return Object.freeze(results.map((conflict) => Object.freeze(conflict)));
+}
+
+/**
+ * Build conflict and presentation data once for a catalog/override/platform
+ * revision. Current editor availability is deliberately added later because
+ * it changes with live application context.
+ *
+ * @param {CommandService} service
+ * @returns {CommandSummaryCache}
+ */
+function commandSummaryCacheFor(service) {
+  const derived = derivedDataFor(service);
+  const bindingCache = effectiveBindingCacheFor(service);
+  if (derived.summaries?.bindingCache === bindingCache) return derived.summaries;
+
+  /** @type {Map<string, readonly BindingConflict[]>} */
+  const conflictsByCommand = new Map();
+  for (const commandId of commandsFor(service).keys()) {
+    conflictsByCommand.set(commandId, buildCommandConflictSummary(service, commandId));
+  }
+  const summaries = Object.freeze(Array.from(commandsFor(service).values())
+    .map((command) => {
+      const bindings = effectiveCommandBindingsFor(service, command.id).bindings;
+      const bindingContexts = bindings
+        .filter((binding) => binding.when && Object.keys(binding.when).length)
+        .map((binding) => `binding: ${describeContext(binding.when || {})}`);
+      const modified = service.isModified(command.id);
+      return /** @type {StaticCommandSummary} */ (Object.freeze({
+        bindings,
+        category: command.category,
+        conflicts: conflictsByCommand.get(command.id) || emptyConflicts,
+        contexts: Object.freeze([...command.contexts]),
+        contextLabel: command.contexts.map(describeContext).concat(bindingContexts).join("; "),
+        id: command.id,
+        modified,
+        source: modified ? "User" : "Default",
+        title: command.title,
+      }));
+    })
+    .sort((left, right) => left.category.localeCompare(right.category) ||
+      left.title.localeCompare(right.title)));
+  const next = {
+    bindingCache,
+    conflictsByCommand,
+    currentMode: undefined,
+    currentModeSummaries: null,
+    summaries,
+  };
+  derived.summaries = next;
+  return next;
+}
+
 export class CommandService {
   /** @param {CommandServiceDependencies} dependencies */
   constructor({ platform, storage, getContext, setTimer, clearTimer, reportError = () => {} }) {
@@ -677,6 +880,12 @@ export class CommandService {
     overrideStores.set(this, new Map());
     listenerStores.set(this, new Set());
     storageStores.set(this, storage);
+    derivedDataStores.set(this, {
+      bindings: null,
+      catalogRevision: 0,
+      overrideRevision: 0,
+      summaries: null,
+    });
     /** @type {WeakSet<Function>} */
     this.reportedEnabledPredicateFailures = new WeakSet();
     this.sessionOnlyEdits = false;
@@ -730,6 +939,7 @@ export class CommandService {
       repeatable: registration.repeatable === true || normalizedBindings.some((binding) => binding?.repeat),
       title: registration.title,
     });
+    invalidateCatalogData(this);
     return registration.id;
   }
 
@@ -767,6 +977,7 @@ export class CommandService {
       throw new TypeError(`Command ${commandId} has an invalid enabled predicate`);
     }
     const predicate = activation.isEnabled || alwaysEnabled;
+    let changed = false;
     /**
      * @param {Array<{when: ShortcutContextClause, isEnabled: () => boolean}>} collection
      * @param {ShortcutContextClause[]} values
@@ -777,11 +988,17 @@ export class CommandService {
         if (collection.some((candidate) =>
           candidate.isEnabled === predicate && contextSignature(candidate.when) === signature)) continue;
         collection.push({ isEnabled: predicate, when });
+        changed = true;
       }
     };
     addUnique(command.activations, keyboardContexts);
     addUnique(command.actionActivations, actionContexts);
-    command.contexts = Object.freeze(uniqueContexts(command.contexts.concat(keyboardContexts)));
+    const contextsWithActivation = uniqueContexts(command.contexts.concat(keyboardContexts));
+    if (contextsWithActivation.length !== command.contexts.length) {
+      command.contexts = Object.freeze(contextsWithActivation);
+      changed = true;
+    }
+    if (changed) invalidateCatalogData(this);
     return commandId;
   }
 
@@ -797,6 +1014,7 @@ export class CommandService {
       this.addCommandActivation(registration.id, registration);
     } catch (error) {
       commandsFor(this).delete(registration.id);
+      invalidateCatalogData(this);
       throw error;
     }
     return registration.id;
@@ -838,13 +1056,7 @@ export class CommandService {
 
   /** @param {string} commandId @returns {readonly Keybinding[]} */
   getEffectiveBindings(commandId) {
-    const command = commandsFor(this).get(commandId);
-    if (!command) return [];
-    if (overridesFor(this).has(commandId)) {
-      const binding = overridesFor(this).get(commandId) || null;
-      return Object.freeze(binding ? [binding] : []);
-    }
-    return Object.freeze([...command.defaultBindings]);
+    return effectiveCommandBindingsFor(this, commandId).bindings;
   }
 
   /** @param {string} commandId */
@@ -985,9 +1197,7 @@ export class CommandService {
       target,
     ) || !this.activeContext(candidate.command, context) ||
         (candidate.binding.when && !contextMatches(candidate.binding.when, context))) return null;
-    const stillBound = this.getEffectiveBindings(candidate.command.id)
-      .some((binding) => bindingsEqual(binding, candidate.binding, this.platform) &&
-        contextSignature(binding.when || {}) === contextSignature(candidate.binding.when || {}));
+    const stillBound = this.getEffectiveBindings(candidate.command.id).includes(candidate.binding);
     const lifecycleRevision = dispatcherFor(this).lifecycleRevision;
     const execution = stillBound
       ? this.execute(candidate.command.id, { source: "keyboard" }, context)
@@ -1118,9 +1328,11 @@ export class CommandService {
     for (const command of commandsFor(this).values()) {
       const activeContext = this.activeContext(command, context);
       if (!activeContext) continue;
-      for (const binding of this.getEffectiveBindings(command.id)) {
+      const effective = effectiveCommandBindingsFor(this, command.id);
+      for (let bindingIndex = 0; bindingIndex < effective.bindings.length; bindingIndex++) {
+        const binding = effective.bindings[bindingIndex];
         if (binding.when && !contextMatches(binding.when, context)) continue;
-        const signature = bindingSignature(binding, this.platform);
+        const signature = effective.signatures[bindingIndex];
         for (const path of paths) {
           if (path.length >= signature.length ||
               !path.every((part, index) => part === signature[index]) ||
@@ -1304,16 +1516,19 @@ export class CommandService {
   analyzeBinding(commandId, binding) {
     const command = commandsFor(this).get(commandId);
     if (!command) return [];
+    const proposedSignature = Object.freeze(bindingSignature(binding, this.platform));
     /** @type {BindingConflict[]} */
     const results = [];
     for (const other of commandsFor(this).values()) {
-      this.getEffectiveBindings(other.id).forEach((candidate, bindingIndex) => {
+      const effective = effectiveCommandBindingsFor(this, other.id);
+      effective.bindings.forEach((candidate, bindingIndex) => {
+        const candidateSignature = effective.signatures[bindingIndex];
         const bindingContext = candidate.when && Object.keys(candidate.when).length
           ? [`binding: ${describeContext(candidate.when)}`]
           : [];
         const contextLabel = other.contexts.map(describeContext).concat(bindingContext).join("; ");
         const overlaps = this.bindingContextsOverlap(command, binding, other, candidate);
-        const equivalent = bindingsEqual(binding, candidate, this.platform);
+        const equivalent = bindingSignaturesEqual(proposedSignature, candidateSignature);
         const coincidence = equivalent
           ? "certain"
           : bindingCoincidence(binding, candidate, this.platform);
@@ -1357,8 +1572,8 @@ export class CommandService {
             });
           }
         } else {
-          const exactPrefix = bindingIsPrefix(binding, candidate, this.platform) ||
-            bindingIsPrefix(candidate, binding, this.platform);
+          const exactPrefix = bindingSignatureIsPrefix(proposedSignature, candidateSignature) ||
+            bindingSignatureIsPrefix(candidateSignature, proposedSignature);
           const leftPrefix = bindingPrefixCoincidence(binding, candidate, this.platform);
           const rightPrefix = bindingPrefixCoincidence(candidate, binding, this.platform);
           const possiblePrefix = leftPrefix !== "none" || rightPrefix !== "none";
@@ -1395,53 +1610,29 @@ export class CommandService {
 
   /** @param {string} commandId @returns {readonly BindingConflict[]} */
   getCommandConflicts(commandId) {
-    /** @type {BindingConflict[]} */
-    const results = [];
-    /** @type {Set<string>} */
-    const seen = new Set();
-    const customized = this.isModified(commandId);
-    for (const binding of this.getEffectiveBindings(commandId)) {
-      for (const conflict of this.analyzeBinding(commandId, binding)) {
-        if (conflict.type === "duplicate" && conflict.commandId === commandId) continue;
-        // Built-in bindings predate recorded layout metadata. Only surface the
-        // uncertainty for user overrides that can be fixed by re-recording.
-        if (["layout-possible", "layout-unknown"].includes(conflict.type) && !customized) continue;
-        const signature = `${conflict.type}:${conflict.commandId}:${conflict.bindingIndex ?? ""}`;
-        if (!seen.has(signature)) {
-          seen.add(signature);
-          results.push(conflict);
-        }
-      }
-    }
-    return Object.freeze(results.map((conflict) => Object.freeze(conflict)));
+    if (!commandsFor(this).has(commandId)) return emptyConflicts;
+    return commandSummaryCacheFor(this).conflictsByCommand.get(commandId) || emptyConflicts;
   }
 
   /** @returns {readonly CommandSummary[]} */
   getCommands() {
+    const cache = commandSummaryCacheFor(this);
     const currentMode = this.getContext().editorMode;
-    return Object.freeze(Array.from(commandsFor(this).values())
-      .map((command) => {
-        const bindings = this.getEffectiveBindings(command.id);
-        const bindingContexts = bindings
-          .filter((binding) => binding.when && Object.keys(binding.when).length)
-          .map((binding) => `binding: ${describeContext(binding.when || {})}`);
-        return Object.freeze({
-          availableInCurrentMode: command.contexts.some((context) => {
-            if (!Object.prototype.hasOwnProperty.call(context, "editorMode")) return true;
-            return contextMatches({ editorMode: context.editorMode }, { editorMode: currentMode });
-          }),
-          bindings,
-          category: command.category,
-          conflicts: this.getCommandConflicts(command.id),
-          contexts: Object.freeze([...command.contexts]),
-          contextLabel: command.contexts.map(describeContext).concat(bindingContexts).join("; "),
-          id: command.id,
-          modified: this.isModified(command.id),
-          source: this.isModified(command.id) ? "User" : "Default",
-          title: command.title,
-        });
-      })
-      .sort((left, right) => left.category.localeCompare(right.category) || left.title.localeCompare(right.title)));
+    if (cache.currentModeSummaries && Object.is(cache.currentMode, currentMode)) {
+      return cache.currentModeSummaries;
+    }
+    cache.currentMode = currentMode;
+    cache.currentModeSummaries = Object.freeze(cache.summaries.map((summary) => {
+      const command = commandsFor(this).get(summary.id);
+      return Object.freeze({
+        ...summary,
+        availableInCurrentMode: Boolean(command?.contexts.some((context) => {
+          if (!Object.prototype.hasOwnProperty.call(context, "editorMode")) return true;
+          return contextMatches({ editorMode: context.editorMode }, { editorMode: currentMode });
+        })),
+      });
+    }));
+    return cache.currentModeSummaries;
   }
 
   /**

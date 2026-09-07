@@ -418,9 +418,30 @@ test("shortcut import reports recovered, truncated, and unknown entries", async 
 
 test("shortcut recorder supports keyboard setup, Tab capture, focus return, and scoped sticky headers", async ({ page }) => {
   await open2DProject(page);
+  await page.evaluate(() => {
+    const commands = g_app.services.commands;
+    const analyzeBinding = commands.analyzeBinding.bind(commands);
+    window.__shortcutConflictAnalyses = 0;
+    commands.analyzeBinding = (commandId, binding) => {
+      window.__shortcutConflictAnalyses++;
+      return analyzeBinding(commandId, binding);
+    };
+  });
   await openShortcutSettings(page);
   const search = page.locator("#keyboardShortcutsSearch");
+  await page.evaluate(() => {
+    window.__shortcutPencilRow = document.querySelector(
+      'tr[data-command-id="textMode.tool.pencil"]',
+    );
+    window.__shortcutConflictAnalyses = 0;
+  });
   await search.fill("Pencil");
+  expect(await page.evaluate(() => ({
+    reusedRow: window.__shortcutPencilRow === document.querySelector(
+      'tr[data-command-id="textMode.tool.pencil"]',
+    ),
+    conflictAnalyses: window.__shortcutConflictAnalyses,
+  }))).toEqual({ conflictAnalyses: 0, reusedRow: true });
   const pencilBinding = page.locator(
     'tr[data-command-id="textMode.tool.pencil"] .keyboard-shortcuts-binding',
   );

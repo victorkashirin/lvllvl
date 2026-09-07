@@ -350,6 +350,85 @@ test("dispatches by active context and refuses unresolved ties", () => {
   assert.deepEqual(executed, ["draw", "sample"]);
 });
 
+test("caches derived bindings and conflicts while context availability stays live", () => {
+  const { commands, context } = createCommandHarness();
+  const executed = [];
+  let enabled = true;
+  register(commands, "tool.draw", keybinding("n"), () => executed.push("draw"), [{
+    editorMode: "2d",
+    focus: "canvas",
+  }], {
+    isEnabled: () => enabled,
+  });
+  register(commands, "palette.sample", keybinding("n"), () => executed.push("sample"), [{
+    editorMode: "color palette",
+    focus: "canvas",
+  }]);
+
+  const analyzeBinding = commands.analyzeBinding.bind(commands);
+  let conflictAnalyses = 0;
+  commands.analyzeBinding = (commandId, binding) => {
+    conflictAnalyses++;
+    return analyzeBinding(commandId, binding);
+  };
+
+  const initialBindings = commands.getEffectiveBindings("tool.draw");
+  const initial = commands.getCommands();
+  const initialAnalysisCount = conflictAnalyses;
+  const initialConflicts = initial.find(({ id }) => id === "tool.draw").conflicts;
+  assert.ok(initialAnalysisCount > 0);
+  assert.equal(commands.getEffectiveBindings("tool.draw"), initialBindings);
+  assert.equal(commands.getCommands(), initial);
+  assert.equal(conflictAnalyses, initialAnalysisCount,
+    "re-reading summaries for search must not rebuild the conflict graph");
+
+  context.focus = "textInput";
+  assert.equal(commands.getCommands(), initial,
+    "focus-only changes do not rebuild preference-derived summaries");
+  assert.equal(commands.handleKeyDown(keyboardEvent("n")).status, "ignored");
+  context.focus = "canvas";
+  enabled = false;
+  assert.equal(commands.handleKeyDown(keyboardEvent("n")).status, "unmatched");
+  enabled = true;
+  assert.equal(commands.handleKeyDown(keyboardEvent("n")).status, "executed");
+  assert.equal(conflictAnalyses, initialAnalysisCount,
+    "dispatch keeps focus and enabled predicates live without rebuilding conflicts");
+
+  context.editorMode = "color palette";
+  const paletteMode = commands.getCommands();
+  assert.notEqual(paletteMode, initial);
+  assert.equal(paletteMode.find(({ id }) => id === "tool.draw").availableInCurrentMode, false);
+  assert.equal(paletteMode.find(({ id }) => id === "palette.sample").availableInCurrentMode, true);
+  assert.equal(paletteMode.find(({ id }) => id === "tool.draw").conflicts, initialConflicts);
+  assert.equal(conflictAnalyses, initialAnalysisCount,
+    "mode availability is recomputed separately from static conflicts");
+
+  const layoutAwareBinding = keybinding("¡", { alt: true, layoutCode: "Digit1" });
+  commands.assignBinding("palette.sample", layoutAwareBinding);
+  const beforeEditedSummary = conflictAnalyses;
+  const edited = commands.getCommands();
+  assert.ok(conflictAnalyses > beforeEditedSummary,
+    "binding and captured-layout edits invalidate derived conflicts");
+  const afterEditedSummary = conflictAnalyses;
+  assert.equal(commands.getCommands(), edited);
+  assert.equal(conflictAnalyses, afterEditedSummary);
+
+  register(commands, "palette.other", keybinding("n"), () => {}, [{
+    editorMode: "color palette",
+  }]);
+  const beforeCatalogSummary = conflictAnalyses;
+  commands.getCommands();
+  assert.ok(conflictAnalyses > beforeCatalogSummary,
+    "catalog changes invalidate derived conflicts");
+
+  const beforePlatformSummary = conflictAnalyses;
+  commands.platform = "mac";
+  commands.getCommands();
+  assert.ok(conflictAnalyses > beforePlatformSummary,
+    "platform changes invalidate platform-resolved signatures and conflicts");
+  assert.deepEqual(executed, ["draw"]);
+});
+
 test("leaves keyboard handling on focusable controls", () => {
   const { commands } = createCommandHarness();
   let executed = 0;

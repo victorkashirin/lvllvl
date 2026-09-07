@@ -29,7 +29,7 @@ Use this plan when implementing or reviewing the remaining shortcut refactor. It
 | [x] | [5. Recorder state, accessibility, and presentation](#phase-5--recorder-state-accessibility-and-presentation) | P2 / P3 | SC-10, SC-11, SC-16; CQ-07 dialog work |
 | [x] | [6. Catalog ownership and legacy cleanup](#phase-6--catalog-ownership-and-legacy-cleanup) | P2 / P3 | SC-14; CQ-01, CQ-02 |
 | [x] | [7. API and data ownership](#phase-7--api-and-data-ownership) | P3 | CQ-09 |
-| [ ] | [8. Derived-data caching](#phase-8--derived-data-caching) | P3 | SC-15; CQ-10 |
+| [x] | [8. Derived-data caching](#phase-8--derived-data-caching) | P3 | SC-15; CQ-10 |
 | [ ] | [9. Build boundary hardening](#phase-9--build-boundary-hardening) | P3 | CQ-11 |
 
 ## Phase 1 — Input ownership and modal migration
@@ -369,7 +369,7 @@ reload/reset. No Phase 7 work is deferred.
 
 **Depends on:** stable ownership and mutation invalidation from phases 6–7.
 
-**Read:** [matchingCandidatesForEvent](../src/js/modules/application/commandService.mjs#L556), [getCommands](../src/js/modules/application/commandService.mjs#L823), [groupedRows](../src/js/modules/feature-adapters/keyboardShortcutsDialog.mjs#L227), and [render](../src/js/modules/feature-adapters/keyboardShortcutsDialog.mjs#L345).
+**Read:** [matchingCandidatesForEvent](../src/js/modules/application/commandService.mjs#L1325), [getCommands](../src/js/modules/application/commandService.mjs#L1618), [groupedRows](../src/js/modules/feature-adapters/keyboardShortcutsDialog.mjs#L240), and [render](../src/js/modules/feature-adapters/keyboardShortcutsDialog.mjs#L374).
 
 **Problem — SC-15:** search/filter changes recompute all-pairs conflicts and rebuild rows; dispatch repeatedly clones/normalizes bindings and signatures. The unnecessary work is visible statically; user-visible latency has not been measured.
 
@@ -382,6 +382,26 @@ reload/reset. No Phase 7 work is deferred.
 **Validation target:** a small cache-invalidation check showing search does not rebuild conflicts, edits do invalidate them, and context/availability changes remain live. Measure affected paths rather than asserting an unobserved performance gain.
 
 **Gate:** search leaves the static conflict graph unchanged; binding/catalog/layout changes invalidate the correct derived data; mode/focus changes update availability without stale enablement or rebuilding preference data.
+
+**Progress record (2026-09-08):** Added private catalog and override revisions
+with a platform-aware cache for normalized effective binding arrays and their
+resolved signatures. Captured keyboard-layout metadata remains part of each
+binding, so catalog/default and override edits invalidate the layout inputs used
+by conflict analysis. Static conflict and presentation summaries now rebuild
+only when those inputs change; editor-mode availability is layered on afterward,
+while focus contexts and enabled predicates are evaluated on every dispatch.
+The settings dialog retains summaries during search/filter-only renders, caches
+search text and command/group rows, updates group counts only when needed, and
+skips table replacement when the row sequence is unchanged. Targeted validation
+passed via syntax checks, module TypeScript checking, the production build, all
+29 shortcut unit tests, 12 adjacent editor-command tests, and the focused
+Chromium recorder/filter workflow. The warm-cache checks measured zero
+additional conflict analyses for repeated summary reads, mode/focus changes,
+and dispatch; the browser search performed
+zero additional conflict analyses and preserved command-row identity. Binding
+(including captured layout metadata), catalog, and platform changes each rebuilt
+the derived graph, while mode availability, focus matching, and mutable enabled
+predicates remained live. No Phase 8 work is deferred.
 
 ## Phase 9 — Build boundary hardening
 
