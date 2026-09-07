@@ -48,15 +48,15 @@
       <button type="button" class="keyboard-shortcuts-icon-button"
         data-action="cancel-recording" aria-label="Cancel shortcut recording">×</button>
     </div>
-    <button id="keyboardShortcutsRecorderCapture" type="button"
-      class="keyboard-shortcuts-recorder-capture" aria-label="Press the new keyboard shortcut"
-      aria-describedby="keyboardShortcutsRecorderMessage">
-      <span id="keyboardShortcutsRecorderDisplay">Press a shortcut</span>
-    </button>
     <label class="keyboard-shortcuts-physical">
       <input id="keyboardShortcutsPhysicalKey" type="checkbox">
       Use physical key position (layout independent)
     </label>
+    <button id="keyboardShortcutsRecorderCapture" type="button" data-action="start-capture"
+      class="keyboard-shortcuts-recorder-capture" aria-label="Start shortcut recording"
+      aria-describedby="keyboardShortcutsRecorderMessage" data-capturing="false">
+      <span id="keyboardShortcutsRecorderDisplay">Start recording</span>
+    </button>
     <div id="keyboardShortcutsRecorderMessage" class="keyboard-shortcuts-recorder-message"
       aria-live="polite"></div>
     <div id="keyboardShortcutsConflictActions" class="keyboard-shortcuts-conflict-actions" hidden>

@@ -26,7 +26,7 @@ Use this plan when implementing or reviewing the remaining shortcut refactor. It
 | [x] | [2. Binding semantics, repeat, and aliases](#phase-2--binding-semantics-repeat-and-aliases) | P2 | SC-05, SC-06, SC-13; CQ-04, CQ-05 |
 | [x] | [3. Dispatcher lifecycle](#phase-3--dispatcher-lifecycle) | P2 | SC-07, SC-08, SC-09; CQ-06 |
 | [x] | [4. Atomic edits and observable outcomes](#phase-4--atomic-edits-and-observable-outcomes) | P2 | SC-12; CQ-07 service work, CQ-08 |
-| [ ] | [5. Recorder state, accessibility, and presentation](#phase-5--recorder-state-accessibility-and-presentation) | P2 / P3 | SC-10, SC-11, SC-16; CQ-07 dialog work |
+| [x] | [5. Recorder state, accessibility, and presentation](#phase-5--recorder-state-accessibility-and-presentation) | P2 / P3 | SC-10, SC-11, SC-16; CQ-07 dialog work |
 | [ ] | [6. Catalog ownership and legacy cleanup](#phase-6--catalog-ownership-and-legacy-cleanup) | P2 / P3 | SC-14; CQ-01, CQ-02 |
 | [ ] | [7. API and data ownership](#phase-7--api-and-data-ownership) | P3 | CQ-09 |
 | [ ] | [8. Derived-data caching](#phase-8--derived-data-caching) | P3 | SC-15; CQ-10 |
@@ -172,7 +172,7 @@ sequence cancellation on text-editor mode changes. No Phase 3 work is deferred.
 
 **Depends on:** stable binding semantics and lifecycle behavior. Define the mutation/result contract here before restructuring recorder control flow.
 
-**Read:** [persist and notify](../src/js/modules/application/commandService.mjs#L487), [execute](../src/js/modules/application/commandService.mjs#L682), [editBindings](../src/js/modules/application/commandService.mjs#L1321), [importConfiguration](../src/js/modules/application/commandService.mjs#L1445), [storage adapter](../src/js/modules/infrastructure/keybindingStorageAdapter.mjs#L8), and [commitRecording](../src/js/modules/feature-adapters/keyboardShortcutsDialog.mjs#L420).
+**Read:** [persist and notify](../src/js/modules/application/commandService.mjs#L487), [execute](../src/js/modules/application/commandService.mjs#L682), [editBindings](../src/js/modules/application/commandService.mjs#L1321), [importConfiguration](../src/js/modules/application/commandService.mjs#L1445), [storage adapter](../src/js/modules/infrastructure/keybindingStorageAdapter.mjs#L8), and [commitRecording](../src/js/modules/feature-adapters/keyboardShortcutsDialog.mjs#L498).
 
 **Problem:** conflict replacement removes bindings and saves/notifies before assignment performs another save/notify. Observers see an intermediate configuration. **SC-12:** persistence errors are logged or silently skipped while the UI announces a successful save. Execution booleans also blur acceptance, handler rejection, and asynchronous completion.
 
@@ -217,7 +217,7 @@ injected quota failure that the dialog correctly labels session-only. No Phase
 
 **Depends on:** phase 4's complete edit/result operation.
 
-**Read:** [render](../src/js/modules/feature-adapters/keyboardShortcutsDialog.mjs#L286), [cancelRecording](../src/js/modules/feature-adapters/keyboardShortcutsDialog.mjs#L344), [startRecording and commitRecording](../src/js/modules/feature-adapters/keyboardShortcutsDialog.mjs#L375), [handleRecordingKeyDown](../src/js/modules/feature-adapters/keyboardShortcutsDialog.mjs#L532), [dialog markup](../src/html/keyboardShortcuts.html), and [table header CSS](../src/css/main.css#L1745).
+**Read:** [render](../src/js/modules/feature-adapters/keyboardShortcutsDialog.mjs#L345), [cancelRecording](../src/js/modules/feature-adapters/keyboardShortcutsDialog.mjs#L443), [startRecording and commitRecording](../src/js/modules/feature-adapters/keyboardShortcutsDialog.mjs#L478), [handleRecordingKeyDown](../src/js/modules/feature-adapters/keyboardShortcutsDialog.mjs#L673), [dialog markup](../src/html/keyboardShortcuts.html), and [table header CSS](../src/css/main.css#L1744).
 
 **Remaining behavior:**
 
@@ -235,6 +235,30 @@ injected quota failure that the dialog correctly labels session-only. No Phase
 **Validation target:** one focused keyboard-only browser flow for selecting physical mode, capture/cancel, ordinary and conflict-replacing commits, row focus, and success/error announcements. Include a manual scroll check for header alignment.
 
 **Gate:** keyboard users can choose options, record, cancel/commit, and return to the edited row; rendering cannot silently cancel an in-progress mutation; scrolling keeps labels aligned with their action cells.
+
+**Progress record (2026-09-07):** Replaced the recorder's DOM-anchor
+bookkeeping with `ShortcutRecorderState`, keyed by stable command identity and
+holding capture, binding, and conflict state independently of rendered nodes.
+`renderRecorder` now projects that state into the current DOM, while explicit
+controller transitions end recording after commit or cancel and when a command
+is removed. Ordinary and conflict-replacing commits both finish from the
+complete Phase 4 edit result, rerender, retain the edited command through any
+active search or filter, and resolve the replacement row control by command ID
+before restoring focus; rejected edits remain open with an error announcement.
+The retained row returns to normal filtering on the next filter or search
+change. The physical-key option now precedes an explicit Start Recording
+control. Tab traverses those controls outside capture mode, while Tab and
+Shift+Tab are deliberately recordable after capture starts. Sticky presentation
+is limited to `thead th`; the shortcut root now fits the legacy dialog content
+so the table holder owns scrolling and body row/group headers no longer compete
+with the column labels. Targeted syntax checks, module TypeScript checking, and
+the production build passed. Two focused Chromium workflows passed, including
+keyboard-only physical-mode selection, capture and Escape cancellation,
+physical Shift+Tab assignment, ordinary and conflict-replacing commits, fresh
+row focus (including a commit that stops matching the active conflict filter),
+durable and rejected announcements, and actual scrolled-position checks. A
+manual screenshot inspection of the scrolled table confirmed header and
+action-column alignment. No Phase 5 work is deferred.
 
 ## Phase 6 — Catalog ownership and legacy cleanup
 
@@ -277,7 +301,7 @@ injected quota failure that the dialog correctly labels session-only. No Phase
 
 **Depends on:** stable ownership and mutation invalidation from phases 6–7.
 
-**Read:** [matchingCandidatesForEvent](../src/js/modules/application/commandService.mjs#L556), [getCommands](../src/js/modules/application/commandService.mjs#L823), [groupedRows](../src/js/modules/feature-adapters/keyboardShortcutsDialog.mjs#L169), and [render](../src/js/modules/feature-adapters/keyboardShortcutsDialog.mjs#L286).
+**Read:** [matchingCandidatesForEvent](../src/js/modules/application/commandService.mjs#L556), [getCommands](../src/js/modules/application/commandService.mjs#L823), [groupedRows](../src/js/modules/feature-adapters/keyboardShortcutsDialog.mjs#L227), and [render](../src/js/modules/feature-adapters/keyboardShortcutsDialog.mjs#L345).
 
 **Problem — SC-15:** search/filter changes recompute all-pairs conflicts and rebuild rows; dispatch repeatedly clones/normalizes bindings and signatures. The unnecessary work is visible statically; user-visible latency has not been measured.
 

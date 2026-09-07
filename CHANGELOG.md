@@ -27,6 +27,14 @@
 
 ### Fixed
 
+- Let keyboard users choose semantic or physical shortcut recording before
+  explicitly starting capture, deliberately assign Tab or Shift+Tab during
+  capture, and return focus to the edited command after cancellation, ordinary
+  assignment, or conflict replacement even when rerendering or an active filter
+  would otherwise remove its row.
+- Keep keyboard-shortcut column labels aligned while scrolling by giving the
+  command table its intended bounded scroll region and limiting sticky
+  positioning to column headers instead of command and group row headers.
 - Isolate keyboard-shortcut change subscriber failures so committed edits keep
   their persistence outcome and remaining subscribers are still notified.
 - Apply shortcut assignments and conflict replacement as one validated change,

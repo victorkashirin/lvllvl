@@ -3,6 +3,16 @@
 /** @typedef {import("../domain/keybindings.mjs").Keybinding} Keybinding */
 
 /**
+ * @typedef {object} ShortcutRecorderState
+ * @property {Keybinding | null} binding
+ * @property {boolean} capturing
+ * @property {string} commandId
+ * @property {ShortcutConflict[]} conflicts
+ * @property {string} display
+ * @property {number} index
+ */
+
+/**
  * @typedef {object} ShortcutConflict
  * @property {number} [bindingIndex]
  * @property {string} commandId
@@ -52,8 +62,9 @@ export function createKeyboardShortcutsDialog({
   /** @type {(() => void) | null} */
   let unsubscribe = null;
   let initialized = false;
-  /** @type {{anchor: HTMLElement, commandId: string, index: number, binding: any | null} | null} */
+  /** @type {ShortcutRecorderState | null} */
   let recording = null;
+  let retainedCommandId = "";
 
   /** @param {string} id */
   function element(id) {
@@ -103,6 +114,25 @@ export function createKeyboardShortcutsDialog({
   function setAction(target, action, commandId) {
     target.dataset.action = action;
     target.dataset.commandId = commandId;
+  }
+
+  /** @param {string} commandId @param {string} [action] */
+  function commandControl(commandId, action = "change") {
+    const controls = root?.querySelectorAll(`[data-action="${action}"][data-command-id]`) || [];
+    return Array.from(controls).find((candidate) =>
+      /** @type {HTMLElement} */ (candidate).dataset.commandId === commandId,
+    ) || null;
+  }
+
+  /** @param {string} commandId */
+  function restoreCommandFocus(commandId) {
+    if (!commandId) return;
+    setTimer(() => {
+      const control = commandControl(commandId);
+      if (control && typeof /** @type {{focus?: unknown}} */ (control).focus === "function") {
+        /** @type {HTMLElement} */ (control).focus({ preventScroll: true });
+      }
+    }, 0);
   }
 
   /** @param {ShortcutConflict} conflict */
@@ -321,7 +351,9 @@ export function createKeyboardShortcutsDialog({
     const conflictsOnly = /** @type {HTMLInputElement | null} */ (element("keyboardShortcutsConflictsOnly"));
     const query = String(search?.value || "").trim().toLocaleLowerCase();
     const allCommands = commands.getCommands();
+    const focusCommandId = recording?.commandId || retainedCommandId;
     const summaries = allCommands.filter((summary) => {
+      if (summary.id === focusCommandId) return true;
       if (modifiedOnly?.checked && !summary.modified) return false;
       if (boundOnly?.checked && summary.bindings.length === 0) return false;
       if (conflictsOnly?.checked && !summary.conflicts.some((conflict) =>
@@ -331,31 +363,41 @@ export function createKeyboardShortcutsDialog({
     const body = element("keyboardShortcutsTableBody");
     if (!body) return;
     body.replaceChildren(...groupedRows(summaries));
-    if (recording && !recording.anchor.isConnected) cancelRecording(false);
     const count = element("keyboardShortcutsCount");
     if (count) count.textContent = `${summaries.length} of ${allCommands.length} commands`;
+    renderRecorder(allCommands);
+    positionActiveRecorder();
   }
 
-  /** @param {HTMLElement} anchor */
+  function renderFromControls() {
+    retainedCommandId = "";
+    render();
+  }
+
+  /** @param {HTMLElement | null} anchor */
   function positionRecorder(anchor) {
     const panel = element("keyboardShortcutsRecorder");
-    if (!root || !panel || panel.hidden || !anchor.isConnected) return;
+    if (!root || !panel || panel.hidden) return;
     const margin = 10;
     panel.style.left = `${margin}px`;
     panel.style.top = `${margin}px`;
     panel.style.visibility = "hidden";
     const rootRect = root.getBoundingClientRect();
-    const anchorRect = anchor.getBoundingClientRect();
     const panelRect = panel.getBoundingClientRect();
-    const preferredLeft = anchorRect.left - rootRect.left +
-      ((anchorRect.width - panelRect.width) / 2);
     const maxLeft = Math.max(margin, rootRect.width - panelRect.width - margin);
-    const left = Math.min(maxLeft, Math.max(margin, preferredLeft));
-    const below = anchorRect.bottom - rootRect.top + 8;
-    const above = anchorRect.top - rootRect.top - panelRect.height - 8;
-    const top = below + panelRect.height <= rootRect.height - margin
-      ? below
-      : Math.max(margin, above);
+    let left = Math.max(margin, (rootRect.width - panelRect.width) / 2);
+    let top = Math.max(margin, (rootRect.height - panelRect.height) / 2);
+    if (anchor?.isConnected) {
+      const anchorRect = anchor.getBoundingClientRect();
+      const preferredLeft = anchorRect.left - rootRect.left +
+        ((anchorRect.width - panelRect.width) / 2);
+      left = Math.min(maxLeft, Math.max(margin, preferredLeft));
+      const below = anchorRect.bottom - rootRect.top + 8;
+      const above = anchorRect.top - rootRect.top - panelRect.height - 8;
+      top = below + panelRect.height <= rootRect.height - margin
+        ? below
+        : Math.max(margin, above);
+    }
     panel.style.left = `${Math.round(left)}px`;
     panel.style.top = `${Math.round(top)}px`;
     panel.style.visibility = "visible";
@@ -363,58 +405,103 @@ export function createKeyboardShortcutsDialog({
 
   function positionActiveRecorder() {
     if (!recording) return;
-    if (!recording.anchor.isConnected) {
-      cancelRecording(false);
-      return;
+    positionRecorder(/** @type {HTMLElement | null} */ (commandControl(recording.commandId)));
+  }
+
+  /** @param {ShortcutSummary[]} [summaries] */
+  function renderRecorder(summaries = commands.getCommands()) {
+    const panel = element("keyboardShortcutsRecorder");
+    if (!panel) return;
+    panel.hidden = !recording;
+    if (!recording) return;
+    const summary = summaries.find((candidate) => candidate.id === recording?.commandId);
+    const title = element("keyboardShortcutsRecorderTitle");
+    const display = element("keyboardShortcutsRecorderDisplay");
+    const message = element("keyboardShortcutsRecorderMessage");
+    const conflictActions = element("keyboardShortcutsConflictActions");
+    const physical = /** @type {HTMLInputElement | null} */ (element("keyboardShortcutsPhysicalKey"));
+    const capture = /** @type {HTMLButtonElement | null} */ (element("keyboardShortcutsRecorderCapture"));
+    if (title && summary) {
+      title.textContent = `${summary.bindings.length ? "Change" : "Assign"} shortcut: ${summary.title}`;
     }
-    positionRecorder(recording.anchor);
+    if (display) display.textContent = recording.display;
+    if (physical) physical.disabled = recording.capturing;
+    if (capture) {
+      capture.setAttribute("aria-label", recording.capturing
+        ? "Recording shortcut; press the new keyboard shortcut"
+        : recording.binding
+          ? "Record a different keyboard shortcut"
+          : "Start shortcut recording");
+      capture.setAttribute("data-capturing", String(recording.capturing));
+    }
+    if (message) {
+      if (recording.conflicts.length) {
+        message.textContent = `${recording.conflicts.map(conflictLabel).join(". ")}. ` +
+          "Replace removes those bindings; Keep Both preserves them and uses the displayed precedence.";
+      } else if (recording.capturing) {
+        message.textContent = "Press any shortcut. Tab and Shift+Tab can be assigned. Escape cancels.";
+      } else {
+        message.textContent = "Choose the key behavior, then start recording. Escape cancels.";
+      }
+    }
+    if (conflictActions) conflictActions.hidden = recording.conflicts.length === 0;
   }
 
   /** @param {boolean} [restoreFocus] */
   function cancelRecording(restoreFocus = true) {
     const commandId = recording?.commandId || "";
-    commands.setRecording(false);
+    if (recording) commands.setRecording(false);
+    retainedCommandId = restoreFocus ? commandId : "";
     recording = null;
-    const panel = element("keyboardShortcutsRecorder");
-    if (panel) panel.hidden = true;
-    const conflictActions = element("keyboardShortcutsConflictActions");
-    if (conflictActions) conflictActions.hidden = true;
-    if (restoreFocus && commandId) {
-      setTimer(() => {
-        const action = root?.querySelector(`[data-command-id="${commandId}"][data-action]`);
-        if (action && typeof /** @type {{focus?: unknown}} */ (action).focus === "function") {
-          /** @type {HTMLElement} */ (action).focus();
-        }
-      }, 0);
-    }
+    render();
+    if (restoreFocus) restoreCommandFocus(commandId);
   }
 
-  function resetRecordingCapture() {
+  function prepareRecordingCapture() {
     if (!recording) return;
     recording.binding = null;
-    const display = element("keyboardShortcutsRecorderDisplay");
-    const message = element("keyboardShortcutsRecorderMessage");
-    const conflictActions = element("keyboardShortcutsConflictActions");
-    if (display) display.textContent = "Press a shortcut";
-    if (message) message.textContent = "Escape cancels. Delete and Backspace can be assigned normally.";
-    if (conflictActions) conflictActions.hidden = true;
+    recording.capturing = false;
+    recording.conflicts = [];
+    recording.display = "Start recording";
+    commands.setRecording(false);
+    renderRecorder();
+    positionActiveRecorder();
     setStatus("");
   }
 
-  /** @param {string} commandId @param {number} index @param {HTMLElement} anchor */
-  function startRecording(commandId, index, anchor) {
-    const summary = commands.getCommands().find((candidate) => candidate.id === commandId);
-    if (!summary) return;
-    recording = { anchor, commandId, index, binding: null };
+  function startCapture() {
+    if (!recording) return;
+    recording.binding = null;
+    recording.capturing = true;
+    recording.conflicts = [];
+    recording.display = "Press a shortcut";
     commands.setRecording(true);
-    const panel = element("keyboardShortcutsRecorder");
-    const title = element("keyboardShortcutsRecorderTitle");
-    if (panel) panel.hidden = false;
-    if (title) title.textContent = `${summary.bindings.length ? "Change" : "Assign"} shortcut: ${summary.title}`;
-    resetRecordingCapture();
-    positionRecorder(anchor);
+    setStatus("");
+    renderRecorder();
+    positionActiveRecorder();
     const capture = /** @type {HTMLButtonElement | null} */ (element("keyboardShortcutsRecorderCapture"));
     capture?.focus({ preventScroll: true });
+  }
+
+  /** @param {string} commandId @param {number} index */
+  function startRecording(commandId, index) {
+    const summary = commands.getCommands().find((candidate) => candidate.id === commandId);
+    if (!summary) return;
+    retainedCommandId = "";
+    recording = {
+      binding: null,
+      capturing: false,
+      commandId,
+      conflicts: [],
+      display: "Start recording",
+      index,
+    };
+    commands.setRecording(false);
+    setStatus("");
+    renderRecorder();
+    positionActiveRecorder();
+    const physical = /** @type {HTMLInputElement | null} */ (element("keyboardShortcutsPhysicalKey"));
+    physical?.focus({ preventScroll: true });
   }
 
   /** @param {"normal" | "replace" | "precedence"} behavior */
@@ -431,7 +518,9 @@ export function createKeyboardShortcutsDialog({
       type: "assign",
     });
     if (result.status === "rejected") {
+      recording.capturing = false;
       setStatus("Shortcut could not be changed.", "error");
+      renderRecorder();
       return;
     }
     const savedBinding = commands.getEffectiveBindings(commandId)[0];
@@ -471,12 +560,11 @@ export function createKeyboardShortcutsDialog({
       status += " The same key is used in a separate context.";
     }
     setStatus(status, statusKind);
-    render();
   }
 
   /** @param {KeyboardEvent} event */
   function recordKey(event) {
-    if (!recording) return;
+    if (!recording?.capturing) return;
     const currentRecording = recording;
     event.preventDefault();
     event.stopImmediatePropagation();
@@ -485,32 +573,28 @@ export function createKeyboardShortcutsDialog({
       setStatus("Shortcut recording cancelled.");
       return;
     }
-    resetRecordingCapture();
     const physical = /** @type {HTMLInputElement | null} */ (element("keyboardShortcutsPhysicalKey"));
     const binding = commands.bindingFromEvent(event, { physical: physical?.checked === true });
-    const display = element("keyboardShortcutsRecorderDisplay");
-    const message = element("keyboardShortcutsRecorderMessage");
     if (!binding) {
       const modifiers = commands.formatActiveModifiers(event);
-      if (display && modifiers) display.textContent = modifiers;
+      if (modifiers) currentRecording.display = modifiers;
+      renderRecorder();
       return;
     }
     currentRecording.binding = binding;
-    if (display) display.textContent = commands.formatBinding(binding);
+    currentRecording.capturing = false;
+    currentRecording.display = commands.formatBinding(binding);
+    commands.setRecording(false);
     const analysis = commands.analyzeBinding(currentRecording.commandId, binding).filter((conflict) => {
       return conflict.type !== "duplicate" || conflict.commandId !== currentRecording.commandId;
     });
     const hard = analysis.filter((conflict) => conflict.type === "hard");
+    currentRecording.conflicts = hard;
     if (!hard.length) {
       commitRecording("normal");
       return;
     }
-    if (message) {
-      message.textContent = `${hard.map(conflictLabel).join(". ")}. ` +
-        "Replace removes those bindings; Keep Both preserves them and uses the displayed precedence.";
-    }
-    const conflictActions = element("keyboardShortcutsConflictActions");
-    if (conflictActions) conflictActions.hidden = false;
+    renderRecorder();
     positionActiveRecorder();
     const replace = /** @type {HTMLButtonElement | null} */ (element("keyboardShortcutsReplaceConflicts"));
     replace?.focus({ preventScroll: true });
@@ -528,7 +612,7 @@ export function createKeyboardShortcutsDialog({
     const commandId = target.dataset.commandId || "";
     const index = Number(target.dataset.index ?? -1);
     if (action === "change") {
-      startRecording(commandId, index, target);
+      startRecording(commandId, index);
     } else if (action === "clear") {
       showEditOutcome(
         commands.unbindCommand(commandId),
@@ -546,6 +630,8 @@ export function createKeyboardShortcutsDialog({
     } else if (action === "cancel-recording") {
       cancelRecording();
       setStatus("Shortcut recording cancelled.");
+    } else if (action === "start-capture") {
+      startCapture();
     } else if (action === "replace-conflicts") {
       commitRecording("replace");
     } else if (action === "keep-conflicts") {
@@ -595,14 +681,27 @@ export function createKeyboardShortcutsDialog({
 
   /** @param {KeyboardEvent} event */
   function handleRecordingKeyDown(event) {
-    const target = /** @type {{closest?: (selector: string) => unknown, id?: string}} */ (event.target);
-    const isRecorderAction = typeof target?.closest === "function" &&
-      target.closest("#keyboardShortcutsRecorder [data-action]") !== null;
+    if (!recording) return;
+    if (recording.capturing) {
+      recordKey(event);
+      return;
+    }
     const plainEscape = event.key === "Escape" &&
       !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey;
-    if (recording && (plainEscape || (!isRecorderAction && target?.id !== "keyboardShortcutsPhysicalKey"))) {
-      recordKey(event);
+    if (!plainEscape) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    cancelRecording();
+    setStatus("Shortcut recording cancelled.");
+  }
+
+  function handleCommandsChanged() {
+    if (recording && !commands.getCommands().some((summary) => summary.id === recording?.commandId)) {
+      cancelRecording(false);
+      setStatus("Shortcut recording ended because the command is no longer available.", "warning");
+      return;
     }
+    render();
   }
 
   function bindEvents() {
@@ -617,22 +716,20 @@ export function createKeyboardShortcutsDialog({
           target.closest("#keyboardShortcutsRecorder [data-action]") !== null);
       if (isRecorderControl) event.stopPropagation();
     });
-    element("keyboardShortcutsSearch")?.addEventListener("input", render);
-    element("keyboardShortcutsModifiedOnly")?.addEventListener("change", render);
-    element("keyboardShortcutsBoundOnly")?.addEventListener("change", render);
-    element("keyboardShortcutsConflictsOnly")?.addEventListener("change", render);
+    element("keyboardShortcutsSearch")?.addEventListener("input", renderFromControls);
+    element("keyboardShortcutsModifiedOnly")?.addEventListener("change", renderFromControls);
+    element("keyboardShortcutsBoundOnly")?.addEventListener("change", renderFromControls);
+    element("keyboardShortcutsConflictsOnly")?.addEventListener("change", renderFromControls);
     element("keyboardShortcutsTableHolder")?.addEventListener("scroll", positionActiveRecorder, { passive: true });
     document.defaultView?.addEventListener("resize", positionActiveRecorder);
     document.addEventListener("keydown", handleRecordingKeyDown, true);
     element("keyboardShortcutsPhysicalKey")?.addEventListener("change", () => {
-      resetRecordingCapture();
-      const capture = /** @type {HTMLButtonElement | null} */ (element("keyboardShortcutsRecorderCapture"));
-      capture?.focus({ preventScroll: true });
+      prepareRecordingCapture();
     });
     element("keyboardShortcutsImportFile")?.addEventListener("change", (event) => {
       void importFile(event);
     });
-    unsubscribe = commands.onDidChange(render);
+    unsubscribe = commands.onDidChange(handleCommandsChanged);
   }
 
   function createDialog() {

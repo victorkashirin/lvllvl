@@ -270,6 +270,7 @@ test("shortcut settings replace conflicts and drive the editor from one binding"
   expect(await page.locator("#keyboardShortcutsTableHolder").evaluate((element) =>
     element.getBoundingClientRect().height,
   )).toBe(listHeight);
+  await page.locator("#keyboardShortcutsRecorderCapture").click();
   await page.keyboard.press("l");
 
   await expect(page.locator("#keyboardShortcutsConflictActions")).toBeVisible();
@@ -279,6 +280,7 @@ test("shortcut settings replace conflicts and drive the editor from one binding"
   expect(await page.evaluate(() => g_app.services.commands.formatBindings("textMode.tool.pencil"))).toBe("L");
   await expect(page.locator("#keyboardShortcutsStatus")).toContainText("Shortcut saved");
   await expect(pencilRow.locator(".keyboard-shortcuts-binding")).toHaveText("L");
+  await expect(pencilRow.locator(".keyboard-shortcuts-binding")).toBeFocused();
   await expect(pencilRow.locator(".keyboard-shortcuts-source")).toHaveText("User");
 
   await search.fill("Eraser");
@@ -340,6 +342,139 @@ test("shortcut settings identify changes that are only applied for this session"
     Storage.prototype.setItem = window.__shortcutOriginalSetItem;
     delete window.__shortcutOriginalSetItem;
   });
+});
+
+test("shortcut recorder supports keyboard setup, Tab capture, focus return, and scoped sticky headers", async ({ page }) => {
+  await open2DProject(page);
+  await openShortcutSettings(page);
+  const search = page.locator("#keyboardShortcutsSearch");
+  await search.fill("Pencil");
+  const pencilBinding = page.locator(
+    'tr[data-command-id="textMode.tool.pencil"] .keyboard-shortcuts-binding',
+  );
+  const physical = page.locator("#keyboardShortcutsPhysicalKey");
+  const capture = page.locator("#keyboardShortcutsRecorderCapture");
+  const recorder = page.locator("#keyboardShortcutsRecorder");
+  const status = page.locator("#keyboardShortcutsStatus");
+
+  await pencilBinding.focus();
+  await page.keyboard.press("Enter");
+  await expect(physical).toBeFocused();
+  await page.keyboard.press("Space");
+  await expect(physical).toBeChecked();
+  await page.keyboard.press("Tab");
+  await expect(capture).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(capture).toHaveAttribute("data-capturing", "true");
+  await page.keyboard.press("Escape");
+  await expect(recorder).toBeHidden();
+  await expect(status).toHaveText("Shortcut recording cancelled.");
+  await expect(pencilBinding).toBeFocused();
+
+  await page.keyboard.press("Enter");
+  await expect(physical).toBeFocused();
+  await page.keyboard.press("Tab");
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Shift+Tab");
+  await expect(recorder).toBeHidden();
+  await expect(status).toContainText("Shortcut saved");
+  await expect(pencilBinding).toHaveText("Shift+[Tab]");
+  await expect(pencilBinding).toBeFocused();
+  expect(await page.evaluate(() => {
+    const chord = g_app.services.commands.getEffectiveBindings("textMode.tool.pencil")[0].sequence[0];
+    return { code: chord.code, key: chord.key, shift: chord.shift };
+  })).toEqual({ code: "Tab", key: null, shift: true });
+
+  await page.keyboard.press("Enter");
+  await expect(physical).toBeFocused();
+  await page.keyboard.press("Space");
+  await expect(physical).not.toBeChecked();
+  await page.keyboard.press("Tab");
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("l");
+  await expect(page.locator("#keyboardShortcutsReplaceConflicts")).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(recorder).toBeHidden();
+  await expect(pencilBinding).toHaveText("L");
+  await expect(pencilBinding).toBeFocused();
+
+  await page.evaluate(() => {
+    const commands = g_app.services.commands;
+    Object.defineProperty(commands, "editBindings", {
+      configurable: true,
+      value: () => ({
+        applied: false,
+        error: new Error("Injected rejected shortcut edit"),
+        overrides: {},
+        status: "rejected",
+      }),
+    });
+  });
+  expect(await page.evaluate(() => ({
+    ownMethod: Object.hasOwn(g_app.services.commands, "editBindings"),
+    probeStatus: g_app.services.commands.editBindings({ type: "assign" }).status,
+  }))).toEqual({ ownMethod: true, probeStatus: "rejected" });
+  await page.keyboard.press("Enter");
+  await expect(physical).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(capture).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(capture).toHaveAttribute("data-capturing", "true");
+  await page.keyboard.press("q");
+  await expect(page.locator("#keyboardShortcutsReplaceConflicts")).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(recorder).toBeVisible();
+  await expect(status).toHaveText("Shortcut could not be changed.");
+  await expect(status).toHaveAttribute("data-kind", "error");
+  await page.keyboard.press("Escape");
+  await expect(pencilBinding).toBeFocused();
+  await page.evaluate(() => {
+    delete g_app.services.commands.editBindings;
+  });
+
+  await page.evaluate(() => {
+    const commands = g_app.services.commands;
+    commands.setBinding("textMode.tool.erase", 0,
+      commands.bindingFromLegacyShortcut({ key: "l" }));
+  });
+  const conflictsOnly = page.locator("#keyboardShortcutsConflictsOnly");
+  await conflictsOnly.check();
+  await expect(pencilBinding).toBeVisible();
+  await pencilBinding.focus();
+  await page.keyboard.press("Enter");
+  await physical.check();
+  await capture.click();
+  await page.keyboard.press("Shift+Tab");
+  await expect(recorder).toBeHidden();
+  await expect(conflictsOnly).toBeChecked();
+  await expect(pencilBinding).toHaveText("Shift+[Tab]");
+  await expect(pencilBinding).toBeFocused();
+
+  await search.fill("");
+  await expect(pencilBinding).toBeHidden();
+  await conflictsOnly.uncheck();
+  const headerState = await page.locator("#keyboardShortcutsTableHolder").evaluate((holder) => {
+    holder.scrollTop = holder.scrollHeight;
+    const columnHeader = holder.querySelector("thead th");
+    const commandHeader = holder.querySelector("tbody .keyboard-shortcuts-command");
+    const groupHeader = holder.querySelector("tbody .keyboard-shortcuts-group-heading");
+    return {
+      columnPosition: getComputedStyle(columnHeader).position,
+      columnTop: columnHeader.getBoundingClientRect().top,
+      clientHeight: holder.clientHeight,
+      groupPosition: getComputedStyle(groupHeader).position,
+      holderTop: holder.getBoundingClientRect().top,
+      rowPosition: getComputedStyle(commandHeader).position,
+      scrollHeight: holder.scrollHeight,
+      scrollTop: holder.scrollTop,
+    };
+  });
+  expect(headerState.scrollHeight).toBeGreaterThan(headerState.clientHeight);
+  expect(headerState.scrollTop).toBeGreaterThan(0);
+  expect(headerState.columnPosition).toBe("sticky");
+  expect(Math.abs(headerState.columnTop - headerState.holderTop)).toBeLessThanOrEqual(2);
+  expect(headerState.groupPosition).toBe("static");
+  expect(headerState.rowPosition).toBe("static");
 });
 
 test("shortcut overrides survive reload and can be reset", async ({ page }) => {

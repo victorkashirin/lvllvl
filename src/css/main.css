@@ -1662,19 +1662,18 @@ body.zen-mode .zen-mode-panel-stacked-bottom {
   transform: translate(-50%, 0);
 }
 
-#keyboardShortcutsPanel,
 .keyboard-shortcuts {
   box-sizing: border-box;
-  height: 100%;
   min-height: 0;
 }
 
 .keyboard-shortcuts {
   display: flex;
   flex-direction: column;
+  inset: 0;
   overflow: hidden;
   padding: 10px;
-  position: relative;
+  position: absolute;
 }
 
 .keyboard-shortcuts-toolbar {
@@ -1742,7 +1741,7 @@ body.zen-mode .zen-mode-panel-stacked-bottom {
   width: 100%;
 }
 
-.keyboard-shortcuts-table th {
+.keyboard-shortcuts-table thead th {
   background: #2b2b2b;
   color: #bbbbbb;
   font-weight: 600;
@@ -1753,12 +1752,12 @@ body.zen-mode .zen-mode-panel-stacked-bottom {
   z-index: 1;
 }
 
-.keyboard-shortcuts-table th:nth-child(1) { width: 25%; }
-.keyboard-shortcuts-table th:nth-child(2) { text-align: center; width: 22%; }
-.keyboard-shortcuts-table th:nth-child(3) { width: 27%; }
-.keyboard-shortcuts-table th:nth-child(4) { width: 8%; }
-.keyboard-shortcuts-table th:nth-child(5) { width: 4%; }
-.keyboard-shortcuts-table th:nth-child(6) { width: 14%; }
+.keyboard-shortcuts-table thead th:nth-child(1) { width: 25%; }
+.keyboard-shortcuts-table thead th:nth-child(2) { text-align: center; width: 22%; }
+.keyboard-shortcuts-table thead th:nth-child(3) { width: 27%; }
+.keyboard-shortcuts-table thead th:nth-child(4) { width: 8%; }
+.keyboard-shortcuts-table thead th:nth-child(5) { width: 4%; }
+.keyboard-shortcuts-table thead th:nth-child(6) { width: 14%; }
 
 .keyboard-shortcuts-table td,
 .keyboard-shortcuts-table tbody th {
@@ -1937,7 +1936,7 @@ body.zen-mode .zen-mode-panel-stacked-bottom {
 }
 
 .keyboard-shortcuts-physical {
-  margin-top: 5px;
+  margin-bottom: 5px;
 }
 
 .keyboard-shortcuts-recorder-message {
