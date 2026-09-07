@@ -11,6 +11,7 @@ import { createImageImportCoordinator } from "./modules/feature-adapters/imageIm
 import { createDisabledRemoteProviders } from "./modules/feature-adapters/legacyRemoteProviderFacades.mjs";
 import { createLegacySvgExportPort } from "./modules/feature-adapters/legacySvgExportAdapter.mjs";
 import { createKeyboardShortcutsDialog } from "./modules/feature-adapters/keyboardShortcutsDialog.mjs";
+import { createLegacyShortcutContextAdapter } from "./modules/feature-adapters/legacyShortcutContextAdapter.mjs";
 import { createBrowserStorageAdapter } from "./modules/infrastructure/browserStorageAdapter.mjs";
 import { createImageImportModuleLoader } from "./modules/infrastructure/imageImportModuleLoader.mjs";
 import { createKeybindingStorageAdapter } from "./modules/infrastructure/keybindingStorageAdapter.mjs";
@@ -27,59 +28,16 @@ try {
   shortcutBrowserStorage = globalThis.localStorage;
 } catch {}
 
-function shortcutContext() {
-  const activeElement = globalThis.document.activeElement;
-  let focus = "canvas";
-  if (activeElement?.closest?.(".ace_editor, .CodeMirror")) focus = "codeEditor";
-  else if (activeElement?.matches?.("input, select, textarea, [contenteditable='true']")) focus = "textInput";
-  else if (activeElement?.closest?.("[id*='Palette'], [class*='palette']")) focus = "palette";
-  else if (activeElement?.closest?.("[id*='Frames'], [class*='timeline']")) focus = "timeline";
-  else if (activeElement?.closest?.("[id*='Debugger'], [class*='debugger']")) focus = "debuggerPanel";
-
-  const activeDialog = legacy.UI.dialogStack.length
-    ? legacy.UI.dialogStack[legacy.UI.dialogStack.length - 1]
-    : null;
-  let graphicType = "none";
-  let screenMode = "none";
-  let selectionActive = false;
-  let spriteFramesVisible = false;
-  let textEditorMode = "none";
-  let textTool = "none";
-  let textTyping = false;
-  try {
-    graphicType = app.textModeEditor?.graphic?.getType?.() || "none";
-    screenMode = app.textModeEditor?.getScreenMode?.() || "none";
-    spriteFramesVisible = app.textModeEditor?.spriteFrames?.getVisible?.() === true;
-    textEditorMode = app.textModeEditor?.getEditorMode?.() || "none";
-    textTool = app.textModeEditor?.tools?.drawTools?.tool || "none";
-    textTyping = app.textModeEditor?.tools?.drawTools?.isTyping?.() === true;
-    const drawTools = app.textModeEditor?.tools?.drawTools;
-    selectionActive = textEditorMode === "pixel"
-      ? drawTools?.pixelSelect?.isActive?.() === true
-      : drawTools?.select?.isActive?.() === true;
-  } catch {}
-  return {
-    browserEditOperations: legacy.UI.browserEditOperations === true,
-    deviceType: app.deviceType || "desktop",
-    editorMode: app.mode || "none",
-    focus,
-    graphicType,
-    modal: activeDialog ? (activeDialog.uiID || activeDialog.id || "dialog") : "none",
-    popupOpen: legacy.UI.popup !== null,
-    pointerCanvas: app.textModeEditor?.gridView2d?.mouseInCanvas === true,
-    recorderActive: commands.isRecording(),
-    screenMode,
-    selectionActive,
-    // UI.canProcessKeyEvents is a legacy emulator-focus flag and can remain
-    // false after leaving that surface. Editor commands use the editor's own
-    // authoritative gate; modal and focus contexts are represented separately.
-    shortcutsAllowed: app.allowKeyShortcuts !== false,
-    spriteFramesVisible,
-    textEditorMode,
-    textTool,
-    textTyping,
-  };
-}
+const shortcutContext = createLegacyShortcutContextAdapter({
+  app,
+  document: globalThis.document,
+  isRecording: () => commands.isRecording(),
+  legacy,
+  now: clock,
+  reportError(operation, error) {
+    console.warn(`Could not ${operation}.`, error);
+  },
+});
 
 const commands = new CommandService({
   clearTimer: (timer) => globalThis.clearTimeout(/** @type {number} */ (timer)),
@@ -169,6 +127,7 @@ const services = {
   persistence,
   remoteProviderFacades: disabledRemoteProviders.facades,
   remoteProviders: disabledRemoteProviders.policy,
+  shortcutContext,
   shortcutSettings,
   createSvgExportPort(/** @type {any} */ editor) {
     return createLegacySvgExportPort({

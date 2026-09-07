@@ -21,11 +21,16 @@ import {
   normalizeBinding,
   resolvePrimaryModifier,
 } from "../domain/keybindings.mjs";
+import { inputOwnerFromShortcutContext } from "../domain/shortcutContext.mjs";
 
 const persistenceVersion = 1;
 const inputOwnedKeys = new Set([
   "ArrowDown", "ArrowLeft", "ArrowRight", "ArrowUp", "Backspace", "Delete",
   "End", "Enter", "Escape", "Home", "Insert", "PageDown", "PageUp", "Space", "Tab",
+]);
+const keyboardActivationContextKeys = new Set([
+  "browserEditOperations", "focus", "inputOwner", "modal", "pointerCanvas",
+  "popupOpen", "recorderActive", "shortcutsAllowed", "textTyping",
 ]);
 
 /** @typedef {import("../domain/keybindings.mjs").Keybinding} Keybinding */
@@ -40,10 +45,12 @@ const inputOwnedKeys = new Set([
  * @property {((details?: {source?: string}) => unknown) | null} release
  * @property {Record<string, unknown>[]} contexts
  * @property {Array<{when: Record<string, unknown>, isEnabled: () => boolean}>} activations
+ * @property {Array<{when: Record<string, unknown>, isEnabled: () => boolean}>} actionActivations
  * @property {Keybinding[]} defaultBindings
  * @property {"global" | "local"} keyboardPolicy
  * @property {number} priority
  * @property {Array<() => boolean>} enabledPredicates
+ * @property {boolean} allowDuringCanvasTyping
  */
 
 /**
@@ -83,7 +90,7 @@ const inputOwnedKeys = new Set([
  * @typedef {object} CommandServiceDependencies
  * @property {"mac" | "other"} platform
  * @property {KeybindingStorage} storage
- * @property {() => Record<string, unknown>} getContext
+ * @property {(target?: unknown) => Record<string, unknown>} getContext
  * @property {(callback: () => void, delay: number) => unknown} setTimer
  * @property {(timer: unknown) => void} clearTimer
  * @property {(operation: string, error: unknown) => void} [reportError]
@@ -136,6 +143,18 @@ function uniqueContexts(contexts) {
   });
 }
 
+/**
+ * Contexts describe both whether an action makes sense and whether a keyboard
+ * event may activate it. Menu and other direct invocations keep the former,
+ * but must not inherit focus, typing, popup, or pointer restrictions.
+ *
+ * @param {Record<string, unknown>} context
+ */
+function actionContextFromKeyboardContext(context) {
+  return Object.fromEntries(Object.entries(context)
+    .filter(([key]) => !keyboardActivationContextKeys.has(key)));
+}
+
 /** @param {Keybinding[]} bindings @param {"mac" | "other"} platform */
 function uniqueBindings(bindings, platform) {
   /** @type {Keybinding[]} */
@@ -147,17 +166,6 @@ function uniqueBindings(bindings, platform) {
     }
   }
   return result;
-}
-
-/** @param {unknown} target */
-function isEditableTarget(target) {
-  if (!target || typeof target !== "object") return false;
-  const element = /** @type {{closest?: (selector: string) => unknown, isContentEditable?: boolean, tagName?: string}} */ (target);
-  if (element.isContentEditable) return true;
-  const tagName = String(element.tagName || "").toLowerCase();
-  if (["button", "input", "select", "textarea"].includes(tagName)) return true;
-  return typeof element.closest === "function" &&
-    element.closest("a[href], [role='button'], [contenteditable='true'], [tabindex]") != null;
 }
 
 /**
@@ -175,6 +183,34 @@ function globalChordCanCrossInputBoundary(chord, platform) {
   if (!key || inputOwnedKeys.has(key)) return false;
   if (/^F(?:[1-9]|1\d|2[0-4])$/.test(key)) return true;
   return resolved.ctrl || resolved.meta;
+}
+
+/**
+ * Only the Commodore-style Alt+1…8 colour aliases may interrupt canvas
+ * typing. A user reassignment to a printable key remains typing-owned.
+ *
+ * @param {import("../domain/keybindings.mjs").KeyChord} chord
+ * @param {"mac" | "other"} platform
+ */
+function colorChordCanCrossCanvasTyping(chord, platform) {
+  const resolved = resolvePrimaryModifier(chord, platform);
+  if (!resolved.alt || resolved.ctrl || resolved.meta) return false;
+  return /^[1-8]$/.test(String(resolved.key || "")) ||
+    /^Digit[1-8]$/.test(String(resolved.code || ""));
+}
+
+/**
+ * Production contexts always classify the event target. Older injected
+ * contexts may omit inputOwner; keep their focus fallback only when no target
+ * was supplied, otherwise fail closed rather than reinterpret DOM here.
+ *
+ * @param {Record<string, unknown>} context
+ * @param {unknown} [target]
+ */
+function resolvedInputOwner(context, target) {
+  return Object.prototype.hasOwnProperty.call(context, "inputOwner") || target == null
+    ? inputOwnerFromShortcutContext(context)
+    : "unknown";
 }
 
 export class CommandService {
@@ -244,7 +280,7 @@ export class CommandService {
   }
 
   /**
-   * @param {{id: string, title: string, category?: string, execute: (details?: {source?: string}) => unknown, release?: (details?: {source?: string}) => unknown, isEnabled?: () => boolean, contexts?: Record<string, unknown>[], defaultBindings?: unknown[], keyboardPolicy?: "global" | "local", priority?: number}} registration
+   * @param {{id: string, title: string, category?: string, execute: (details?: {source?: string}) => unknown, release?: (details?: {source?: string}) => unknown, isEnabled?: () => boolean, contexts?: Record<string, unknown>[], actionContexts?: Record<string, unknown>[], defaultBindings?: unknown[], keyboardPolicy?: "global" | "local", allowDuringCanvasTyping?: boolean, priority?: number}} registration
    */
   registerCommand(registration) {
     if (!registration || !/^[a-z][a-zA-Z0-9.-]+$/.test(registration.id) ||
@@ -255,24 +291,37 @@ export class CommandService {
       .map(normalizeBinding)
       .filter((binding) => binding !== null);
     const contexts = registration.contexts?.length ? registration.contexts : [{}];
+    const actionContexts = registration.actionContexts?.length
+      ? registration.actionContexts
+      : contexts.map(actionContextFromKeyboardContext);
     const predicate = registration.isEnabled || (() => true);
     const existing = this.commands.get(registration.id);
     if (existing) {
       existing.contexts = uniqueContexts(existing.contexts.concat(contexts));
       existing.activations.push(...contexts.map((when) => ({ isEnabled: predicate, when: { ...when } })));
+      existing.actionActivations.push(...actionContexts.map((when) => ({
+        isEnabled: predicate,
+        when: { ...when },
+      })));
       existing.defaultBindings = uniqueBindings(
         existing.defaultBindings.concat(/** @type {Keybinding[]} */ (normalizedBindings)),
         this.platform,
       );
       existing.enabledPredicates.push(predicate);
       if (registration.keyboardPolicy === "global") existing.keyboardPolicy = "global";
+      if (registration.allowDuringCanvasTyping === true) existing.allowDuringCanvasTyping = true;
       if (!existing.release && typeof registration.release === "function") {
         existing.release = registration.release;
       }
       return registration.id;
     }
     this.commands.set(registration.id, {
+      actionActivations: actionContexts.map((when) => ({
+        isEnabled: predicate,
+        when: { ...when },
+      })),
       activations: contexts.map((when) => ({ isEnabled: predicate, when: { ...when } })),
+      allowDuringCanvasTyping: registration.allowDuringCanvasTyping === true,
       category: registration.category || "Application",
       contexts: uniqueContexts(contexts.map((context) => ({ ...context }))),
       defaultBindings: uniqueBindings(/** @type {Keybinding[]} */ (normalizedBindings), this.platform),
@@ -360,17 +409,18 @@ export class CommandService {
       .sort((left, right) => contextSpecificity(right.when) - contextSpecificity(left.when))[0]?.when || null;
   }
 
-  /** @param {CommandDescriptor} command */
-  commandEnabled(command) {
-    return command.enabledPredicates.some((predicate) => {
-      try { return predicate(); } catch { return false; }
+  /** @param {CommandDescriptor} command @param {Record<string, unknown>} [context] */
+  commandEnabled(command, context = this.getContext()) {
+    return command.actionActivations.some((activation) => {
+      if (!contextMatches(activation.when, context)) return false;
+      try { return activation.isEnabled(); } catch { return false; }
     });
   }
 
-  /** @param {string} commandId @param {{source?: string}} [details] */
-  execute(commandId, details = {}) {
+  /** @param {string} commandId @param {{source?: string}} [details] @param {Record<string, unknown>} [context] */
+  execute(commandId, details = {}, context = this.getContext()) {
     const command = this.commands.get(commandId);
-    if (!command || !this.commandEnabled(command)) return false;
+    if (!command || !this.commandEnabled(command, context)) return false;
     try {
       const result = command.execute(details);
       if (result && typeof /** @type {{then?: unknown}} */ (result).then === "function") {
@@ -412,20 +462,21 @@ export class CommandService {
    * @param {unknown} [target]
    */
   keyboardPolicyAllows(command, binding, chordIndex, context, target) {
-    const focusIsEditable = context.focus === "codeEditor" || context.focus === "textInput";
-    const inputActive = context.textTyping === true || focusIsEditable || isEditableTarget(target);
-    if (!inputActive) return true;
-    if (command.keyboardPolicy !== "global") return false;
     const chord = binding.sequence[chordIndex];
     if (!chord) return false;
+    const inputOwner = resolvedInputOwner(context, target);
+    if (inputOwner === "canvasPassive") return true;
+    if (inputOwner === "canvasTyping" && command.allowDuringCanvasTyping &&
+        colorChordCanCrossCanvasTyping(chord, this.platform)) return true;
+    if (command.keyboardPolicy !== "global") return false;
     return globalChordCanCrossInputBoundary(chord, this.platform);
   }
 
   /** @param {{command: CommandDescriptor, binding: Keybinding} | null} candidate @param {unknown} [target] */
   executeKeyboardCandidate(candidate, target) {
-    if (!candidate || !this.commandEnabled(candidate.command)) return false;
-    const context = this.getContext();
-    if (!this.keyboardPolicyAllows(
+    if (!candidate) return false;
+    const context = this.getContext(target);
+    if (!this.commandEnabled(candidate.command, context) || !this.keyboardPolicyAllows(
       candidate.command,
       candidate.binding,
       candidate.binding.sequence.length - 1,
@@ -436,7 +487,7 @@ export class CommandService {
     const stillBound = this.getEffectiveBindings(candidate.command.id)
       .some((binding) => bindingsEqual(binding, candidate.binding, this.platform) &&
         contextSignature(binding.when || {}) === contextSignature(candidate.binding.when || {}));
-    const executed = stillBound && this.execute(candidate.command.id, { source: "keyboard" });
+    const executed = stillBound && this.execute(candidate.command.id, { source: "keyboard" }, context);
     if (executed && candidate.command.release) {
       this.activeCommands.set(candidate.command.id, {
         binding: /** @type {Keybinding} */ (cloneBinding(candidate.binding)),
@@ -613,8 +664,8 @@ export class CommandService {
       this.consumeEvent(event);
       return { handled: true, status: "pending" };
     }
-    const editableTarget = isEditableTarget(event.target);
-    const context = this.getContext();
+    const context = this.getContext(event.target);
+    const inputOwner = resolvedInputOwner(context, event.target);
     if (context.browserEditOperations === true && (event.metaKey || event.ctrlKey) &&
         ["a", "c", "v", "x", "y", "z"].includes(String(normalizeKey(event.key)))) {
       this.cancelPending();
@@ -630,7 +681,7 @@ export class CommandService {
       candidates = this.matchingCandidatesForEvent(paths, eventValue, context);
     }
     if (!candidates.length) {
-      return { handled: false, status: editableTarget ? "ignored" : "unmatched" };
+      return { handled: false, status: inputOwner === "canvasPassive" ? "unmatched" : "ignored" };
     }
 
     const exact = candidates.filter((candidate) => candidate.exact && (!event.repeat || candidate.binding.repeat));

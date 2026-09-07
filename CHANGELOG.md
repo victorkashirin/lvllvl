@@ -27,6 +27,12 @@
 
 ### Fixed
 
+- Fix the production shortcut module failing to start because keyboard-
+  matching helpers were omitted from the generated dependency exports.
+- Keep colour-palette dialog undo, redo, and tool shortcuts owned by the
+  dialog's palette instance even when the underlying canvas is typing, allow
+  Alt+1…8 colour selection during canvas typing without inserting a character,
+  and retain mode prerequisites for direct menu actions.
 - Detect layout-dependent shortcut conflicts using the same semantic-key and
   physical-code fallback rules as runtime dispatch, preventing translated
   Option/Alt bindings from silently disabling both affected commands, and flag

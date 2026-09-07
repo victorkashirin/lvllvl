@@ -597,9 +597,11 @@ test("maintained editors work without the retired runtime shells", async ({ page
     g_app.fileManager.save = () => { window.__assemblerSaveCount++ };
     document.activeElement?.blur();
   });
+  await page.evaluate(() => g_app.menuClick("file-save"));
+  expect(await page.evaluate(() => window.__assemblerSaveCount)).toBe(1);
   const modifier = await page.evaluate(() => UI.os === "Mac OS" ? "Meta" : "Control");
   await page.keyboard.press(`${modifier}+s`);
-  expect(await page.evaluate(() => window.__assemblerSaveCount)).toBe(1);
+  expect(await page.evaluate(() => window.__assemblerSaveCount)).toBe(2);
 
   await page.evaluate((path) => {
     g_app.projectNavigator.showDocRecord(path, { forceReload: true });

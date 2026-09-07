@@ -2289,45 +2289,65 @@ ColorPaletteEdit.prototype = {
 
     var keyCode = event.keyCode;
     var commandServiceActive = g_app.services && g_app.services.commands;
-    
+    var shortcutContext = g_app.services && g_app.services.shortcutContext
+      ? g_app.services.shortcutContext(event.target)
+      : null;
+    var modalOwnsEvent = commandServiceActive && this.visible === true &&
+      g_app.textModeEditor && g_app.textModeEditor.colorPaletteEdit === this &&
+      shortcutContext && shortcutContext.modal == 'editColorPaletteDialog';
+    var localOwnsEvent = !commandServiceActive || modalOwnsEvent;
+    var inputAllowsPaletteShortcut = !shortcutContext ||
+      shortcutContext.inputOwner == 'canvasPassive' ||
+      (modalOwnsEvent && shortcutContext.inputOwner == 'canvasTyping');
+    var handled = false;
 
-    if(!commandServiceActive && typeof event.key != 'undefined') {
-      if(event.ctrlKey || event.metaKey) {
-        switch(event.key.toUpperCase()) {
-          case 'Z':
-            if(event.shift) {
-              this.redo();
-            } else {
-              this.undo();
-            }
-          break;
-        }
+    if(localOwnsEvent && inputAllowsPaletteShortcut && typeof event.key != 'undefined' &&
+      (event.ctrlKey || event.metaKey) && !event.altKey) {
+      switch(event.key.toUpperCase()) {
+        case 'Z':
+          if(event.shiftKey) {
+            this.redo();
+          } else {
+            this.undo();
+          }
+          handled = true;
+        break;
       }
     }
 
     var c = String.fromCharCode(keyCode).toUpperCase();
 
-    if(!commandServiceActive) {
+    if(localOwnsEvent && inputAllowsPaletteShortcut &&
+      !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
       switch(c) {
         case keys.textMode.toolsPencil.key:
           this.setColorPaletteTool('pen');
+          handled = true;
         break;
         case keys.textMode.toolsErase.key:
           this.setColorPaletteTool('erase');
+          handled = true;
         break;
         case keys.textMode.toolsEyedropper.key:
           this.setColorPaletteTool('eyedropper');
+          handled = true;
         break;
         case keys.textMode.toolsMove.key:
           this.setColorPaletteTool('move');
+          handled = true;
         break;
         case keys.textMode.toolsMarquee.key:
           this.setColorPaletteTool('select');
+          handled = true;
         break;
       }
     }
 
+    if(handled) {
+      event.preventDefault();
+    }
     this.setMouseCursor(event);
+    return handled;
 
   },
 

@@ -1728,6 +1728,31 @@ main split panel north is menu
     return [baseContext];
   },
 
+  getMenuActionContexts: function(menu, commandContexts) {
+    var keyboardOnlyContextKeys = ['modal', 'popupOpen', 'shortcutsAllowed'];
+    var actionContexts = commandContexts.map(function(commandContext) {
+      var actionContext = {};
+      Object.keys(commandContext).forEach(function(key) {
+        if(keyboardOnlyContextKeys.indexOf(key) === -1) {
+          actionContext[key] = commandContext[key];
+        }
+      });
+      return actionContext;
+    });
+    var classNames = typeof menu.className == 'string' ? menu.className.split(/\s+/) : [];
+    var directOnlyModes = [
+      ['ui-menu-music', 'music'],
+      ['ui-menu-c64', 'c64'],
+      ['ui-menu-c64-assembler', 'assembler']
+    ];
+    directOnlyModes.forEach(function(mode) {
+      if(classNames.indexOf(mode[0]) !== -1) {
+        actionContexts.push({ editorMode: mode[1] });
+      }
+    });
+    return actionContexts;
+  },
+
   registerEditorCommands: function() {
     if(!this.services || !this.services.commands || !this.textModeEditor) {
       return;
@@ -1741,8 +1766,7 @@ main split panel north is menu
       focus: 'canvas',
       modal: 'none',
       popupOpen: false,
-      shortcutsAllowed: true,
-      textTyping: false
+      shortcutsAllowed: true
     };
     var binding = function(key, modifiers) {
       return commandService.bindingFromLegacyShortcut(Object.assign({ key: key }, modifiers || {}));
@@ -1765,6 +1789,7 @@ main split panel north is menu
         category: args.category,
         contexts: args.contexts,
         defaultBindings: defaultBindings,
+        allowDuringCanvasTyping: args.allowDuringCanvasTyping === true,
         execute: args.execute,
         isEnabled: args.isEnabled,
         release: args.release
@@ -1906,6 +1931,7 @@ main split panel north is menu
           title: 'Select Colour ' + (index + 1),
           category: 'Palettes',
           contexts: context({ textEditorMode: ['tile', 'pixel'] }),
+          allowDuringCanvasTyping: true,
           key: String((index % 8) + 1),
           modifiers: { alt: true, shift: index >= 8 },
           execute: function() { textMode.currentTile.setColor(index); }
@@ -2331,10 +2357,12 @@ main split panel north is menu
           return commandContext;
         });
       }
+      var actionContexts = _this.getMenuActionContexts(menu, commandContexts);
       commandService.registerCommand({
         id: commandId,
         title: menuItem.label,
         category: menu.label || 'Application',
+        actionContexts: actionContexts,
         contexts: commandContexts,
         defaultBindings: defaultBindings,
         execute: function(details) {

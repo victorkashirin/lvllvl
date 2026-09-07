@@ -8,9 +8,11 @@ export const bundledModuleDependencies = Object.freeze({
   "@tanstack/hotkeys": Object.freeze({
     entry: "node_modules/@tanstack/hotkeys/dist/index.js",
     exports: Object.freeze([
+      "isSingleLetterKey",
       "matchesKeyboardEvent",
       "normalizeKeyName",
       "parseKeyboardEvent",
+      "PUNCTUATION_CODE_MAP",
     ]),
     output: "js/vendor/tanstack-hotkeys.mjs",
   }),

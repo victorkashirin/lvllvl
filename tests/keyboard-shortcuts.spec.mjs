@@ -73,6 +73,115 @@ test("active canvas typing owns destructive and printable menu shortcuts", async
     clearAllCount: window.__shortcutClearAllCount,
     typingEvents: window.__shortcutTypingEvents,
   }))).toEqual({ clearAllCount: 0, typingEvents: ["Delete", "q"] });
+
+  expect(await page.evaluate(() => {
+    let cropCount = 0;
+    g_app.textModeEditor.cropToSelection = () => { cropCount++ };
+    const commands = g_app.services.commands;
+    const wrongMode = commands.execute("textMode.screen.crop", { source: "test" }, {
+      editorMode: "color palette",
+      graphicType: "screen",
+    });
+    const validModeWithInputOwned = commands.execute("textMode.screen.crop", { source: "test" }, {
+      editorMode: "2d",
+      focus: "textInput",
+      graphicType: "screen",
+      inputOwner: "editableText",
+      modal: "test-dialog",
+      popupOpen: true,
+      shortcutsAllowed: false,
+    });
+    return { cropCount, validModeWithInputOwned, wrongMode };
+  })).toEqual({ cropCount: 1, validModeWithInputOwned: true, wrongMode: false });
+});
+
+test("palette surfaces and canvas typing keep one shortcut owner", async ({ page }) => {
+  await open2DProject(page);
+  const modifier = await page.evaluate(() => UI.os === "Mac OS" ? "Meta" : "Control");
+
+  await page.evaluate(() => {
+    const palette = g_app.colorPaletteEditor.colorPaletteEdit;
+    palette.setColorPaletteTool = (tool) => window.__shortcutOwnerEvents.push(["standalone-tool", tool]);
+    palette.undo = () => window.__shortcutOwnerEvents.push(["standalone-undo"]);
+    palette.redo = () => window.__shortcutOwnerEvents.push(["standalone-redo"]);
+    g_app.setMode("color palette");
+    window.__shortcutOwnerEvents = [];
+    document.activeElement?.blur();
+  });
+
+  for (const key of ["n", "l", "i", "v", "m"]) await page.keyboard.press(key);
+  await page.keyboard.press(`${modifier}+z`);
+  await page.keyboard.press(`${modifier}+Shift+z`);
+  expect(await page.evaluate(() => window.__shortcutOwnerEvents)).toEqual([
+    ["standalone-tool", "pen"],
+    ["standalone-tool", "erase"],
+    ["standalone-tool", "eyedropper"],
+    ["standalone-tool", "move"],
+    ["standalone-tool", "select"],
+    ["standalone-undo"],
+    ["standalone-redo"],
+  ]);
+
+  await page.evaluate(() => {
+    g_app.setMode("2d");
+    g_app.textModeEditor.tools.drawTools.setDrawTool("type");
+    g_app.textModeEditor.editColorPalette();
+  });
+  await expect(page.locator("#colorPaletteEdit")).toBeVisible();
+  await expect.poll(() => page.evaluate(() =>
+    UI.dialogStack[UI.dialogStack.length - 1]?.uiID,
+  )).toBe("editColorPaletteDialog");
+
+  await page.evaluate(() => {
+    const palette = g_app.textModeEditor.colorPaletteEdit;
+    palette.setColorPaletteTool = (tool) => window.__shortcutOwnerEvents.push(["modal-tool", tool]);
+    palette.undo = () => window.__shortcutOwnerEvents.push(["modal-undo"]);
+    palette.redo = () => window.__shortcutOwnerEvents.push(["modal-redo"]);
+    window.__shortcutOwnerEvents = [];
+    document.activeElement?.blur();
+  });
+
+  for (const key of ["n", "l", "i", "v", "m"]) await page.keyboard.press(key);
+  await page.keyboard.press(`${modifier}+z`);
+  await page.keyboard.press(`${modifier}+Shift+z`);
+  expect(await page.evaluate(() => window.__shortcutOwnerEvents)).toEqual([
+    ["modal-tool", "pen"],
+    ["modal-tool", "erase"],
+    ["modal-tool", "eyedropper"],
+    ["modal-tool", "move"],
+    ["modal-tool", "select"],
+    ["modal-undo"],
+    ["modal-redo"],
+  ]);
+
+  await page.locator("#colorPaletteEditHex").focus();
+  await page.keyboard.press("n");
+  expect(await page.evaluate(() => window.__shortcutOwnerEvents)).toHaveLength(7);
+
+  await page.evaluate(() => {
+    UI.closeDialog();
+    const editor = g_app.textModeEditor;
+    const drawTools = editor.tools.drawTools;
+    window.__shortcutOwnerEvents = [];
+    drawTools.setDrawTool("type");
+    drawTools.typing.isActive = () => true;
+    drawTools.typing.keyDown = (event) => {
+      if (event.key.length === 1) window.__shortcutOwnerEvents.push(["typed", event.key]);
+    };
+    editor.currentTile.setColor = (index) => window.__shortcutOwnerEvents.push(["colour", index]);
+    document.activeElement?.blur();
+  });
+
+  await page.keyboard.press("Alt+1");
+  await page.keyboard.press("Alt+Shift+1");
+  await page.keyboard.press("n");
+  expect(await page.evaluate(() => ({
+    events: window.__shortcutOwnerEvents,
+    tool: g_app.textModeEditor.tools.drawTools.tool,
+  }))).toEqual({
+    events: [["colour", 0], ["colour", 8], ["typed", "n"]],
+    tool: "type",
+  });
 });
 
 test("menu rebindings retire the legacy default accelerator", async ({ page }) => {

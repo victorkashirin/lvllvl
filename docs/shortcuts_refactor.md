@@ -22,7 +22,7 @@ Use this plan when implementing or reviewing the remaining shortcut refactor. It
 
 | Done | Phase | Priority | Consolidated findings |
 | --- | --- | --- | --- |
-| [ ] | [1. Input ownership and modal migration](#phase-1--input-ownership-and-modal-migration) | P2 | SC-03, SC-04; CQ-03 |
+| [x] | [1. Input ownership and modal migration](#phase-1--input-ownership-and-modal-migration) | P2 | SC-03, SC-04; CQ-03 |
 | [ ] | [2. Binding semantics, repeat, and aliases](#phase-2--binding-semantics-repeat-and-aliases) | P2 | SC-05, SC-06, SC-13; CQ-04, CQ-05 |
 | [ ] | [3. Dispatcher lifecycle](#phase-3--dispatcher-lifecycle) | P2 | SC-07, SC-08, SC-09; CQ-06 |
 | [ ] | [4. Atomic edits and observable outcomes](#phase-4--atomic-edits-and-observable-outcomes) | P2 | SC-12; CQ-07 service work, CQ-08 |
@@ -36,7 +36,7 @@ Use this plan when implementing or reviewing the remaining shortcut refactor. It
 
 **Why first:** dispatcher lifecycle and catalog extraction need a reliable definition of which surface owns an event. Service availability currently substitutes for migration ownership in legacy handlers.
 
-**Read:** [shortcutContext](../src/js/bootstrap.mjs#L30), [keyboardPolicyAllows](../src/js/modules/application/commandService.mjs#L413), [menu contexts](../src/js/editor.js#L1678), [colour command registration](../src/js/editor.js#L1905), [palette key handling](../src/js/textMode/color/colorPaletteEdit.js#L2291), and [Tools.keyDown](../src/js/textMode/tools.js#L58).
+**Read:** [shared shortcut context](../src/js/modules/domain/shortcutContext.mjs#L1), [legacy context adapter](../src/js/modules/feature-adapters/legacyShortcutContextAdapter.mjs#L76), [keyboardPolicyAllows](../src/js/modules/application/commandService.mjs#L464), [menu contexts](../src/js/editor.js#L1682), [colour command registration](../src/js/editor.js#L1902), [palette key handling](../src/js/textMode/color/colorPaletteEdit.js#L2288), and [Tools.keyDown](../src/js/textMode/tools.js#L46).
 
 **Remaining behavior:**
 
@@ -53,6 +53,29 @@ Use this plan when implementing or reviewing the remaining shortcut refactor. It
 **Validation target:** one focused browser workflow covering standalone versus modal palette tool selection and undo/redo, plus permitted colour changes during canvas typing without character insertion.
 
 **Gate:** each affected surface has an explicit event owner; modal actions target the modal instance; permitted colour shortcuts work during typing; other input-boundary protections remain intact.
+
+**Progress record (2026-09-07):** Added the shared `ShortcutContext`/
+`ShortcutInputOwner` contract and `legacyShortcutContextAdapter`, with explicit
+editable-text, focusable-control, canvas-typing, passive-canvas, unknown-focus,
+and modal identity classification. Context read failures now return one safe
+snapshot and emit rate-limited diagnostics. `CommandService.keyboardPolicyAllows`
+keeps global/local boundaries and admits only registered Alt+1…8 colour actions
+through canvas typing; direct/menu execution checks action prerequisites without
+inheriting keyboard-only focus, modal, pointer, popup, or typing restrictions.
+Editor action contexts no longer encode typing suppression. The palette-edit
+dialog retains its local N/L/I/V/M and undo/redo owner against the actual modal
+instance, while the standalone palette remains command-owned. Static validation
+passed via targeted syntax checks, module
+TypeScript checking, the production build, and the module-boundary and
+legacy-graph policy checks. The focused Chromium workflow `palette surfaces and
+canvas typing keep one shortcut owner` passed, covering standalone and modal
+tool selection and undo/redo (including a modal opened from active canvas
+typing), editable-field suppression, and both Alt+1 and Alt+Shift+1 during
+canvas typing without character insertion. The adjacent focused menu check
+also verifies that direct actions retain mode prerequisites without inheriting
+input-boundary restrictions. That browser run exposed missing TanStack runtime
+exports in the production build; the dependency export list was completed and
+the rebuilt application passed the workflow. No Phase 1 work is deferred.
 
 ## Phase 2 — Binding semantics, repeat, and aliases
 
