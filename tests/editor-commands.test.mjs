@@ -89,12 +89,12 @@ test("Zoom In keeps both built-in aliases in one override lifecycle", async () =
     target: null,
   }).commandId, "view.zoomin");
   assert.deepEqual(activations, ["view-zoomin"]);
-  commands.setBinding("view.zoomin", 0,
+  commands.assignBinding("view.zoomin",
     commands.bindingFromLegacyShortcut({ cmd: true, key: "i" }));
   assert.equal(commands.formatBindings("view.zoomin"), "Ctrl+I");
-  commands.unbindCommand("view.zoomin");
+  commands.clearBinding("view.zoomin");
   assert.equal(commands.formatBindings("view.zoomin"), "");
-  commands.resetCommand("view.zoomin");
+  commands.resetBinding("view.zoomin");
   assert.equal(commands.formatBindings("view.zoomin"), "Ctrl+= / Ctrl+Shift+=");
 });
 

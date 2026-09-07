@@ -64,7 +64,7 @@ test("active canvas typing owns destructive and printable menu shortcuts", async
   await page.keyboard.press("Delete");
   await page.evaluate(() => {
     const commands = g_app.services.commands;
-    commands.setBinding("edit.clearall", 0,
+    commands.assignBinding("edit.clearall",
       commands.bindingFromLegacyShortcut({ key: "q" }));
   });
   await page.keyboard.press("q");
@@ -198,7 +198,7 @@ test("menu rebindings retire the legacy default accelerator", async ({ page }) =
       window.__shortcutCopyImageCount++;
     };
     const commands = g_app.services.commands;
-    commands.setBinding("edit.copyimage", 0,
+    commands.assignBinding("edit.copyimage",
       commands.bindingFromLegacyShortcut({ key: "F2" }));
     document.activeElement?.blur();
   });
@@ -344,6 +344,78 @@ test("shortcut settings identify changes that are only applied for this session"
   });
 });
 
+test("shortcut import reports recovered, truncated, and unknown entries", async ({ page }) => {
+  await open2DProject(page);
+  await openShortcutSettings(page);
+  await page.locator("#keyboardShortcutsImportFile").setInputFiles({
+    buffer: Buffer.from(JSON.stringify({
+      version: 1,
+      overrides: {
+        "Bad id": [{ sequence: [{ key: "b" }] }],
+        "future.command": [{ sequence: [{ key: "f" }] }],
+        "textMode.tool.invalid": [{ sequence: [] }],
+        "textMode.tool.pencil": [
+          { sequence: [{ key: "p" }] },
+          { sequence: [{ key: "q" }] },
+        ],
+      },
+    })),
+    mimeType: "application/json",
+    name: "shortcuts.json",
+  });
+
+  await expect(page.locator("#keyboardShortcutsStatus")).toHaveText(
+    "Keyboard shortcuts imported and saved. 2 invalid entries were skipped. " +
+    "Extra shortcuts were ignored for 1 command. " +
+    "1 unknown command override was retained for future availability.",
+  );
+  expect(await page.evaluate(() => ({
+    exported: JSON.parse(g_app.services.commands.exportConfiguration()).overrides["future.command"],
+    pencil: g_app.services.commands.formatBindings("textMode.tool.pencil"),
+  }))).toEqual({
+    exported: [{ priority: 0, repeat: false, sequence: [{
+      alt: false,
+      code: null,
+      ctrl: false,
+      key: "f",
+      meta: false,
+      mod: false,
+      shift: false,
+    }] }],
+    pencil: "P",
+  });
+
+  await page.locator("#keyboardShortcutsImportFile").setInputFiles({
+    buffer: Buffer.from(JSON.stringify({
+      version: 1,
+      overrides: {
+        "textMode.tool.invalid": [{ sequence: [] }],
+      },
+    })),
+    mimeType: "application/json",
+    name: "invalid-shortcuts.json",
+  });
+  await expect(page.locator("#keyboardShortcutsStatus")).toHaveText(
+    "Could not import shortcuts: the file is not valid. 1 invalid entry was skipped.",
+  );
+  await expect(page.locator("#keyboardShortcutsStatus")).toHaveAttribute("data-kind", "error");
+  expect(await page.evaluate(() => ({
+    future: JSON.parse(g_app.services.commands.exportConfiguration()).overrides["future.command"],
+    pencil: g_app.services.commands.formatBindings("textMode.tool.pencil"),
+  }))).toEqual({
+    future: [{ priority: 0, repeat: false, sequence: [{
+      alt: false,
+      code: null,
+      ctrl: false,
+      key: "f",
+      meta: false,
+      mod: false,
+      shift: false,
+    }] }],
+    pencil: "P",
+  });
+});
+
 test("shortcut recorder supports keyboard setup, Tab capture, focus return, and scoped sticky headers", async ({ page }) => {
   await open2DProject(page);
   await openShortcutSettings(page);
@@ -400,7 +472,7 @@ test("shortcut recorder supports keyboard setup, Tab capture, focus return, and 
 
   await page.evaluate(() => {
     const commands = g_app.services.commands;
-    Object.defineProperty(commands, "editBindings", {
+    Object.defineProperty(commands, "assignBinding", {
       configurable: true,
       value: () => ({
         applied: false,
@@ -411,8 +483,8 @@ test("shortcut recorder supports keyboard setup, Tab capture, focus return, and 
     });
   });
   expect(await page.evaluate(() => ({
-    ownMethod: Object.hasOwn(g_app.services.commands, "editBindings"),
-    probeStatus: g_app.services.commands.editBindings({ type: "assign" }).status,
+    ownMethod: Object.hasOwn(g_app.services.commands, "assignBinding"),
+    probeStatus: g_app.services.commands.assignBinding("textMode.tool.pencil", {}).status,
   }))).toEqual({ ownMethod: true, probeStatus: "rejected" });
   await page.keyboard.press("Enter");
   await expect(physical).toBeFocused();
@@ -429,12 +501,12 @@ test("shortcut recorder supports keyboard setup, Tab capture, focus return, and 
   await page.keyboard.press("Escape");
   await expect(pencilBinding).toBeFocused();
   await page.evaluate(() => {
-    delete g_app.services.commands.editBindings;
+    delete g_app.services.commands.assignBinding;
   });
 
   await page.evaluate(() => {
     const commands = g_app.services.commands;
-    commands.setBinding("textMode.tool.erase", 0,
+    commands.assignBinding("textMode.tool.erase",
       commands.bindingFromLegacyShortcut({ key: "l" }));
   });
   const conflictsOnly = page.locator("#keyboardShortcutsConflictsOnly");
@@ -481,7 +553,7 @@ test("shortcut overrides survive reload and can be reset", async ({ page }) => {
   await open2DProject(page);
   await page.evaluate(() => {
     const commands = g_app.services.commands;
-    commands.setBinding("textMode.tool.pencil", 0, commands.bindingFromLegacyShortcut({ key: "5" }));
+    commands.assignBinding("textMode.tool.pencil", commands.bindingFromLegacyShortcut({ key: "5" }));
   });
 
   await page.reload({ waitUntil: "domcontentloaded" });
@@ -489,7 +561,7 @@ test("shortcut overrides survive reload and can be reset", async ({ page }) => {
     g_app.services?.commands?.formatBindings("textMode.tool.pencil"),
   )).toBe("5");
 
-  await page.evaluate(() => g_app.services.commands.resetCommand("textMode.tool.pencil"));
+  await page.evaluate(() => g_app.services.commands.resetBinding("textMode.tool.pencil"));
   expect(await page.evaluate(() =>
     g_app.services.commands.formatBindings("textMode.tool.pencil"),
   )).toBe("N");
@@ -528,7 +600,7 @@ test("Preview and tile placement are listed and honor their effective bindings",
 
   await page.evaluate(() => {
     const commands = g_app.services.commands;
-    commands.unbindCommand("textMode.canvas.placeSelectedTile");
+    commands.clearBinding("textMode.canvas.placeSelectedTile");
   });
   await page.keyboard.press("Enter");
   await page.keyboard.press("Insert");
@@ -536,7 +608,7 @@ test("Preview and tile placement are listed and honor their effective bindings",
 
   const gridCanvasId = await page.evaluate(() => {
     const commands = g_app.services.commands;
-    commands.setBinding("textMode.preview.hold", 0,
+    commands.assignBinding("textMode.preview.hold",
       commands.bindingFromLegacyShortcut({ key: "5" }));
     return g_app.textModeEditor.gridView2d.canvas.id;
   });
@@ -545,7 +617,7 @@ test("Preview and tile placement are listed and honor their effective bindings",
   await page.keyboard.down("5");
   await expect(page.locator("body")).toHaveClass(/\boverview-mode\b/);
   const overviewScale = await page.evaluate(() => {
-    g_app.services.commands.unbindCommand("view.zoomin");
+    g_app.services.commands.clearBinding("view.zoomin");
     return g_app.textModeEditor.gridView2d.getScale();
   });
   const modifier = await page.evaluate(() => UI.os === "Mac OS" ? "Meta" : "Control");
@@ -558,14 +630,14 @@ test("Preview and tile placement are listed and honor their effective bindings",
   await expect(page.locator("body")).toHaveClass(/\boverview-mode\b/);
   await page.evaluate(() => window.dispatchEvent(new Event("blur")));
   await expect(page.locator("body")).not.toHaveClass(/\boverview-mode\b/);
-  expect(await page.evaluate(() => g_app.services.commands.activeCommands.size)).toBe(0);
+  expect(await page.evaluate(() => g_app.services.commands.getActiveCommandCount())).toBe(0);
   await page.keyboard.up("5");
 
   await page.keyboard.down("5");
   await expect(page.locator("body")).toHaveClass(/\boverview-mode\b/);
   await page.evaluate(() => g_app.setDeviceType("mobile"));
   await expect(page.locator("body")).not.toHaveClass(/\boverview-mode\b/);
-  expect(await page.evaluate(() => g_app.services.commands.activeCommands.size)).toBe(0);
+  expect(await page.evaluate(() => g_app.services.commands.getActiveCommandCount())).toBe(0);
   await page.keyboard.up("5");
   await page.evaluate(() => g_app.setDeviceType("desktop"));
 
@@ -573,20 +645,20 @@ test("Preview and tile placement are listed and honor their effective bindings",
   await page.evaluate(() => {
     const commands = g_app.services.commands;
     const chord = commands.bindingFromLegacyShortcut({ key: "5" }).sequence[0];
-    commands.setBinding("textMode.preview.hold", 0, { sequence: [chord, chord] });
+    commands.assignBinding("textMode.preview.hold", { sequence: [chord, chord] });
     window.__shortcutOriginalEditorMode = g_app.textModeEditor.getEditorMode();
   });
   await page.keyboard.down("5");
-  expect(await page.evaluate(() => g_app.services.commands.pending !== null)).toBe(true);
+  expect(await page.evaluate(() => g_app.services.commands.hasPendingSequence())).toBe(true);
   await page.evaluate(() => g_app.textModeEditor.setEditorMode(
     window.__shortcutOriginalEditorMode === "pixel" ? "tile" : "pixel",
   ));
-  expect(await page.evaluate(() => g_app.services.commands.pending)).toBeNull();
+  expect(await page.evaluate(() => g_app.services.commands.hasPendingSequence())).toBe(false);
   await page.keyboard.up("5");
   await page.evaluate(() => {
     const commands = g_app.services.commands;
     g_app.textModeEditor.setEditorMode(window.__shortcutOriginalEditorMode);
-    commands.setBinding("textMode.preview.hold", 0,
+    commands.assignBinding("textMode.preview.hold",
       commands.bindingFromLegacyShortcut({ key: "5" }));
   });
 });
@@ -643,8 +715,8 @@ test("canvas, selection, and colour actions dispatch only through configurable c
   await page.evaluate(() => {
     const commands = g_app.services.commands;
     const drawTools = g_app.textModeEditor.tools.drawTools;
-    commands.unbindCommand("textMode.canvas.cursor.right");
-    commands.unbindCommand("textMode.color.select.1");
+    commands.clearBinding("textMode.canvas.cursor.right");
+    commands.clearBinding("textMode.color.select.1");
     drawTools.setDrawTool("pen");
     drawTools.select.isActive = () => false;
     window.__migratedShortcutEvents = [];

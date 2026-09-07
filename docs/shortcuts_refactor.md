@@ -28,7 +28,7 @@ Use this plan when implementing or reviewing the remaining shortcut refactor. It
 | [x] | [4. Atomic edits and observable outcomes](#phase-4--atomic-edits-and-observable-outcomes) | P2 | SC-12; CQ-07 service work, CQ-08 |
 | [x] | [5. Recorder state, accessibility, and presentation](#phase-5--recorder-state-accessibility-and-presentation) | P2 / P3 | SC-10, SC-11, SC-16; CQ-07 dialog work |
 | [x] | [6. Catalog ownership and legacy cleanup](#phase-6--catalog-ownership-and-legacy-cleanup) | P2 / P3 | SC-14; CQ-01, CQ-02 |
-| [ ] | [7. API and data ownership](#phase-7--api-and-data-ownership) | P3 | CQ-09 |
+| [x] | [7. API and data ownership](#phase-7--api-and-data-ownership) | P3 | CQ-09 |
 | [ ] | [8. Derived-data caching](#phase-8--derived-data-caching) | P3 | SC-15; CQ-10 |
 | [ ] | [9. Build boundary hardening](#phase-9--build-boundary-hardening) | P3 | CQ-11 |
 
@@ -317,7 +317,7 @@ definition cannot replace metadata or behavior. No Phase 6 work is deferred.
 
 **Depends on:** phase 4's mutation API and phase 6's registration model.
 
-**Read:** [readOverrides](../src/js/modules/application/commandService.mjs#L104), [setBinding/removeBinding](../src/js/modules/application/commandService.mjs#L864), [normalizeBinding](../src/js/modules/domain/keybindings.mjs#L111), and [dialog JSDoc types](../src/js/modules/feature-adapters/keyboardShortcutsDialog.mjs#L1).
+**Read:** [readShortcutConfiguration](../src/js/modules/application/commandService.mjs#L214), [assign/clear/reset](../src/js/modules/application/commandService.mjs#L1457), [normalizeBinding](../src/js/modules/domain/keybindings.mjs#L134), and [shared dialog JSDoc types](../src/js/modules/feature-adapters/keyboardShortcutsDialog.mjs#L1).
 
 **Problem:** one custom shortcut per command is exposed through ignored indexes and collection operations that truncate input. Broad/duplicated types and shallow ownership allow callers to misunderstand or bypass the intended model. These are maintenance risks, not demonstrated external-mutation bugs.
 
@@ -330,6 +330,40 @@ definition cannot replace metadata or behavior. No Phase 6 work is deferred.
 **Validation target:** narrowly cover invalid imports, unknown IDs, existing preference round trips, and the intended public mutation boundary; reuse earlier transaction coverage.
 
 **Gate:** public APIs match the single-custom-shortcut model; import outcomes explain discarded input; shared data cannot bypass mutation notifications/persistence; existing preference semantics survive.
+
+**Progress record (2026-09-07):** Replaced the collection-shaped public
+mutation surface with explicit `assignBinding`, `clearBinding`, `resetBinding`,
+and `resetAllBindings` operations. Assignment exposes conflict preservation,
+precedence, or atomic replacement directly, without an ignored binding index;
+replacing a conflict clears the conflicting command's complete effective alias
+set because built-in aliases remain internal to the default lifecycle. The
+application now owns each custom override as one normalized binding or an
+explicit clear while continuing to read and write the compatible version-1
+array format. Command definitions, overrides, listeners, persistence, and
+dispatcher lifecycle state live in module-private stores; public lifecycle
+inspection exposes only scalar status. Bindings, contexts, summaries, conflict
+results, edit results, and configuration snapshots expose frozen views. Shared
+context, summary, and conflict JSDoc types replaced the dialog's duplicate
+models. The context clause type enumerates supported keys and their per-key
+value types, while registration rejects malformed context collections before
+they can fall back to a global activation. Supported context values and
+`anyOf`/`not` conditions are validated and owned at command-registration and
+binding-import boundaries. Startup
+recovery keeps valid entries from a partly damaged document, reports skipped or
+truncated entries, and still quarantines an invalid top-level document.
+Interactive imports return diagnostics for invalid entries and truncated
+shortcut collections, including rejected imports with no valid entries. Valid
+unknown command overrides are retained inertly,
+reported to the user, exported unchanged, and become active if their command is
+registered later; registration completion no longer prunes preferences based on
+registration order. The 40 focused shortcut/editor unit tests passed, including
+invalid imports, tolerant startup recovery, unknown-ID round trips, immutable
+views, context validation, default-alias replacement, and the explicit mutation
+API. Module TypeScript checking, the 20-module/23-edge boundary check, the
+304-input legacy-graph policy, the production build, and deterministic artifact
+verification passed. Three focused Chromium workflows passed for import
+diagnostics, recorder assignment/conflict replacement, and override
+reload/reset. No Phase 7 work is deferred.
 
 ## Phase 8 — Derived-data caching
 

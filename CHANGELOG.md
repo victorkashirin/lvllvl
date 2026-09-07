@@ -27,6 +27,12 @@
 
 ### Fixed
 
+- Match the keyboard-shortcut API and storage model to one custom binding per
+  command, hide persistence and dispatcher internals behind safe views, validate
+  and freeze shared shortcut/context data at its boundaries, report invalid or
+  truncated imports (including rejected files), and retain unknown command
+  overrides until their commands become available instead of deleting them
+  based on registration order.
 - Keep shortcut preferences attached to stable command IDs when menu labels
   change, prevent additional UI aliases from silently replacing command
   metadata or handlers, and generate text, pixel, and colour-palette tool

@@ -252,7 +252,7 @@ test("detects a conflict when a recorded semantic key shares a layout fallback",
   assert.equal(conflict.layoutDependent, true);
   assert.equal(conflict.precedence, "unresolved");
 
-  commands.setBinding("tool.pencil", 0, recorded);
+  commands.assignBinding("tool.pencil", recorded);
   assert.equal(JSON.parse(storage.value).overrides["tool.pencil"][0]
     .sequence[0].layoutCode, "Digit1");
 
@@ -283,7 +283,7 @@ test("detects a conflict when a recorded semantic key shares a layout fallback",
   assert.equal(reloaded.getCommandConflicts("tool.pencil")
     .some(({ type }) => type === "layout-unknown"), true);
 
-  reloaded.setBinding("tool.pencil", 0, recorded, { takePrecedence: true });
+  reloaded.assignBinding("tool.pencil", recorded, { conflicts: "take-precedence" });
   const rankedBinding = reloaded.getEffectiveBindings("tool.pencil")[0];
   assert.equal(reloaded.analyzeBinding("tool.pencil", rankedBinding)
     .find(({ commandId, type }) => commandId === "color.select.1" && type === "hard")
@@ -304,7 +304,7 @@ test("keeps unknown-layout physical coincidences advisory and non-destructive", 
   assert.equal(analysis.some(({ commandId, type }) =>
     commandId === "tool.other" && type === "hard"), false);
 
-  commands.replaceConflicts("tool.pencil", importedPhysical);
+  commands.assignBinding("tool.pencil", importedPhysical, { conflicts: "replace" });
   assert.equal(commands.getEffectiveBindings("tool.other")[0].sequence[0].key, "x");
 
   const stablePhysical = keybinding(null, { alt: true, code: "F1" });
@@ -377,9 +377,9 @@ test("allows only input-safe global bindings across editable focus", () => {
   });
 
   assert.equal(commands.handleKeyDown(keyboardEvent("F2", { target })).status, "executed");
-  commands.setBinding("project.save", 0, keybinding("Delete", { ctrl: true }));
+  commands.assignBinding("project.save", keybinding("Delete", { ctrl: true }));
   assert.equal(commands.handleKeyDown(keyboardEvent("Delete", { ctrl: true, target })).status, "ignored");
-  commands.setBinding("project.save", 0, keybinding("q"));
+  commands.assignBinding("project.save", keybinding("q"));
   assert.equal(commands.handleKeyDown(keyboardEvent("q", { target })).status, "ignored");
   assert.deepEqual(executed, ["save"]);
 });
@@ -394,7 +394,7 @@ test("uses context specificity and explicit binding priority deterministically",
   }]);
 
   assert.equal(commands.handleKeyDown(keyboardEvent("f")).commandId, "tool.selection");
-  commands.setBinding("tool.global", 0, keybinding("f"), { takePrecedence: true });
+  commands.assignBinding("tool.global", keybinding("f"), { conflicts: "take-precedence" });
   assert.equal(commands.handleKeyDown(keyboardEvent("f")).commandId, "tool.selection");
   assert.deepEqual(executed, ["selection", "selection"]);
 });
@@ -484,7 +484,7 @@ test("re-recording a repeatable command changes key identity without changing re
   assert.ok(recorded);
   assert.equal(recorded.repeat, false);
 
-  first.commands.setBinding("key.repeat", 0, recorded);
+  first.commands.assignBinding("key.repeat", recorded);
   assert.equal(first.commands.getEffectiveBindings("key.repeat")[0].repeat, false);
   assert.equal(first.commands.handleKeyDown(keyboardEvent("x", { code: "KeyX" })).status, "executed");
   assert.equal(first.commands.handleKeyDown(keyboardEvent("x", {
@@ -570,7 +570,7 @@ test("releases a held fallback whose key went up while a sequence was pending", 
   fireTimers();
 
   assert.deepEqual(events, ["start", "end"]);
-  assert.equal(commands.activeCommands.size, 0);
+  assert.equal(commands.getActiveCommandCount(), 0);
 });
 
 test("lifecycle cleanup cancels stale pending work and releases held commands once", () => {
@@ -589,7 +589,8 @@ test("lifecycle cleanup cancels stale pending work and releases held commands on
 
   assert.equal(commands.handleKeyDown(keyboardEvent("g", { code: "KeyG" })).status, "pending");
   staleTimer();
-  assert.ok(commands.pending, "a stale callback must not clear newer pending state");
+  assert.equal(commands.hasPendingSequence(), true,
+    "a stale callback must not clear newer pending state");
   assert.equal(commands.handleKeyDown(keyboardEvent("g", { code: "KeyG" })).commandId,
     "key.sequence");
   assert.deepEqual(events, ["sequence"]);
@@ -601,7 +602,7 @@ test("lifecycle cleanup cancels stale pending work and releases held commands on
   assert.equal(commands.handleKeyUp(keyboardEvent("h", { code: "KeyH" })).handled, false);
 
   commands.handleKeyDown(keyboardEvent("h", { code: "KeyH" }));
-  commands.setBinding("view.preview", 0, keybinding("j"));
+  commands.assignBinding("view.preview", keybinding("j"));
   assert.deepEqual(events.slice(-2), ["start", "end:binding-change"]);
 
   commands.handleKeyDown(keyboardEvent("j", { code: "KeyJ" }));
@@ -623,7 +624,7 @@ test("lifecycle cleanup during execution does not register a stale held activati
   assert.equal(commands.handleKeyDown(keyboardEvent("h", { code: "KeyH" })).status,
     "executed");
   assert.deepEqual(events, ["start", "end:modal"]);
-  assert.equal(commands.activeCommands.size, 0);
+  assert.equal(commands.getActiveCommandCount(), 0);
   assert.equal(commands.handleKeyUp(keyboardEvent("h", { code: "KeyH" })).handled,
     false);
 });
@@ -649,7 +650,7 @@ test("conflict replacement commits one complete durable edit", () => {
     result,
   }));
 
-  const result = commands.replaceConflicts("tool.pencil", keybinding("l"));
+  const result = commands.assignBinding("tool.pencil", keybinding("l"), { conflicts: "replace" });
 
   assert.equal(result.status, "durable");
   assert.equal(result.persistence, "saved");
@@ -679,7 +680,7 @@ test("subscriber failures do not reject a committed preference edit", () => {
     delivered = result;
   });
 
-  const result = commands.setBinding("tool.draw", 0, keybinding("p"));
+  const result = commands.assignBinding("tool.draw", keybinding("p"));
 
   assert.equal(result.status, "durable");
   assert.equal(result.applied, true);
@@ -702,7 +703,7 @@ test("preference edits expose session-only and rejected persistence outcomes", (
   register(unavailable.commands, "tool.draw", keybinding("n"), () => {});
   const unavailableNotifications = [];
   unavailable.commands.onDidChange((result) => unavailableNotifications.push(result));
-  const unavailableResult = unavailable.commands.unbindCommand("tool.draw");
+  const unavailableResult = unavailable.commands.clearBinding("tool.draw");
   assert.equal(unavailableResult.status, "session-only");
   assert.equal(unavailableResult.persistence, "unavailable");
   assert.equal(unavailableResult.applied, true);
@@ -720,7 +721,7 @@ test("preference edits expose session-only and rejected persistence outcomes", (
     },
   });
   register(quota.commands, "tool.draw", keybinding("n"), () => {});
-  const quotaResult = quota.commands.setBinding("tool.draw", 0, keybinding("p"));
+  const quotaResult = quota.commands.assignBinding("tool.draw", keybinding("p"));
   assert.equal(quotaResult.status, "session-only");
   assert.equal(quotaResult.persistence, "failed");
   assert.match(quotaResult.error.message, /quota exceeded/);
@@ -738,8 +739,8 @@ test("preference edits expose session-only and rejected persistence outcomes", (
   assert.equal(quota.commands.formatBindings("tool.draw"), "P");
   assert.equal(saveCalls, 1);
 
-  assert.equal(quota.commands.resetCommand("tool.draw").status, "session-only");
-  assert.equal(quota.commands.resetAll().status, "session-only");
+  assert.equal(quota.commands.resetBinding("tool.draw").status, "session-only");
+  assert.equal(quota.commands.resetAllBindings().status, "session-only");
 });
 
 test("execution separates synchronous acceptance from eventual completion", async () => {
@@ -808,7 +809,7 @@ test("enabled-predicate failures reject execution and report once", () => {
 test("persists only overrides and supports unbind, reset, import, and corrupt-data quarantine", () => {
   const first = createCommandHarness();
   register(first.commands, "tool.draw", keybinding("n"), () => {});
-  assert.equal(first.commands.setBinding("tool.draw", 0,
+  assert.equal(first.commands.assignBinding("tool.draw",
     keybinding("p", { shift: true })).status, "durable");
   assert.equal(JSON.parse(first.storage.value).version, 1);
   assert.equal(JSON.parse(first.storage.value).overrides["tool.draw"][0].sequence[0].key, "p");
@@ -816,15 +817,17 @@ test("persists only overrides and supports unbind, reset, import, and corrupt-da
   const reloaded = createCommandHarness({ storage: createMemoryStorage(first.storage.value) });
   register(reloaded.commands, "tool.draw", keybinding("n"), () => {});
   assert.equal(reloaded.commands.formatBindings("tool.draw"), "Shift+P");
-  assert.equal(reloaded.commands.unbindCommand("tool.draw").status, "durable");
+  assert.equal(reloaded.commands.clearBinding("tool.draw").status, "durable");
   assert.deepEqual(reloaded.commands.getEffectiveBindings("tool.draw"), []);
-  assert.equal(reloaded.commands.resetCommand("tool.draw").status, "durable");
+  assert.equal(reloaded.commands.resetBinding("tool.draw").status, "durable");
   assert.equal(reloaded.commands.formatBindings("tool.draw"), "N");
 
-  assert.equal(reloaded.commands.importConfiguration(JSON.stringify({
+  const truncatedImport = reloaded.commands.importConfiguration(JSON.stringify({
     version: 1,
     overrides: { "tool.draw": [keybinding("p"), keybinding("q")] },
-  })).status, "durable");
+  }));
+  assert.equal(truncatedImport.status, "durable");
+  assert.deepEqual(truncatedImport.diagnostics.truncatedCommandIds, ["tool.draw"]);
   assert.equal(reloaded.commands.formatBindings("tool.draw"), "P");
   assert.equal(reloaded.commands.getEffectiveBindings("tool.draw").length, 1);
 
@@ -840,6 +843,167 @@ test("persists only overrides and supports unbind, reset, import, and corrupt-da
   assert.equal(corruptStorage.quarantined.length, 1);
   assert.equal(corrupt.commands.formatBindings("tool.draw"), "N");
   assert.equal(corrupt.errors.length, 1);
+});
+
+test("shortcut override API owns one binding and preserves unknown preferences", () => {
+  const storage = createMemoryStorage(JSON.stringify({
+    version: 1,
+    overrides: {
+      "future.command": [keybinding("f")],
+      "tool.draw": [keybinding("p")],
+    },
+  }));
+  const { commands } = createCommandHarness({ storage });
+  commands.registerCommand({
+    category: "Test",
+    contexts: [{}],
+    defaultBindings: [keybinding("n"), keybinding("m")],
+    execute: () => {},
+    id: "tool.draw",
+    title: "tool.draw",
+  });
+
+  assert.equal(commands.formatBindings("tool.draw"), "P");
+  assert.equal(commands.commands, undefined);
+  assert.equal(commands.dispatcher, undefined);
+  assert.equal(commands.storage, undefined);
+  assert.equal(commands.overrides, undefined);
+  assert.equal(commands.activeCommands, undefined);
+  assert.equal(commands.pending, undefined);
+  assert.equal(commands.load, undefined);
+  assert.equal(commands.persist, undefined);
+  assert.equal(commands.notify, undefined);
+  assert.equal(commands.setBinding, undefined);
+  assert.equal(commands.removeBinding, undefined);
+  assert.equal(commands.formatBindings("future.command"), "");
+  assert.deepEqual(Object.keys(JSON.parse(commands.exportConfiguration()).overrides).sort(), [
+    "future.command",
+    "tool.draw",
+  ]);
+
+  register(commands, "future.command", keybinding("x"), () => {});
+  assert.equal(commands.formatBindings("future.command"), "F");
+
+  commands.resetBinding("tool.draw");
+  assert.equal(commands.formatBindings("tool.draw"), "N / M");
+  commands.assignBinding("future.command", keybinding("n"), { conflicts: "replace" });
+  assert.equal(commands.formatBindings("tool.draw"), "");
+  assert.equal(commands.formatBindings("future.command"), "N");
+});
+
+test("interactive imports report invalid, truncated, and unknown entries", () => {
+  const { commands } = createCommandHarness();
+  register(commands, "tool.draw", keybinding("n"), () => {});
+  const imported = commands.importConfiguration(JSON.stringify({
+    version: 1,
+    overrides: {
+      "Bad id": [keybinding("b")],
+      "future.command": [keybinding("f")],
+      "tool.draw": [keybinding("p"), keybinding("q")],
+      "tool.invalid": [{
+        sequence: [{
+          alt: false, code: null, ctrl: false, key: "i", meta: false, mod: false, shift: false,
+        }],
+        when: { unsupportedContext: true },
+      }],
+    },
+  }));
+
+  assert.equal(imported.status, "durable");
+  assert.equal(commands.formatBindings("tool.draw"), "P");
+  assert.deepEqual(imported.diagnostics.truncatedCommandIds, ["tool.draw"]);
+  assert.deepEqual(imported.diagnostics.unknownCommandIds, ["future.command"]);
+  assert.deepEqual(imported.diagnostics.skipped.map(({ commandId, reason }) => ({ commandId, reason })), [
+    { commandId: "Bad id", reason: "invalid-command-id" },
+    { commandId: "tool.invalid", reason: "invalid-binding" },
+  ]);
+  assert.deepEqual(Object.keys(JSON.parse(commands.exportConfiguration()).overrides).sort(), [
+    "future.command",
+    "tool.draw",
+  ]);
+
+  register(commands, "future.command", keybinding("x"), () => {});
+  assert.equal(commands.formatBindings("future.command"), "F");
+});
+
+test("startup recovery keeps valid entries without quarantining the whole preference file", () => {
+  const storage = createMemoryStorage(JSON.stringify({
+    version: 1,
+    overrides: {
+      "tool.draw": [keybinding("p")],
+      "tool.invalid": [{ sequence: [] }],
+    },
+  }));
+  const { commands, errors } = createCommandHarness({ storage });
+  register(commands, "tool.draw", keybinding("n"), () => {});
+
+  assert.equal(commands.formatBindings("tool.draw"), "P");
+  assert.equal(storage.quarantined.length, 0);
+  assert.deepEqual(errors.map(({ operation }) => operation), ["recover keyboard shortcuts"]);
+});
+
+test("shortcut registration and views reject unsupported context data", () => {
+  const { commands } = createCommandHarness();
+  assert.throws(() => commands.registerCommand({
+    contexts: /** @type {any} */ ({ focus: "canvas" }),
+    execute: () => {},
+    id: "tool.invalidContexts",
+    title: "Invalid contexts",
+  }), /keyboard contexts must be an array/);
+  assert.equal(commands.hasCommand("tool.invalidContexts"), false);
+  assert.throws(() => commands.registerCommand({
+    actionContexts: /** @type {any} */ ({ editorMode: "2d" }),
+    contexts: [{}],
+    execute: () => {},
+    id: "tool.invalidActionContexts",
+    title: "Invalid action contexts",
+  }), /action contexts must be an array/);
+  assert.equal(commands.hasCommand("tool.invalidActionContexts"), false);
+  assert.throws(() => commands.registerCommand({
+    contexts: new Array(1),
+    execute: () => {},
+    id: "tool.sparseContexts",
+    title: "Sparse contexts",
+  }), /unsupported keyboard context/);
+  assert.equal(commands.hasCommand("tool.sparseContexts"), false);
+  assert.throws(() => register(
+    commands,
+    "tool.invalid",
+    keybinding("i"),
+    () => {},
+    [{ unsupportedContext: true }],
+  ), /unsupported keyboard context/);
+  assert.equal(commands.hasCommand("tool.invalid"), false);
+  assert.throws(() => register(
+    commands,
+    "tool.invalidFocus",
+    keybinding("i"),
+    () => {},
+    [{ focus: "sideways" }],
+  ), /unsupported keyboard context/);
+  assert.equal(commands.hasCommand("tool.invalidFocus"), false);
+
+  register(commands, "tool.draw", keybinding("n"), () => {}, [{
+    editorMode: { anyOf: ["2d", "3d"] },
+    selectionActive: { not: true },
+  }]);
+  const bindings = commands.getEffectiveBindings("tool.draw");
+  const summary = commands.getCommands().find(({ id }) => id === "tool.draw");
+  assert.equal(Object.isFrozen(bindings), true);
+  assert.equal(Object.isFrozen(bindings[0]), true);
+  assert.equal(Object.isFrozen(bindings[0].sequence), true);
+  assert.equal(Object.isFrozen(summary), true);
+  assert.equal(Object.isFrozen(summary.contexts), true);
+  assert.throws(() => bindings.push(keybinding("p")), TypeError);
+
+  const result = commands.assignBinding("tool.draw", keybinding("p"));
+  assert.equal(Object.isFrozen(result.configuration), true);
+  assert.equal(Object.isFrozen(result.configuration.overrides), true);
+  assert.equal(Object.isFrozen(result.configuration.overrides["tool.draw"]), true);
+  assert.throws(() => {
+    result.configuration.overrides["tool.draw"] = [];
+  }, TypeError);
+  assert.equal(commands.formatBindings("tool.draw"), "P");
 });
 
 test("browser storage adapter isolates failures and quarantines invalid documents", () => {

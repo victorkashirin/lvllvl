@@ -5,6 +5,7 @@ import {
   parseKeyboardEvent,
   PUNCTUATION_CODE_MAP,
 } from "@tanstack/hotkeys";
+import { normalizeShortcutContextClause } from "./shortcutContext.mjs";
 
 /** @type {Readonly<Record<string, string>>} */
 const keyAliases = Object.freeze({
@@ -74,10 +75,10 @@ function normalizeCode(value) {
 
 /**
  * @typedef {object} Keybinding
- * @property {KeyChord[]} sequence
+ * @property {readonly KeyChord[]} sequence
  * @property {number} [priority]
  * @property {boolean} [repeat]
- * @property {Record<string, unknown>} [when]
+ * @property {import("./shortcutContext.mjs").ShortcutContextClause} [when]
  */
 
 /** @typedef {"certain" | "none" | "possible"} BindingCoincidence */
@@ -138,15 +139,16 @@ export function normalizeBinding(value) {
   }
   const sequence = raw.sequence.map(normalizeChord);
   if (sequence.some((chord) => chord === null)) return null;
+  const hasWhen = Object.prototype.hasOwnProperty.call(raw, "when") && raw.when !== undefined;
+  const when = hasWhen ? normalizeShortcutContextClause(raw.when) : null;
+  if (hasWhen && !when) return null;
   /** @type {Keybinding} */
   const binding = {
-    sequence: /** @type {KeyChord[]} */ (sequence),
+    sequence: Object.freeze(/** @type {KeyChord[]} */ (sequence)),
     priority: Number.isSafeInteger(raw.priority) ? Number(raw.priority) : 0,
     repeat: raw.repeat === true,
   };
-  if (raw.when && typeof raw.when === "object" && !Array.isArray(raw.when)) {
-    binding.when = { .../** @type {Record<string, unknown>} */ (raw.when) };
-  }
+  if (when) binding.when = when;
   return Object.freeze(binding);
 }
 
@@ -293,8 +295,8 @@ function chordCoincidence(left, right, platform) {
 }
 
 /**
- * @param {KeyChord[]} left
- * @param {KeyChord[]} right
+ * @param {readonly KeyChord[]} left
+ * @param {readonly KeyChord[]} right
  * @param {number} length
  * @param {"mac" | "other"} platform
  * @returns {BindingCoincidence}

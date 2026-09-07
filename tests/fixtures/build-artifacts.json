@@ -39,8 +39,8 @@
       "sha256": "1ce9a4ffaebcee3ad690a90e5286ca233979ca060ed8114430b0c45847f04086"
     },
     "js/modules/application/commandService.mjs": {
-      "bytes": 59137,
-      "sha256": "1b341d2311248ba566da30eab4c1454cc9cba387768919ac76ea9479899c979f"
+      "bytes": 61631,
+      "sha256": "6b5476c3055f30a270654c7642a326632fa9161213d1799087981de2dcf4e2cc"
     },
     "js/modules/application/documentSession.mjs": {
       "bytes": 4351,
@@ -59,16 +59,16 @@
       "sha256": "edf8e490574850373e5e2f3b305c4420e5b1ad9ef032158103e708cf1ed3130d"
     },
     "js/modules/domain/keybindings.mjs": {
-      "bytes": 28742,
-      "sha256": "e0e8bb46545b277c1529551ff2c9810257ccc60b9d99282d305f312dd97acd56"
+      "bytes": 28976,
+      "sha256": "893f2f96ef12655886f17be1467090e0a81a0a4de7f0b3cd6ed0ef254f98ad2d"
     },
     "js/modules/domain/legacyMenuCommandDefinitions.mjs": {
       "bytes": 12675,
       "sha256": "006681e95ef3765c89fb060e8fb8fdde011cd1f26ddc869e89acc9188eb41fe2"
     },
     "js/modules/domain/shortcutContext.mjs": {
-      "bytes": 2423,
-      "sha256": "870b027835c0c04c3ba275290643bd958769d3f44825f7ff31a99a37089bb0c2"
+      "bytes": 6777,
+      "sha256": "e85b1cb20bbb12d78841bab33ea5c271212bf6cb9413315bec64f42d2f7abed8"
     },
     "js/modules/domain/svgExport.mjs": {
       "bytes": 3727,
@@ -83,12 +83,12 @@
       "sha256": "01472954f1ac9bda34d13f521bc5bab724d779fe0b10ca5d27dd2842862dfc52"
     },
     "js/modules/feature-adapters/keyboardShortcutsDialog.mjs": {
-      "bytes": 31859,
-      "sha256": "5315c017f43f7e0b70f6e982274f414b1bd408e96ec0c09dc1d39038c0859f4d"
+      "bytes": 32221,
+      "sha256": "a06cb0db04f33a69c202f7f1d30cd51c5f0860647517aa5483ee4d072a238892"
     },
     "js/modules/feature-adapters/legacyCommandCatalogAdapter.mjs": {
-      "bytes": 29793,
-      "sha256": "604dfbccfcb8d9b0cee56299d6010c1de14cafc4b496eb3f751ae6b8d9c23634"
+      "bytes": 29842,
+      "sha256": "65b51fbf69aa3d2068d8b445c69a859d613e6475b5078089db9ea16f4dfbe3be"
     },
     "js/modules/feature-adapters/legacyRemoteProviderFacades.mjs": {
       "bytes": 4551,

@@ -1,5 +1,6 @@
 /** @typedef {import("../application/commandService.mjs").CommandService} CommandService */
-/** @typedef {{id: string, title: string, category: string, key?: string, keys?: string[], modifiers?: Record<string, boolean>, contexts: Record<string, unknown>[], allowDuringCanvasTyping?: boolean, execute: (details?: {source?: string}) => unknown, isEnabled?: () => boolean, release?: (details?: {source?: string}) => unknown, repeat?: boolean}} LegacyCommandRegistration */
+/** @typedef {import("../domain/shortcutContext.mjs").ShortcutContextClause} ShortcutContextClause */
+/** @typedef {{id: string, title: string, category: string, key?: string, keys?: string[], modifiers?: Record<string, boolean>, contexts: ShortcutContextClause[], allowDuringCanvasTyping?: boolean, execute: (details?: {source?: string}) => unknown, isEnabled?: () => boolean, release?: (details?: {source?: string}) => unknown, repeat?: boolean}} LegacyCommandRegistration */
 /** @typedef {{commandId: string, menu: any, menuItem: any}} LegacyMenuEntry */
 
 import {
@@ -20,7 +21,7 @@ export function commandIdForLegacyMenuItem(menuItemId) {
   return getLegacyMenuCommandDefinitionForAlias(menuItemId)?.id || null;
 }
 
-/** @param {any} menu @returns {Record<string, unknown>[]} */
+/** @param {any} menu @returns {ShortcutContextClause[]} */
 function menuCommandContexts(menu) {
   const classNames = typeof menu.className === "string" ? menu.className.split(/\s+/) : [];
   /** @param {string} className */
@@ -38,7 +39,7 @@ function menuCommandContexts(menu) {
     ? { not: "sprite" }
     : (hasClass("ui-menu-sprite") ? "sprite" : null);
   if (graphicType !== null && uniqueModes.includes("2d")) {
-    /** @type {Record<string, unknown>[]} */
+    /** @type {ShortcutContextClause[]} */
     const contexts = [{ ...baseContext, editorMode: "2d", graphicType }];
     const otherModes = uniqueModes.filter((mode) => mode !== "2d");
     if (otherModes.length) {
@@ -58,7 +59,7 @@ function menuCommandContexts(menu) {
   return [baseContext];
 }
 
-/** @param {any} menu @param {Record<string, unknown>[]} commandContexts @returns {Record<string, unknown>[]} */
+/** @param {any} menu @param {ShortcutContextClause[]} commandContexts @returns {ShortcutContextClause[]} */
 function menuActionContexts(menu, commandContexts) {
   const keyboardOnly = new Set(["modal", "popupOpen", "shortcutsAllowed"]);
   const actionContexts = commandContexts.map((commandContext) => Object.fromEntries(
@@ -98,7 +99,7 @@ export function createLegacyCommandCatalogAdapter({
   /** @param {string} key @param {Record<string, boolean>} [modifiers] */
   const binding = (key, modifiers = {}) =>
     commands.bindingFromLegacyShortcut({ key, ...modifiers });
-  /** @param {Record<string, unknown>} [values] @returns {Record<string, unknown>[]} */
+  /** @param {ShortcutContextClause} [values] @returns {ShortcutContextClause[]} */
   const context = (values = {}) => [{ ...baseTextContext, ...values }];
   /** @param {LegacyCommandRegistration} definition */
   const register = (definition) => {
@@ -631,7 +632,6 @@ export function createLegacyCommandCatalogAdapter({
       registerEditorCommands();
       registerMenuCommands(menuBar);
       commands.onDidChange(updateLabels);
-      commands.finalizeRegistration();
       menuBar.shortcuts = menuBar.shortcuts.filter((/** @type {any} */ shortcut) =>
         shortcut.menuItem.commandId === null || shortcut.menuItem.legacyShortcutModes.length > 0);
       updateLabels();

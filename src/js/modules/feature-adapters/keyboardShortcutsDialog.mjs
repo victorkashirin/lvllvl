@@ -1,5 +1,7 @@
 /** @typedef {Record<string, any>} LegacyUI */
 /** @typedef {import("../application/commandService.mjs").CommandService} CommandService */
+/** @typedef {import("../application/commandService.mjs").BindingConflict} ShortcutConflict */
+/** @typedef {import("../application/commandService.mjs").CommandSummary} ShortcutSummary */
 /** @typedef {import("../domain/keybindings.mjs").Keybinding} Keybinding */
 
 /**
@@ -7,34 +9,8 @@
  * @property {Keybinding | null} binding
  * @property {boolean} capturing
  * @property {string} commandId
- * @property {ShortcutConflict[]} conflicts
+ * @property {readonly ShortcutConflict[]} conflicts
  * @property {string} display
- * @property {number} index
- */
-
-/**
- * @typedef {object} ShortcutConflict
- * @property {number} [bindingIndex]
- * @property {string} commandId
- * @property {string} contextLabel
- * @property {boolean} [layoutDependent]
- * @property {"new" | "existing" | "unresolved"} [precedence]
- * @property {string} title
- * @property {"context-separated" | "duplicate" | "hard" | "layout-possible" | "layout-unknown" | "prefix" | "reserved"} type
- */
-
-/**
- * @typedef {object} ShortcutSummary
- * @property {Keybinding[]} bindings
- * @property {string} category
- * @property {ShortcutConflict[]} conflicts
- * @property {Record<string, unknown>[]} contexts
- * @property {string} contextLabel
- * @property {string} id
- * @property {boolean} availableInCurrentMode
- * @property {boolean} modified
- * @property {string} source
- * @property {string} title
  */
 
 /**
@@ -100,6 +76,30 @@ export function createKeyboardShortcutsDialog({
     }
     setStatus(durableMessage);
     return true;
+  }
+
+  /** @param {import("../application/commandService.mjs").ShortcutImportDiagnostics | null} diagnostics */
+  function importDiagnosticsMessage(diagnostics) {
+    if (!diagnostics) return "";
+    const parts = [];
+    if (diagnostics.skipped.length) {
+      parts.push(`${diagnostics.skipped.length} invalid ${
+        diagnostics.skipped.length === 1 ? "entry was" : "entries were"
+      } skipped.`);
+    }
+    if (diagnostics.truncatedCommandIds.length) {
+      parts.push(`Extra shortcuts were ignored for ${diagnostics.truncatedCommandIds.length} ${
+        diagnostics.truncatedCommandIds.length === 1 ? "command" : "commands"
+      }.`);
+    }
+    if (diagnostics.unknownCommandIds.length) {
+      parts.push(`${diagnostics.unknownCommandIds.length} unknown ${
+        diagnostics.unknownCommandIds.length === 1
+          ? "command override was"
+          : "command overrides were"
+      } retained for future availability.`);
+    }
+    return parts.length ? ` ${parts.join(" ")}` : "";
   }
 
   /** @param {string} tag @param {string} [className] @param {string} [text] */
@@ -224,7 +224,7 @@ export function createKeyboardShortcutsDialog({
     return labels.length ? labels.join(" / ") : "Other editor modes";
   }
 
-  /** @param {ShortcutSummary[]} summaries */
+  /** @param {readonly ShortcutSummary[]} summaries */
   function groupedRows(summaries) {
     const sorted = [...summaries].sort((left, right) => {
       if (left.availableInCurrentMode !== right.availableInCurrentMode) {
@@ -303,7 +303,6 @@ export function createKeyboardShortcutsDialog({
     edit.setAttribute("aria-label", `${summary.bindings.length ? "Change" : "Assign"} ${summary.title} shortcut${
       summary.bindings.length ? ` ${bindingLabel}` : ""
     }`);
-    edit.dataset.index = "0";
     setAction(edit, "change", summary.id);
     bindingsCell.appendChild(edit);
     row.appendChild(bindingsCell);
@@ -408,7 +407,7 @@ export function createKeyboardShortcutsDialog({
     positionRecorder(/** @type {HTMLElement | null} */ (commandControl(recording.commandId)));
   }
 
-  /** @param {ShortcutSummary[]} [summaries] */
+  /** @param {readonly ShortcutSummary[]} [summaries] */
   function renderRecorder(summaries = commands.getCommands()) {
     const panel = element("keyboardShortcutsRecorder");
     if (!panel) return;
@@ -483,8 +482,8 @@ export function createKeyboardShortcutsDialog({
     capture?.focus({ preventScroll: true });
   }
 
-  /** @param {string} commandId @param {number} index */
-  function startRecording(commandId, index) {
+  /** @param {string} commandId */
+  function startRecording(commandId) {
     const summary = commands.getCommands().find((candidate) => candidate.id === commandId);
     if (!summary) return;
     retainedCommandId = "";
@@ -494,7 +493,6 @@ export function createKeyboardShortcutsDialog({
       commandId,
       conflicts: [],
       display: "Start recording",
-      index,
     };
     commands.setRecording(false);
     setStatus("");
@@ -510,12 +508,10 @@ export function createKeyboardShortcutsDialog({
     const commandId = recording.commandId;
     const binding = recording.binding;
     const analysis = commands.analyzeBinding(commandId, binding);
-    const result = commands.editBindings({
-      binding,
-      commandId,
-      replaceConflicts: behavior === "replace",
-      takePrecedence: behavior === "precedence",
-      type: "assign",
+    const result = commands.assignBinding(commandId, binding, {
+      conflicts: behavior === "replace"
+        ? "replace"
+        : behavior === "precedence" ? "take-precedence" : "keep",
     });
     if (result.status === "rejected") {
       recording.capturing = false;
@@ -610,19 +606,18 @@ export function createKeyboardShortcutsDialog({
     const target = /** @type {HTMLElement} */ (closest);
     const action = target.dataset.action;
     const commandId = target.dataset.commandId || "";
-    const index = Number(target.dataset.index ?? -1);
     if (action === "change") {
-      startRecording(commandId, index);
+      startRecording(commandId);
     } else if (action === "clear") {
       showEditOutcome(
-        commands.unbindCommand(commandId),
+        commands.clearBinding(commandId),
         "Shortcut cleared and saved.",
         "Shortcut cleared for this session, but could not be saved.",
         "Shortcut could not be cleared.",
       );
     } else if (action === "reset") {
       showEditOutcome(
-        commands.resetCommand(commandId),
+        commands.resetBinding(commandId),
         "Default shortcut restored and saved.",
         "Default shortcut restored for this session, but could not be saved.",
         "Default shortcut could not be restored.",
@@ -638,7 +633,7 @@ export function createKeyboardShortcutsDialog({
       commitRecording("precedence");
     } else if (action === "reset-all") {
       if (confirmAction("Reset all keyboard shortcuts to their defaults?")) {
-        const result = commands.resetAll();
+        const result = commands.resetAllBindings();
         showEditOutcome(
           result,
           result.applied ? "All default shortcuts restored and saved." : "All shortcuts already use their defaults.",
@@ -662,11 +657,12 @@ export function createKeyboardShortcutsDialog({
     if (!file) return;
     try {
       const result = commands.importConfiguration(await file.text());
+      const diagnostics = importDiagnosticsMessage(result.diagnostics);
       if (!showEditOutcome(
         result,
-        result.applied ? "Keyboard shortcuts imported and saved." : "Keyboard shortcuts already match the import.",
-        "Keyboard shortcuts imported for this session, but could not be saved.",
-        "Could not import shortcuts: the file is not valid.",
+        (result.applied ? "Keyboard shortcuts imported and saved." : "Keyboard shortcuts already match the import.") + diagnostics,
+        "Keyboard shortcuts imported for this session, but could not be saved." + diagnostics,
+        "Could not import shortcuts: the file is not valid." + diagnostics,
       )) {
         reportError("import keyboard shortcuts", result.error);
       }
