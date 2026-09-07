@@ -1033,7 +1033,8 @@ LayerGrid.prototype = {
       ? this.editor.layers.isBackgroundVisible() : args.drawBackground;
     var state = this.getFrameRenderState(args.frame, drawBackground);
     if(vector) {
-      state.push(args.scale, args.drawFromX, args.drawFromY, args.drawToX, args.drawToY);
+      state.push(args.scale, args.pixelRatio || 1,
+        args.drawFromX, args.drawFromY, args.drawToX, args.drawToY);
     }
 
     var cache = this.prevFrameCache;
@@ -3343,7 +3344,15 @@ LayerGrid.prototype = {
 
 
     // need the extra parameters
-    var scale = args.scale;    
+    var displayScale = args.scale;
+    if(typeof displayScale == 'undefined') {
+      return {
+        offsetX: offsetX,
+        offsetY: offsetY
+      };
+    }
+    var pixelRatio = args.pixelRatio || 1;
+    var scale = displayScale * pixelRatio;
     var drawFromX = args.drawFromX;
     var drawFromY = args.drawFromY;
     var drawToX = args.drawToX;
@@ -3386,8 +3395,10 @@ LayerGrid.prototype = {
 
 
     // work out the offsets
-    offsetX = ((drawFromGridX * tileWidth) - drawFromX) * scale;
-    offsetY = ((drawFromGridY * tileHeight) - drawFromY) * scale;
+    // Offsets are consumed as logical viewport coordinates. The scratch canvas
+    // itself is rendered at display zoom multiplied by DPR.
+    offsetX = ((drawFromGridX * tileWidth) - drawFromX) * displayScale;
+    offsetY = ((drawFromGridY * tileHeight) - drawFromY) * displayScale;
 
     if(drawToGridX > gridWidth) {
       drawToGridX = gridWidth;
@@ -3425,13 +3436,6 @@ LayerGrid.prototype = {
 
     console.log(drawToX + ',' + drawToY + ',' + drawToWidth);
 */
-
-    if(typeof scale == 'undefined') {
-      return {
-        offsetX: offsetX,
-        offsetY: offsetY
-      };
-    }
 
     var hasTileFlip = this.getHasTileFlip();
     var hasTileRotate = this.getHasTileRotate();

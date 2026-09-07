@@ -261,6 +261,21 @@ test("vector cache keys exact viewport/scale and preserves main dirty ranges and
   assert.deepEqual({ ...f.layer.updatedCellRanges }, ranges);
 });
 
+test("vector viewport rasters include device-pixel scale in storage and cache keys", () => {
+  const f = fixture({ vector: true });
+  f.args.pixelRatio = 2;
+  f.draw();
+  assert.equal(f.args.canvas.width, 8);
+  assert.equal(f.args.canvas.height, 8);
+  assert.equal(f.calls.at(-1).pixelRatio, 2);
+  const calls = f.calls.length;
+  f.draw();
+  assert.equal(f.calls.length, calls);
+  f.args.pixelRatio = 1.5;
+  f.draw();
+  assert.equal(f.calls.length, calls + 1, "DPR changes invalidate the vector cache");
+});
+
 test("bitmap cache is viewport-independent, per-layer, and detects canvas replacement/reset", () => {
   const a = fixture(), b = fixture();
   a.draw();

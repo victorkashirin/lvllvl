@@ -156,14 +156,17 @@ for (const vector of [false, true]) {
     f.layer.getMode = () => vector ? "vector" : "bitmap";
     f.shapes.startShape("rect", 10, 10, 0);
     f.shapes.setShapeTo(13, 13, 0);
-    const args = { srcX: 12 * 8, srcY: 12 * 8, srcWidth: 80, srcHeight: 80, scale: 2.25 };
+    const args = { srcX: 12 * 8, srcY: 12 * 8, srcWidth: 80, srcHeight: 80,
+      scale: 2.25, pixelRatio: vector ? 2 : 1 };
     const preview = f.shapes.drawPreview(f.layer, args);
-    const pixels = (vector ? 3 * 2.25 : 2) * 8;
+    const renderScale = vector ? 2.25 * 2 : 1;
+    const pixels = (vector ? 3 * renderScale : 2) * 8;
     assert.equal(preview.width, pixels);
     assert.equal(preview.height, pixels);
-    assert.equal(preview.canvas.width, vector ? 80 * 2.25 : pixels);
-    assert.equal(preview.canvas.height, vector ? 80 * 2.25 : pixels);
+    assert.equal(preview.canvas.width, vector ? 80 * renderScale : pixels);
+    assert.equal(preview.canvas.height, vector ? 80 * renderScale : pixels);
     assert.equal(preview.x, 12 * 8);
+    if(vector) assert.ok(f.rasters.every(({ pixelRatio }) => pixelRatio === 2));
     const count = f.rasters.length;
     assert.equal(f.shapes.drawPreview(f.layer, { ...args, srcX: 1000 }), false);
     assert.equal(f.rasters.length, count);

@@ -2228,6 +2228,8 @@ GridView2d.prototype = {
         scale = 0.1;
       }
     }
+    // Retain sub-step precision so small wheel and trackpad deltas accumulate
+    // until they cross the next displayed 25% zoom step.
     this.scale = scale;
     this.backBufferNeedsRedraw = true;
     this.gridNeedsRedraw = true;
@@ -3311,8 +3313,9 @@ GridView2d.prototype = {
       this.overlayCanvas.width = this.canvas.width;
       this.overlayCanvas.height = this.canvas.height;
       this.overlayContext = UI.getContextNoSmoothing(this.overlayCanvas);
-      this.overlayContext.scale(this.uiComponent.getScale(), this.uiComponent.getScale());
     }
+    this.overlayContext.setTransform(this.uiComponent.getScale(), 0, 0,
+      this.uiComponent.getScale(), 0, 0);
 
     // does the grid need redrawing?
     if(this.editor.graphic.getOnlyViewBoundsDrawn() ) {
@@ -3420,46 +3423,64 @@ GridView2d.prototype = {
 
   },
 
-  // Sample bitmap pixels on a fixed CSS-pixel lattice, independent of browser
-  // drawImage filtering, dirty clips, scratch size, and device ratio. Quarter-step
-  // zooms (and the 10% minimum) have an exact rational representation here, so a
-  // pixel centre on a source boundary always selects the pixel to its right/below.
-  // Viewport-only: uniform zoom, with a context transform of integer DPR plus
-  // translation (including the translated clipboard path), not arbitrary affine transforms.
+  // Sample bitmap pixels at backing-store pixel centres. Sampling on the CSS
+  // lattice and enlarging that raster for Retina displays wastes the available
+  // resolution and turns exact physical scales (for example 350% at 2x) into
+  // alternating source-pixel widths.
   drawRasterImage: function(context, bounds, image, sx, sy, sw, sh, dx, dy, dw, dh) {
     if(sw <= 0 || sh <= 0 || dw <= 0 || dh <= 0) {
       return;
     }
-    var scale = dw / sw;
     var transform = context.getTransform();
-    var translateX = transform.e / transform.a;
-    var translateY = transform.f / transform.d;
+    var scaleX = dw / sw;
+    var scaleY = dh / sh;
 
-    // Integer magnification cannot put a destination pixel centre on a source
-    // boundary. Keep the native, zero-readback fast path for these common zooms.
-    if(Number.isInteger(scale) && dh / sh === scale
-      && Number.isInteger(dx + translateX) && Number.isInteger(dy + translateY)) {
+    // This sampler is for the viewport's axis-aligned positive DPR transform.
+    // Preserve native canvas behaviour for other callers and fractional source
+    // rectangles, which require filtering rather than discrete pixel reads.
+    if(transform.a <= 0 || transform.d <= 0 || transform.b !== 0 || transform.c !== 0
+      || !Number.isInteger(sx) || !Number.isInteger(sy)
+      || !Number.isInteger(sw) || !Number.isInteger(sh)) {
       context.drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh);
       return;
     }
 
-    var denominator = scale < 0.25 ? 10 : 4;
-    var numerator = Math.round(scale * denominator);
-    var originX = Math.round((dx + translateX - sx * scale) * denominator);
-    var originY = Math.round((dy + translateY - sy * scale) * denominator);
+    var physicalScaleX = scaleX * transform.a;
+    var physicalScaleY = scaleY * transform.d;
+    var physicalOriginX = transform.e + (dx - sx * scaleX) * transform.a;
+    var physicalOriginY = transform.f + (dy - sy * scaleY) * transform.d;
+    var epsilon = 1e-9;
+
+    // Integer physical magnification with an integer physical origin has an
+    // unambiguous nearest-neighbour result, so retain the zero-readback path.
+    if(!bounds && Number.isInteger(physicalScaleX) && physicalScaleY === physicalScaleX
+      && Number.isInteger(physicalOriginX) && Number.isInteger(physicalOriginY)) {
+      context.drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh);
+      return;
+    }
+
     var sourceLeft = Math.max(0, sx);
     var sourceTop = Math.max(0, sy);
     var sourceRight = Math.min(image.width, sx + sw);
     var sourceBottom = Math.min(image.height, sy + sh);
-    var left = Math.max(0, Math.ceil((originX + sourceLeft * numerator) / denominator - 0.5));
-    var top = Math.max(0, Math.ceil((originY + sourceTop * numerator) / denominator - 0.5));
-    var right = Math.min(Math.floor(this.width), Math.ceil((originX + sourceRight * numerator) / denominator - 0.5));
-    var bottom = Math.min(Math.floor(this.height), Math.ceil((originY + sourceBottom * numerator) / denominator - 0.5));
+    var targetCanvas = context.canvas || this.backBufferCanvas || this.canvas;
+    var targetWidth = targetCanvas ? targetCanvas.width : Math.round(this.width * transform.a);
+    var targetHeight = targetCanvas ? targetCanvas.height : Math.round(this.height * transform.d);
+    var left = Math.max(0, Math.ceil(physicalOriginX + sourceLeft * physicalScaleX - 0.5 - epsilon));
+    var top = Math.max(0, Math.ceil(physicalOriginY + sourceTop * physicalScaleY - 0.5 - epsilon));
+    var right = Math.min(targetWidth,
+      Math.ceil(physicalOriginX + sourceRight * physicalScaleX - 0.5 - epsilon));
+    var bottom = Math.min(targetHeight,
+      Math.ceil(physicalOriginY + sourceBottom * physicalScaleY - 0.5 - epsilon));
     if(bounds) {
-      left = Math.max(left, bounds.x);
-      top = Math.max(top, bounds.y);
-      right = Math.min(right, bounds.x + bounds.width);
-      bottom = Math.min(bottom, bounds.y + bounds.height);
+      left = Math.max(left,
+        Math.ceil(transform.e + bounds.x * transform.a - 0.5 - epsilon));
+      top = Math.max(top,
+        Math.ceil(transform.f + bounds.y * transform.d - 0.5 - epsilon));
+      right = Math.min(right,
+        Math.ceil(transform.e + (bounds.x + bounds.width) * transform.a - 0.5 - epsilon));
+      bottom = Math.min(bottom,
+        Math.ceil(transform.f + (bounds.y + bounds.height) * transform.d - 0.5 - epsilon));
     }
     var width = right - left;
     var height = bottom - top;
@@ -3482,18 +3503,18 @@ GridView2d.prototype = {
     var output = new Uint32Array(this.rasterImageData.data.buffer);
     var columns = new Int32Array(width);
     for(var x = 0; x < width; x++) {
-      columns[x] = Math.floor(((left + x + 0.5) * denominator - originX) / numerator);
+      columns[x] = Math.floor((left + x + 0.5 - physicalOriginX) / physicalScaleX + epsilon);
     }
     var readX = columns[0];
     var readWidth = columns[width - 1] - readX + 1;
-    var lastSourceY = Math.floor(((bottom - 0.5) * denominator - originY) / numerator);
+    var lastSourceY = Math.floor((bottom - 0.5 - physicalOriginY) / physicalScaleY + epsilon);
     var sourceContext = image.getContext('2d');
     var readY = -1;
     var readBottom = -1;
     var previousY = -1;
     var input = null;
     for(var y = 0; y < height; y++) {
-      var sourceY = Math.floor(((top + y + 0.5) * denominator - originY) / numerator);
+      var sourceY = Math.floor((top + y + 0.5 - physicalOriginY) / physicalScaleY + epsilon);
       var row = y * width;
       if(sourceY === previousY) {
         output.copyWithin(row, row - width, row);
@@ -3514,9 +3535,13 @@ GridView2d.prototype = {
       previousY = sourceY;
     }
     this.rasterContext.putImageData(this.rasterImageData, 0, 0);
-    // One integer-positioned blit preserves the caller's opacity/composite mode.
-    // The overlay's integer device transform enlarges these same CSS pixels.
-    context.drawImage(this.rasterCanvas, left - translateX, top - translateY);
+    // The scratch raster is already in backing pixels. Temporarily remove the
+    // DPR transform so one integer-positioned blit preserves its exact lattice,
+    // as well as the caller's opacity, composite mode and clip.
+    context.save();
+    context.setTransform(1, 0, 0, 1, 0, 0);
+    context.drawImage(this.rasterCanvas, left, top);
+    context.restore();
   },
 
   drawRasterRegions: function(context, regions, image, sx, sy, sw, sh, dx, dy, dw, dh) {
@@ -3527,9 +3552,22 @@ GridView2d.prototype = {
     for(var i = 0; i < regions.length; i++) {
       var region = regions[i];
       context.save();
+      var transform = context.getTransform();
+      // Include backing pixels by their centres, using the same half-pixel
+      // convention as drawRasterImage. A wider floor/ceil clip would let the
+      // layer clear pixels that the bounded sampler intentionally does not replace.
+      var clipLeft = Math.ceil(transform.e + region.x * transform.a - 0.5 - 1e-9);
+      var clipTop = Math.ceil(transform.f + region.y * transform.d - 0.5 - 1e-9);
+      var clipRight = Math.ceil(
+        transform.e + (region.x + region.width) * transform.a - 0.5 - 1e-9);
+      var clipBottom = Math.ceil(
+        transform.f + (region.y + region.height) * transform.d - 0.5 - 1e-9);
+      context.setTransform(1, 0, 0, 1, 0, 0);
       context.beginPath();
-      context.rect(region.x, region.y, region.width, region.height);
+      context.rect(clipLeft, clipTop, clipRight - clipLeft, clipBottom - clipTop);
       context.clip();
+      context.setTransform(transform.a, transform.b, transform.c, transform.d,
+        transform.e, transform.f);
       this.drawRasterImage(context, region, image, sx, sy, sw, sh, dx, dy, dw, dh);
       context.restore();
     }
@@ -3949,17 +3987,24 @@ GridView2d.prototype = {
     this.findViewBounds();
 
     
-    // create the back buffer and size it to the viewport size
+    var canvasScale = this.uiComponent.getScale();
+
+    // Keep artwork at backing-store resolution. All drawing coordinates remain
+    // CSS pixels through the DPR transform, while bitmap sampling and vector
+    // rasterization can use every physical pixel.
     if(this.backBufferCanvas == null) {
       this.backBufferCanvas = document.createElement('canvas');
     }
 
-    if(this.backBufferContext == null || this.backBufferCanvas.width < this.width || this.backBufferCanvas.height < this.height) {      
-      this.backBufferCanvas.width = this.width;
-      this.backBufferCanvas.height = this.height;
+    if(this.backBufferContext == null
+      || this.backBufferCanvas.width != this.canvas.width
+      || this.backBufferCanvas.height != this.canvas.height) {
+      this.backBufferCanvas.width = this.canvas.width;
+      this.backBufferCanvas.height = this.canvas.height;
       this.backBufferContext = UI.getContextNoSmoothing(this.backBufferCanvas);
       redrawLayers = true;
     }
+    this.backBufferContext.setTransform(canvasScale, 0, 0, canvasScale, 0, 0);
 
     var baseCanvasResized = false;
     if(this.baseCanvas == null) {
@@ -4057,13 +4102,28 @@ GridView2d.prototype = {
     if(redrawLayers) {
       this.backBufferContext.save();
       if(dirtyArtworkRegions) {
+        this.backBufferContext.setTransform(1, 0, 0, 1, 0, 0);
         this.backBufferContext.beginPath();
         for(var regionIndex = 0; regionIndex < dirtyArtworkRegions.length; regionIndex++) {
           var clipRegion = dirtyArtworkRegions[regionIndex];
-          this.backBufferContext.rect(clipRegion.x, clipRegion.y,
-            clipRegion.width, clipRegion.height);
+          // Match the bounded bitmap sampler's centre-based raster extent. The
+          // background fills below must not clear a larger physical rectangle.
+          var clipLeft = Math.ceil(clipRegion.x * canvasScale - 0.5 - 1e-9);
+          var clipTop = Math.ceil(clipRegion.y * canvasScale - 0.5 - 1e-9);
+          var clipRight = Math.ceil(
+            (clipRegion.x + clipRegion.width) * canvasScale - 0.5 - 1e-9);
+          var clipBottom = Math.ceil(
+            (clipRegion.y + clipRegion.height) * canvasScale - 0.5 - 1e-9);
+          this.backBufferContext.rect(clipLeft, clipTop,
+            clipRight - clipLeft, clipBottom - clipTop);
         }
         this.backBufferContext.clip();
+        this.backBufferContext.setTransform(canvasScale, 0, 0, canvasScale, 0, 0);
+      } else {
+        this.backBufferContext.setTransform(1, 0, 0, 1, 0, 0);
+        this.backBufferContext.clearRect(0, 0,
+          this.backBufferCanvas.width, this.backBufferCanvas.height);
+        this.backBufferContext.setTransform(canvasScale, 0, 0, canvasScale, 0, 0);
       }
       this.backBufferContext.globalAlpha = 1;
       this.backBufferContext.globalCompositeOperation = 'source-over';
@@ -4168,6 +4228,9 @@ GridView2d.prototype = {
         scale: scale,
         dstWidth: dstWidth,
         dstHeight: dstHeight,
+        canvasWidth: this.width,
+        canvasHeight: this.height,
+        pixelRatio: canvasScale,
         allCells: allCells,
         drawBackground: drawBackground,
         drawPreviousFrame: drawPreviousFrame,
@@ -4179,7 +4242,6 @@ GridView2d.prototype = {
     }
 
     var frontContext = this.context;
-    var canvasScale = this.uiComponent.getScale();
     var redrawComposite = redrawLayers || this.gridNeedsRedraw || baseCanvasResized;
     var redrawFullComposite = baseCanvasResized
       || this.gridNeedsRedraw
@@ -4200,10 +4262,12 @@ GridView2d.prototype = {
         this.baseContext.beginPath();
         for(var compositeIndex = 0; compositeIndex < dirtyArtworkRegions.length; compositeIndex++) {
           var dirtyRegion = dirtyArtworkRegions[compositeIndex];
-          var compositeX = Math.floor(dirtyRegion.x * canvasScale);
-          var compositeY = Math.floor(dirtyRegion.y * canvasScale);
-          var compositeRight = Math.ceil((dirtyRegion.x + dirtyRegion.width) * canvasScale);
-          var compositeBottom = Math.ceil((dirtyRegion.y + dirtyRegion.height) * canvasScale);
+          var compositeX = Math.ceil(dirtyRegion.x * canvasScale - 0.5 - 1e-9);
+          var compositeY = Math.ceil(dirtyRegion.y * canvasScale - 0.5 - 1e-9);
+          var compositeRight = Math.ceil(
+            (dirtyRegion.x + dirtyRegion.width) * canvasScale - 0.5 - 1e-9);
+          var compositeBottom = Math.ceil(
+            (dirtyRegion.y + dirtyRegion.height) * canvasScale - 0.5 - 1e-9);
           var compositeRegion = {
             x: compositeX, y: compositeY,
             width: compositeRight - compositeX,
@@ -4222,6 +4286,11 @@ GridView2d.prototype = {
         this.baseContext.clip();
       }
 
+      this.baseContext.setTransform(1, 0, 0, 1, 0, 0);
+      this.baseContext.globalAlpha = 1;
+      this.baseContext.globalCompositeOperation = 'source-over';
+      this.baseContext.clearRect(0, 0, this.baseCanvas.width, this.baseCanvas.height);
+      this.baseContext.drawImage(this.backBufferCanvas, 0, 0);
       this.baseContext.setTransform(
         canvasScale,
         0,
@@ -4230,9 +4299,6 @@ GridView2d.prototype = {
         0,
         0
       );
-      this.baseContext.globalAlpha = 1;
-      this.baseContext.globalCompositeOperation = 'source-over';
-      this.baseContext.drawImage(this.backBufferCanvas, 0, 0);
       this.baseContext.setLineDash([]);
       this.drawGrid(x, y, graphicWidth, graphicHeight, this.baseContext,
         gridDrawRegions);
@@ -4246,6 +4312,8 @@ GridView2d.prototype = {
       if(compositeRegions) {
         for(var presentIndex = 0; presentIndex < compositeRegions.length; presentIndex++) {
           var presentRegion = compositeRegions[presentIndex];
+          frontContext.clearRect(presentRegion.x, presentRegion.y,
+            presentRegion.width, presentRegion.height);
           frontContext.drawImage(
             this.baseCanvas,
             presentRegion.x,
@@ -4259,6 +4327,7 @@ GridView2d.prototype = {
           );
         }
       } else {
+        frontContext.clearRect(0, 0, this.canvas.width, this.canvas.height);
         frontContext.drawImage(this.baseCanvas, 0, 0);
       }
       frontContext.restore();

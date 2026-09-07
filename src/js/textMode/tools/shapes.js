@@ -138,8 +138,10 @@ Shapes.prototype = {
     if(minX >= maxX || minY >= maxY) { return false; }
 
     var scale = vector ? args.scale : 1;
-    var width = (maxX - minX) * tileWidth * scale;
-    var height = (maxY - minY) * tileHeight * scale;
+    var pixelRatio = vector ? (args.pixelRatio || 1) : 1;
+    var renderScale = scale * pixelRatio;
+    var width = (maxX - minX) * tileWidth * renderScale;
+    var height = (maxY - minY) * tileHeight * renderScale;
     if(this.previewCanvas === null) { this.previewCanvas = document.createElement('canvas'); }
     if(!vector) {
       if(this.previewCanvas.width !== width) { this.previewCanvas.width = width; }
@@ -149,7 +151,7 @@ Shapes.prototype = {
       canvas: this.previewCanvas, draw: 'shapes', allCells: true, frame: args.frame,
       fromX: minX, fromY: minY, toX: maxX, toY: maxY,
       canvasFromX: minX, canvasFromY: minY,
-      drawBackground: args.drawBackground, scale: scale,
+      drawBackground: args.drawBackground, scale: scale, pixelRatio: pixelRatio,
       drawFromX: minX * tileWidth, drawFromY: minY * tileHeight,
       drawToX: maxX * tileWidth, drawToY: maxY * tileHeight
     };
@@ -163,8 +165,8 @@ Shapes.prototype = {
       var viewMinY = Math.max(0, Math.floor(args.srcY / tileHeight));
       var viewMaxX = Math.min(this.width, Math.ceil((args.srcX + args.srcWidth) / tileWidth));
       var viewMaxY = Math.min(this.height, Math.ceil((args.srcY + args.srcHeight) / tileHeight));
-      var canvasWidth = Math.ceil((viewMaxX - viewMinX) * tileWidth * scale);
-      var canvasHeight = Math.ceil((viewMaxY - viewMinY) * tileHeight * scale);
+      var canvasWidth = Math.ceil((viewMaxX - viewMinX) * tileWidth * renderScale);
+      var canvasHeight = Math.ceil((viewMaxY - viewMinY) * tileHeight * renderScale);
       if(this.previewCanvas.width !== canvasWidth) { this.previewCanvas.width = canvasWidth; }
       if(this.previewCanvas.height !== canvasHeight) { this.previewCanvas.height = canvasHeight; }
       drawArgs.drawFromX = viewMinX * tileWidth;
@@ -181,12 +183,12 @@ Shapes.prototype = {
       drawArgs.bgOnly = false;
       drawArgs.fgOnly = true;
       layer.drawVector(drawArgs);
-      sourceX = Math.floor((minX - viewMinX) * tileWidth * scale);
-      sourceY = Math.floor((minY - viewMinY) * tileHeight * scale);
-      width = Math.ceil((maxX - viewMinX) * tileWidth * scale) - sourceX;
-      height = Math.ceil((maxY - viewMinY) * tileHeight * scale) - sourceY;
-      x = viewMinX * tileWidth + sourceX / scale;
-      y = viewMinY * tileHeight + sourceY / scale;
+      sourceX = Math.floor((minX - viewMinX) * tileWidth * renderScale);
+      sourceY = Math.floor((minY - viewMinY) * tileHeight * renderScale);
+      width = Math.ceil((maxX - viewMinX) * tileWidth * renderScale) - sourceX;
+      height = Math.ceil((maxY - viewMinY) * tileHeight * renderScale) - sourceY;
+      x = viewMinX * tileWidth + sourceX / renderScale;
+      y = viewMinY * tileHeight + sourceY / renderScale;
     } else {
       layer.draw(drawArgs);
     }

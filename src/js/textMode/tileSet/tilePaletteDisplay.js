@@ -19,6 +19,8 @@ var TilePaletteDisplay = function() {
 
   this.tileCanvas = null;
   this.tileContext = null;
+  this.tileCanvasWidth = 0;
+  this.tileCanvasHeight = 0;
 
 
   this.columnWidthMax = false;
@@ -725,15 +727,15 @@ TilePaletteDisplay.prototype = {
       }
 
 
-      this.canvasScale = Math.floor(UI.devicePixelRatio);
+      this.canvasScale = UI.devicePixelRatio;
 
       // is the display allowed to resize the canvas?
       if(this.resizeCanvas) {
         this.canvas.style.width = canvasWidth + 'px';
         this.canvas.style.height = canvasHeight + 'px';
 
-        this.canvas.width = canvasWidth * this.canvasScale;
-        this.canvas.height = canvasHeight * this.canvasScale;
+        this.canvas.width = Math.round(canvasWidth * this.canvasScale);
+        this.canvas.height = Math.round(canvasHeight * this.canvasScale);
       }
       this.context = this.canvas.getContext("2d");
 
@@ -753,14 +755,14 @@ TilePaletteDisplay.prototype = {
   },
 
   checkCanvasSize: function() {
-    
+    this.canvasScale = UI.devicePixelRatio;
 
     var dimensions = this.getContentDimensions(this.tilePaletteScale);
     var canvasWidth = dimensions.width;
     var canvasHeight = dimensions.height;
 
-    var scaledCanvasWidth = canvasWidth * this.canvasScale;
-    var scaledCanvasHeight = canvasHeight * this.canvasScale;
+    var scaledCanvasWidth = Math.round(canvasWidth * this.canvasScale);
+    var scaledCanvasHeight = Math.round(canvasHeight * this.canvasScale);
 
 
     if(this.resizeCanvas) {
@@ -776,11 +778,23 @@ TilePaletteDisplay.prototype = {
     this.context = this.canvas.getContext("2d");
 
 
-    if(this.tileCanvas.width != canvasWidth || this.tileCanvas.height != canvasHeight || this.tileContext == null) {
-      this.tileCanvas.width = canvasWidth;
-      this.tileCanvas.height = canvasHeight;
+    this.tileCanvasWidth = canvasWidth;
+    this.tileCanvasHeight = canvasHeight;
+
+    // Cache glyphs at backing-store resolution. Keeping the palette layout in
+    // CSS pixels preserves hit testing and scrolling, while rendering the
+    // glyphs directly on the device-pixel lattice avoids a second scaled blit.
+    var tileCanvasWidth = Math.ceil(canvasWidth * this.canvasScale);
+    var tileCanvasHeight = Math.ceil(canvasHeight * this.canvasScale);
+    if(this.tileCanvas.width != tileCanvasWidth || this.tileCanvas.height != tileCanvasHeight || this.tileContext == null) {
+      this.tileCanvas.width = tileCanvasWidth;
+      this.tileCanvas.height = tileCanvasHeight;
       this.tileContext = UI.getContextNoSmoothing(this.tileCanvas);
     }
+  },
+
+  toBackingPixel: function(value) {
+    return Math.round(value * this.canvasScale);
   },
 
 
@@ -945,6 +959,8 @@ TilePaletteDisplay.prototype = {
     var drawArgs = state.drawArgs;
     var fgColor = state.fgColor;
     var bgColor = state.bgColor;
+    var renderAtX = this.toBackingPixel(drawAtX);
+    var renderAtY = this.toBackingPixel(drawAtY);
 
     drawArgs['character'] = ch;
     if(state.screenMode === TextModeEditor.Mode.C64ECM) {
@@ -978,7 +994,7 @@ TilePaletteDisplay.prototype = {
       // leave pixels that a later selective redraw of that cell cannot clear.
       context.save();
       context.beginPath();
-      context.rect(drawAtX, drawAtY, state.drawTileWidth, state.drawTileHeight);
+      context.rect(renderAtX, renderAtY, state.renderTileWidth, state.renderTileHeight);
       context.clip();
 
       if(bgColor != colorPaletteManager.noColor) {
@@ -994,11 +1010,11 @@ TilePaletteDisplay.prototype = {
       } else {
         context.fillStyle = styles.textMode.tilePaletteBg;
       }
-      context.fillRect(drawAtX, drawAtY, state.drawTileWidth, state.drawTileHeight);
+      context.fillRect(renderAtX, renderAtY, state.renderTileWidth, state.renderTileHeight);
 
       var path = tileSet.getGlyphPath(ch);
       if(path) {
-        var cellSize = state.drawTileWidth;
+        var cellSize = state.renderTileWidth;
         var fontScale = tileSet.getFontScale();
         var scale = cellSize * fontScale;
         var ascent = tileSet.getFontAscent();
@@ -1009,7 +1025,7 @@ TilePaletteDisplay.prototype = {
           context.fillStyle = '#' + colorPalette.getHexString(fgColor);
         }
         context.strokeStyle = context.fillStyle;
-        context.setTransform(scale, 0, 0, -scale, drawAtX, drawAtY + ascent * scale);
+        context.setTransform(scale, 0, 0, -scale, renderAtX, renderAtY + ascent * scale);
 
         if(state.flipH) {
           context.translate(1 / (2 * fontScale), -1 / (2 * fontScale) + ascent);
@@ -1037,9 +1053,9 @@ TilePaletteDisplay.prototype = {
     drawArgs['flipH'] = state.flipH;
     drawArgs['flipV'] = state.flipV;
     drawArgs['rotZ'] = state.rotateZ;
-    drawArgs['x'] = drawAtX;
-    drawArgs['y'] = drawAtY;
-    drawArgs['scale'] = this.tilePaletteScale;
+    drawArgs['x'] = renderAtX;
+    drawArgs['y'] = renderAtY;
+    drawArgs['scale'] = state.renderScale;
     tileSet.drawCharacter(drawArgs);
 
     if(this.selectedCharacters.length > 0 && ch == this.selectedCharacters[0]) {
@@ -1096,10 +1112,10 @@ TilePaletteDisplay.prototype = {
         this.tilePaletteImageData,
         0,
         0,
-        dirty.paletteX,
-        dirty.paletteY,
-        state.drawTileWidth,
-        state.drawTileHeight
+        dirty.x,
+        dirty.y,
+        state.renderTileWidth,
+        state.renderTileHeight
       );
     }
 
@@ -1301,6 +1317,17 @@ TilePaletteDisplay.prototype = {
       this.gridMapClear();
     }
 
+    // Logical dimensions drive layout and hit testing. Render dimensions are
+    // calculated independently so bitmap and vector glyphs land directly on
+    // the backing-store pixel grid.
+    var scaledTileDimensions = this.getScaledTileDimensions(this.tilePaletteScale);
+    var drawTileWidth = scaledTileDimensions.width;
+    var drawTileHeight = scaledTileDimensions.height;
+    var renderScale = this.tilePaletteScale * this.canvasScale;
+    var renderTileDimensions = this.getScaledTileDimensions(renderScale);
+    var renderTileWidth = renderTileDimensions.width;
+    var renderTileHeight = renderTileDimensions.height;
+
 
     if(this.singleTileCanvas == null) {
       this.singleTileCanvas = document.createElement('canvas');
@@ -1311,7 +1338,7 @@ TilePaletteDisplay.prototype = {
     var singleTileWidth = tileWidth;
     var singleTileHeight = tileHeight;
     if(tileSet.getType() == 'vector') {
-      this.singleTileScale = this.tilePaletteScale;
+      this.singleTileScale = renderScale;
       var singleTileDimensions = this.getScaledTileDimensions(this.singleTileScale);
       singleTileWidth = singleTileDimensions.width;
       singleTileHeight = singleTileDimensions.height;
@@ -1374,11 +1401,6 @@ TilePaletteDisplay.prototype = {
       args['c64Multi2Color'] = layer.getC64Multi2Color();      
     }
 
-    // tile dimensions used for the tile coordinates map
-    var scaledTileDimensions = this.getScaledTileDimensions(this.tilePaletteScale);
-    var drawTileWidth = scaledTileDimensions.width;
-    var drawTileHeight = scaledTileDimensions.height;
-
     var drawState = {
       tileSet: tileSet,
       colorPalette: colorPalette,
@@ -1395,6 +1417,9 @@ TilePaletteDisplay.prototype = {
       defaultBgColorRGB: defaultBgColorRGB,
       drawTileWidth: drawTileWidth,
       drawTileHeight: drawTileHeight,
+      renderScale: renderScale,
+      renderTileWidth: renderTileWidth,
+      renderTileHeight: renderTileHeight,
       drawArgs: args
     };
 
@@ -1446,10 +1471,10 @@ TilePaletteDisplay.prototype = {
           var drawAtX = tilePosition.x;
           var drawAtY = tilePosition.y;
 
-         if(ch !== false && ch >= 0) {
+          if(ch !== false && ch >= 0) {
             this.tileLocations[ch].push({
-                x: drawAtX * this.canvasScale,
-                y: drawAtY * this.canvasScale,
+                x: this.toBackingPixel(drawAtX),
+                y: this.toBackingPixel(drawAtY),
                 paletteX: drawAtX,
                 paletteY: drawAtY
             });
@@ -1605,18 +1630,24 @@ TilePaletteDisplay.prototype = {
 
 
   resize: function() {
-    this.width = this.canvas.width / UI.devicePixelRatio;
-    this.height = this.canvas.height / UI.devicePixelRatio;
+    this.width = this.canvas.width / this.canvasScale;
+    this.height = this.canvas.height / this.canvasScale;
     this.viewWidth = this.width - this.vScrollBarWidth;
     this.viewHeight = this.height - this.hScrollBarHeight;
 
-    this.contentWidth = this.tileCanvas.width;
-    this.contentHeight = this.tileCanvas.height;
+    this.contentWidth = this.tileCanvasWidth;
+    this.contentHeight = this.tileCanvasHeight;
   },  
 
-  draw: function(args) {    
+  draw: function(args) {
     var highlightedChars = [];
     var selectedChars = [];
+
+    if(this.canvasScale !== UI.devicePixelRatio) {
+      this.canvasScale = UI.devicePixelRatio;
+      args = args || {};
+      args.redrawTiles = true;
+    }
 
     // does the tile palette need redrawing?
     if(typeof args !== 'undefined' && typeof args.redrawTiles != 'undefined' && args.redrawTiles !== false) {
@@ -1683,19 +1714,22 @@ TilePaletteDisplay.prototype = {
 
     this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-    var srcX = Math.round(this.scrollX);
-    var srcY = Math.round(this.scrollY);//this.contentHeight - this.viewHeight - Math.round(this.scrollY);
-    var srcWidth = this.viewWidth;
-    var srcHeight = this.viewHeight;
+    var srcX = this.toBackingPixel(this.scrollX);
+    var srcY = this.toBackingPixel(this.scrollY);
+    var srcRight = Math.min(this.tileCanvas.width, this.toBackingPixel(this.scrollX + this.viewWidth));
+    var srcBottom = Math.min(this.tileCanvas.height, this.toBackingPixel(this.scrollY + this.viewHeight));
+    var srcWidth = Math.min(this.canvas.width, Math.max(0, srcRight - srcX));
+    var srcHeight = Math.min(this.canvas.height, Math.max(0, srcBottom - srcY));
 
     var dstX = 0;
     var dstY = 0;
-    var dstWidth = this.viewWidth * UI.devicePixelRatio;
-    var dstHeight = this.viewHeight * UI.devicePixelRatio;
+    var dstWidth = srcWidth;
+    var dstHeight = srcHeight;
 
-
-    this.context.drawImage(this.tileCanvas, srcX, srcY, srcWidth, srcHeight, 
-                            dstX, dstY, dstWidth, dstHeight);
+    if(srcWidth > 0 && srcHeight > 0) {
+      this.context.drawImage(this.tileCanvas, srcX, srcY, srcWidth, srcHeight,
+                              dstX, dstY, dstWidth, dstHeight);
+    }
 
 
     this.context.fillStyle = styles.tilePalette.highlightOutline;
@@ -1705,6 +1739,7 @@ TilePaletteDisplay.prototype = {
     this.context.lineWidth = 2;
 
     var scaledTileDimensions = this.getScaledTileDimensions(this.tilePaletteScale);
+    var renderedTileDimensions = this.getScaledTileDimensions(this.tilePaletteScale * this.canvasScale);
     var charWidth = (scaledTileDimensions.width + 1) * this.canvasScale;
     var charHeight = (scaledTileDimensions.height + 1) * this.canvasScale;
 
@@ -1712,13 +1747,13 @@ TilePaletteDisplay.prototype = {
     if( this.highlightGridX !== false && this.highlightGridY !== false) {
       // if mouse is causing the highlight, will go in here
       this.context.rect(
-        this.highlightGridPixelX * UI.devicePixelRatio - this.scrollX * UI.devicePixelRatio - 1 + this.charMargin / 2, 
-        this.highlightGridPixelY * UI.devicePixelRatio - this.scrollY * UI.devicePixelRatio - 1 + this.charMargin / 2, 
+        this.toBackingPixel(this.highlightGridPixelX) - srcX - 1 + this.charMargin / 2,
+        this.toBackingPixel(this.highlightGridPixelY) - srcY - 1 + this.charMargin / 2,
         charWidth, charHeight);
     } else {
       for(var i = 0; i < highlightedChars.length; i++) {
-        this.context.rect(highlightedChars[i].x - this.scrollX * UI.devicePixelRatio - 1, 
-          highlightedChars[i].y  - this.scrollY * UI.devicePixelRatio - 1, charWidth, charHeight);
+        this.context.rect(highlightedChars[i].x - srcX - 1,
+          highlightedChars[i].y - srcY - 1, charWidth, charHeight);
     
       }
     }
@@ -1732,16 +1767,16 @@ TilePaletteDisplay.prototype = {
 
     this.context.beginPath();
     this.context.lineWidth = 2;
-    var tileWidth = scaledTileDimensions.width;
-    var tileHeight = scaledTileDimensions.height;
+    var tileWidth = renderedTileDimensions.width;
+    var tileHeight = renderedTileDimensions.height;
     if(this.selectedGridCells.length == 0) {
       for(var i = 0; i < selectedChars.length; i++) {
         if(typeof selectedChars[i] != 'undefined') {
           this.context.rect(
-            (selectedChars[i].x - this.scrollX * UI.devicePixelRatio - 1),//  * UI.devicePixelRatio,
-            (selectedChars[i].y - this.scrollY * UI.devicePixelRatio - 1),//  * UI.devicePixelRatio, 
-            tileWidth * UI.devicePixelRatio,
-            tileHeight * UI.devicePixelRatio);
+            selectedChars[i].x - srcX - 1,
+            selectedChars[i].y - srcY - 1,
+            tileWidth,
+            tileHeight);
         }
       }
     } else {
@@ -1764,10 +1799,10 @@ TilePaletteDisplay.prototype = {
 
 
         this.context.rect(
-          rectX * UI.devicePixelRatio - this.scrollX * UI.devicePixelRatio , 
-          rectY * UI.devicePixelRatio - this.scrollY * UI.devicePixelRatio , 
-          tileWidth * UI.devicePixelRatio,
-          tileHeight * UI.devicePixelRatio);
+          this.toBackingPixel(rectX) - srcX,
+          this.toBackingPixel(rectY) - srcY,
+          tileWidth,
+          tileHeight);
       }
     }
 
@@ -1781,10 +1816,10 @@ TilePaletteDisplay.prototype = {
 
 
       if(this.sortDragTile) {
-        var destTileWidth = scaledTileDimensions.width * UI.devicePixelRatio;
-        var destTileHeight = scaledTileDimensions.height * UI.devicePixelRatio;
-        var destTileX = (this.sortDragTileX - this.mouseDownOnGridPosition.offsetX) * UI.devicePixelRatio;
-        var destTileY = (this.sortDragTileY - this.mouseDownOnGridPosition.offsetY) * UI.devicePixelRatio;
+        var destTileWidth = renderedTileDimensions.width;
+        var destTileHeight = renderedTileDimensions.height;
+        var destTileX = this.toBackingPixel(this.sortDragTileX - this.mouseDownOnGridPosition.offsetX);
+        var destTileY = this.toBackingPixel(this.sortDragTileY - this.mouseDownOnGridPosition.offsetY);
   
         this.context.drawImage(this.singleTileCanvas, 0, 0, this.singleTileCanvas.width, this.singleTileCanvas.height,
           destTileX, destTileY, destTileWidth, destTileHeight);
@@ -1799,25 +1834,25 @@ TilePaletteDisplay.prototype = {
 
     if(this.hScrollBarHeight > 0) {
       // horizontal scroll
-      this.context.fillRect(0, (this.height - this.hScrollBarHeight) * UI.devicePixelRatio, 
-              this.viewWidth * UI.devicePixelRatio, this.hScrollBarHeight * UI.devicePixelRatio);
+      this.context.fillRect(0, (this.height - this.hScrollBarHeight) * this.canvasScale,
+              this.viewWidth * this.canvasScale, this.hScrollBarHeight * this.canvasScale);
       this.context.fillStyle= styles.ui.scrollbar;//'#cccccc';
 
-      this.context.fillRect(this.hScrollBarPosition * UI.devicePixelRatio, 
-              (this.height - this.hScrollBarHeight + 1) * UI.devicePixelRatio, this.hScrollBarPositionWidth * UI.devicePixelRatio, 
-              (this.hScrollBarHeight - 2) * UI.devicePixelRatio);
+      this.context.fillRect(this.hScrollBarPosition * this.canvasScale,
+              (this.height - this.hScrollBarHeight + 1) * this.canvasScale, this.hScrollBarPositionWidth * this.canvasScale,
+              (this.hScrollBarHeight - 2) * this.canvasScale);
     }
 
 
     // vertical scroll
     if(this.vScrollBarWidth > 0) {
       this.context.fillStyle= styles.ui.scrollbarHolder;//'#111111';
-      this.context.fillRect( (this.width - this.vScrollBarWidth) * UI.devicePixelRatio, 0, 
-                              this.vScrollBarWidth * UI.devicePixelRatio, this.viewHeight * UI.devicePixelRatio);
+      this.context.fillRect( (this.width - this.vScrollBarWidth) * this.canvasScale, 0,
+                              this.vScrollBarWidth * this.canvasScale, this.viewHeight * this.canvasScale);
       this.context.fillStyle= styles.ui.scrollbar;//'#cccccc';
-      this.context.fillRect( (this.width - this.vScrollBarWidth + 1) * UI.devicePixelRatio, 
-                              this.vScrollBarPosition * UI.devicePixelRatio, 
-                             (this.vScrollBarWidth - 2) * UI.devicePixelRatio, this.vScrollBarPositionHeight * UI.devicePixelRatio);
+      this.context.fillRect( (this.width - this.vScrollBarWidth + 1) * this.canvasScale,
+                              this.vScrollBarPosition * this.canvasScale,
+                             (this.vScrollBarWidth - 2) * this.canvasScale, this.vScrollBarPositionHeight * this.canvasScale);
     }
 
 

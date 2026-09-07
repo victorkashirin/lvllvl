@@ -2488,6 +2488,29 @@ test("2D editor preserves clipped grid pixels at fractional device scale", async
   expect(result.differences, JSON.stringify(result.differenceSamples)).toBe(0);
 });
 
+test("2D scroll zoom accumulates sub-step trackpad deltas", async ({ page }, testInfo) => {
+  test.skip(!isDesktop2DRendererProject(testInfo));
+
+  await open2DProject(page, testInfo);
+  const scales = await page.evaluate(() => {
+    const view = g_app.textModeEditor.gridView2d;
+    view.setScale(1, false);
+    const values = [];
+    for(let index = 0; index < 4; index++) {
+      view.zoom(0.125, false);
+      values.push({ display: view.displayScale, input: view.scale });
+    }
+    return values;
+  });
+
+  expect(scales).toEqual([
+    { display: 1, input: 1.0625 },
+    { display: 1, input: 1.125 },
+    { display: 1, input: 1.1875 },
+    { display: 1.25, input: 1.25 },
+  ]);
+});
+
 test("2D editor keeps a real 350% pencil hold and drag stable", async ({ page }, testInfo) => {
   test.skip(!isDesktop2DRendererProject(testInfo));
 
@@ -2826,19 +2849,26 @@ test("2D bitmap cursor uses the artwork sampling grid on HiDPI displays", async 
         + view.camera.position.y * zoom) + 12 * layer.getCellHeight() * zoom;
       const width = layer.getCellWidth() * 2 * zoom;
       const height = layer.getCellHeight() * 2 * zoom;
-      // Check the shared CSS sampling lattice, including fractional reductions.
+      // Check the shared backing-pixel sampling lattice, including reductions.
       const artwork = view.context.getImageData(x * 2, y * 2, width * 2, height * 2).data;
       const preview = view.overlayContext.getImageData(x * 2, y * 2, width * 2, height * 2).data;
       let differences = 0;
       for (let index = 0; index < artwork.length; index++) {
         if (artwork[index] !== preview[index]) differences++;
       }
-      return { zoom, differences, scratchSize: [view.rasterCanvas.width, view.rasterCanvas.height], expectedSize: [width, height] };
+      return {
+        zoom,
+        differences,
+        scratchSize: Number.isInteger(zoom * view.uiComponent.getScale())
+          ? null : [view.rasterCanvas.width, view.rasterCanvas.height],
+        expectedSize: Number.isInteger(zoom * view.uiComponent.getScale())
+          ? null : [width * view.uiComponent.getScale(), height * view.uiComponent.getScale()],
+      };
     });
   });
   for (const result of results) {
     expect(result.differences, `cursor at ${result.zoom * 100}%`).toBe(0);
-    expect(result.scratchSize).toEqual(result.expectedSize);
+    if(result.expectedSize) expect(result.scratchSize).toEqual(result.expectedSize);
   }
 });
 

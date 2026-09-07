@@ -98,17 +98,25 @@ UI.CanvasPanel = function() {
 
 
     this.canvas = this.getCanvas();
-    if(this.width != this.canvas.style.width || this.height != this.canvas.style.height || force) {
+    var pixelRatio = UI.devicePixelRatio;
+    var canvasWidth = Math.round(this.width * pixelRatio);
+    var canvasHeight = Math.round(this.height * pixelRatio);
+    if(this.canvas.style.width != this.width + 'px'
+      || this.canvas.style.height != this.height + 'px'
+      || this.canvas.width != canvasWidth
+      || this.canvas.height != canvasHeight
+      || this.scale != pixelRatio
+      || force) {
       if(this.width != 0 && this.height != 0) {
         
         this.canvas.style.width = this.width + 'px';
         this.canvas.style.height = this.height + 'px';
 
 
-        this.canvas.width = this.width * UI.devicePixelRatio;
-        this.canvas.height = this.height * UI.devicePixelRatio;
+        this.canvas.width = canvasWidth;
+        this.canvas.height = canvasHeight;
 
-        this.scale = UI.devicePixelRatio;
+        this.scale = pixelRatio;
 
       }
     }

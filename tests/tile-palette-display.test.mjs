@@ -115,6 +115,7 @@ async function createTestTileSet() {
 }
 
 async function createPaletteRenderFixture({
+  pixelRatio = 1,
   screenMode = "textmode",
   type = "bitmap",
 } = {}) {
@@ -124,6 +125,8 @@ async function createPaletteRenderFixture({
   );
   const putImageDataCalls = [];
   const drawnCharacters = [];
+  const drawCalls = [];
+  const displayDrawImageCalls = [];
   const glyphPaths = [];
   const vectorFills = [];
   const vectorClipRectangles = [];
@@ -157,6 +160,9 @@ async function createPaletteRenderFixture({
     translate() {},
   });
   const displayContext = createContext();
+  displayContext.drawImage = (...args) => {
+    displayDrawImageCalls.push(args);
+  };
   const tileContext = createContext();
   const createCanvas = () => {
     const context = createContext();
@@ -184,7 +190,7 @@ async function createPaletteRenderFixture({
       },
     },
     UI: {
-      devicePixelRatio: 1,
+      devicePixelRatio: pixelRatio,
       getContextNoSmoothing(canvas) {
         return canvas.context;
       },
@@ -216,6 +222,12 @@ async function createPaletteRenderFixture({
   const tileSet = {
     drawCharacter(args) {
       drawnCharacters.push(args.character);
+      drawCalls.push({
+        character: args.character,
+        scale: args.scale,
+        x: args.x,
+        y: args.y,
+      });
     },
     getBlankTile: () => 0,
     getCharacterBGColor: () => -1,
@@ -284,6 +296,8 @@ async function createPaletteRenderFixture({
 
   return {
     display,
+    displayDrawImageCalls,
+    drawCalls,
     drawnCharacters,
     getImageDataReads: () => imageDataReads,
     glyphPaths,
@@ -555,6 +569,35 @@ test("selective bitmap updates reuse the slot map and upload only changed tiles"
   }
 });
 
+test("tile palette glyphs render directly on the fractional device-pixel lattice", async () => {
+  const fixture = await createPaletteRenderFixture({ pixelRatio: 1.25 });
+  fixture.display.setScale(2);
+
+  fixture.display.drawTilePalette();
+
+  const dimensions = fixture.display.getContentDimensions(2);
+  const location = fixture.display.tileLocations[17][0];
+  const drawCall = fixture.drawCalls.find((call) => call.character === 17);
+  assert.equal(fixture.display.canvasScale, 1.25);
+  assert.equal(fixture.display.tileCanvasWidth, dimensions.width);
+  assert.equal(fixture.display.tileCanvasHeight, dimensions.height);
+  assert.equal(fixture.display.tileCanvas.width, Math.ceil(dimensions.width * 1.25));
+  assert.equal(fixture.display.tileCanvas.height, Math.ceil(dimensions.height * 1.25));
+  assert.equal(drawCall.scale, 2.5);
+  assert.equal(drawCall.x, Math.round(location.paletteX * 1.25));
+  assert.equal(drawCall.y, Math.round(location.paletteY * 1.25));
+  assert.equal(location.x, drawCall.x);
+  assert.equal(location.y, drawCall.y);
+
+  fixture.display.draw();
+  const paletteBlit = fixture.displayDrawImageCalls.find(
+    (call) => call[0] === fixture.display.tileCanvas,
+  );
+  assert.ok(paletteBlit);
+  assert.equal(paletteBlit[3], paletteBlit[7]);
+  assert.equal(paletteBlit[4], paletteBlit[8]);
+});
+
 test("selective updates rebuild the slot map after a layout change", async () => {
   const fixture = await createPaletteRenderFixture();
   fixture.display.drawTilePalette();
@@ -579,7 +622,7 @@ test("selective updates rebuild the slot map after a layout change", async () =>
 });
 
 test("selective vector updates repaint only changed glyph slots", async () => {
-  const fixture = await createPaletteRenderFixture({ type: "vector" });
+  const fixture = await createPaletteRenderFixture({ pixelRatio: 1.25, type: "vector" });
   fixture.display.drawTilePalette();
   const readsAfterWarmup = fixture.getImageDataReads();
   fixture.glyphPaths.length = 0;
@@ -596,8 +639,8 @@ test("selective vector updates repaint only changed glyph slots", async () => {
     [
       fixture.display.tileLocations[42][0].x,
       fixture.display.tileLocations[42][0].y,
-      16,
-      16,
+      20,
+      20,
     ],
   );
   assert.equal(fixture.vectorFills.length, 1);

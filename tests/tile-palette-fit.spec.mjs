@@ -672,6 +672,77 @@ test("tile palettes fit their panels and retain a precise manual scale", async (
   expect(wideFit.contentWidth).toBeLessThanOrEqual(wideFit.viewWidth);
 });
 
+test("tile palette backing stores follow fractional display pixel ratios", async ({ page }) => {
+  await openDefaultProject(page);
+
+  const result = await page.evaluate(() => {
+    const palette = g_app.textModeEditor.tools.drawTools.tilePalette;
+    const display = palette.tilePaletteDisplay;
+    const tileSet = g_app.textModeEditor.tileSetManager.getCurrentTileSet();
+    const originalPixelRatio = UI.devicePixelRatio;
+    const originalDrawCharacter = tileSet.drawCharacter;
+    const displayContext = display.canvas.getContext("2d");
+    const originalDrawImage = displayContext.drawImage;
+    const glyphCalls = [];
+    const paletteBlits = [];
+
+    try {
+      UI.devicePixelRatio = 1.25;
+      palette.resize();
+      palette.initCharInfoCanvas();
+      display.setScale(2);
+
+      tileSet.drawCharacter = function (args) {
+        if (args.imageData === display.tilePaletteImageData) {
+          glyphCalls.push({ scale: args.scale, x: args.x, y: args.y });
+        }
+        return originalDrawCharacter.apply(this, arguments);
+      };
+      displayContext.drawImage = function (...args) {
+        if (args[0] === display.tileCanvas) {
+          paletteBlits.push(args.slice(1));
+        }
+        return originalDrawImage.apply(this, args);
+      };
+
+      display.draw({ redrawTiles: true });
+      const dimensions = display.getContentDimensions(2);
+      const glyphCall = glyphCalls.find((call) => call.scale === 2.5);
+      const paletteBlit = paletteBlits.at(-1);
+
+      return {
+        canvasScale: display.canvasScale,
+        displayBackingWidth: display.canvas.width,
+        displayCssWidth: palette.width,
+        glyphCall,
+        paletteBlit,
+        previewBackingHeight: palette.characterCanvas.height,
+        previewBackingWidth: palette.characterCanvas.width,
+        tileBackingHeight: display.tileCanvas.height,
+        tileBackingWidth: display.tileCanvas.width,
+        tileCssHeight: dimensions.height,
+        tileCssWidth: dimensions.width,
+      };
+    } finally {
+      tileSet.drawCharacter = originalDrawCharacter;
+      displayContext.drawImage = originalDrawImage;
+      UI.devicePixelRatio = originalPixelRatio;
+      palette.resize();
+      palette.initCharInfoCanvas();
+    }
+  });
+
+  expect(result.canvasScale).toBe(1.25);
+  expect(result.displayBackingWidth).toBe(Math.round(result.displayCssWidth * 1.25));
+  expect(result.previewBackingWidth).toBe(20);
+  expect(result.previewBackingHeight).toBe(20);
+  expect(result.tileBackingWidth).toBe(Math.ceil(result.tileCssWidth * 1.25));
+  expect(result.tileBackingHeight).toBe(Math.ceil(result.tileCssHeight * 1.25));
+  expect(result.glyphCall).toBeTruthy();
+  expect(result.paletteBlit[2]).toBe(result.paletteBlit[6]);
+  expect(result.paletteBlit[3]).toBe(result.paletteBlit[7]);
+});
+
 test("a changed bitmap glyph reuses palette slots and uploads only its rectangles", async ({ page }) => {
   await openDefaultProject(page);
 

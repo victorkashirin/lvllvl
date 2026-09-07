@@ -10,7 +10,9 @@ const pixelAt = (x, y) => (0xff000000 | ((y + 1) << 12) | (x + 1)) >>> 0;
 function fixture({ width = 37, height = 29, sourceWidth = 127, sourceHeight = 193, ratio = 1, tx = 0, ty = 0 } = {}) {
   const reads = [];
   const writes = [];
-  const pixels = new Uint32Array(width * height);
+  const backingWidth = Math.round(width * ratio);
+  const backingHeight = Math.round(height * ratio);
+  const pixels = new Uint32Array(backingWidth * backingHeight);
   const makeCanvas = () => {
     const canvas = { width: 0, height: 0 };
     const context = {
@@ -46,47 +48,85 @@ function fixture({ width = 37, height = 29, sourceWidth = 127, sourceHeight = 19
       },
     }),
   };
+  let transform = { a: ratio, b: 0, c: 0, d: ratio, e: tx * ratio, f: ty * ratio };
+  const transforms = [];
   const context = {
+    canvas: { width: backingWidth, height: backingHeight },
+    clipBounds: false,
     globalAlpha: 0.4,
     globalCompositeOperation: "multiply",
-    getTransform: () => ({ a: ratio, d: ratio, e: tx * ratio, f: ty * ratio }),
+    getTransform: () => ({ ...transform }),
+    save: () => transforms.push({ ...transform }),
+    restore: () => { transform = transforms.pop(); },
+    setTransform: (a, b, c, d, e, f) => { transform = { a, b, c, d, e, f }; },
     drawImage: (...args) => {
       writes.push(args);
-      if (args.length !== 3) return; // Native integer-zoom fast path.
-      const [canvas, x, y] = args;
-      const left = x + tx;
-      const top = y + ty;
-      assert.ok(Number.isInteger(left) && Number.isInteger(top));
-      for (let row = 0; row < canvas.height; row++) {
-        pixels.set(canvas.pixels.subarray(row * canvas.width, (row + 1) * canvas.width),
-          (top + row) * width + left);
+      if (args.length === 3) {
+        const [canvas, left, top] = args;
+        assert.ok(Number.isInteger(left) && Number.isInteger(top));
+        for (let row = 0; row < canvas.height; row++) {
+          pixels.set(canvas.pixels.subarray(row * canvas.width, (row + 1) * canvas.width),
+            (top + row) * backingWidth + left);
+        }
+        return;
+      }
+
+      // Simulate the unambiguous integer-physical-scale fast path.
+      const [, sourceX, sourceY, sourceW, sourceH, destX, destY, destW, destH] = args;
+      const physicalScaleX = destW / sourceW * transform.a;
+      const physicalScaleY = destH / sourceH * transform.d;
+      const originX = transform.e + (destX - sourceX * destW / sourceW) * transform.a;
+      const originY = transform.f + (destY - sourceY * destH / sourceH) * transform.d;
+      for (let y = 0; y < backingHeight; y++) {
+        const sampledY = Math.floor((y + 0.5 - originY) / physicalScaleY + 1e-9);
+        if (sampledY < sourceY || sampledY >= sourceY + sourceH) continue;
+        for (let x = 0; x < backingWidth; x++) {
+          if (context.clipBounds) {
+            const logicalX = (x + 0.5 - transform.e) / transform.a;
+            const logicalY = (y + 0.5 - transform.f) / transform.d;
+            if (logicalX < context.clipBounds.x
+              || logicalX >= context.clipBounds.x + context.clipBounds.width
+              || logicalY < context.clipBounds.y
+              || logicalY >= context.clipBounds.y + context.clipBounds.height) continue;
+          }
+          const sampledX = Math.floor((x + 0.5 - originX) / physicalScaleX + 1e-9);
+          if (sampledX >= sourceX && sampledX < sourceX + sourceW) {
+            pixels[y * backingWidth + x] = pixelAt(sampledX, sampledY);
+          }
+        }
       }
     },
   };
-  return { view, image, context, pixels, reads, writes, graphic: new sandbox.Graphic() };
+  return { view, image, context, pixels, reads, writes, backingWidth, backingHeight,
+    graphic: new sandbox.Graphic() };
 }
 
-test("fractional bitmap sampling matches a pixel-centre oracle across clips, offsets and device ratios", () => {
+test("bitmap sampling matches the backing-pixel-centre oracle across clips, offsets and device ratios", () => {
   for (const scale of [0.1, 0.25, 0.5, 0.75, 1.25, 2.25, 2.5, 2.75, 3.5]) {
-    for (const ratio of [1, 2, 3]) {
+    for (const ratio of [1, 1.25, 1.5, 2, 3]) {
       for (const bounds of [false, { x: 9, y: 7, width: 13, height: 11 }]) {
         const f = fixture({ ratio, tx: 5, ty: -3 });
         const denominator = scale === 0.1 ? 10 : 4;
-        const numerator = Math.round(scale * denominator);
         // Fractional phase, negative origin, clipped source, and non-square image.
-        const ox = -7 * denominator + 3 * numerator;
-        const oy = 2 * denominator + numerator;
+        const ox = -7 * denominator + 3 * Math.round(scale * denominator);
+        const oy = 2 * denominator + Math.round(scale * denominator);
         const sx = 2, sy = 1, sw = 99, sh = 150;
         const dx = ox / denominator + sx * scale - 5;
         const dy = oy / denominator + sy * scale + 3;
+        f.context.clipBounds = bounds;
         f.view.drawRasterImage(f.context, bounds, f.image, sx, sy, sw, sh, dx, dy, sw * scale, sh * scale);
-        for (let y = 0; y < f.view.height; y++) {
-          for (let x = 0; x < f.view.width; x++) {
-            const srcX = Math.floor(((2 * x + 1) * denominator - 2 * ox) / (2 * numerator));
-            const srcY = Math.floor(((2 * y + 1) * denominator - 2 * oy) / (2 * numerator));
+        const physicalOriginX = ox / denominator * ratio;
+        const physicalOriginY = oy / denominator * ratio;
+        for (let y = 0; y < f.backingHeight; y++) {
+          for (let x = 0; x < f.backingWidth; x++) {
+            const srcX = Math.floor((x + 0.5 - physicalOriginX) / (scale * ratio) + 1e-9);
+            const srcY = Math.floor((y + 0.5 - physicalOriginY) / (scale * ratio) + 1e-9);
+            const logicalX = (x + 0.5) / ratio - 5;
+            const logicalY = (y + 0.5) / ratio + 3;
             const inside = srcX >= sx && srcX < sx + sw && srcY >= sy && srcY < sy + sh
-              && (!bounds || (x >= bounds.x && x < bounds.x + bounds.width && y >= bounds.y && y < bounds.y + bounds.height));
-            assert.equal(f.pixels[y * f.view.width + x], inside ? pixelAt(srcX, srcY) : 0,
+              && (!bounds || (logicalX >= bounds.x && logicalX < bounds.x + bounds.width
+                && logicalY >= bounds.y && logicalY < bounds.y + bounds.height));
+            assert.equal(f.pixels[y * f.backingWidth + x], inside ? pixelAt(srcX, srcY) : 0,
               `scale=${scale}, DPR=${ratio}, clip=${Boolean(bounds)}, pixel=${x},${y}`);
           }
         }
@@ -143,12 +183,12 @@ test("reusing raster storage replaces transparent pixels rather than retaining t
   assert.ok(f.pixels.every((pixel) => pixel === 0));
 });
 
-test("integer magnification avoids raster allocation and readback", () => {
+test("integer physical magnification avoids raster allocation and readback", () => {
   const f = fixture({ ratio: 2 });
-  f.view.drawRasterImage(f.context, false, f.image, 1, 2, 8, 9, 3, 4, 24, 27);
+  f.view.drawRasterImage(f.context, false, f.image, 1, 2, 8, 9, 3.5, 7, 28, 31.5);
   assert.equal(f.view.rasterCanvas, null);
   assert.equal(f.reads.length, 0);
-  assert.deepEqual(f.writes[0], [f.image, 1, 2, 8, 9, 3, 4, 24, 27]);
+  assert.deepEqual(f.writes[0], [f.image, 1, 2, 8, 9, 3.5, 7, 28, 31.5]);
 });
 
 test("offscreen images preserve native compositing without raster work; empty images are ignored", () => {

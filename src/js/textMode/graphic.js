@@ -1077,6 +1077,11 @@ Graphic.prototype = {
 
     var canvas = args.canvas;
     var context = args.context;
+    var pixelRatio = args.pixelRatio || 1;
+    var canvasWidth = typeof args.canvasWidth != 'undefined'
+      ? args.canvasWidth : canvas.width / pixelRatio;
+    var canvasHeight = typeof args.canvasHeight != 'undefined'
+      ? args.canvasHeight : canvas.height / pixelRatio;
     // The editor viewport supplies a deterministic bitmap sampler. Exports and
     // other callers keep their own context's drawing/scaling behaviour.
     var drawImage = args.drawImage || context.drawImage.bind(context);
@@ -1202,8 +1207,8 @@ Graphic.prototype = {
     var drawBounds = {
       x: 0,
       y: 0,
-      width: canvas.width,
-      height: canvas.height
+      width: canvasWidth,
+      height: canvasHeight
     };
 
 
@@ -1323,6 +1328,7 @@ Graphic.prototype = {
               shapes: false,
               cursor: false,
               scale: scale,
+              pixelRatio: pixelRatio,
               drawFromX: drawFromX,
               drawFromY: drawFromY,
               drawToX: drawToX,
@@ -1349,6 +1355,7 @@ Graphic.prototype = {
               shapes: false,
               cursor: false,
               scale: scale,
+              pixelRatio: pixelRatio,
               drawFromX: drawFromX,
               drawFromY: drawFromY,
               drawToX: drawToX,
@@ -1509,6 +1516,7 @@ Graphic.prototype = {
               shapes: false,
               cursor: false,
               scale: scale,
+              pixelRatio: pixelRatio,
               drawFromX: drawFromX,
               drawFromY: drawFromY,
               drawToX: drawToX,
@@ -1525,9 +1533,14 @@ Graphic.prototype = {
             drawPrevLayerWidth = (drawToX - drawFromX) * scale;
             drawPrevLayerHeight = (drawToY - drawFromY) * scale;
 
-            context.drawImage(prevFrameCanvas, 
-              0, 0, drawPrevLayerWidth, drawPrevLayerHeight,
-              drawPrevLayerOffsetX, drawPrevLayerOffsetY, drawPrevLayerWidth, drawPrevLayerHeight
+            var prevSourceWidth = Math.min(prevFrameCanvas.width,
+              Math.ceil(drawPrevLayerWidth * pixelRatio));
+            var prevSourceHeight = Math.min(prevFrameCanvas.height,
+              Math.ceil(drawPrevLayerHeight * pixelRatio));
+            context.drawImage(prevFrameCanvas,
+              0, 0, prevSourceWidth, prevSourceHeight,
+              drawPrevLayerOffsetX, drawPrevLayerOffsetY,
+              prevSourceWidth / pixelRatio, prevSourceHeight / pixelRatio
             );
 
           } else {
@@ -1560,7 +1573,8 @@ Graphic.prototype = {
         if(!graphicOnly && shapes && layer.type == 'grid' && layerObject.isCurrentLayer()) {
           shapePreview = this.editor.tools.drawTools.shapes.drawPreview(layerObject, {
             srcX: srcX, srcY: srcY, srcWidth: srcWidth, srcHeight: srcHeight,
-            scale: scale, frame: frame, drawBackground: drawLayerBackground
+            scale: scale, pixelRatio: pixelRatio,
+            frame: frame, drawBackground: drawLayerBackground
           });
         }
 
@@ -1569,35 +1583,44 @@ Graphic.prototype = {
 
             if(layerObject.getMode() == TextModeEditor.Mode.VECTOR) {
 
-              var drawWidth = layerCanvas.width;
-              var drawHeight = layerCanvas.height;
+              var drawWidth = Math.min(layerCanvas.width,
+                Math.ceil(drawLayerWidth * pixelRatio));
+              var drawHeight = Math.min(layerCanvas.height,
+                Math.ceil(drawLayerHeight * pixelRatio));
+              var destinationDrawWidth = drawWidth / pixelRatio;
+              var destinationDrawHeight = drawHeight / pixelRatio;
 
               // right border is at originX + layerWidth * scale
 
-              if(drawLayerOffsetX + drawWidth > originX + layerWidth * scale) {
-                drawWidth = (originX + layerWidth * scale) - drawLayerOffsetX;
+              if(drawLayerOffsetX + destinationDrawWidth > originX + layerWidth * scale) {
+                destinationDrawWidth = (originX + layerWidth * scale) - drawLayerOffsetX;
+                drawWidth = destinationDrawWidth * pixelRatio;
               }
 
-              if(drawLayerOffsetY + drawHeight > originY + layerHeight * scale) {
-                drawHeight = (originY + layerHeight * scale) - drawLayerOffsetY;
+              if(drawLayerOffsetY + destinationDrawHeight > originY + layerHeight * scale) {
+                destinationDrawHeight = (originY + layerHeight * scale) - drawLayerOffsetY;
+                drawHeight = destinationDrawHeight * pixelRatio;
               }
 
               if(shapePreview) {
                 // Partition destination pixels, not fractional cell edges:
                 // antialiasing a hole and then blitting into it leaves seams.
-                var previewLeft = Math.floor(drawLayerOffsetX + shapePreview.sourceX);
-                var previewTop = Math.floor(drawLayerOffsetY + shapePreview.sourceY);
-                var previewRight = Math.ceil(drawLayerOffsetX + shapePreview.sourceX + shapePreview.width);
-                var previewBottom = Math.ceil(drawLayerOffsetY + shapePreview.sourceY + shapePreview.height);
+                var previewLeft = Math.floor(drawLayerOffsetX + shapePreview.sourceX / pixelRatio);
+                var previewTop = Math.floor(drawLayerOffsetY + shapePreview.sourceY / pixelRatio);
+                var previewRight = Math.ceil(drawLayerOffsetX
+                  + (shapePreview.sourceX + shapePreview.width) / pixelRatio);
+                var previewBottom = Math.ceil(drawLayerOffsetY
+                  + (shapePreview.sourceY + shapePreview.height) / pixelRatio);
                 context.save();
                 context.beginPath();
-                context.rect(0, 0, canvas.width, canvas.height);
+                context.rect(0, 0, canvasWidth, canvasHeight);
                 context.rect(previewLeft, previewTop, previewRight - previewLeft, previewBottom - previewTop);
                 context.clip('evenodd');
               }
               context.drawImage(layerCanvas,
                                  0, 0, drawWidth, drawHeight,
-                                 drawLayerOffsetX, drawLayerOffsetY, drawWidth, drawHeight);
+                                 drawLayerOffsetX, drawLayerOffsetY,
+                                 destinationDrawWidth, destinationDrawHeight);
               if(shapePreview) {
                 context.restore();
                 context.save();
@@ -1608,7 +1631,8 @@ Graphic.prototype = {
                 // crop for both rasters. Only the integer preview clip differs.
                 context.drawImage(shapePreview.canvas,
                   0, 0, drawWidth, drawHeight,
-                  drawLayerOffsetX, drawLayerOffsetY, drawWidth, drawHeight);
+                  drawLayerOffsetX, drawLayerOffsetY,
+                  destinationDrawWidth, destinationDrawHeight);
                 context.restore();
               }
               /*
@@ -1649,7 +1673,7 @@ Graphic.prototype = {
 
         // draw the borders if necessary, dont draw border for sprites
         var borderVisible = this.editor.grid.border.visible && this.getType() != 'sprite';    
-        if(originX > 0 || originY > 0 || originX + layerWidth * scale < canvas.width || originY + layerHeight * scale < canvas.height) {
+        if(originX > 0 || originY > 0 || originX + layerWidth * scale < canvasWidth || originY + layerHeight * scale < canvasHeight) {
           
           if(borderVisible && layer.visible && layer.type == 'grid') {
             var layerObject = this.editor.layers.getLayerObject(layer.layerId);    
@@ -1671,7 +1695,7 @@ Graphic.prototype = {
                     layerHeight * scale + 4
                   );
                 }
-                if(originX + layerWidth * scale < canvas.width) {
+                if(originX + layerWidth * scale < canvasWidth) {
                   // right border
                   context.fillRect(
                     originX + layerWidth * scale, 

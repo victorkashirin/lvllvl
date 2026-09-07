@@ -14,6 +14,13 @@
   its 985 Unicode-mapped glyphs into the editor's 16-column palette while
   keeping combining marks isolated in their own tiles.
 
+### Fixed
+
+- Render bitmap and vector glyphs on the device-pixel lattice at fractional
+  canvas and tile-palette zooms, preserve fractional display pixel ratios,
+  refresh canvas backing stores when that ratio changes, and keep small
+  scroll-zoom deltas accumulating smoothly between displayed zoom steps.
+
 ## 0.497.8 - 2026-09-07
 
 ### Added

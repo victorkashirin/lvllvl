@@ -64,9 +64,38 @@ UI.browserEditOperations = false;
 UI.canProcessKeyEvents = true;
 UI.canProcessMenuKeys = true;
 
-UI.devicePixelRatio = Math.floor(window.devicePixelRatio);
-if(isNaN(UI.devicePixelRatio) || UI.devicePixelRatio < 1) {
-  UI.devicePixelRatio = 1;
+UI.getDevicePixelRatio = function() {
+  var ratio = Number(window.devicePixelRatio);
+  return isFinite(ratio) && ratio >= 1 ? ratio : 1;
+}
+
+UI.devicePixelRatio = UI.getDevicePixelRatio();
+UI.devicePixelRatioMediaQuery = null;
+UI.devicePixelRatioChangeHandler = null;
+
+UI.watchDevicePixelRatio = function() {
+  if(!window.matchMedia) {
+    return;
+  }
+  if(UI.devicePixelRatioMediaQuery && UI.devicePixelRatioChangeHandler) {
+    if(UI.devicePixelRatioMediaQuery.removeEventListener) {
+      UI.devicePixelRatioMediaQuery.removeEventListener('change', UI.devicePixelRatioChangeHandler);
+    } else if(UI.devicePixelRatioMediaQuery.removeListener) {
+      UI.devicePixelRatioMediaQuery.removeListener(UI.devicePixelRatioChangeHandler);
+    }
+  }
+  UI.devicePixelRatioMediaQuery = window.matchMedia(
+    '(resolution: ' + UI.getDevicePixelRatio() + 'dppx)');
+  UI.devicePixelRatioChangeHandler = function() {
+    UI.devicePixelRatio = UI.getDevicePixelRatio();
+    UI.watchDevicePixelRatio();
+    UI.resize();
+  };
+  if(UI.devicePixelRatioMediaQuery.addEventListener) {
+    UI.devicePixelRatioMediaQuery.addEventListener('change', UI.devicePixelRatioChangeHandler);
+  } else if(UI.devicePixelRatioMediaQuery.addListener) {
+    UI.devicePixelRatioMediaQuery.addListener(UI.devicePixelRatioChangeHandler);
+  }
 }
 
 
@@ -1120,7 +1149,10 @@ UI.cbHTML = function(args) {
 }
 */
 UI.initEvents = function() {
+  UI.watchDevicePixelRatio();
   window.addEventListener('resize', function() {
+    UI.devicePixelRatio = UI.getDevicePixelRatio();
+    UI.watchDevicePixelRatio();
     UI.resize();
   }, false);
 

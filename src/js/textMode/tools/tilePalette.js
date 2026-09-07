@@ -769,15 +769,17 @@ TilePalette.prototype = {
     this.width = element.width();
     this.height = element.height();
 
-    if(this.width != this.canvas.style.width || this.height != this.canvas.style.height) {
-      if(this.width != 0 && this.height != 0) {
-        
-        this.canvas.style.width = this.width + 'px';
-        this.canvas.style.height = this.height + 'px';
-
-        this.canvas.width = this.width * UI.devicePixelRatio;
-        this.canvas.height = this.height * UI.devicePixelRatio;
-      }
+    var styleWidth = this.width + 'px';
+    var styleHeight = this.height + 'px';
+    var backingWidth = Math.round(this.width * UI.devicePixelRatio);
+    var backingHeight = Math.round(this.height * UI.devicePixelRatio);
+    if(this.width != 0 && this.height != 0
+        && (this.canvas.style.width != styleWidth || this.canvas.style.height != styleHeight
+          || this.canvas.width != backingWidth || this.canvas.height != backingHeight)) {
+      this.canvas.style.width = styleWidth;
+      this.canvas.style.height = styleHeight;
+      this.canvas.width = backingWidth;
+      this.canvas.height = backingHeight;
     }
     if(!this.updateFitToWidthScale()) {
       this.drawTilePalette();
@@ -1084,7 +1086,7 @@ TilePalette.prototype = {
     var tileSet = this.editor.tileSetManager.getCurrentTileSet();
     var charWidth = tileSet.getTileWidth();
     var charHeight = tileSet.getTileHeight();
-    this.characterCanvasScale =  Math.floor(UI.devicePixelRatio);
+    this.characterCanvasScale = UI.devicePixelRatio;
 
     var charScale = 2;
     if(charHeight >= 10) {
@@ -1096,8 +1098,8 @@ TilePalette.prototype = {
     }
 
     
-    this.characterCanvas.width = 16 * UI.devicePixelRatio;
-    this.characterCanvas.height = 16 * UI.devicePixelRatio;
+    this.characterCanvas.width = Math.round(16 * UI.devicePixelRatio);
+    this.characterCanvas.height = Math.round(16 * UI.devicePixelRatio);
     this.characterCanvas.style.width = '16px';
     this.characterCanvas.style.height = '16px';
 
