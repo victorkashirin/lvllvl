@@ -138,6 +138,39 @@ function register(commands, id, binding, execute, contexts = [{}], extras = {}) 
   });
 }
 
+test("command definitions are unique while aliases add only contextual activation", () => {
+  const { commands, context } = createCommandHarness();
+  let firstHandlerCalls = 0;
+  let replacementHandlerCalls = 0;
+  commands.registerCommand({
+    category: "Test",
+    contexts: [{ editorMode: "2d" }],
+    defaultBindings: [keybinding("x")],
+    execute: () => { firstHandlerCalls++ },
+    id: "test.sharedCommand",
+    title: "Stable command",
+  });
+
+  assert.throws(() => commands.registerCommand({
+    category: "Changed",
+    contexts: [{ editorMode: "3d" }],
+    defaultBindings: [keybinding("y")],
+    execute: () => { replacementHandlerCalls++ },
+    id: "test.sharedCommand",
+    title: "Replacement command",
+  }), /already defined/);
+
+  commands.addCommandActivation("test.sharedCommand", { contexts: [{ editorMode: "3d" }] });
+  context.editorMode = "3d";
+  const result = commands.execute("test.sharedCommand", {}, context);
+  const summary = commands.getCommands().find(({ id }) => id === "test.sharedCommand");
+  assert.equal(result.accepted, true);
+  assert.equal(firstHandlerCalls, 1);
+  assert.equal(replacementHandlerCalls, 0);
+  assert.equal(summary.title, "Stable command");
+  assert.equal(commands.formatBindings("test.sharedCommand"), "X");
+});
+
 test("normalizes portable, special, physical, and composition-sensitive keys", () => {
   assert.equal(normalizeKey("Del"), "Delete");
   assert.equal(normalizeKey("Esc"), "Escape");

@@ -122,8 +122,8 @@ DrawToolsPopup.prototype = {
     });
 
     this.initEvents();
-    if(g_app.updateEditorShortcutLabels) {
-      g_app.updateEditorShortcutLabels();
+    if(g_app.services && g_app.services.shortcutCatalog) {
+      g_app.services.shortcutCatalog.updateLabels();
     }
     if(typeof callback != 'undefined') {
       callback();

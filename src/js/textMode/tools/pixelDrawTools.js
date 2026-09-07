@@ -15,8 +15,8 @@ PixelDrawTools.prototype = {
   initEvents: function() {
     var _this = this;
 
-    if(g_app.updateEditorShortcutLabels) {
-      g_app.updateEditorShortcutLabels();
+    if(g_app.services && g_app.services.shortcutCatalog) {
+      g_app.services.shortcutCatalog.updateLabels();
     }
 
     $('.pixelDrawTool').on('click', function() {
@@ -289,39 +289,10 @@ PixelDrawTools.prototype = {
 
 
   getToolLabel: function(id) {
-    var commandService = g_app.services && g_app.services.commands;
-    var commandIds = {
-      pen: 'textMode.tool.pencil', erase: 'textMode.tool.erase', fill: 'textMode.tool.fill',
-      eyedropper: 'textMode.tool.eyedropper', line: 'textMode.tool.shape', rect: 'textMode.tool.shape',
-      oval: 'textMode.tool.shape', pixelselect: 'textMode.tool.marquee', zoom: 'textMode.tool.zoom',
-      hand: 'textMode.tool.hand', move: 'textMode.tool.move'
-    };
-    this.toolMap = {
-      "pen": { label: "Pencil", "mobileIcon": 'icons/svg/glyphicons-basic-31-pencil.svg', key: keys.textMode.toolsPencil.key },
-      "erase": { label: "Blank", "mobileIcon": 'icons/svg/glyphicons-basic-250-eraser.svg', "key": keys.textMode.toolsErase.key },
-      "fill": { label: "Fill Bucket", "mobileIcon": 'icons/svg/glyphicons-basic-245-fill.svg', "key": keys.textMode.toolsBucket.key },
-      "eyedropper": { label: "Eyedropper", "mobileIcon": 'icons/svg/glyphicons-basic-91-eyedropper.svg', "key": keys.textMode.toolsEyedropper.key },
-      "line": { label: "Line", "mobileIcon": 'icons/svg/slash.svg', "key": keys.textMode.toolsShape.key },
-      "rect": { label: "Rect", "mobileIcon": 'icons/svg/square.svg', "key": keys.textMode.toolsShape.key },
-      "oval": { label: "Oval", "mobileIcon": 'icons/svg/circle.svg', "key": keys.textMode.toolsShape.key },
-      "pixelselect": { label: "Marquee", "mobileIcon": 'icons/select@2x.png', "key": keys.textMode.toolsMarquee.key },
-      "charpixel": { label: "Char Pixel", "mobileIcon": 'icons/svg/glyphicons-basic-31-pencil.svg', "key": keys.textMode.toolsCharPixel.key },
-      "type": { label: "Type", "mobileIcon": 'icons/svg/glyphicons-basic-31-pencil.svg', "key": keys.textMode.toolsType.key },
-      "pixel": { label: "Pixel", "mobileIcon": 'icons/pixel.png', "key": keys.textMode.toolsPixel.key },
-      "block": { label: "Block", "mobileIcon": 'icons/svg/glyphicons-basic-31-pencil.svg', "key": keys.textMode.toolsBlock.key },
-      "zoom": { label: "Zoom", "mobileIcon": 'icons/svg/glyphicons-basic-31-pencil.svg', "key": keys.textMode.toolsZoom.key },
-      "hand": { label: "Hand", "mobileIcon": 'icons/svg/glyphicons-basic-457-hand-open.svg', "key": keys.textMode.toolsHand.key },
-      "move": { label: "Move", "mobileIcon": 'icons/svg/glyphicons-basic-31-pencil.svg', "key": keys.textMode.toolsMove.key }
-    };
-
-    if(this.toolMap.hasOwnProperty(id)) {
-      var shortcut = commandService && commandIds[id] && commandService.hasCommand(commandIds[id])
-        ? commandService.formatBindings(commandIds[id])
-        : this.toolMap[id].key;
-      return this.toolMap[id].label + (shortcut ? " (" + shortcut + ")" : "");
-    }
-    return id;
-
+    var shortcutCatalog = g_app.services && g_app.services.shortcutCatalog;
+    return shortcutCatalog
+      ? shortcutCatalog.formatToolLabel('pixelMode', id)
+      : ShortcutCatalogMetadata.formatToolLabel('pixelMode', id, TextStore.get.bind(TextStore));
   },
 
   setDrawTool: function(tool) {

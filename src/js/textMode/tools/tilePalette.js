@@ -208,8 +208,8 @@ TilePalette.prototype = {
     UI.on('ready', function() {
 
       _this.canvas = document.getElementById(_this.prefix + 'charPaletteCanvas');
-      if(g_app.updateEditorShortcutLabels) {
-        g_app.updateEditorShortcutLabels();
+      if(g_app.services && g_app.services.shortcutCatalog) {
+        g_app.services.shortcutCatalog.updateLabels();
       }
       _this.uiComponent.on('resize', function() {
         _this.resize();

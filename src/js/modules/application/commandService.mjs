@@ -32,6 +32,7 @@ const keyboardActivationContextKeys = new Set([
   "browserEditOperations", "focus", "inputOwner", "modal", "pointerCanvas",
   "popupOpen", "recorderActive", "shortcutsAllowed", "textTyping",
 ]);
+const alwaysEnabled = () => true;
 
 /** @typedef {import("../domain/keybindings.mjs").Keybinding} Keybinding */
 
@@ -40,7 +41,6 @@ const keyboardActivationContextKeys = new Set([
  * @property {string} id
  * @property {string} title
  * @property {string} category
- * @property {() => boolean} isEnabled
  * @property {(details?: {source?: string}) => unknown} execute
  * @property {((details?: {source?: string}) => unknown) | null} release
  * @property {Record<string, unknown>[]} contexts
@@ -50,7 +50,6 @@ const keyboardActivationContextKeys = new Set([
  * @property {"global" | "local"} keyboardPolicy
  * @property {number} priority
  * @property {boolean} repeatable
- * @property {Array<() => boolean>} enabledPredicates
  * @property {boolean} allowDuringCanvasTyping
  */
 
@@ -522,64 +521,86 @@ export class CommandService {
   }
 
   /**
-   * @param {{id: string, title: string, category?: string, execute: (details?: {source?: string}) => unknown, release?: (details?: {source?: string}) => unknown, isEnabled?: () => boolean, contexts?: Record<string, unknown>[], actionContexts?: Record<string, unknown>[], defaultBindings?: unknown[], keyboardPolicy?: "global" | "local", allowDuringCanvasTyping?: boolean, priority?: number, repeatable?: boolean}} registration
+   * Define immutable command metadata and behavior. Contextual activations are
+   * attached separately so a second UI alias cannot replace a handler or
+   * quietly change a persisted command's defaults.
+   *
+   * @param {{id: string, title: string, category?: string, execute: (details?: {source?: string}) => unknown, release?: (details?: {source?: string}) => unknown, defaultBindings?: unknown[], keyboardPolicy?: "global" | "local", allowDuringCanvasTyping?: boolean, priority?: number, repeatable?: boolean}} definition
    */
-  registerCommand(registration) {
+  defineCommand(definition) {
+    const registration = definition;
     if (!registration || !/^[a-z][a-zA-Z0-9.-]+$/.test(registration.id) ||
         typeof registration.title !== "string" || typeof registration.execute !== "function") {
       throw new TypeError("Commands require a stable id, title, and handler");
     }
+    if (this.commands.has(registration.id)) {
+      throw new Error(`Command ${registration.id} is already defined`);
+    }
     const normalizedBindings = (registration.defaultBindings || [])
       .map(normalizeBinding)
       .filter((binding) => binding !== null);
-    const contexts = registration.contexts?.length ? registration.contexts : [{}];
-    const actionContexts = registration.actionContexts?.length
-      ? registration.actionContexts
-      : contexts.map(actionContextFromKeyboardContext);
-    const predicate = registration.isEnabled || (() => true);
-    const existing = this.commands.get(registration.id);
-    if (existing) {
-      existing.contexts = uniqueContexts(existing.contexts.concat(contexts));
-      existing.activations.push(...contexts.map((when) => ({ isEnabled: predicate, when: { ...when } })));
-      existing.actionActivations.push(...actionContexts.map((when) => ({
-        isEnabled: predicate,
-        when: { ...when },
-      })));
-      existing.defaultBindings = uniqueBindings(
-        existing.defaultBindings.concat(/** @type {Keybinding[]} */ (normalizedBindings)),
-        this.platform,
-      );
-      existing.enabledPredicates.push(predicate);
-      if (registration.keyboardPolicy === "global") existing.keyboardPolicy = "global";
-      if (registration.allowDuringCanvasTyping === true) existing.allowDuringCanvasTyping = true;
-      if (registration.repeatable === true || normalizedBindings.some((binding) => binding?.repeat)) {
-        existing.repeatable = true;
-      }
-      if (!existing.release && typeof registration.release === "function") {
-        existing.release = registration.release;
-      }
-      return registration.id;
-    }
     this.commands.set(registration.id, {
-      actionActivations: actionContexts.map((when) => ({
-        isEnabled: predicate,
-        when: { ...when },
-      })),
-      activations: contexts.map((when) => ({ isEnabled: predicate, when: { ...when } })),
+      actionActivations: [],
+      activations: [],
       allowDuringCanvasTyping: registration.allowDuringCanvasTyping === true,
       category: registration.category || "Application",
-      contexts: uniqueContexts(contexts.map((context) => ({ ...context }))),
+      contexts: [],
       defaultBindings: uniqueBindings(/** @type {Keybinding[]} */ (normalizedBindings), this.platform),
-      enabledPredicates: [predicate],
       execute: registration.execute,
       id: registration.id,
-      isEnabled: predicate,
       keyboardPolicy: registration.keyboardPolicy === "global" ? "global" : "local",
       priority: Number.isFinite(registration.priority) ? Number(registration.priority) : 0,
       release: typeof registration.release === "function" ? registration.release : null,
       repeatable: registration.repeatable === true || normalizedBindings.some((binding) => binding?.repeat),
       title: registration.title,
     });
+    return registration.id;
+  }
+
+  /**
+   * Add one contextual activation for a previously defined command. UI aliases
+   * may contribute availability without owning command metadata or behavior.
+   *
+   * @param {string} commandId
+   * @param {{isEnabled?: () => boolean, contexts?: Record<string, unknown>[], actionContexts?: Record<string, unknown>[]}} [activation]
+   */
+  addCommandActivation(commandId, activation = {}) {
+    const command = this.commands.get(commandId);
+    if (!command) throw new Error(`Cannot activate unknown command ${commandId}`);
+    const contexts = activation.contexts?.length ? activation.contexts : [{}];
+    const actionContexts = activation.actionContexts?.length
+      ? activation.actionContexts
+      : contexts.map(actionContextFromKeyboardContext);
+    const predicate = activation.isEnabled || alwaysEnabled;
+    /**
+     * @param {Array<{when: Record<string, unknown>, isEnabled: () => boolean}>} collection
+     * @param {Record<string, unknown>[]} values
+     */
+    const addUnique = (collection, values) => {
+      for (const when of values) {
+        const signature = contextSignature(when);
+        if (collection.some((candidate) =>
+          candidate.isEnabled === predicate && contextSignature(candidate.when) === signature)) continue;
+        collection.push({ isEnabled: predicate, when: { ...when } });
+      }
+    };
+    addUnique(command.activations, contexts);
+    addUnique(command.actionActivations, actionContexts);
+    command.contexts = uniqueContexts(command.contexts.concat(
+      contexts.map((context) => ({ ...context })),
+    ));
+    return commandId;
+  }
+
+  /**
+   * Convenience registration for commands with one activation. Duplicate
+   * definitions are rejected; use addCommandActivation for aliases.
+   *
+   * @param {{id: string, title: string, category?: string, execute: (details?: {source?: string}) => unknown, release?: (details?: {source?: string}) => unknown, isEnabled?: () => boolean, contexts?: Record<string, unknown>[], actionContexts?: Record<string, unknown>[], defaultBindings?: unknown[], keyboardPolicy?: "global" | "local", allowDuringCanvasTyping?: boolean, priority?: number, repeatable?: boolean}} registration
+   */
+  registerCommand(registration) {
+    this.defineCommand(registration);
+    this.addCommandActivation(registration.id, registration);
     return registration.id;
   }
 

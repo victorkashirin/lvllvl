@@ -27,7 +27,7 @@ Use this plan when implementing or reviewing the remaining shortcut refactor. It
 | [x] | [3. Dispatcher lifecycle](#phase-3--dispatcher-lifecycle) | P2 | SC-07, SC-08, SC-09; CQ-06 |
 | [x] | [4. Atomic edits and observable outcomes](#phase-4--atomic-edits-and-observable-outcomes) | P2 | SC-12; CQ-07 service work, CQ-08 |
 | [x] | [5. Recorder state, accessibility, and presentation](#phase-5--recorder-state-accessibility-and-presentation) | P2 / P3 | SC-10, SC-11, SC-16; CQ-07 dialog work |
-| [ ] | [6. Catalog ownership and legacy cleanup](#phase-6--catalog-ownership-and-legacy-cleanup) | P2 / P3 | SC-14; CQ-01, CQ-02 |
+| [x] | [6. Catalog ownership and legacy cleanup](#phase-6--catalog-ownership-and-legacy-cleanup) | P2 / P3 | SC-14; CQ-01, CQ-02 |
 | [ ] | [7. API and data ownership](#phase-7--api-and-data-ownership) | P3 | CQ-09 |
 | [ ] | [8. Derived-data caching](#phase-8--derived-data-caching) | P3 | SC-15; CQ-10 |
 | [ ] | [9. Build boundary hardening](#phase-9--build-boundary-hardening) | P3 | CQ-11 |
@@ -264,7 +264,7 @@ action-column alignment. No Phase 5 work is deferred.
 
 **Depends on:** phases 1–5. Extract stable behavior instead of combining a large move with dispatcher redesign.
 
-**Read:** [getMenuCommandId](../src/js/editor.js#L1630), [registerEditorCommands](../src/js/editor.js#L1731), [updateEditorShortcutLabels](../src/js/editor.js#L2204), [registerMenuCommands](../src/js/editor.js#L2267), [registerCommand](../src/js/modules/application/commandService.mjs#L248), [legacy defaults](../src/js/styles.js#L18), and [DrawTools.getTools](../src/js/textMode/tools/drawTools.js#L283).
+**Read:** [legacy command catalog adapter](../src/js/modules/feature-adapters/legacyCommandCatalogAdapter.mjs#L1), [Editor setup and action host](../src/js/editor.js#L2172), [command definition and activation](../src/js/modules/application/commandService.mjs#L523), [shared tool metadata and legacy defaults](../src/js/styles.js#L1), and [DrawTools.getTools](../src/js/textMode/tools/drawTools.js#L283).
 
 **Problem:** `Editor` mixes catalog definitions, actions, context inference, menu discovery, and label synchronization. **SC-14:** tool names/defaults/label maps have multiple owners. Persisted identity is inferred from menu names; duplicate registrations merge contexts/predicates while retaining the first handler and metadata.
 
@@ -278,6 +278,40 @@ action-column alignment. No Phase 5 work is deferred.
 **Validation target:** existing representative command/menu/label tests plus a targeted alias-registration and preference-ID compatibility check. Use real action results where dispatch-only stubs would hide routing errors.
 
 **Gate:** adding a tool binding has one metadata owner; menu renames preserve overrides; additional UI aliases cannot silently change handlers; each removed fallback has a documented replacement or no remaining consumers.
+
+**Progress record (2026-09-07):** Added
+`legacyCommandCatalogAdapter` as the single configurable editor catalog and
+legacy integration boundary. Pure domain metadata explicitly defines the stable
+ID, title, category, default aliases, and canonical action for all 115 current
+configurable menu commands plus three conditional commands. Menu discovery now
+supplies only activation state: display labels, traversal order, and legacy UI
+shortcut objects cannot redefine behavior, and an unknown configurable alias is
+rejected. Text, pixel, and colour-palette metadata owns command IDs, titles,
+defaults, action targets, and UI aliases together; tool/menu/ARIA labels are
+generated from effective bindings through the same adapter.
+`CommandService.defineCommand` now owns immutable definition behavior,
+`addCommandActivation` adds contextual UI availability separately, and duplicate
+definitions fail instead of silently retaining the first handler or merging
+metadata. `registerCommand` remains the public convenience facade for one
+definition plus one activation. `Editor` now only connects the catalog and
+continues as the legacy action host; its former ID/context inference,
+registration, and label synchronization methods were removed and replaced by
+the adapter. The per-tool label/default maps in `DrawTools`, `PixelDrawTools`,
+`PixelDraw`, and `ColorPaletteEdit` were removed in favor of catalog-generated
+presentations. The retained `keys.textMode.tools*` compatibility values and
+guarded classic no-service labels now derive from that same frozen metadata.
+Existing command IDs and version-1 overrides remain unchanged. Music, Ace,
+C64/debugger, assembler, joystick, and the modal colour-palette owner remain
+explicitly outside this catalog. Targeted module type and syntax checks passed,
+as did 36 focused command/editor unit tests. The production module graph passes
+at 20 modules and 22 edges, and the protected 304-input legacy graph has no new
+input or exception. The production build and artifact verification passed. Two
+focused Chromium workflows passed, covering a real tool rebinding and label
+update plus preference survival across reload/reset. The added unit coverage
+verifies aliased menus retain one persisted ID and canonical action when labels,
+alias order, or UI defaults change; unsupported configurable aliases fail; shared
+tool presentations keep classic fallback labels/defaults; and a second command
+definition cannot replace metadata or behavior. No Phase 6 work is deferred.
 
 ## Phase 7 — API and data ownership
 

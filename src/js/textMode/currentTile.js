@@ -490,8 +490,8 @@ currentTileSplitPanel
     characterControls.on('loaded', function() {
       _this.initRotationToolEvents();
       _this.initOrientationToolEvents();
-      if(g_app.updateEditorShortcutLabels) {
-        g_app.updateEditorShortcutLabels();
+      if(g_app.services && g_app.services.shortcutCatalog) {
+        g_app.services.shortcutCatalog.updateLabels();
       }
     });
 

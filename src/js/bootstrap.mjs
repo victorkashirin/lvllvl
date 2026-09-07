@@ -11,6 +11,7 @@ import { createImageImportCoordinator } from "./modules/feature-adapters/imageIm
 import { createDisabledRemoteProviders } from "./modules/feature-adapters/legacyRemoteProviderFacades.mjs";
 import { createLegacySvgExportPort } from "./modules/feature-adapters/legacySvgExportAdapter.mjs";
 import { createKeyboardShortcutsDialog } from "./modules/feature-adapters/keyboardShortcutsDialog.mjs";
+import { createLegacyCommandCatalogAdapter } from "./modules/feature-adapters/legacyCommandCatalogAdapter.mjs";
 import { createLegacyShortcutContextAdapter } from "./modules/feature-adapters/legacyShortcutContextAdapter.mjs";
 import { createBrowserStorageAdapter } from "./modules/infrastructure/browserStorageAdapter.mjs";
 import { createImageImportModuleLoader } from "./modules/infrastructure/imageImportModuleLoader.mjs";
@@ -62,6 +63,15 @@ const shortcutSettings = createKeyboardShortcutsDialog({
   },
   setTimer: (callback, delay) => globalThis.setTimeout(callback, delay),
   UI: legacy.UI,
+});
+
+const shortcutCatalog = createLegacyCommandCatalogAdapter({
+  app,
+  commands,
+  document: globalThis.document,
+  schedule: (callback) => globalThis.setTimeout(callback, 0),
+  toolMetadata: legacy.ShortcutCatalogMetadata,
+  translate: (value) => legacy.TextStore.get(value),
 });
 
 legacy.UI.commandKeyDown = (/** @type {KeyboardEvent} */ event) => commands.handleKeyDown(event).handled;
@@ -141,6 +151,7 @@ const services = {
   persistence,
   remoteProviderFacades: disabledRemoteProviders.facades,
   remoteProviders: disabledRemoteProviders.policy,
+  shortcutCatalog,
   shortcutContext,
   shortcutSettings,
   createSvgExportPort(/** @type {any} */ editor) {

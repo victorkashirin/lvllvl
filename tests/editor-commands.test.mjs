@@ -4,6 +4,13 @@ import test from "node:test";
 import vm from "node:vm";
 
 import { CommandService } from "../src/js/modules/application/commandService.mjs";
+import {
+  commandIdForLegacyMenuItem,
+  createLegacyCommandCatalogAdapter,
+} from "../src/js/modules/feature-adapters/legacyCommandCatalogAdapter.mjs";
+import "../src/js/styles.js";
+
+const toolMetadata = globalThis.ShortcutCatalogMetadata;
 
 async function loadClassic(relativePath, exportName, globals = {}) {
   const source = await readFile(new URL(`../src/${relativePath}`, import.meta.url), "utf8");
@@ -23,19 +30,10 @@ function replayEditor(error) {
 }
 
 test("Zoom In keeps both built-in aliases in one override lifecycle", async () => {
-  const browserWindow = {
-    location: { search: "" },
-    setTimeout(callback) { callback() },
-  };
   const document = {
     getElementById: () => null,
     querySelectorAll: () => [],
   };
-  const Editor = await loadClassic("js/editor.js", "Editor", {
-    document,
-    URLSearchParams,
-    window: browserWindow,
-  });
   let stored = null;
   const commands = new CommandService({
     clearTimer() {},
@@ -56,24 +54,26 @@ test("Zoom In keeps both built-in aliases in one override lifecycle", async () =
   const zoomItem = {
     enabled: true,
     id: "menu-view-zoomin",
-    label: "Zoom In",
+    label: "Renamed Zoom",
     setShortcutText() {},
-    shortcut: { cmd: true, key: "=" },
+    shortcut: { cmd: true, key: "Q" },
     type: "item",
     uiID: "view-zoomin",
     visible: true,
   };
-  const editor = new Editor();
   const activations = [];
-  editor.menuClick = (id) => activations.push(id);
-  editor.menuBar = {
-    menus: [{ className: "ui-menu-tilemode", label: "View", menuItems: [zoomItem] }],
+  const app = { menuClick: (id) => activations.push(id) };
+  const menuBar = {
+    menus: [{ className: "ui-menu-tilemode", label: "Renamed View", menuItems: [zoomItem] }],
     shortcuts: [],
   };
-  editor.services = { commands };
-  editor.registerMenuCommands();
+  const catalog = createLegacyCommandCatalogAdapter({ app, commands, document, toolMetadata });
+  catalog.connectMenuBar(menuBar);
 
   assert.equal(commands.formatBindings("view.zoomin"), "Ctrl+= / Ctrl+Shift+=");
+  const summary = commands.getCommands().find(({ id }) => id === "view.zoomin");
+  assert.equal(summary.title, "Zoom In");
+  assert.equal(summary.category, "View");
   assert.equal(commands.handleKeyDown({
     altKey: false,
     code: "Equal",
@@ -96,6 +96,198 @@ test("Zoom In keeps both built-in aliases in one override lifecycle", async () =
   assert.equal(commands.formatBindings("view.zoomin"), "");
   commands.resetCommand("view.zoomin");
   assert.equal(commands.formatBindings("view.zoomin"), "Ctrl+= / Ctrl+Shift+=");
+});
+
+test("menu alias order cannot change canonical metadata, defaults, or action", () => {
+  const context = {
+    editorMode: "tile set",
+    focus: "canvas",
+    modal: "none",
+    popupOpen: false,
+    shortcutsAllowed: true,
+  };
+  const commands = new CommandService({
+    clearTimer() {},
+    getContext: () => context,
+    platform: "other",
+    setTimer: () => 1,
+    storage: { load: () => null, save() {} },
+  });
+  const menuItem = (uiID) => ({
+    enabled: true,
+    id: `menu-${uiID}`,
+    label: `Renamed ${uiID}`,
+    setShortcutText() {},
+    shortcut: { cmd: true, key: "Q" },
+    type: "item",
+    uiID,
+    visible: true,
+  });
+  const activations = [];
+  const catalog = createLegacyCommandCatalogAdapter({
+    app: { menuClick: (...args) => activations.push(args) },
+    commands,
+    document: { getElementById: () => null, querySelectorAll: () => [] },
+    toolMetadata,
+  });
+  catalog.connectMenuBar({
+    menus: [
+      { className: "ui-menu-tileset", label: "Renamed Tiles", menuItems: [menuItem("tileset-load")] },
+      { className: "ui-menu-tilemode", label: "Other Tiles", menuItems: [menuItem("charactersets-load")] },
+    ],
+    shortcuts: [],
+  });
+
+  const summary = commands.getCommands().find(({ id }) => id === "textMode.tiles.load");
+  assert.equal(summary.title, "Load / Import Tile Set...");
+  assert.equal(summary.category, "Tiles");
+  assert.equal(commands.formatBindings("textMode.tiles.load"), "");
+  assert.equal(commands.execute("textMode.tiles.load", { source: "test" }, context).accepted, true);
+  assert.deepEqual(activations, [["charactersets-load", "command", "test"]]);
+});
+
+test("supported menu aliases require an explicit catalog definition", () => {
+  const commands = new CommandService({
+    clearTimer() {},
+    getContext: () => ({}),
+    platform: "other",
+    setTimer: () => 1,
+    storage: { load: () => null, save() {} },
+  });
+  const catalog = createLegacyCommandCatalogAdapter({
+    app: { menuClick() {} },
+    commands,
+    document: { getElementById: () => null, querySelectorAll: () => [] },
+    toolMetadata,
+  });
+
+  assert.equal(commandIdForLegacyMenuItem("unregistered-menu-item"), null);
+  assert.throws(() => catalog.connectMenuBar({
+    menus: [{
+      className: "ui-menu-tilemode",
+      label: "Test",
+      menuItems: [{
+        enabled: true,
+        id: "menu-unregistered",
+        label: "Unregistered",
+        shortcut: false,
+        type: "item",
+        uiID: "unregistered-menu-item",
+        visible: true,
+      }],
+    }],
+    shortcuts: [],
+  }), /has no command definition/);
+});
+
+test("menu aliases keep one stable command identity, metadata, handler, and preference", () => {
+  const stored = JSON.stringify({
+    overrides: {
+      "edit.undo": [{
+        priority: 0,
+        repeat: false,
+        sequence: [{ alt: false, code: null, ctrl: false, key: "u", meta: false, mod: true, shift: false }],
+      }],
+    },
+    version: 1,
+  });
+  const context = {
+    editorMode: "2d",
+    focus: "canvas",
+    modal: "none",
+    popupOpen: false,
+    shortcutsAllowed: true,
+  };
+  const commands = new CommandService({
+    clearTimer() {},
+    getContext: () => context,
+    platform: "other",
+    setTimer: () => 1,
+    storage: { load: () => stored, save() {} },
+  });
+  const menuItem = (id, uiID, label) => ({
+    enabled: true,
+    id,
+    label,
+    setShortcutText(value) { this.shortcutText = value },
+    shortcut: { cmd: true, key: "Z" },
+    type: "item",
+    uiID,
+    visible: true,
+  });
+  const editorUndo = menuItem("menu-edit-undo", "edit-undo", "Renamed Editor Undo");
+  const paletteUndo = menuItem("menu-palette-undo", "colorpaletteedit-undo", "Renamed Palette Undo");
+  const activations = [];
+  const catalog = createLegacyCommandCatalogAdapter({
+    app: { menuClick: (...args) => activations.push(args) },
+    commands,
+    document: { getElementById: () => null, querySelectorAll: () => [] },
+    toolMetadata,
+  });
+  catalog.connectMenuBar({
+    menus: [
+      { className: "ui-menu-tilemode", label: "Changed Edit", menuItems: [editorUndo] },
+      { className: "ui-menu-colorpalette", label: "Changed Palette", menuItems: [paletteUndo] },
+    ],
+    shortcuts: [],
+  });
+
+  assert.equal(commandIdForLegacyMenuItem("edit-undo"), "edit.undo");
+  assert.equal(commandIdForLegacyMenuItem("colorpaletteedit-undo"), "edit.undo");
+  assert.deepEqual(catalog.getToolPresentation("draw", "pen"), {
+    commandId: "textMode.tool.pencil",
+    label: "Pencil",
+    shortcut: "N",
+  });
+  assert.deepEqual(catalog.getToolPresentation("pixel", "line"), {
+    commandId: "textMode.pixelTool.shape",
+    label: "Line",
+    shortcut: "Shift+U",
+  });
+  assert.equal(editorUndo.commandId, "edit.undo");
+  assert.equal(paletteUndo.commandId, "edit.undo");
+  assert.equal(commands.formatBindings("edit.undo"), "Ctrl+U");
+  assert.equal(editorUndo.shortcutText, "Ctrl+U");
+  assert.equal(paletteUndo.shortcutText, "Ctrl+U");
+  assert.equal(commands.getCommands().find(({ id }) => id === "edit.undo").title, "Undo");
+
+  const result = commands.execute("edit.undo", { source: "menu" }, context);
+  assert.equal(result.accepted, true);
+  assert.deepEqual(activations, [["edit-undo", "command", "menu"]]);
+});
+
+test("classic tools keep catalog labels and default shortcuts without services", async () => {
+  const context = vm.createContext({
+    g_app: { services: null },
+    TextStore: { get: (value) => value },
+  });
+  for (const relativePath of [
+    "js/styles.js",
+    "js/textMode/tools/drawTools.js",
+    "js/textMode/tools/pixelDrawTools.js",
+    "js/textMode/tools/pixelDraw.js",
+    "js/textMode/color/colorPaletteEdit.js",
+  ]) {
+    const source = await readFile(new URL(`../src/${relativePath}`, import.meta.url), "utf8");
+    vm.runInContext(source, context);
+  }
+
+  assert.equal(vm.runInContext("keys.textMode.toolsPencil.key", context), "N");
+  assert.equal(vm.runInContext("new DrawTools().getToolLabel('pen')", context), "Pencil (N)");
+  assert.equal(vm.runInContext("new DrawTools().getToolLabel('erase')", context), "Blank (L)");
+  assert.equal(vm.runInContext("new PixelDrawTools().getToolLabel('pen')", context), "Pencil (N)");
+  assert.equal(vm.runInContext("new PixelDrawTools().getToolLabel('block')", context), "Block (B)");
+  assert.equal(vm.runInContext("new PixelDraw().getToolLabel('draw')", context), "Pencil (Shift+N)");
+  assert.equal(vm.runInContext("new PixelDraw().getToolLabel('fill')", context), "Fill Bucket (Shift+K)");
+  assert.equal(vm.runInContext("new PixelDraw().getToolLabel('block')", context), "Block (Shift+B)");
+  assert.equal(vm.runInContext("new PixelDraw().getToolLabel('move')", context), "Move (Shift+V)");
+  assert.equal(vm.runInContext(`
+    (function() {
+      var editor = new ColorPaletteEdit();
+      editor.prefix = 'colorPaletteEditor';
+      return editor.getToolLabel('move');
+    })()
+  `, context), "Move (V)");
 });
 
 test("classic undo restores position and enabled state after replay fails", async () => {

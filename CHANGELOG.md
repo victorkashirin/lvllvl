@@ -27,6 +27,10 @@
 
 ### Fixed
 
+- Keep shortcut preferences attached to stable command IDs when menu labels
+  change, prevent additional UI aliases from silently replacing command
+  metadata or handlers, and generate text, pixel, and colour-palette tool
+  defaults and fallback labels from one shared catalog definition.
 - Let keyboard users choose semantic or physical shortcut recording before
   explicitly starting capture, deliberately assign Tab or Shift+Tab during
   capture, and return focus to the edited command after cancellation, ordinary

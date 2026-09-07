@@ -353,22 +353,30 @@ test("the generated image-import module has no sloppy-script global writes", asy
 
 test("the production ES-module graph is discovered and obeys its boundaries", async () => {
   const result = await verifyModuleBoundaries();
-  assert.equal(result.files, 12);
+  assert.equal(result.files, 20);
   assert.deepEqual(result.modules, [
     "js/bootstrap.mjs",
+    "js/modules/application/commandService.mjs",
     "js/modules/application/documentSession.mjs",
     "js/modules/application/featureRegistry.mjs",
     "js/modules/application/persistenceService.mjs",
     "js/modules/domain/documentRevisionState.mjs",
+    "js/modules/domain/keybindings.mjs",
+    "js/modules/domain/legacyMenuCommandDefinitions.mjs",
+    "js/modules/domain/shortcutContext.mjs",
     "js/modules/domain/svgExport.mjs",
     "js/modules/feature-adapters/imageImportCoordinator.mjs",
     "js/modules/feature-adapters/imageImportFeature.mjs",
+    "js/modules/feature-adapters/keyboardShortcutsDialog.mjs",
+    "js/modules/feature-adapters/legacyCommandCatalogAdapter.mjs",
     "js/modules/feature-adapters/legacyRemoteProviderFacades.mjs",
+    "js/modules/feature-adapters/legacyShortcutContextAdapter.mjs",
     "js/modules/feature-adapters/legacySvgExportAdapter.mjs",
     "js/modules/infrastructure/browserStorageAdapter.mjs",
     "js/modules/infrastructure/imageImportModuleLoader.mjs",
+    "js/modules/infrastructure/keybindingStorageAdapter.mjs",
   ]);
-  assert.equal(result.edges.length, 13);
+  assert.equal(result.edges.length, 22);
 });
 
 test("module discovery rejects an unreachable file under a governed root", async (context) => {

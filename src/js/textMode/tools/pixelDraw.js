@@ -110,40 +110,10 @@ PixelDraw.prototype = {
   },
 
   getToolLabel: function(id) {
-    var commandService = g_app.services && g_app.services.commands;
-    var commandIds = {
-      draw: 'textMode.pixelTool.draw', pen: 'textMode.pixelTool.draw',
-      erase: 'textMode.pixelTool.erase', eyedropper: 'textMode.pixelTool.eyedropper',
-      line: 'textMode.pixelTool.shape', rect: 'textMode.pixelTool.shape',
-      oval: 'textMode.pixelTool.shape', select: 'textMode.pixelTool.select'
-    };
-    var tools = {
-      "draw": { label: "Pencil", "key": keys.textMode.toolsPencil.key },
-      "pen":  { label: "Pencil", "key": keys.textMode.toolsPencil.key },
-      "erase": { label: "Blank", "key": keys.textMode.toolsErase.key },
-      "fill": { label: "Fill Bucket", "key": keys.textMode.toolsBucket.key },
-      "eyedropper": { label: "Eyedropper", "key": keys.textMode.toolsEyedropper.key },
-      "line": { label: "Line", "key": keys.textMode.toolsShape.key },
-      "rect": { label: "Rect", "key": keys.textMode.toolsShape.key },
-      "oval": { label: "Oval", "key": keys.textMode.toolsShape.key },
-      "select": { label: "Marquee", "key": keys.textMode.toolsMarquee.key },
-      "charpixel": { label: "Char Pixel", "key": keys.textMode.toolsCharPixel.key },
-      "type": { label: "Type", "key": keys.textMode.toolsType.key },
-      "pixel": { label: "Pixel", "key": keys.textMode.toolsPixel.key },
-      "block": { label: "Block", "key": keys.textMode.toolsBlock.key },
-      "zoom": { label: "Zoom", "key": keys.textMode.toolsZoom.key },
-      "hand": { label: "Hand", "key": keys.textMode.toolsHand.key },
-      "move": { label: "Move", "key": keys.textMode.toolsMove.key }
-    };
-
-    if(tools.hasOwnProperty(id)) {
-      var shortcut = commandService && commandIds[id] && commandService.hasCommand(commandIds[id])
-        ? commandService.formatBindings(commandIds[id])
-        : "Shift+" + tools[id].key;
-      return tools[id].label + (shortcut ? " (" + shortcut + ")" : "");
-    }
-    return id;
-
+    var shortcutCatalog = g_app.services && g_app.services.shortcutCatalog;
+    return shortcutCatalog
+      ? shortcutCatalog.formatToolLabel('pixel', id)
+      : ShortcutCatalogMetadata.formatToolLabel('pixel', id, TextStore.get.bind(TextStore));
   },
 
   setTool: function(tool) {

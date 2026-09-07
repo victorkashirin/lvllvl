@@ -532,25 +532,11 @@ ColorPaletteEdit.prototype = {
   },
 
   getToolLabel: function(key) {
-    var commandIds = {
-      pen: 'colorPalette.tool.pencil',
-      erase: 'colorPalette.tool.erase',
-      eyedropper: 'colorPalette.tool.eyedropper',
-      move: 'colorPalette.tool.move',
-      select: 'colorPalette.tool.marquee'
-    };
-    var labels = {
-      pen: 'Pencil',
-      erase: 'Blank',
-      eyedropper: 'Eyedropper',
-      move: 'Move',
-      select: 'Marquee'
-    };
-    var commandService = g_app.services && g_app.services.commands;
-    var commandId = commandIds[key];
-    if(this.prefix == 'colorPaletteEditor' && commandService && commandService.hasCommand(commandId)) {
-      var shortcut = commandService.formatBindings(commandId);
-      return (labels[key] || key) + (shortcut ? ' (' + shortcut + ')' : '');
+    var shortcutCatalog = g_app.services && g_app.services.shortcutCatalog;
+    if(this.prefix == 'colorPaletteEditor') {
+      return shortcutCatalog
+        ? shortcutCatalog.formatToolLabel('palette', key)
+        : ShortcutCatalogMetadata.formatToolLabel('palette', key, TextStore.get.bind(TextStore));
     }
     return this.editor.tools.drawTools.getToolLabel(key);
   },
@@ -558,8 +544,8 @@ ColorPaletteEdit.prototype = {
   initEvents: function() {
     var _this = this;
 
-    if(g_app.updateEditorShortcutLabels) {
-      g_app.updateEditorShortcutLabels();
+    if(g_app.services && g_app.services.shortcutCatalog) {
+      g_app.services.shortcutCatalog.updateLabels();
     }
 
 
