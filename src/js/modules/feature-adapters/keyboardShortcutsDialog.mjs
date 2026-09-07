@@ -10,7 +10,7 @@
  * @property {boolean} [layoutDependent]
  * @property {"new" | "existing" | "unresolved"} [precedence]
  * @property {string} title
- * @property {"context-separated" | "duplicate" | "hard" | "layout-unknown" | "prefix" | "reserved"} type
+ * @property {"context-separated" | "duplicate" | "hard" | "layout-possible" | "layout-unknown" | "prefix" | "reserved"} type
  */
 
 /**
@@ -85,9 +85,12 @@ export function createKeyboardShortcutsDialog({
   /** @param {ShortcutConflict} conflict */
   function conflictLabel(conflict) {
     const context = conflict.contextLabel ? ` (${conflict.contextLabel})` : "";
-    const layout = conflict.layoutDependent ? " on the recorded keyboard layout" : "";
+    const layout = conflict.layoutDependent ? " depending on keyboard layout" : "";
     if (conflict.type === "layout-unknown") {
       return "Keyboard-layout metadata is unavailable; re-record this shortcut to verify conflicts";
+    }
+    if (conflict.type === "layout-possible") {
+      return `May conflict with ${conflict.title}${layout}${context}; re-record to verify`;
     }
     if (conflict.type === "hard") {
       if (conflict.precedence === "new") return `Conflicts with ${conflict.title}${layout}${context}; that command is shadowed`;
@@ -221,7 +224,8 @@ export function createKeyboardShortcutsDialog({
     const row = createElement("tr", "keyboard-shortcuts-row");
     row.dataset.commandId = summary.id;
     if (summary.modified) row.classList.add("keyboard-shortcuts-row-modified");
-    if (summary.conflicts.some((conflict) => ["hard", "layout-unknown", "prefix"].includes(conflict.type))) {
+    if (summary.conflicts.some((conflict) =>
+      ["hard", "layout-possible", "layout-unknown", "prefix"].includes(conflict.type))) {
       row.classList.add("keyboard-shortcuts-row-conflict");
     }
 
@@ -298,7 +302,7 @@ export function createKeyboardShortcutsDialog({
       if (modifiedOnly?.checked && !summary.modified) return false;
       if (boundOnly?.checked && summary.bindings.length === 0) return false;
       if (conflictsOnly?.checked && !summary.conflicts.some((conflict) =>
-        ["hard", "layout-unknown", "prefix", "reserved"].includes(conflict.type))) return false;
+        ["hard", "layout-possible", "layout-unknown", "prefix", "reserved"].includes(conflict.type))) return false;
       return commandMatches(summary, query);
     });
     const body = element("keyboardShortcutsTableBody");
@@ -406,6 +410,7 @@ export function createKeyboardShortcutsDialog({
       : [];
     cancelRecording();
     const reserved = analysis.some((conflict) => conflict.type === "reserved");
+    const layoutPossible = analysis.some((conflict) => conflict.type === "layout-possible");
     const layoutUnknown = analysis.some((conflict) => conflict.type === "layout-unknown");
     const prefix = analysis.some((conflict) => conflict.type === "prefix");
     const contextReuse = analysis.some((conflict) => conflict.type === "context-separated");
@@ -420,8 +425,8 @@ export function createKeyboardShortcutsDialog({
     } else if (hasUnresolved) {
       status = "Shortcut saved, but part of the conflict is still unresolved.";
       statusKind = "warning";
-    } else if (layoutUnknown) {
-      status = "Shortcut saved, but keyboard-layout conflict information is unavailable. Re-record it to verify conflicts.";
+    } else if (layoutPossible || layoutUnknown) {
+      status = "Shortcut saved, but a possible keyboard-layout conflict could not be verified. Re-record it to verify conflicts.";
       statusKind = "warning";
     } else if (reserved) {
       status = "Shortcut saved. It may be intercepted by the browser or operating system.";

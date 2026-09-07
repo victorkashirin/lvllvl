@@ -1,10 +1,10 @@
 import {
-  bindingCanBePrefix,
+  bindingCoincidence,
   bindingFromLegacyShortcut,
   bindingHasUnknownLayout,
   bindingIsPrefix,
+  bindingPrefixCoincidence,
   bindingSignature,
-  bindingsCanCoincide,
   bindingsEqual,
   chordFromKeyboardEvent,
   contextClausesOverlap,
@@ -20,6 +20,7 @@ import {
   normalizeKey,
   normalizeBinding,
   resolvePrimaryModifier,
+  shortcutKeyboardEvent,
 } from "../domain/keybindings.mjs";
 import { inputOwnerFromShortcutContext } from "../domain/shortcutContext.mjs";
 
@@ -49,6 +50,7 @@ const keyboardActivationContextKeys = new Set([
  * @property {Keybinding[]} defaultBindings
  * @property {"global" | "local"} keyboardPolicy
  * @property {number} priority
+ * @property {boolean} repeatable
  * @property {Array<() => boolean>} enabledPredicates
  * @property {boolean} allowDuringCanvasTyping
  */
@@ -62,7 +64,7 @@ const keyboardActivationContextKeys = new Set([
  * @property {"new" | "existing" | "unresolved"} [precedence]
  * @property {string | null} [shadowed]
  * @property {string} title
- * @property {"context-separated" | "duplicate" | "hard" | "layout-unknown" | "prefix" | "reserved"} type
+ * @property {"context-separated" | "duplicate" | "hard" | "layout-possible" | "layout-unknown" | "prefix" | "reserved"} type
  */
 
 /**
@@ -213,6 +215,22 @@ function resolvedInputOwner(context, target) {
     : "unknown";
 }
 
+/**
+ * Positive means `left` wins, negative means `right` wins, and zero preserves
+ * an explicit unresolved tie. Dispatch and conflict explanations both use
+ * this comparator so they cannot disagree about which command takes priority.
+ *
+ * @param {{command: CommandDescriptor, binding: Keybinding, specificity: number}} left
+ * @param {{command: CommandDescriptor, binding: Keybinding, specificity: number}} right
+ */
+function compareCandidatePrecedence(left, right) {
+  const specificity = left.specificity - right.specificity;
+  if (specificity) return specificity;
+  const bindingPriority = (left.binding.priority || 0) - (right.binding.priority || 0);
+  if (bindingPriority) return bindingPriority;
+  return left.command.priority - right.command.priority;
+}
+
 export class CommandService {
   /** @param {CommandServiceDependencies} dependencies */
   constructor({ platform, storage, getContext, setTimer, clearTimer, reportError = () => {} }) {
@@ -280,7 +298,7 @@ export class CommandService {
   }
 
   /**
-   * @param {{id: string, title: string, category?: string, execute: (details?: {source?: string}) => unknown, release?: (details?: {source?: string}) => unknown, isEnabled?: () => boolean, contexts?: Record<string, unknown>[], actionContexts?: Record<string, unknown>[], defaultBindings?: unknown[], keyboardPolicy?: "global" | "local", allowDuringCanvasTyping?: boolean, priority?: number}} registration
+   * @param {{id: string, title: string, category?: string, execute: (details?: {source?: string}) => unknown, release?: (details?: {source?: string}) => unknown, isEnabled?: () => boolean, contexts?: Record<string, unknown>[], actionContexts?: Record<string, unknown>[], defaultBindings?: unknown[], keyboardPolicy?: "global" | "local", allowDuringCanvasTyping?: boolean, priority?: number, repeatable?: boolean}} registration
    */
   registerCommand(registration) {
     if (!registration || !/^[a-z][a-zA-Z0-9.-]+$/.test(registration.id) ||
@@ -310,6 +328,9 @@ export class CommandService {
       existing.enabledPredicates.push(predicate);
       if (registration.keyboardPolicy === "global") existing.keyboardPolicy = "global";
       if (registration.allowDuringCanvasTyping === true) existing.allowDuringCanvasTyping = true;
+      if (registration.repeatable === true || normalizedBindings.some((binding) => binding?.repeat)) {
+        existing.repeatable = true;
+      }
       if (!existing.release && typeof registration.release === "function") {
         existing.release = registration.release;
       }
@@ -332,6 +353,7 @@ export class CommandService {
       keyboardPolicy: registration.keyboardPolicy === "global" ? "global" : "local",
       priority: Number.isFinite(registration.priority) ? Number(registration.priority) : 0,
       release: typeof registration.release === "function" ? registration.release : null,
+      repeatable: registration.repeatable === true || normalizedBindings.some((binding) => binding?.repeat),
       title: registration.title,
     });
     return registration.id;
@@ -582,19 +604,12 @@ export class CommandService {
    * @param {{command: CommandDescriptor, binding: Keybinding, context: Record<string, unknown>, specificity: number}[]} candidates
    */
   chooseCandidate(candidates) {
-    const ranked = candidates.slice().sort((left, right) => {
-      const specificity = right.specificity - left.specificity;
-      if (specificity) return specificity;
-      const bindingPriority = (right.binding.priority || 0) - (left.binding.priority || 0);
-      if (bindingPriority) return bindingPriority;
-      return right.command.priority - left.command.priority;
-    });
+    const ranked = candidates.slice().sort((left, right) =>
+      compareCandidatePrecedence(right, left));
     if (!ranked.length) return null;
     const first = ranked[0];
     const topCommandIds = new Set(ranked
-      .filter((candidate) => candidate.specificity === first.specificity &&
-        (candidate.binding.priority || 0) === (first.binding.priority || 0) &&
-        candidate.command.priority === first.command.priority)
+      .filter((candidate) => compareCandidatePrecedence(candidate, first) === 0)
       .map((candidate) => candidate.command.id));
     if (topCommandIds.size > 1) return null;
     return { command: first.command, binding: first.binding };
@@ -602,10 +617,11 @@ export class CommandService {
 
   /**
    * @param {string[][]} paths
-   * @param {unknown} event
+   * @param {import("../domain/keybindings.mjs").ShortcutKeyboardEvent} event
    * @param {Record<string, unknown>} context
+   * @param {unknown} [target]
    */
-  matchingCandidatesForEvent(paths, event, context) {
+  matchingCandidatesForEvent(paths, event, context, target) {
     /** @type {{command: CommandDescriptor, binding: Keybinding, context: Record<string, unknown>, exact: boolean, path: string[], specificity: number}[]} */
     const candidates = [];
     for (const command of this.commands.values()) {
@@ -618,7 +634,7 @@ export class CommandService {
           if (path.length >= signature.length ||
               !path.every((part, index) => part === signature[index]) ||
               !this.keyboardPolicyAllows(command, binding, path.length, context,
-                /** @type {{target?: unknown}} */ (event).target) ||
+                target) ||
               !eventMatchesChord(binding.sequence[path.length], event, this.platform)) continue;
           const nextPath = path.concat(signature[path.length]);
           candidates.push({
@@ -646,45 +662,48 @@ export class CommandService {
   handleKeyDown(eventValue) {
     if (!eventValue || typeof eventValue !== "object") return { handled: false, status: "ignored" };
     const event = /** @type {{altKey?: boolean, ctrlKey?: boolean, getModifierState?: (name: string) => boolean, isComposing?: boolean, key?: string, metaKey?: boolean, repeat?: boolean, shiftKey?: boolean, target?: unknown, preventDefault?: () => void, stopImmediatePropagation?: () => void, stopPropagation?: () => void}} */ (eventValue);
+    const shortcutEvent = shortcutKeyboardEvent(eventValue);
+    if (!shortcutEvent) return { handled: false, status: "ignored" };
     if (this.recording) {
       this.consumeEvent(event);
       return { handled: true, status: "recording" };
     }
-    if (event.isComposing || event.getModifierState?.("AltGraph")) {
+    if (shortcutEvent.composing || shortcutEvent.altGraph) {
       this.cancelPending();
       return { handled: false, status: "ignored" };
     }
-    if (this.pending && event.key === "Escape" &&
-        !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
+    if (this.pending && shortcutEvent.key === "Escape" &&
+        !shortcutEvent.alt && !shortcutEvent.ctrl && !shortcutEvent.meta && !shortcutEvent.shift) {
       this.consumeEvent(event);
       this.cancelPending();
       return { handled: true, status: "cancelled" };
     }
-    if (this.pending && event.repeat) {
+    if (this.pending && shortcutEvent.repeat) {
       this.consumeEvent(event);
       return { handled: true, status: "pending" };
     }
     const context = this.getContext(event.target);
     const inputOwner = resolvedInputOwner(context, event.target);
-    if (context.browserEditOperations === true && (event.metaKey || event.ctrlKey) &&
-        ["a", "c", "v", "x", "y", "z"].includes(String(normalizeKey(event.key)))) {
+    if (context.browserEditOperations === true && (shortcutEvent.meta || shortcutEvent.ctrl) &&
+        ["a", "c", "v", "x", "y", "z"].includes(String(shortcutEvent.key))) {
       this.cancelPending();
       return { handled: false, status: "ignored" };
     }
     let paths = this.pending ? this.pending.paths : [[]];
-    let candidates = this.matchingCandidatesForEvent(paths, eventValue, context);
+    let candidates = this.matchingCandidatesForEvent(paths, shortcutEvent, context, event.target);
     if (!candidates.length && this.pending) {
       const pending = this.pending;
       this.cancelPending();
       this.executePendingFallback(pending, event.target);
       paths = [[]];
-      candidates = this.matchingCandidatesForEvent(paths, eventValue, context);
+      candidates = this.matchingCandidatesForEvent(paths, shortcutEvent, context, event.target);
     }
     if (!candidates.length) {
       return { handled: false, status: inputOwner === "canvasPassive" ? "unmatched" : "ignored" };
     }
 
-    const exact = candidates.filter((candidate) => candidate.exact && (!event.repeat || candidate.binding.repeat));
+    const exact = candidates.filter((candidate) => candidate.exact &&
+      (!shortcutEvent.repeat || candidate.command.repeatable || candidate.binding.repeat));
     const longer = candidates.some((candidate) => !candidate.exact);
     const selected = this.chooseCandidate(exact);
     this.consumeEvent(event);
@@ -757,23 +776,16 @@ export class CommandService {
           rightContext,
           rightBinding.when || {},
         )) continue;
-        const leftSpecificity = contextSpecificity(leftContext) + contextSpecificity(leftBinding.when || {});
-        const rightSpecificity = contextSpecificity(rightContext) + contextSpecificity(rightBinding.when || {});
-        if (leftSpecificity !== rightSpecificity) {
-          outcomes.add(leftSpecificity > rightSpecificity ? "new" : "existing");
-          continue;
-        }
-        const leftPriority = leftBinding.priority || 0;
-        const rightPriority = rightBinding.priority || 0;
-        if (leftPriority !== rightPriority) {
-          outcomes.add(leftPriority > rightPriority ? "new" : "existing");
-          continue;
-        }
-        if (left.priority !== right.priority) {
-          outcomes.add(left.priority > right.priority ? "new" : "existing");
-          continue;
-        }
-        outcomes.add("unresolved");
+        const precedence = compareCandidatePrecedence({
+          binding: leftBinding,
+          command: left,
+          specificity: contextSpecificity(leftContext) + contextSpecificity(leftBinding.when || {}),
+        }, {
+          binding: rightBinding,
+          command: right,
+          specificity: contextSpecificity(rightContext) + contextSpecificity(rightBinding.when || {}),
+        });
+        outcomes.add(precedence > 0 ? "new" : precedence < 0 ? "existing" : "unresolved");
       }
     }
     return outcomes.size === 1
@@ -795,25 +807,38 @@ export class CommandService {
         const contextLabel = other.contexts.map(describeContext).concat(bindingContext).join("; ");
         const overlaps = this.bindingContextsOverlap(command, binding, other, candidate);
         const equivalent = bindingsEqual(binding, candidate, this.platform);
-        const coincides = equivalent || bindingsCanCoincide(binding, candidate, this.platform);
-        if (coincides) {
+        const coincidence = equivalent
+          ? "certain"
+          : bindingCoincidence(binding, candidate, this.platform);
+        if (coincidence !== "none") {
           if (other.id === commandId) {
             if (equivalent) {
               results.push({ bindingIndex, commandId: other.id, contextLabel, title: other.title, type: "duplicate" });
             }
           } else if (overlaps) {
-            const precedence = this.bindingPrecedence(command, binding, other, candidate);
-            results.push({
-              bindingIndex,
-              commandId: other.id,
-              contextLabel,
-              layoutDependent: !equivalent,
-              precedence,
-              shadowed: precedence === "unresolved" ? null :
-                precedence === "new" ? other.id : command.id,
-              title: other.title,
-              type: "hard",
-            });
+            if (coincidence === "possible") {
+              results.push({
+                bindingIndex,
+                commandId: other.id,
+                contextLabel,
+                layoutDependent: true,
+                title: other.title,
+                type: "layout-possible",
+              });
+            } else {
+              const precedence = this.bindingPrecedence(command, binding, other, candidate);
+              results.push({
+                bindingIndex,
+                commandId: other.id,
+                contextLabel,
+                layoutDependent: !equivalent,
+                precedence,
+                shadowed: precedence === "unresolved" ? null :
+                  precedence === "new" ? other.id : command.id,
+                title: other.title,
+                type: "hard",
+              });
+            }
           } else {
             results.push({
               bindingIndex,
@@ -827,8 +852,9 @@ export class CommandService {
         } else {
           const exactPrefix = bindingIsPrefix(binding, candidate, this.platform) ||
             bindingIsPrefix(candidate, binding, this.platform);
-          const possiblePrefix = bindingCanBePrefix(binding, candidate, this.platform) ||
-            bindingCanBePrefix(candidate, binding, this.platform);
+          const leftPrefix = bindingPrefixCoincidence(binding, candidate, this.platform);
+          const rightPrefix = bindingPrefixCoincidence(candidate, binding, this.platform);
+          const possiblePrefix = leftPrefix !== "none" || rightPrefix !== "none";
           if (!overlaps || (!exactPrefix && !possiblePrefix)) return;
           results.push({
             bindingIndex,
@@ -872,7 +898,7 @@ export class CommandService {
         if (conflict.type === "duplicate" && conflict.commandId === commandId) continue;
         // Built-in bindings predate recorded layout metadata. Only surface the
         // uncertainty for user overrides that can be fixed by re-recording.
-        if (conflict.type === "layout-unknown" && !customized) continue;
+        if (["layout-possible", "layout-unknown"].includes(conflict.type) && !customized) continue;
         const signature = `${conflict.type}:${conflict.commandId}:${conflict.bindingIndex ?? ""}`;
         if (!seen.has(signature)) {
           seen.add(signature);

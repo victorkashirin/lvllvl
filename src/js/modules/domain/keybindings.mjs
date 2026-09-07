@@ -80,6 +80,28 @@ function normalizeCode(value) {
  * @property {Record<string, unknown>} [when]
  */
 
+/** @typedef {"certain" | "none" | "possible"} BindingCoincidence */
+
+/**
+ * Canonical keyboard-event data used by recording and dispatch. The primary
+ * shortcut identity remains semantic (`key`) or physical (`code`); the other
+ * value describes the active layout and is never substituted for that choice.
+ *
+ * @typedef {object} ShortcutKeyboardEvent
+ * @property {boolean} alt
+ * @property {boolean} altGraph
+ * @property {string | null} code
+ * @property {boolean} composing
+ * @property {boolean} ctrl
+ * @property {boolean} dead
+ * @property {"shortcut"} kind
+ * @property {string | null} key
+ * @property {boolean} meta
+ * @property {boolean} modifierOnly
+ * @property {boolean} repeat
+ * @property {boolean} shift
+ */
+
 /** @param {unknown} value @returns {KeyChord | null} */
 export function normalizeChord(value) {
   if (!value || typeof value !== "object") return null;
@@ -188,6 +210,12 @@ function fallbackKeyForCode(code) {
   return normalizeKey(PUNCTUATION_CODE_MAP[code]) || null;
 }
 
+/** @param {string | null | undefined} code */
+function physicalCodeCanProducePrintableKey(code) {
+  return Boolean(fallbackKeyForCode(code) || (code &&
+    /^(?:Intl(?:Backslash|Ro|Yen)|Numpad(?:[0-9]|Add|Comma|Decimal|Divide|Equal|Multiply|ParenLeft|ParenRight|Subtract)|Quote)$/.test(code)));
+}
+
 /**
  * TanStack reaches its physical-code fallback only for dead keys or printable
  * mismatches that are not ordinary layout-produced letters. Dead keys cannot
@@ -201,6 +229,22 @@ function recordedEventAllowsCodeFallback(recorded) {
   return !isSingleLetterKey(eventKey) || (recorded.alt && !/^[A-Za-z]$/.test(eventKey));
 }
 
+/** @param {string | null | undefined} key */
+function isFallbackBaseKey(key) {
+  return Boolean(key && (/^[a-z0-9]$/.test(key) || Object.values(PUNCTUATION_CODE_MAP).includes(key)));
+}
+
+/** @param {KeyChord} left @param {KeyChord} right */
+function semanticLayoutCouldCoincide(left, right) {
+  if (!left.key || !right.key || left.key === right.key) return false;
+  const leftHasUnknownTransformedKey = !left.layoutCode &&
+    recordedEventAllowsCodeFallback(left) && !isFallbackBaseKey(left.key);
+  const rightHasUnknownTransformedKey = !right.layoutCode &&
+    recordedEventAllowsCodeFallback(right) && !isFallbackBaseKey(right.key);
+  return (leftHasUnknownTransformedKey && isFallbackBaseKey(right.key)) ||
+    (rightHasUnknownTransformedKey && isFallbackBaseKey(left.key));
+}
+
 /** @param {KeyChord} recorded @param {KeyChord} semantic */
 function recordedSemanticEventMatches(recorded, semantic) {
   return Boolean(recorded.layoutCode && semantic.key &&
@@ -208,34 +252,62 @@ function recordedSemanticEventMatches(recorded, semantic) {
     fallbackKeyForCode(recorded.layoutCode) === semantic.key);
 }
 
-/** @param {KeyChord} physical @param {KeyChord} semantic */
-function physicalCanCoincideWithSemantic(physical, semantic) {
-  if (!physical.code || !semantic.key) return false;
-  if (physical.layoutKey === semantic.key || semantic.layoutCode === physical.code) return true;
-  if (!physical.layoutKey) return fallbackKeyForCode(physical.code) === semantic.key;
+/** @param {KeyChord} physical @param {KeyChord} semantic @returns {BindingCoincidence} */
+function physicalSemanticCoincidence(physical, semantic) {
+  if (!physical.code || !semantic.key) return "none";
+  if (physical.layoutKey === semantic.key || semantic.layoutCode === physical.code) return "certain";
+  // Imported physical bindings may predate complementary layout metadata. A
+  // printable semantic key can occupy that physical key on an unknown layout,
+  // so retain the uncertainty instead of treating it as a confirmed conflict.
+  if (!physical.layoutKey) {
+    return physicalCodeCanProducePrintableKey(physical.code) && semantic.key.length === 1
+      ? "possible"
+      : "none";
+  }
   return recordedEventAllowsCodeFallback(physical) &&
-    fallbackKeyForCode(physical.code) === semantic.key;
+    fallbackKeyForCode(physical.code) === semantic.key ? "certain" : "none";
 }
 
-/** @param {KeyChord} left @param {KeyChord} right @param {"mac" | "other"} platform */
-function chordsCanCoincide(left, right, platform) {
+/** @param {KeyChord} left @param {KeyChord} right @param {"mac" | "other"} platform @returns {BindingCoincidence} */
+function chordCoincidence(left, right, platform) {
   const leftResolved = resolvePrimaryModifier(left, platform);
   const rightResolved = resolvePrimaryModifier(right, platform);
   if (leftResolved.alt !== rightResolved.alt || leftResolved.ctrl !== rightResolved.ctrl ||
-      leftResolved.meta !== rightResolved.meta || leftResolved.shift !== rightResolved.shift) return false;
-  if (leftResolved.code && rightResolved.code) return leftResolved.code === rightResolved.code;
+      leftResolved.meta !== rightResolved.meta || leftResolved.shift !== rightResolved.shift) return "none";
+  if (leftResolved.code && rightResolved.code) {
+    return leftResolved.code === rightResolved.code ? "certain" : "none";
+  }
   if (leftResolved.key && rightResolved.key) {
-    return leftResolved.key === rightResolved.key ||
+    if (leftResolved.key === rightResolved.key ||
       recordedSemanticEventMatches(leftResolved, rightResolved) ||
-      recordedSemanticEventMatches(rightResolved, leftResolved);
+      recordedSemanticEventMatches(rightResolved, leftResolved)) return "certain";
+    return semanticLayoutCouldCoincide(leftResolved, rightResolved) ? "possible" : "none";
   }
   if (leftResolved.code && rightResolved.key) {
-    return physicalCanCoincideWithSemantic(leftResolved, rightResolved);
+    return physicalSemanticCoincidence(leftResolved, rightResolved);
   }
   if (leftResolved.key && rightResolved.code) {
-    return physicalCanCoincideWithSemantic(rightResolved, leftResolved);
+    return physicalSemanticCoincidence(rightResolved, leftResolved);
   }
-  return false;
+  return "none";
+}
+
+/**
+ * @param {KeyChord[]} left
+ * @param {KeyChord[]} right
+ * @param {number} length
+ * @param {"mac" | "other"} platform
+ * @returns {BindingCoincidence}
+ */
+function sequenceCoincidence(left, right, length, platform) {
+  /** @type {BindingCoincidence} */
+  let result = "certain";
+  for (let index = 0; index < length; index++) {
+    const coincidence = chordCoincidence(left[index], right[index], platform);
+    if (coincidence === "none") return "none";
+    if (coincidence === "possible") result = "possible";
+  }
+  return result;
 }
 
 /**
@@ -247,15 +319,25 @@ function chordsCanCoincide(left, right, platform) {
  * @param {Keybinding} right
  * @param {"mac" | "other"} platform
  */
+export function bindingCoincidence(left, right, platform) {
+  if (left.sequence.length !== right.sequence.length) return "none";
+  return sequenceCoincidence(left.sequence, right.sequence, left.sequence.length, platform);
+}
+
+/** @param {Keybinding} left @param {Keybinding} right @param {"mac" | "other"} platform */
 export function bindingsCanCoincide(left, right, platform) {
-  return left.sequence.length === right.sequence.length && left.sequence.every((chord, index) =>
-    chordsCanCoincide(chord, right.sequence[index], platform));
+  return bindingCoincidence(left, right, platform) !== "none";
+}
+
+/** @param {Keybinding} prefix @param {Keybinding} value @param {"mac" | "other"} platform @returns {BindingCoincidence} */
+export function bindingPrefixCoincidence(prefix, value, platform) {
+  if (prefix.sequence.length >= value.sequence.length) return "none";
+  return sequenceCoincidence(prefix.sequence, value.sequence, prefix.sequence.length, platform);
 }
 
 /** @param {Keybinding} prefix @param {Keybinding} value @param {"mac" | "other"} platform */
 export function bindingCanBePrefix(prefix, value, platform) {
-  return prefix.sequence.length < value.sequence.length && prefix.sequence.every((chord, index) =>
-    chordsCanCoincide(chord, value.sequence[index], platform));
+  return bindingPrefixCoincidence(prefix, value, platform) !== "none";
 }
 
 /**
@@ -268,7 +350,7 @@ export function bindingCanBePrefix(prefix, value, platform) {
 export function bindingHasUnknownLayout(binding) {
   return binding.sequence.some((chord) =>
     (Boolean(chord.key) && chord.key?.length === 1 && !chord.layoutCode) ||
-    (Boolean(chord.code) && !chord.layoutKey));
+    (physicalCodeCanProducePrintableKey(chord.code) && !chord.layoutKey));
 }
 
 /** @param {unknown} eventValue @returns {boolean} */
@@ -278,32 +360,64 @@ function hasAltGraph(eventValue) {
 }
 
 /**
+ * Normalize browser KeyboardEvent identity once at the keybinding boundary.
+ * Composition and AltGraph are retained so callers can reject them without
+ * losing the reason. Dead keys remain dispatchable through TanStack's physical
+ * fallback, but are deliberately not recordable because they do not provide a
+ * stable semantic key. Layout changes affect semantic events naturally at
+ * dispatch; captured complementary metadata is an analysis snapshot only.
+ *
+ * @param {unknown} eventValue
+ * @returns {ShortcutKeyboardEvent | null}
+ */
+export function shortcutKeyboardEvent(eventValue) {
+  if (!eventValue || typeof eventValue !== "object") return null;
+  if (/** @type {{kind?: unknown}} */ (eventValue).kind === "shortcut") {
+    return /** @type {ShortcutKeyboardEvent} */ (eventValue);
+  }
+  const event = /** @type {{altKey?: boolean, code?: string, ctrlKey?: boolean, isComposing?: boolean, key?: string, metaKey?: boolean, repeat?: boolean, shiftKey?: boolean}} */ (eventValue);
+  const parsed = parseKeyboardEvent(/** @type {KeyboardEvent} */ (eventValue));
+  const key = normalizeKey(parsed.key);
+  return Object.freeze({
+    alt: parsed.alt === true,
+    altGraph: hasAltGraph(eventValue),
+    code: normalizeCode(event.code),
+    composing: event.isComposing === true,
+    ctrl: parsed.ctrl === true,
+    dead: event.key === "Dead",
+    kind: "shortcut",
+    key,
+    meta: parsed.meta === true,
+    modifierOnly: modifierKeys.has(String(key)),
+    repeat: event.repeat === true,
+    shift: parsed.shift === true,
+  });
+}
+
+/**
  * @param {unknown} eventValue
  * @param {{platform: "mac" | "other", physical?: boolean, portable?: boolean}} options
  * @returns {KeyChord | null}
  */
 export function chordFromKeyboardEvent(eventValue, options) {
-  if (!eventValue || typeof eventValue !== "object") return null;
-  const event = /** @type {{altKey?: boolean, code?: string, ctrlKey?: boolean, isComposing?: boolean, key?: string, metaKey?: boolean, shiftKey?: boolean}} */ (eventValue);
-  if (event.isComposing || event.key === "Dead" || hasAltGraph(eventValue)) return null;
-  const parsed = parseKeyboardEvent(/** @type {KeyboardEvent} */ (eventValue));
-  const key = normalizeKey(parsed.key);
-  if (modifierKeys.has(String(key))) return null;
-  const code = options.physical ? normalizeCode(event.code) : null;
+  const event = shortcutKeyboardEvent(eventValue);
+  if (!event || event.composing || event.dead || event.altGraph || event.modifierOnly) return null;
+  const key = event.key;
+  const code = options.physical ? event.code : null;
   if (options.physical ? !code : !key) return null;
   const primaryIsMeta = options.platform === "mac";
   const portable = options.portable === true;
-  const primaryDown = primaryIsMeta ? event.metaKey === true : event.ctrlKey === true;
+  const primaryDown = primaryIsMeta ? event.meta : event.ctrl;
   return normalizeChord({
-    alt: parsed.alt,
+    alt: event.alt,
     code,
-    ctrl: parsed.ctrl && !(portable && !primaryIsMeta && primaryDown),
+    ctrl: event.ctrl && !(portable && !primaryIsMeta && primaryDown),
     key: options.physical ? null : key,
     layoutCode: options.physical ? null : event.code,
     layoutKey: options.physical ? key : null,
-    meta: parsed.meta && !(portable && primaryIsMeta && primaryDown),
+    meta: event.meta && !(portable && primaryIsMeta && primaryDown),
     mod: portable && primaryDown,
-    shift: parsed.shift,
+    shift: event.shift,
   });
 }
 
@@ -317,12 +431,12 @@ export function chordFromKeyboardEvent(eventValue, options) {
  * @param {"mac" | "other"} platform
  */
 export function eventMatchesChord(chord, eventValue, platform) {
-  if (!eventValue || typeof eventValue !== "object") return false;
-  const event = /** @type {{altKey?: boolean, code?: string, ctrlKey?: boolean, metaKey?: boolean, shiftKey?: boolean}} */ (eventValue);
+  const event = shortcutKeyboardEvent(eventValue);
+  if (!event || event.composing || event.altGraph) return false;
   const resolved = resolvePrimaryModifier(chord, platform);
   if (resolved.code) {
-    return event.altKey === resolved.alt && event.ctrlKey === resolved.ctrl &&
-      event.metaKey === resolved.meta && event.shiftKey === resolved.shift &&
+    return event.alt === resolved.alt && event.ctrl === resolved.ctrl &&
+      event.meta === resolved.meta && event.shift === resolved.shift &&
       event.code === resolved.code;
   }
   if (!resolved.key) return false;
@@ -333,7 +447,14 @@ export function eventMatchesChord(chord, eventValue, platform) {
   if (resolved.shift) modifiers.push("Shift");
   if (resolved.meta) modifiers.push("Meta");
   return matchesKeyboardEvent(
-    /** @type {KeyboardEvent} */ (eventValue),
+    /** @type {KeyboardEvent} */ ({
+      altKey: event.alt,
+      code: event.code || undefined,
+      ctrlKey: event.ctrl,
+      key: event.dead ? "Dead" : (event.key || ""),
+      metaKey: event.meta,
+      shiftKey: event.shift,
+    }),
     {
       alt: resolved.alt,
       ctrl: resolved.ctrl,

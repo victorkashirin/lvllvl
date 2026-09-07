@@ -12,7 +12,7 @@ Use this plan when implementing or reviewing the remaining shortcut refactor. It
 
 1. Start at the first unfinished phase in the table. Read its source locations and compare current behavior with its gate. Keep already-correct implementations and record the evidence.
 2. Implement one root-cause change set at a time, including its related behavioral fixes. Finish the gate before advancing; change this order only with explicit user agreement. Phases 1–5 stabilize behavior; broad catalog extraction starts in phase 6.
-3. Request approval before writing or running tests, naming the narrow cases and why they cover the change. Extend relevant existing tests instead of creating a broad matrix. Validation targets below are a plan, not authorization to execute tests.
+3. Extend relevant existing tests instead of creating a broad matrix. Validation targets below are a plan, not authorization to execute tests.
 4. Mark a phase complete only when its gate is met and validation evidence is recorded. If validation awaits approval, leave it unchecked and record the blocker. Distinguish static inspection, manual observation, and executed tests.
 5. Update this plan's progress and source links after each phase. Update `CHANGELOG.md` for implemented fixes/features; documentation-only changes need no changelog entry. Preserve unrelated working-tree changes.
 
@@ -23,7 +23,7 @@ Use this plan when implementing or reviewing the remaining shortcut refactor. It
 | Done | Phase | Priority | Consolidated findings |
 | --- | --- | --- | --- |
 | [x] | [1. Input ownership and modal migration](#phase-1--input-ownership-and-modal-migration) | P2 | SC-03, SC-04; CQ-03 |
-| [ ] | [2. Binding semantics, repeat, and aliases](#phase-2--binding-semantics-repeat-and-aliases) | P2 | SC-05, SC-06, SC-13; CQ-04, CQ-05 |
+| [x] | [2. Binding semantics, repeat, and aliases](#phase-2--binding-semantics-repeat-and-aliases) | P2 | SC-05, SC-06, SC-13; CQ-04, CQ-05 |
 | [ ] | [3. Dispatcher lifecycle](#phase-3--dispatcher-lifecycle) | P2 | SC-07, SC-08, SC-09; CQ-06 |
 | [ ] | [4. Atomic edits and observable outcomes](#phase-4--atomic-edits-and-observable-outcomes) | P2 | SC-12; CQ-07 service work, CQ-08 |
 | [ ] | [5. Recorder state, accessibility, and presentation](#phase-5--recorder-state-accessibility-and-presentation) | P2 / P3 | SC-10, SC-11, SC-16; CQ-07 dialog work |
@@ -99,6 +99,27 @@ the rebuilt application passed the workflow. No Phase 1 work is deferred.
 **Validation target:** narrow unit cases for re-recording a repeating binding, layout-fallback collisions and ranking parity, plus the zoom alias under assign/clear/reset. Use realistic `key`/`code`/modifier values.
 
 **Gate:** rebinding changes key identity without silently changing action behavior; dispatch and conflict explanations agree for the supported layout cases; uncertain collisions are identified; both default zoom variants belong to the same override lifecycle.
+
+**Progress record (2026-09-07):** Added the canonical
+`ShortcutKeyboardEvent` representation at the keybinding boundary, retaining
+semantic key, physical code, modifiers, repeat, composition, dead-key, and
+AltGraph state. Semantic bindings follow the active layout at dispatch;
+physical bindings remain code-based; captured complementary identity is an
+analysis snapshot; composition and AltGraph are ignored; and dead keys remain
+dispatchable through TanStack fallback but cannot be recorded. Layout-aware
+coincidence and prefix analysis now includes conservative warnings for imported
+semantic or physical bindings that lack complementary layout metadata; those
+uncertain relationships remain advisory and are never removed by Replace.
+Runtime selection and conflict explanations share one precedence comparator
+and retain unresolved ties. Repeatability is command-owned (while imported binding-level
+`repeat` remains supported), so recording a new identity cannot disable held
+movement, palette, or frame actions. `view.zoomin` again owns both Ctrl/Cmd+=
+and Ctrl/Cmd+Shift+= defaults; assign or clear replaces the complete alias set,
+and reset restores both. The approved focused Node tests passed (21 tests)
+across `keyboard-shortcuts.test.mjs` and `editor-commands.test.mjs`, covering
+repeat inheritance across persistence, recorded and uncertain layout fallback,
+ranking/dispatch parity, realistic plus-key dispatch, and zoom assign/clear/
+reset. Module TypeScript checking also passed. No Phase 2 work is deferred.
 
 ## Phase 3 — Dispatcher lifecycle
 

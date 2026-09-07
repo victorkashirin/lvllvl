@@ -27,6 +27,11 @@
 
 ### Fixed
 
+- Preserve repeat behavior when reassigning held navigation shortcuts, align
+  layout-dependent conflict warnings and precedence explanations with runtime
+  dispatch, keep uncertain layout matches advisory and non-destructive, and
+  restore Ctrl/Cmd+Shift+= as a Zoom In alias under the same assign, clear, and
+  reset lifecycle as Ctrl/Cmd+=.
 - Fix the production shortcut module failing to start because keyboard-
   matching helpers were omitted from the generated dependency exports.
 - Keep colour-palette dialog undo, redo, and tool shortcuts owned by the

@@ -12,6 +12,7 @@ import {
   isRiskyBinding,
   normalizeBinding,
   normalizeKey,
+  shortcutKeyboardEvent,
 } from "../src/js/modules/domain/keybindings.mjs";
 import { createKeybindingStorageAdapter } from
   "../src/js/modules/infrastructure/keybindingStorageAdapter.mjs";
@@ -23,6 +24,7 @@ function keybinding(key, options = {}) {
       code: options.code || null,
       ctrl: options.ctrl === true,
       key: options.code ? null : key,
+      layoutCode: options.layoutCode,
       layoutKey: options.layoutKey,
       meta: options.meta === true,
       mod: options.mod === true,
@@ -167,6 +169,25 @@ test("normalizes portable, special, physical, and composition-sensitive keys", (
   assert.equal(chordFromKeyboardEvent(keyboardEvent("a", { altGraph: true }), { platform: "other" }), null);
   assert.equal(chordFromKeyboardEvent(keyboardEvent("a", { composing: true }), { platform: "other" }), null);
 
+  assert.deepEqual(shortcutKeyboardEvent(keyboardEvent("Dead", {
+    alt: true,
+    code: "KeyE",
+    repeat: true,
+  })), {
+    alt: true,
+    altGraph: false,
+    code: "KeyE",
+    composing: false,
+    ctrl: false,
+    dead: true,
+    key: "Dead",
+    kind: "shortcut",
+    meta: false,
+    modifierOnly: false,
+    repeat: true,
+    shift: false,
+  });
+
   // TanStack's layout fallback matches Option/Alt shortcuts by physical code
   // when the modifier changes the semantic character produced by the key.
   assert.equal(eventMatchesChord(
@@ -216,8 +237,43 @@ test("detects a conflict when a recorded semantic key shares a layout fallback",
     version: 1,
     overrides: { "tool.pencil": [keybinding("¡", { alt: true })] },
   }));
+  const importedBinding = reloaded.getEffectiveBindings("tool.pencil")[0];
+  const uncertainConflict = reloaded.analyzeBinding("tool.pencil", importedBinding)
+    .find(({ commandId, type }) => commandId === "color.select.1" && type === "layout-possible");
+  assert.ok(uncertainConflict);
+  assert.equal(uncertainConflict.layoutDependent, true);
+  assert.equal(reloaded.analyzeBinding("tool.pencil", importedBinding)
+    .some(({ commandId, type }) => commandId === "color.select.1" && type === "hard"), false);
   assert.equal(reloaded.getCommandConflicts("tool.pencil")
     .some(({ type }) => type === "layout-unknown"), true);
+
+  reloaded.setBinding("tool.pencil", 0, recorded, { takePrecedence: true });
+  const rankedBinding = reloaded.getEffectiveBindings("tool.pencil")[0];
+  assert.equal(reloaded.analyzeBinding("tool.pencil", rankedBinding)
+    .find(({ commandId, type }) => commandId === "color.select.1" && type === "hard")
+    ?.precedence, "new");
+  assert.equal(reloaded.handleKeyDown(event).commandId, "tool.pencil");
+});
+
+test("keeps unknown-layout physical coincidences advisory and non-destructive", () => {
+  const { commands } = createCommandHarness({ platform: "mac" });
+  const contexts = [{ editorMode: "2d", focus: "canvas" }];
+  register(commands, "tool.pencil", keybinding("n"), () => {}, contexts);
+  register(commands, "tool.other", keybinding("x", { alt: true }), () => {}, contexts);
+  const importedPhysical = keybinding(null, { alt: true, code: "KeyQ" });
+
+  const analysis = commands.analyzeBinding("tool.pencil", importedPhysical);
+  assert.equal(analysis.some(({ commandId, type }) =>
+    commandId === "tool.other" && type === "layout-possible"), true);
+  assert.equal(analysis.some(({ commandId, type }) =>
+    commandId === "tool.other" && type === "hard"), false);
+
+  commands.replaceConflicts("tool.pencil", importedPhysical);
+  assert.equal(commands.getEffectiveBindings("tool.other")[0].sequence[0].key, "x");
+
+  const stablePhysical = keybinding(null, { alt: true, code: "F1" });
+  assert.equal(commands.analyzeBinding("tool.pencil", stablePhysical)
+    .some(({ type }) => type === "layout-possible" || type === "layout-unknown"), false);
 });
 
 test("matches structured contexts and identifies risky bindings", () => {
@@ -334,6 +390,33 @@ test("handles sequences, timeout fallback, cancellation, repeat, and recording s
   assert.equal(commands.handleKeyDown(captured).status, "recording");
   assert.deepEqual(captured.state, { prevented: 1, stopped: 1 });
   assert.deepEqual(executed, ["sequence", "single", "repeat"]);
+});
+
+test("re-recording a repeatable command changes key identity without changing repeat behavior", () => {
+  const first = createCommandHarness();
+  const executed = [];
+  register(first.commands, "key.repeat", keybinding("r", { repeat: true }),
+    () => executed.push("first"));
+  const recorded = first.commands.bindingFromEvent(keyboardEvent("x", { code: "KeyX" }));
+  assert.ok(recorded);
+  assert.equal(recorded.repeat, false);
+
+  first.commands.setBinding("key.repeat", 0, recorded);
+  assert.equal(first.commands.getEffectiveBindings("key.repeat")[0].repeat, false);
+  assert.equal(first.commands.handleKeyDown(keyboardEvent("x", { code: "KeyX" })).status, "executed");
+  assert.equal(first.commands.handleKeyDown(keyboardEvent("x", {
+    code: "KeyX",
+    repeat: true,
+  })).status, "executed");
+
+  const reloaded = createCommandHarness({ storage: createMemoryStorage(first.storage.value) });
+  register(reloaded.commands, "key.repeat", keybinding("r", { repeat: true }),
+    () => executed.push("reloaded"));
+  assert.equal(reloaded.commands.handleKeyDown(keyboardEvent("x", {
+    code: "KeyX",
+    repeat: true,
+  })).status, "executed");
+  assert.deepEqual(executed, ["first", "first", "reloaded"]);
 });
 
 test("releases held commands when their main key is released", () => {

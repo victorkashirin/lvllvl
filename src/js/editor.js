@@ -1792,7 +1792,8 @@ main split panel north is menu
         allowDuringCanvasTyping: args.allowDuringCanvasTyping === true,
         execute: args.execute,
         isEnabled: args.isEnabled,
-        release: args.release
+        release: args.release,
+        repeatable: args.repeat === true
       });
     };
 
@@ -2345,6 +2346,12 @@ main split panel north is menu
         var alternateRedo = commandService.bindingFromLegacyShortcut({ cmd: true, key: 'Y' });
         if(alternateRedo) {
           defaultBindings.push(alternateRedo);
+        }
+      }
+      if(commandId == 'view.zoomin') {
+        var alternateZoomIn = commandService.bindingFromLegacyShortcut({ cmd: true, shift: true, key: '=' });
+        if(alternateZoomIn) {
+          defaultBindings.push(alternateZoomIn);
         }
       }
       menuItem.commandId = commandId;

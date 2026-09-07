@@ -3,6 +3,8 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import vm from "node:vm";
 
+import { CommandService } from "../src/js/modules/application/commandService.mjs";
+
 async function loadClassic(relativePath, exportName, globals = {}) {
   const source = await readFile(new URL(`../src/${relativePath}`, import.meta.url), "utf8");
   const context = vm.createContext({ ...globals });
@@ -19,6 +21,82 @@ function replayEditor(error) {
     },
   };
 }
+
+test("Zoom In keeps both built-in aliases in one override lifecycle", async () => {
+  const browserWindow = {
+    location: { search: "" },
+    setTimeout(callback) { callback() },
+  };
+  const document = {
+    getElementById: () => null,
+    querySelectorAll: () => [],
+  };
+  const Editor = await loadClassic("js/editor.js", "Editor", {
+    document,
+    URLSearchParams,
+    window: browserWindow,
+  });
+  let stored = null;
+  const commands = new CommandService({
+    clearTimer() {},
+    getContext: () => ({
+      editorMode: "2d",
+      focus: "canvas",
+      modal: "none",
+      popupOpen: false,
+      shortcutsAllowed: true,
+    }),
+    platform: "other",
+    setTimer: () => 1,
+    storage: {
+      load: () => stored,
+      save: (value) => { stored = value },
+    },
+  });
+  const zoomItem = {
+    enabled: true,
+    id: "menu-view-zoomin",
+    label: "Zoom In",
+    setShortcutText() {},
+    shortcut: { cmd: true, key: "=" },
+    type: "item",
+    uiID: "view-zoomin",
+    visible: true,
+  };
+  const editor = new Editor();
+  const activations = [];
+  editor.menuClick = (id) => activations.push(id);
+  editor.menuBar = {
+    menus: [{ className: "ui-menu-tilemode", label: "View", menuItems: [zoomItem] }],
+    shortcuts: [],
+  };
+  editor.services = { commands };
+  editor.registerMenuCommands();
+
+  assert.equal(commands.formatBindings("view.zoomin"), "Ctrl+= / Ctrl+Shift+=");
+  assert.equal(commands.handleKeyDown({
+    altKey: false,
+    code: "Equal",
+    ctrlKey: true,
+    getModifierState: () => false,
+    isComposing: false,
+    key: "+",
+    metaKey: false,
+    preventDefault() {},
+    repeat: false,
+    shiftKey: true,
+    stopImmediatePropagation() {},
+    target: null,
+  }).commandId, "view.zoomin");
+  assert.deepEqual(activations, ["view-zoomin"]);
+  commands.setBinding("view.zoomin", 0,
+    commands.bindingFromLegacyShortcut({ cmd: true, key: "i" }));
+  assert.equal(commands.formatBindings("view.zoomin"), "Ctrl+I");
+  commands.unbindCommand("view.zoomin");
+  assert.equal(commands.formatBindings("view.zoomin"), "");
+  commands.resetCommand("view.zoomin");
+  assert.equal(commands.formatBindings("view.zoomin"), "Ctrl+= / Ctrl+Shift+=");
+});
 
 test("classic undo restores position and enabled state after replay fails", async () => {
   const History = await loadClassic("js/textMode/history.js", "History", { g_newSystem: false });
