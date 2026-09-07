@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### Added
+
+- Add FROGBLOCK, Kitchen Sink, Microbe-2, and Pixelchunk to the custom text-mode
+  tile sets, including in-app attribution and bundled license texts. Join
+  FROGBLOCK's normal and inverted glyph sheets into one preset, and remove
+  Pixelchunk's source-sheet padding while reflowing its 8-by-8 tiles to the
+  editor's 16-column layout, adapting transparency for bitmap import, and
+  presenting its release-page license as CC0 1.0.
+
 ## 0.497.8 - 2026-09-07
 
 ### Added
