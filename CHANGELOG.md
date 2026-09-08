@@ -30,6 +30,15 @@
 - Expose the tile-palette control rows with a thin scroll affordance instead
   of clipping overflow, and scope the selection-blocking and cursor resets
   to the app surfaces so buttons and text behave normally.
+- Unify the P1 visible-consistency pass behind design tokens: single h2/h3
+  definitions on the 10/12/14/16/20/24 type scale, 24/20/16 px control
+  heights with border-box sizing, corrected dialog-titlebar math, 2 px
+  control / 5 px surface radii, shared background/text/accent/selection/
+  danger/focus colour tokens (including one selection blue for tabs and
+  list selection), a lightening `ui-button-other` hover, centralised icon
+  `invert()` variables, one custom checkbox/radio system with aligned
+  spacing plus themed native controls, and a single 90 px form-label width
+  with uniform row heights.
 
 ## 0.498.0 - 2026-09-08
 

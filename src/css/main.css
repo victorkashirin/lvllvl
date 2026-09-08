@@ -1,9 +1,3 @@
-h3 {
-  margin-top: 2px;
-  margin-bottom: 8px;
-  color: #eaeaea;
-}
-
 a {
   color: white;
   cursor: pointer !important;
@@ -112,10 +106,7 @@ a {
 
 .formRow {
   margin-bottom: 4px;
-  padding-bottom: 6px;
-  /*
-  border-bottom: 1px solid #444444;
-  */
+  padding-bottom: 0;
   min-height: 24px;
   display: flex;
   align-items: center;
@@ -180,7 +171,7 @@ input[type=checkbox] {
 }
 
 .radioGroup .rb-container {
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
 .checkboxGroup .cb-container {
@@ -268,12 +259,12 @@ input[type=checkbox] {
 
 
 .cellBackgroundColor i {
-  font-size: 26px;
+  font-size: 24px;
 }
 
 
 #drawToolSettings-cellBackgroundColor i {
-  font-size: 15px;
+  font-size: 16px;
 }
 
 .popup-tool {
@@ -327,7 +318,7 @@ input[type=checkbox] {
 .pixelTool img,
 .colorPaletteTool img,
 .blockEditTool img {
-  filter: invert(65%) !important;
+  filter: var(--icon-normal) !important;
 }
 
 .drawToolSelected img,
@@ -338,12 +329,12 @@ input[type=checkbox] {
 .pixelToolSelected img,
 .colorPaletteToolSelected img,
 .blockEditToolSelected img {
-  filter: invert(10%) !important;
+  filter: var(--icon-selected) !important;
 }
 
 
 .musicTool:hover img {
-  filter: invert(75%) !important;
+  filter: var(--icon-hover) !important;
 }
 
 
@@ -371,7 +362,7 @@ input[type=checkbox] {
 .mobileMenuBarItem img {
   width: 42px;
   height: 42px;
-  -webkit-filter: invert(80%) !important;
+  -webkit-filter: var(--icon-normal) !important;
 }
 
 
@@ -400,22 +391,22 @@ input[type=checkbox] {
 .pixelDrawToolMobile img {
   width: 42px;
   height: 42px;
-  -webkit-filter: invert(80%) !important;
+  -webkit-filter: var(--icon-normal) !important;
 }
 
 .drawToolMobileSelected img,
 .pixelDrawToolMobileSelected img {
   width: 42px;
   height: 42px;
-  -webkit-filter: invert(0%) !important;
+  -webkit-filter: var(--icon-selected) !important;
 }
 
 .icon-invert {
-  filter: invert(80%);
+  filter: var(--icon-normal);
 }
 
 #toolIconsMobile {
-  background-color: #111111;
+  background-color: var(--bg-0);
 }
 
 
@@ -449,7 +440,7 @@ input[type=checkbox] {
 .pixelDrawToolMobileSide img {
   width: 36px;
   height: 36px;
-  -webkit-filter: invert(80%) !important;
+  -webkit-filter: var(--icon-normal) !important;
 }
 
 .drawToolMobileSideSelected img,
@@ -457,7 +448,7 @@ input[type=checkbox] {
   width: 36px;
   height: 36px;
 
-  filter: invert(46%) sepia(78%) saturate(6717%) hue-rotate(187deg) brightness(94%) contrast(101%) !important;
+  filter: var(--icon-selected) !important;
   /*
   -webkit-filter: invert(0%) !important;
   */
@@ -619,7 +610,7 @@ input[type=checkbox] {
 .characterSetListEntrySelected,
 .colorPaletteListEntrySelected,
 .drummerPatternListEntrySelected {
-  background-color: #3254ee;
+  background-color: var(--selection);
 }
 
 #chooseColorPaletteControls {
@@ -627,8 +618,8 @@ input[type=checkbox] {
 }
 
 #chooseColorPaletteControls .controlLabel {
-  flex: 0 0 100px;
-  width: 100px;
+  flex: 0 0 90px;
+  width: 90px;
 }
 
 #chooseColorPaletteControls input {
@@ -698,7 +689,7 @@ input[type=checkbox] {
 }
 
 .selectedTextModeLayer {
-  background-color: #3377ff;
+  background-color: var(--selection);
 
 }
 
@@ -713,7 +704,7 @@ input[type=checkbox] {
 }
 
 .selectedFilter {
-  background-color: #3377ff;
+  background-color: var(--selection);
 }
 
 .instrument {
@@ -723,16 +714,16 @@ input[type=checkbox] {
 }
 
 .selectedInstrument {
-  background-color: #3377ff;
+  background-color: var(--selection);
 }
 
 .editInstrumentLabel {
   display: inline-block;
-  width: 100px;
+  width: 90px;
 }
 
 .editInstrumentRow {
-  margin: 6px 0 6px 0;
+  margin: 4px 0 4px 0;
 }
 
 
@@ -853,13 +844,12 @@ input[type=checkbox] {
 
 .imageControlEffect .controlLabel {
   margin-top: 0;
-  padding-left: 4px;
 }
 
 .imageControlEffect_remove {
   border-bottom-left-radius: 0;
   border-top-left-radius: 0;
-  height: 20px;
+  height: var(--control-height-small);
   width: 9px;
   /*
   float: right;
@@ -882,9 +872,10 @@ input[type=checkbox] {
 .imageControlEffect .formRow {
   border-bottom: 0px;
   border-top: 1px solid #444444;
-  padding-top: 6px;
-  padding-bottom: 2px;
-  margin: 2px 0;
+  padding-top: 4px;
+  padding-bottom: 0;
+  margin: 0 0 4px 0;
+  min-height: 24px;
 }
 
 
@@ -952,11 +943,12 @@ input[type=checkbox] {
 .tileEditorC64ColorType {
   display: inline-block;
   width: 62px;
-  height: 20px;
+  height: var(--control-height-small);
+  box-sizing: border-box;
   padding: 2px;
   background-color: #222222;
   border: 1px solid #3e3e3e;
-  font-size: 9px;
+  font-size: 10px;
   line-height: 12px;
   vertical-align: center;
 }
@@ -1107,7 +1099,7 @@ input[type=checkbox] {
 }
 
 .mobileRadio img {
-  filter: invert(70%);
+  filter: var(--icon-normal);
 }
 
 .mobileRadioSelected {
@@ -1117,7 +1109,7 @@ input[type=checkbox] {
 }
 
 .mobileRadioSelected img {
-  filter: invert(10%);
+  filter: var(--icon-selected);
 }
 
 
@@ -1221,7 +1213,7 @@ input[type=checkbox] {
 }
 
 .assemblerDocsInfo h3 {
-  font-size: 19px;
+  font-size: 20px;
 }
 
 .assemblerDocsInfo {
@@ -1311,7 +1303,7 @@ input[type=checkbox] {
 }
 
 .assemblerOutputLine.selected {
-  background-color: #1a4b8e;
+  background-color: var(--selection);
   color: #cccccc;
 }
 
@@ -1320,17 +1312,17 @@ input[type=checkbox] {
   height: 10px;
   line-height: 10px;
   display: inline-block;
-  background-color: #c93d22;
+  background-color: var(--danger);
   color: white;
   margin: 4px 2px 1px 1px;
-  border-radius: 1px;
+  border-radius: var(--radius-control);
 
 }
 
 .assemblerOutputErrorIcon img {
   width: 10px;
   height: 10px;
-  filter: invert(0.9);
+  filter: var(--icon-hover);
 }
 
 .colorPalettePanelSubPalette {
@@ -1564,21 +1556,21 @@ input[type=checkbox] {
 
 .joystick-info-key {
   margin: 0 0 0 4px;
-  font-size: 18px;
+  font-size: 20px;
 }
 
 .joystick-info-key img {
-  filter: invert(1);
+  filter: var(--icon-hover);
 }
 
 .joystick-settings-icon {
   cursor: pointer;
   margin-left: 6px;
-  filter: invert(0.3);
+  filter: var(--icon-muted);
 }
 
 .joystick-settings-icon:hover {
-  filter: invert(1);
+  filter: var(--icon-hover);
 }
 
 .drive-info-label {
@@ -1593,7 +1585,7 @@ input[type=checkbox] {
 
 
 .chooseCharacterSetOptions .rb-container {
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
 .colorPaletteEditorColor {
@@ -1760,7 +1752,7 @@ body.zen-mode .zen-mode-panel-stacked-bottom {
 .zen-mode-status {
   background: rgba(20, 20, 20, 0.94);
   border: 1px solid #444444;
-  border-radius: 3px;
+  border-radius: var(--radius-surface);
   color: #dddddd;
   font-size: 12px;
   left: 50%;
@@ -1821,7 +1813,7 @@ body.zen-mode .zen-mode-panel-stacked-bottom {
 .keyboard-shortcuts-source,
 .keyboard-shortcuts-summary {
   color: #999999;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 #keyboardShortcutsSearch {
@@ -1927,7 +1919,7 @@ body.zen-mode .zen-mode-panel-stacked-bottom {
 }
 
 .keyboard-shortcuts-group-function {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
 }
 
@@ -1966,7 +1958,7 @@ body.zen-mode .zen-mode-panel-stacked-bottom {
   align-items: center;
   background: #202020;
   border: 1px solid #555555;
-  border-radius: 3px;
+  border-radius: var(--radius-control);
   box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.5);
   color: #f1f1f1;
   display: inline-flex;
@@ -1993,15 +1985,15 @@ body.zen-mode .zen-mode-panel-stacked-bottom {
 .keyboard-shortcuts-binding:hover,
 .keyboard-shortcuts-binding:focus,
 .keyboard-shortcuts-recorder-capture:focus {
-  border-color: #80b8eb;
-  outline: 1px solid #80b8eb;
+  border-color: var(--focus);
+  outline: 1px solid var(--focus);
 }
 
 .keyboard-shortcuts-icon-button {
   background: transparent;
   border: 0;
   color: #aaaaaa;
-  font-size: 15px;
+  font-size: 16px;
   min-height: 24px;
   min-width: 24px;
   padding: 1px 4px;
@@ -2026,7 +2018,7 @@ body.zen-mode .zen-mode-panel-stacked-bottom {
 
 .keyboard-shortcuts-reuse-badge {
   color: #8ab7da;
-  font-size: 17px;
+  font-size: 16px;
 }
 
 .keyboard-shortcuts-actions {
@@ -2071,7 +2063,7 @@ body.zen-mode .zen-mode-panel-stacked-bottom {
 
 .keyboard-shortcuts-recorder-capture {
   display: flex;
-  font-size: 15px;
+  font-size: 16px;
   min-height: 38px;
   width: 100%;
 }
