@@ -39,8 +39,8 @@
       "sha256": "bebac5eb0128ceccab24ee53b3113db11f0caf6fa7ce657ba792f170406db263"
     },
     "js/modules/application/commandService.mjs": {
-      "bytes": 73629,
-      "sha256": "cbb4bbd238d5c0a5eec246b1f113805dd537d48dab4f629e0d4623c8523da40e"
+      "bytes": 74446,
+      "sha256": "baeb22fffa3087fc7a989922277ebf58db1e398b3422133be0934813320829e2"
     },
     "js/modules/application/documentSession.mjs": {
       "bytes": 4351,
@@ -87,8 +87,8 @@
       "sha256": "6d592bad166dc67c45dbfb78b54b34dab5c9b93f35c4a7550f10cc43892c5b46"
     },
     "js/modules/feature-adapters/legacyCommandCatalogAdapter.mjs": {
-      "bytes": 8392,
-      "sha256": "1f7aa21f3f20ec813994c1d8f4dbc23065639ea7dc5f4b1c07a6e3898a76fc67"
+      "bytes": 8434,
+      "sha256": "426894e920acaf6f6813091105449e42879bf1f2da8fd57c60292186b7f5cb5d"
     },
     "js/modules/feature-adapters/legacyRemoteProviderFacades.mjs": {
       "bytes": 4551,

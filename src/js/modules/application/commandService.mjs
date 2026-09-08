@@ -343,6 +343,22 @@ function globalChordCanCrossInputBoundary(chord, platform) {
 }
 
 /**
+ * Focusable application controls may yield modified accelerators that cannot
+ * activate or navigate the control itself. Alt remains excluded from editable
+ * text above because it can produce text on some keyboard layouts.
+ *
+ * @param {import("../domain/keybindings.mjs").KeyChord} chord
+ * @param {"mac" | "other"} platform
+ */
+function globalChordCanCrossControlBoundary(chord, platform) {
+  const resolved = resolvePrimaryModifier(chord, platform);
+  const key = resolved.key || resolved.layoutKey || resolved.code;
+  if (!key || inputOwnedKeys.has(key)) return false;
+  if (/^F(?:[1-9]|1\d|2[0-4])$/.test(key)) return true;
+  return resolved.alt || resolved.ctrl || resolved.meta;
+}
+
+/**
  * Only the Commodore-style Alt+1…8 colour aliases may interrupt canvas
  * typing. A user reassignment to a printable key remains typing-owned.
  *
@@ -1319,6 +1335,9 @@ export class CommandService {
     if (inputOwner === "canvasTyping" && command.allowDuringCanvasTyping &&
         colorChordCanCrossCanvasTyping(chord, this.platform)) return true;
     if (command.keyboardPolicy !== "global") return false;
+    if (inputOwner === "focusableControl") {
+      return globalChordCanCrossControlBoundary(chord, this.platform);
+    }
     return globalChordCanCrossInputBoundary(chord, this.platform);
   }
 

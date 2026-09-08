@@ -110,7 +110,8 @@ export function createLegacyCommandCatalogAdapter({
     for (const [commandId, surfaces] of groups) {
       const definition = getEditorCommandDefinition(commandId);
       if (!definition) throw new Error(`Missing editor command definition ${commandId}`);
-      const keyboardPolicy = commandId === "project.save" || commandId === "project.saveas"
+      const keyboardPolicy = commandId === "project.save" || commandId === "project.saveas" ||
+          commandId === "import.image"
         ? "global"
         : "local";
       const defaultBindings = definition.defaultShortcuts.flatMap((shortcut) => {

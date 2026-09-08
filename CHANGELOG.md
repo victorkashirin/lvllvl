@@ -7,6 +7,8 @@
 - Keep source verification aligned with the in-app keyboard-shortcut dialog,
   and pass the command service into the text-mode editor instead of requiring
   the legacy application global during keyboard handling.
+- Keep the image-import accelerator available after menu focus restoration,
+  and verify HiDPI dirty rectangles and bitmap sampling in backing pixels.
 
 ## 0.497.9 - 2026-09-08
 

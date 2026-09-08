@@ -561,6 +561,25 @@ test("allows only input-safe global bindings across editable focus", () => {
   assert.deepEqual(executed, ["save"]);
 });
 
+test("allows modified global accelerators from focusable controls", () => {
+  const { commands } = createCommandHarness({
+    context: { focus: "control", inputOwner: "focusableControl", shortcutsAllowed: false },
+  });
+  const executed = [];
+  const target = { closest: () => ({}), tagName: "DIV" };
+  register(commands, "import.image", keybinding("i", { alt: true, shift: true }),
+    () => executed.push("import"), [{}], { keyboardPolicy: "global" });
+
+  assert.equal(commands.handleKeyDown(keyboardEvent("i", {
+    alt: true,
+    shift: true,
+    target,
+  })).status, "executed");
+  commands.assignBinding("import.image", keybinding("Enter"));
+  assert.equal(commands.handleKeyDown(keyboardEvent("Enter", { target })).status, "ignored");
+  assert.deepEqual(executed, ["import"]);
+});
+
 test("uses context specificity and explicit binding priority deterministically", () => {
   const { commands } = createCommandHarness({ context: { textTool: "select" } });
   const executed = [];

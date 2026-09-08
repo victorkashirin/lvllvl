@@ -2816,8 +2816,12 @@ test("2D editor keeps a real 350% pencil hold and drag stable", async ({ page },
   expect(drag.seededSampleHash).not.toBe(drag.emptySampleHash);
   expect(stableFrames).toEqual(Array(9).fill(true));
   expect(result.backBufferClipRects.length).toBeGreaterThan(0);
-  expect(result.backBufferClipRects[0][2]).toBeLessThanOrEqual(Math.ceil(drag.cellWidth) + 1);
-  expect(result.backBufferClipRects[0][3]).toBeLessThanOrEqual(Math.ceil(drag.cellHeight) + 1);
+  expect(result.backBufferClipRects[0][2]).toBeLessThanOrEqual(
+    Math.ceil(drag.cellWidth * drag.pixelRatio) + 2,
+  );
+  expect(result.backBufferClipRects[0][3]).toBeLessThanOrEqual(
+    Math.ceil(drag.cellHeight * drag.pixelRatio) + 2,
+  );
   expect(result.frontWrites.length).toBeGreaterThanOrEqual(
     drag.endCell.x - drag.startCell.x + 1,
   );
@@ -2869,22 +2873,6 @@ test("2D bitmap sampling preserves alpha, compositing, translations and dirty cl
         const scale = 2.25;
         const originX = offscreen ? -100 : -2.25;
         const originY = 3.5;
-        const expected = document.createElement("canvas");
-        expected.width = view.width;
-        expected.height = view.height;
-        const expectedContext = expected.getContext("2d");
-        const pixels = expectedContext.createImageData(view.width, view.height);
-        for (let y = 0; y < view.height; y++) {
-          for (let x = 0; x < view.width; x++) {
-            const sx = Math.floor(((x + 0.5) * 4 - originX * 4) / 9);
-            const sy = Math.floor(((y + 0.5) * 4 - originY * 4) / 9);
-            if (sx >= 0 && sx < 11 && sy >= 0 && sy < 9) {
-              pixels.data.set(sourcePixels.subarray((sy * 11 + sx) * 4, (sy * 11 + sx + 1) * 4),
-                (y * view.width + x) * 4);
-            }
-          }
-        }
-        expectedContext.putImageData(pixels, 0, 0);
         const bounds = { x: 5, y: 4, width: 24, height: 24 };
         const outputs = [false, true].map((useSampler) => {
           const canvas = document.createElement("canvas");
@@ -2904,7 +2892,46 @@ test("2D bitmap sampling preserves alpha, compositing, translations and dirty cl
             view.drawRasterImage(context, bounds, source, 0, 0, 11, 9,
               originX - 7, originY + 3, 11 * scale, 9 * scale);
           } else {
-            context.drawImage(expected, -7, 3);
+            const transform = context.getTransform();
+            const physicalScale = scale * transform.a;
+            const physicalOriginX = transform.e + (originX - 7) * transform.a;
+            const physicalOriginY = transform.f + (originY + 3) * transform.d;
+            const epsilon = 1e-9;
+            const left = Math.max(0,
+              Math.ceil(physicalOriginX - 0.5 - epsilon),
+              Math.ceil(transform.e + bounds.x * transform.a - 0.5 - epsilon));
+            const top = Math.max(0,
+              Math.ceil(physicalOriginY - 0.5 - epsilon),
+              Math.ceil(transform.f + bounds.y * transform.d - 0.5 - epsilon));
+            const right = Math.min(canvas.width,
+              Math.ceil(physicalOriginX + 11 * physicalScale - 0.5 - epsilon),
+              Math.ceil(transform.e + (bounds.x + bounds.width) * transform.a - 0.5 - epsilon));
+            const bottom = Math.min(canvas.height,
+              Math.ceil(physicalOriginY + 9 * physicalScale - 0.5 - epsilon),
+              Math.ceil(transform.f + (bounds.y + bounds.height) * transform.d - 0.5 - epsilon));
+            if (right > left && bottom > top) {
+              const expected = document.createElement("canvas");
+              expected.width = right - left;
+              expected.height = bottom - top;
+              const expectedContext = expected.getContext("2d");
+              const pixels = expectedContext.createImageData(expected.width, expected.height);
+              for (let y = 0; y < expected.height; y++) {
+                const sy = Math.floor((top + y + 0.5 - physicalOriginY) / physicalScale + epsilon);
+                for (let x = 0; x < expected.width; x++) {
+                  const sx = Math.floor((left + x + 0.5 - physicalOriginX) / physicalScale + epsilon);
+                  pixels.data.set(
+                    sourcePixels.subarray((sy * 11 + sx) * 4, (sy * 11 + sx + 1) * 4),
+                    (y * expected.width + x) * 4,
+                  );
+                }
+              }
+              expectedContext.putImageData(pixels, 0, 0);
+              context.setTransform(1, 0, 0, 1, 0, 0);
+              context.drawImage(expected, left, top);
+            } else {
+              context.drawImage(source, 0, 0, 11, 9,
+                originX - 7, originY + 3, 11 * scale, 9 * scale);
+            }
           }
           return context.getImageData(0, 0, canvas.width, canvas.height).data;
         });
