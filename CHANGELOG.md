@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Fixed
+
+- Keep source verification aligned with the in-app keyboard-shortcut dialog,
+  and pass the command service into the text-mode editor instead of requiring
+  the legacy application global during keyboard handling.
+
 ## 0.497.9 - 2026-09-08
 
 ### Added

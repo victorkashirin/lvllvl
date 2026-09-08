@@ -12,6 +12,7 @@ var TextModeEditor = function() {
 
   this.imageImportFeature = null;
   this.createSvgExportPort = null;
+  this.commandService = null;
   this.importC64Formats = null;
   this.importC64SpriteFormats = null;
   this.importSpriteImage = null;
@@ -301,6 +302,7 @@ TextModeEditor.prototype = {
 
     this.imageImportFeature = services.imageImport;
     this.createSvgExportPort = services.createSvgExportPort;
+    this.commandService = services.commands || null;
 
     this.colorPaletteManager = new ColorPaletteManager();
     this.colorPaletteManager.init(this);
@@ -1824,7 +1826,7 @@ TextModeEditor.prototype = {
 
   keyDown: function(event) {    
     var typing = this.tools.drawTools.isTyping();
-    var commandServiceActive = g_app.services && g_app.services.commands;
+    var commandServiceActive = this.commandService;
 
     if(!commandServiceActive && event.keyCode == keys.textMode.play.keyCode && !typing) {
       // if its space and not typing, then space means play/pause

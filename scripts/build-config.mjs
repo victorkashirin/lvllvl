@@ -279,7 +279,6 @@ export const runtimeFeatureRequests = {
   helpDocumentation: [
     "docs/api.html",
     "docs/common-action-shortcuts.html",
-    "docs/keyboard-shortcuts.html",
   ],
   aceEditor: [
     "lib/ace/src/theme-chrome.js",
