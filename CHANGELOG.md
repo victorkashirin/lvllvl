@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.497.9 - 2026-09-08
+
 ### Added
 
 - Add configurable, context-aware keyboard shortcuts for application menu

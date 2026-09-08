@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
-  "releaseVersion": "0.497.8",
+  "releaseVersion": "0.497.9",
   "artifacts": {
     "index.html": {
       "bytes": 2124,
-      "sha256": "d5fcdcab57bf56100fa1a65ed980373d2f3032216b4bf217dc1c3ef914078aa0"
+      "sha256": "5b1e163fac1b92a0aaa2a1660b8de97314d1aae1dafe344fbe113a609f8ece3a"
     },
     "c64/index.html": {
       "bytes": 2141,
-      "sha256": "e3b4dcde8166642bf896a8b1621de62119b250602fa6245ccd779e35e0f94edb"
+      "sha256": "380414e9cf91c49f4e3ecb74fa80c51c51c6e3d6c0be7056506db837184c632e"
     },
     "css/style.css": {
       "bytes": 151489,
@@ -28,23 +28,23 @@
     },
     "js/main.js": {
       "bytes": 3323181,
-      "sha256": "82f3862526c0be21a6903ab3bbe8158312fcffe1e55e45d8ae4887bd2c179d1f"
+      "sha256": "1ef8b3b9a03cb4242e756372d8fcbc1405203a73ab3768551f40cbf094f704a8"
     },
     "js/main.js.map": {
       "bytes": 10583383,
-      "sha256": "15a10eb32adb6c0b69a88eaa5a9b1788413bc21d010d56d6a8572669dbb9cdf5"
+      "sha256": "2e1aa84bbe0d21f8bad8df747326de1e25c6b97e2cfbcc2b4795aa857210bd8f"
     },
     "js/bootstrap.mjs": {
       "bytes": 8022,
-      "sha256": "0c9bbd5759ab2bbbb9bedc4b89ed49e049bbd69a4eaa24ed93354a0b26aa0c0b"
+      "sha256": "bebac5eb0128ceccab24ee53b3113db11f0caf6fa7ce657ba792f170406db263"
     },
     "js/modules/application/commandService.mjs": {
       "bytes": 73629,
-      "sha256": "c1c1ea07b5c6c0c7c69659a9ffb9b65bbd3456143de572e79a135cf71e9a14ab"
+      "sha256": "cbb4bbd238d5c0a5eec246b1f113805dd537d48dab4f629e0d4623c8523da40e"
     },
     "js/modules/application/documentSession.mjs": {
       "bytes": 4351,
-      "sha256": "bbde49209031d2d5299ab6b5b1ee576d078b3f58d29193a3fbd20f8fa5229fa7"
+      "sha256": "1a7650471a565696a10c998433d5b4d30fd79fdf5b0d246cefa807308652ba2c"
     },
     "js/modules/application/featureRegistry.mjs": {
       "bytes": 7766,
@@ -64,7 +64,7 @@
     },
     "js/modules/domain/keybindings.mjs": {
       "bytes": 30247,
-      "sha256": "f539da5d39bbe9cdafdfd9c8b75a464334f6825a523c25eda60a384e4d821fdd"
+      "sha256": "513fe4287535ae7dd44d193b58ded30efcc0640777b79d95d77aa666e0f579d9"
     },
     "js/modules/domain/shortcutContext.mjs": {
       "bytes": 7817,
@@ -80,7 +80,7 @@
     },
     "js/modules/feature-adapters/imageImportFeature.mjs": {
       "bytes": 3935,
-      "sha256": "01472954f1ac9bda34d13f521bc5bab724d779fe0b10ca5d27dd2842862dfc52"
+      "sha256": "f8782fdc94fb5198d80726d18020f5549a41fc2831dfb21219bf97cd3bbfe896"
     },
     "js/modules/feature-adapters/keyboardShortcutsDialog.mjs": {
       "bytes": 33482,
@@ -88,7 +88,7 @@
     },
     "js/modules/feature-adapters/legacyCommandCatalogAdapter.mjs": {
       "bytes": 8392,
-      "sha256": "de2032d6230deccbf86996deca3488133cf4a8e6606a5201c3b4cd49785dba79"
+      "sha256": "1f7aa21f3f20ec813994c1d8f4dbc23065639ea7dc5f4b1c07a6e3898a76fc67"
     },
     "js/modules/feature-adapters/legacyRemoteProviderFacades.mjs": {
       "bytes": 4551,
@@ -96,7 +96,7 @@
     },
     "js/modules/feature-adapters/legacySvgExportAdapter.mjs": {
       "bytes": 11031,
-      "sha256": "c822184eea927f2247ddf259957c15c78f53abd6401400d1adbdfa5a01bea6cf"
+      "sha256": "46fc28c29aec01b5c7c4efa0104712a4cbaf09d07130222bb33010cd9c8d634c"
     },
     "js/modules/feature-adapters/nativeEditorCommands.mjs": {
       "bytes": 20929,
@@ -104,7 +104,7 @@
     },
     "js/modules/feature-adapters/shortcutContextProvider.mjs": {
       "bytes": 6845,
-      "sha256": "24fadd8abb452fb00be968e9b5422d275f601e9941767712fe4146592388ccae"
+      "sha256": "3fb0c2b172c946a42d0461851c7187bfc6ae8fcafb120e7295f7f411937ee9d9"
     },
     "js/modules/feature-adapters/shortcutLabelProjection.mjs": {
       "bytes": 4844,
