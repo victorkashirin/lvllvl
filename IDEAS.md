@@ -13,6 +13,7 @@
 - add reference image as layer that can be reshaped
 - replace native alert dialogs with styled + add 'save changes' on closing
 - stylise input fields to be true dark mode
+- BUG: switch from text mode to vector mode is destructive and can't be rolled back
 
 
 + improve mobile mode

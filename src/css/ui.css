@@ -70,9 +70,10 @@ h2 {
   font-weight: 400;
 }
 
-/* Single h3 definition: 16px light-weight section heading with rule. */
+/* Single h3 definition: 16px light-weight section heading with rule.
+   Margins keep the previously effective values (main.css override). */
 h3 {
-  margin-top: 10px;
+  margin-top: 2px;
   margin-bottom: 8px;
   border-bottom: 1px solid #777777;
   padding-bottom: 6px;
@@ -436,7 +437,9 @@ padding: 10px 14px;
   position: relative;
   box-sizing: border-box;
   padding: 2px 8px;
-  line-height: 20px;
+  /* 18px line in the 20px content box = pre-token pixel-exact
+     icon/text position; 20px here drops middle-aligned glyphs 1px. */
+  line-height: 18px;
   height: var(--control-height);
   margin-right: 1px;
   border: 0;
@@ -1009,8 +1012,8 @@ box-shadow: 2px 2px 5px #aaa;
 
 
 .ui-panel-close-button {
-  width: var(--control-height-icon);
-  height: var(--control-height-icon);
+  width: 12px;
+  height: 12px;
   box-sizing: border-box;
   padding: 0 !important;
   line-height: 10px;
@@ -1641,7 +1644,9 @@ input[type=range]:disabled::-moz-range-thumb {
 .cb-container {
   display: inline-block;
   position: relative;
-  padding: 1px 0 1px 20px;
+  /* Right padding doubles as the inter-item gap (e.g. the toolbar
+     "Affects" checkboxes, which have no wrapper margins). */
+  padding: 1px 20px;
   line-height: 14px;
   white-space: nowrap;
   /*

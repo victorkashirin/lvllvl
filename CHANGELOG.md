@@ -39,6 +39,10 @@
   `invert()` variables, one custom checkbox/radio system with aligned
   spacing plus themed native controls, and a single 90 px form-label width
   with uniform row heights.
+- Fix the toolbar "Affects" checkboxes being glued together by restoring
+  the custom checkbox container's trailing gap.
+- Keep the 12 px panel close buttons instead of upsizing them to the
+  16 px icon standard, preserving the small layouts that use them.
 
 ## 0.498.0 - 2026-09-08
 
