@@ -14,6 +14,7 @@ features without disrupting established creative workflows.
 
 - **SVG export:** export text-mode, C64 standard, C64 ECM, and vector artwork as
   scalable geometry, with correct layer dimensions and transparent backgrounds.
+- **Keyboard shortcuts manager:** assign shortcut to any action.
 - **Faster, smoother editing:** focused redraws, cached onion-skin frames, batched
   thumbnails, and lighter shape previews reduce unnecessary work while drawing,
   selecting tiles, panning, and animating. The large image importer is loaded only
@@ -27,9 +28,6 @@ features without disrupting established creative workflows.
 - **More reliable browser projects:** saves and autosaves preserve in-memory edits
   when storage fails, publish versioned project data safely, and recover
   interrupted save, catalogue, and cleanup operations.
-- **More dependable image importing:** retryable loading, safe cancellation,
-  coordinated dialogs, and restored animation playback make import failures less
-  disruptive.
 - **Momentary artwork preview:** hold **Tab** with the pointer over the 2D canvas
   to hide panels, grids, and editing guides and see the complete artwork centred.
 - **Zen Mode and a more flexible interface:** choose **Interface → Zen Mode** or

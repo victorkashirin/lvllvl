@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.498.0 - 2026-09-08
+
+### Fixed
+
+- Fix the start-page Import Image button alignment
+
 ## 0.497.10 - 2026-09-08
 
 ### Fixed
