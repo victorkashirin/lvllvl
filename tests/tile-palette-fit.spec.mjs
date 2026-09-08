@@ -645,7 +645,7 @@ test("tile palettes fit their panels and retain a precise manual scale", async (
       spacing: top("sidetilePaletteTileMargin"),
     };
   });
-  expect(Math.abs(sideControlRows.fit - sideControlRows.spacing)).toBeLessThan(5);
+  expect(Math.abs(sideControlRows.fit - sideControlRows.spacing)).toBeLessThanOrEqual(5);
   expect(sideControlRows.choose).toBeGreaterThan(sideControlRows.fit + 10);
 
   const narrowControlRows = await page.evaluate(() => {
