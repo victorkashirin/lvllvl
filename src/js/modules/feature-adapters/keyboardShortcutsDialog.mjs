@@ -43,6 +43,8 @@ export function createKeyboardShortcutsDialog({
   let retainedCommandId = "";
   /** @type {readonly ShortcutSummary[]} */
   let commandSummaries = Object.freeze([]);
+  /** @type {Keybinding | null} */
+  let shortcutSearchBinding = null;
   /** @type {WeakMap<ShortcutSummary, HTMLElement>} */
   const commandRows = new WeakMap();
   /** @type {WeakMap<ShortcutSummary, string>} */
@@ -163,9 +165,21 @@ export function createKeyboardShortcutsDialog({
     return `Also used by ${conflict.title}${layout}${context}`;
   }
 
-  /** @param {ShortcutSummary} summary @param {string} query */
-  function commandMatches(summary, query) {
+  /** @param {string} query @returns {Keybinding | null} */
+  function searchBinding(query) {
+    if (shortcutSearchBinding) return shortcutSearchBinding;
+    return [...query].length === 1
+      ? commands.bindingFromLegacyShortcut({ key: query })
+      : null;
+  }
+
+  /** @param {ShortcutSummary} summary @param {string} query @param {Keybinding | null} queryBinding */
+  function commandMatches(summary, query, queryBinding) {
     if (!query) return true;
+    if (queryBinding) {
+      return summary.bindings.some((binding) =>
+        commands.bindingsCanCoincide(binding, queryBinding));
+    }
     let haystack = commandSearchText.get(summary);
     if (!haystack) {
       haystack = [
@@ -229,7 +243,7 @@ export function createKeyboardShortcutsDialog({
 
   /** @param {ShortcutSummary} summary */
   function commandScope(summary) {
-    if (summary.availableInCurrentMode) return "Current editor";
+    if (summary.availableInCurrentMode) return "Current Editor";
     const labels = Array.from(new Set(summary.contexts.flatMap((context) =>
       modeValues(context.editorMode).map(modeLabel),
     )));
@@ -279,6 +293,7 @@ export function createKeyboardShortcutsDialog({
           heading.setAttribute("colspan", "6");
           heading.setAttribute("scope", "rowgroup");
           heading.appendChild(createElement("span", "keyboard-shortcuts-group-scope", scope));
+          heading.appendChild(createElement("span", "keyboard-shortcuts-group-separator", " > "));
           heading.appendChild(createElement("span", "keyboard-shortcuts-group-function", summary.category));
           heading.appendChild(createElement("span", "keyboard-shortcuts-group-count", countText));
           groupRow.appendChild(heading);
@@ -314,7 +329,6 @@ export function createKeyboardShortcutsDialog({
     const commandCell = createElement("th", "keyboard-shortcuts-command");
     commandCell.setAttribute("scope", "row");
     commandCell.appendChild(createElement("div", "keyboard-shortcuts-command-title", summary.title));
-    commandCell.appendChild(createElement("div", "keyboard-shortcuts-command-category", summary.category));
     commandCell.appendChild(createElement("div", "keyboard-shortcuts-command-id", summary.id));
     row.appendChild(commandCell);
 
@@ -381,6 +395,7 @@ export function createKeyboardShortcutsDialog({
     const boundOnly = /** @type {HTMLInputElement | null} */ (element("keyboardShortcutsBoundOnly"));
     const conflictsOnly = /** @type {HTMLInputElement | null} */ (element("keyboardShortcutsConflictsOnly"));
     const query = String(search?.value || "").trim().toLocaleLowerCase();
+    const queryBinding = searchBinding(query);
     commandSummaries = commands.getCommands();
     const allCommands = commandSummaries;
     const focusCommandId = recording?.commandId || retainedCommandId;
@@ -390,7 +405,7 @@ export function createKeyboardShortcutsDialog({
       if (boundOnly?.checked && summary.bindings.length === 0) return false;
       if (conflictsOnly?.checked && !summary.conflicts.some((conflict) =>
         ["hard", "layout-possible", "layout-unknown", "prefix", "reserved"].includes(conflict.type))) return false;
-      return commandMatches(summary, query);
+      return commandMatches(summary, query, queryBinding);
     });
     const body = element("keyboardShortcutsTableBody");
     if (!body) return;
@@ -409,6 +424,33 @@ export function createKeyboardShortcutsDialog({
 
   function renderFromControls() {
     retainedCommandId = "";
+    render();
+  }
+
+  function renderFromSearchInput() {
+    shortcutSearchBinding = null;
+    renderFromControls();
+  }
+
+  /** @param {KeyboardEvent} event */
+  function handleSearchKeyDown(event) {
+    const shiftedSymbol = event.shiftKey && [...event.key].length === 1 &&
+      !/^\p{L}$/u.test(event.key);
+    if (!event.altKey && !event.ctrlKey && !event.metaKey && !shiftedSymbol) return;
+    const browserEditOperation = !event.altKey && (event.ctrlKey || event.metaKey) &&
+      ["a", "c", "v", "x", "y", "z"].includes(event.key.toLocaleLowerCase());
+    if (browserEditOperation) return;
+    const binding = commands.bindingFromEvent(event);
+    if (!binding) return;
+    event.preventDefault();
+    event.stopPropagation();
+    shortcutSearchBinding = binding;
+    retainedCommandId = "";
+    const matchingBinding = commands.getCommands()
+      .flatMap((summary) => summary.bindings)
+      .find((candidate) => commands.bindingsCanCoincide(candidate, binding));
+    const search = /** @type {HTMLInputElement | null} */ (element("keyboardShortcutsSearch"));
+    if (search) search.value = commands.formatBinding(matchingBinding || binding);
     render();
   }
 
@@ -463,7 +505,7 @@ export function createKeyboardShortcutsDialog({
       title.textContent = `${summary.bindings.length ? "Change" : "Assign"} shortcut: ${summary.title}`;
     }
     if (display) display.textContent = recording.display;
-    if (physical) physical.disabled = recording.capturing;
+    if (physical) physical.disabled = false;
     if (capture) {
       capture.setAttribute("aria-label", recording.capturing
         ? "Recording shortcut; press the new keyboard shortcut"
@@ -495,18 +537,6 @@ export function createKeyboardShortcutsDialog({
     if (restoreFocus) restoreCommandFocus(commandId);
   }
 
-  function prepareRecordingCapture() {
-    if (!recording) return;
-    recording.binding = null;
-    recording.capturing = false;
-    recording.conflicts = [];
-    recording.display = "Start recording";
-    commands.setRecording(false);
-    renderRecorder();
-    positionActiveRecorder();
-    setStatus("");
-  }
-
   function startCapture() {
     if (!recording) return;
     recording.binding = null;
@@ -533,12 +563,7 @@ export function createKeyboardShortcutsDialog({
       conflicts: [],
       display: "Start recording",
     };
-    commands.setRecording(false);
-    setStatus("");
-    renderRecorder();
-    positionActiveRecorder();
-    const physical = /** @type {HTMLInputElement | null} */ (element("keyboardShortcutsPhysicalKey"));
-    physical?.focus({ preventScroll: true });
+    startCapture();
   }
 
   /** @param {"normal" | "replace" | "precedence"} behavior */
@@ -752,7 +777,8 @@ export function createKeyboardShortcutsDialog({
           target.closest("#keyboardShortcutsRecorder [data-action]") !== null);
       if (isRecorderControl) event.stopPropagation();
     });
-    element("keyboardShortcutsSearch")?.addEventListener("input", renderFromControls);
+    element("keyboardShortcutsSearch")?.addEventListener("input", renderFromSearchInput);
+    element("keyboardShortcutsSearch")?.addEventListener("keydown", handleSearchKeyDown);
     element("keyboardShortcutsModifiedOnly")?.addEventListener("change", renderFromControls);
     element("keyboardShortcutsBoundOnly")?.addEventListener("change", renderFromControls);
     element("keyboardShortcutsConflictsOnly")?.addEventListener("change", renderFromControls);
@@ -760,7 +786,7 @@ export function createKeyboardShortcutsDialog({
     document.defaultView?.addEventListener("resize", positionActiveRecorder);
     document.addEventListener("keydown", handleRecordingKeyDown, true);
     element("keyboardShortcutsPhysicalKey")?.addEventListener("change", () => {
-      prepareRecordingCapture();
+      startCapture();
     });
     element("keyboardShortcutsImportFile")?.addEventListener("change", (event) => {
       void importFile(event);

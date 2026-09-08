@@ -27,6 +27,19 @@
 
 ### Fixed
 
+- Make single-key shortcut searches exact instead of matching incidental text,
+  and capture modified search chords such as Option+1 and Shift+/ with
+  layout-aware matching instead of inserting their transformed character into
+  the search field. Treat Firefox's macOS Option events as Option rather than
+  AltGr, and recover the base key of Firefox dead-key events so Option shortcuts
+  dispatch and record.
+- Keep the current keyboard-shortcut section visible below the sticky column
+  labels without exposing scrolling content between the sticky headers, present
+  scope and function as one consistent white breadcrumb heading, remove repeated
+  function labels from command rows, and vertically align the import, export,
+  and reset controls with the toolbar filters. Center row-action labels, and
+  start recording as soon as a shortcut assignment opens while keeping the
+  physical-key option available.
 - Keep shortcut conflict replacement and precedence aligned with the logical
   intersection of command and binding contexts, including finite-domain and
   missing-value cases; remove corrupt preferences even when archival storage

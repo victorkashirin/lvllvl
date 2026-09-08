@@ -206,6 +206,19 @@ test("normalizes portable, special, physical, and composition-sensitive keys", (
   assert.equal(chordFromKeyboardEvent(keyboardEvent("a", { altGraph: true }), { platform: "other" }), null);
   assert.equal(chordFromKeyboardEvent(keyboardEvent("a", { composing: true }), { platform: "other" }), null);
 
+  const otherPlatformDeadKey = chordFromKeyboardEvent(keyboardEvent("Dead", {
+    code: "KeyE",
+  }), { platform: "other" });
+  assert.ok(otherPlatformDeadKey);
+  assert.equal(formatBinding(
+    normalizeBinding({ sequence: [otherPlatformDeadKey] }),
+    "other",
+  ), "E");
+  assert.equal(chordFromKeyboardEvent(keyboardEvent("Dead", {
+    altGraph: true,
+    code: "KeyE",
+  }), { platform: "other" }), null);
+
   assert.deepEqual(shortcutKeyboardEvent(keyboardEvent("Dead", {
     alt: true,
     code: "KeyE",
@@ -232,6 +245,31 @@ test("normalizes portable, special, physical, and composition-sensitive keys", (
     keyboardEvent("å", { alt: true, code: "KeyA" }),
     "mac",
   ), true);
+
+  const firefoxOptionShiftZ = keyboardEvent("Dead", {
+    alt: true,
+    altGraph: true,
+    code: "KeyZ",
+    shift: true,
+  });
+  const recoveredDeadKey = chordFromKeyboardEvent(firefoxOptionShiftZ, {
+    platform: "mac",
+    portable: true,
+  });
+  assert.ok(recoveredDeadKey);
+  assert.equal(formatBinding(
+    normalizeBinding({ sequence: [recoveredDeadKey] }),
+    "mac",
+  ), "Option+Shift+Z");
+  assert.equal(eventMatchesChord(
+    keybinding("z", { alt: true, shift: true }).sequence[0],
+    firefoxOptionShiftZ,
+    "mac",
+  ), true);
+  const { commands: macCommands } = createCommandHarness({ platform: "mac" });
+  register(macCommands, "view.zenmode",
+    keybinding("z", { alt: true, shift: true }), () => {});
+  assert.equal(macCommands.handleKeyDown(firefoxOptionShiftZ).commandId, "view.zenmode");
 });
 
 test("detects a conflict when a recorded semantic key shares a layout fallback", () => {
@@ -240,12 +278,21 @@ test("detects a conflict when a recorded semantic key shares a layout fallback",
   register(commands, "tool.pencil", keybinding("n"), () => {}, contexts);
   register(commands, "color.select.1", keybinding("1", { alt: true }), () => {}, contexts);
 
-  const event = keyboardEvent("¡", { alt: true, code: "Digit1" });
+  const event = keyboardEvent("¡", {
+    alt: true,
+    altGraph: true,
+    code: "Digit1",
+  });
   const recorded = commands.bindingFromEvent(event);
   assert.ok(recorded);
   assert.equal(recorded.sequence[0].layoutCode, "Digit1");
   assert.equal(eventMatchesChord(recorded.sequence[0], event, "mac"), true);
   assert.equal(eventMatchesChord(keybinding("1", { alt: true }).sequence[0], event, "mac"), true);
+  assert.equal(commands.bindingsCanCoincide(
+    recorded,
+    keybinding("1", { alt: true }),
+  ), true);
+  assert.equal(commands.bindingsCanCoincide(recorded, keybinding("1")), false);
 
   const conflict = commands.analyzeBinding("tool.pencil", recorded)
     .find(({ commandId, type }) => commandId === "color.select.1" && type === "hard");

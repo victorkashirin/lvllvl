@@ -257,10 +257,43 @@ test("shortcut settings replace conflicts and drive the editor from one binding"
     await expect(canvasCopyReuse).toHaveAttribute("title", /Also used by Copy Selection Contents Left/);
   }
 
+  const currentTextToolsHeading = page.locator(".keyboard-shortcuts-group-heading")
+    .filter({ hasText: /Current Editor > Text Tools/ });
+  await expect(currentTextToolsHeading).toHaveCount(1);
+  await expect(currentTextToolsHeading.locator(".keyboard-shortcuts-group-scope"))
+    .toHaveCSS("color", "rgb(238, 238, 238)");
+  await expect(currentTextToolsHeading.locator(".keyboard-shortcuts-group-function"))
+    .toHaveCSS("color", "rgb(238, 238, 238)");
+  const pencilActions = page.locator('tr[data-command-id="textMode.tool.pencil"] .keyboard-shortcuts-action');
+  await expect(pencilActions).toHaveCount(2);
+  for (const action of await pencilActions.all()) {
+    await expect(action).toHaveCSS("align-items", "center");
+    await expect(action).toHaveCSS("justify-content", "center");
+  }
   await expect(page.locator(".keyboard-shortcuts-group-heading")
-    .filter({ hasText: /Current editor.*Text Tools/ })).toHaveCount(1);
-  await expect(page.locator(".keyboard-shortcuts-group-heading")
-    .filter({ hasText: /Colour Palette Editor.*Colour Palette Tools/ })).toHaveCount(1);
+    .filter({ hasText: /Colour Palette Editor > Colour Palette Tools/ })).toHaveCount(1);
+  await expect(page.locator('tr[data-command-id="textMode.tool.pencil"] .keyboard-shortcuts-command-category'))
+    .toHaveCount(0);
+
+  const toolbarControlAlignment = await page.locator(".keyboard-shortcuts-toolbar").evaluate((toolbar) => {
+    const filter = toolbar.querySelector(".keyboard-shortcuts-filter");
+    const buttons = Array.from(toolbar.querySelectorAll(":scope > .ui-button"));
+    const filterBounds = filter.getBoundingClientRect();
+    return buttons.map((button) => {
+      const bounds = button.getBoundingClientRect();
+      return {
+        centerDifference: Math.abs(
+          (bounds.top + bounds.bottom) / 2 - (filterBounds.top + filterBounds.bottom) / 2,
+        ),
+        height: bounds.height,
+      };
+    });
+  });
+  expect(toolbarControlAlignment).toEqual([
+    { centerDifference: 0, height: 28 },
+    { centerDifference: 0, height: 28 },
+    { centerDifference: 0, height: 28 },
+  ]);
 
   const excludedCommands = await page.evaluate(() => g_app.services.commands.getCommands()
     .map(({ id }) => id)
@@ -278,7 +311,43 @@ test("shortcut settings replace conflicts and drive the editor from one binding"
   const search = page.locator("#keyboardShortcutsSearch");
   await search.press("l");
   await expect(search).toHaveValue("l");
+  await expect(page.locator('tr[data-command-id="textMode.tool.erase"]')).toBeVisible();
+  await expect(page.locator('tr[data-command-id="textMode.tool.pencil"]')).toBeHidden();
   expect(await page.evaluate(() => g_app.textModeEditor.tools.drawTools.tool)).toBe("pen");
+
+  await search.fill("U");
+  await expect(page.locator('tr[data-command-id="textMode.tool.shape"]')).toBeVisible();
+  await expect(page.locator('tr[data-command-id="textMode.pixelTool.shape"]')).toBeHidden();
+
+  await search.evaluate((input, firefoxMac) => {
+    const event = new KeyboardEvent("keydown", {
+      altKey: true,
+      bubbles: true,
+      cancelable: true,
+      code: "Digit1",
+      key: "¡",
+    });
+    Object.defineProperty(event, "getModifierState", {
+      value: (modifier) => firefoxMac && modifier === "AltGraph",
+    });
+    input.dispatchEvent(event);
+  }, isMac);
+  await expect(search).toHaveValue(isMac ? "Option+1" : "Alt+1");
+  await expect(page.locator('tr[data-command-id="textMode.color.select.1"]')).toBeVisible();
+  await expect(page.locator('tr[data-command-id="textMode.tool.shape"]')).toBeHidden();
+
+  await search.press("Shift+/");
+  await expect(search).toHaveValue("Shift+?");
+  await expect(page.locator('tr[data-command-id="textMode.picker.colors"]')).toBeVisible();
+  await expect(page.locator('tr[data-command-id="textMode.picker.tiles"]')).toBeHidden();
+
+  await search.press(`${isMac ? "Meta" : "Control"}+a`);
+  expect(await search.evaluate((input) => [input.selectionStart, input.selectionEnd]))
+    .toEqual([0, "Shift+?".length]);
+
+  await search.fill("");
+  await search.press("Shift+P");
+  await expect(search).toHaveValue("P");
 
   await search.fill("Pencil");
   const pencilRow = page.locator('tr[data-command-id="textMode.tool.pencil"]');
@@ -292,7 +361,8 @@ test("shortcut settings replace conflicts and drive the editor from one binding"
   expect(await page.locator("#keyboardShortcutsTableHolder").evaluate((element) =>
     element.getBoundingClientRect().height,
   )).toBe(listHeight);
-  await page.locator("#keyboardShortcutsRecorderCapture").click();
+  await expect(page.locator("#keyboardShortcutsRecorderCapture"))
+    .toHaveAttribute("data-capturing", "true");
   await page.keyboard.press("l");
 
   await expect(page.locator("#keyboardShortcutsConflictActions")).toBeVisible();
@@ -474,21 +544,18 @@ test("shortcut recorder supports keyboard setup, Tab capture, focus return, and 
 
   await pencilBinding.focus();
   await page.keyboard.press("Enter");
-  await expect(physical).toBeFocused();
-  await page.keyboard.press("Space");
-  await expect(physical).toBeChecked();
-  await page.keyboard.press("Tab");
   await expect(capture).toBeFocused();
-  await page.keyboard.press("Enter");
+  await expect(capture).toHaveAttribute("data-capturing", "true");
+  await expect(physical).toBeEnabled();
+  await physical.click();
+  await expect(physical).toBeChecked();
+  await expect(capture).toBeFocused();
   await expect(capture).toHaveAttribute("data-capturing", "true");
   await page.keyboard.press("Escape");
   await expect(recorder).toBeHidden();
   await expect(status).toHaveText("Shortcut recording cancelled.");
   await expect(pencilBinding).toBeFocused();
 
-  await page.keyboard.press("Enter");
-  await expect(physical).toBeFocused();
-  await page.keyboard.press("Tab");
   await page.keyboard.press("Enter");
   await page.keyboard.press("Shift+Tab");
   await expect(recorder).toBeHidden();
@@ -501,11 +568,9 @@ test("shortcut recorder supports keyboard setup, Tab capture, focus return, and 
   })).toEqual({ code: "Tab", key: null, shift: true });
 
   await page.keyboard.press("Enter");
-  await expect(physical).toBeFocused();
-  await page.keyboard.press("Space");
+  await expect(capture).toHaveAttribute("data-capturing", "true");
+  await physical.click();
   await expect(physical).not.toBeChecked();
-  await page.keyboard.press("Tab");
-  await page.keyboard.press("Enter");
   await page.keyboard.press("l");
   await expect(page.locator("#keyboardShortcutsReplaceConflicts")).toBeFocused();
   await page.keyboard.press("Enter");
@@ -530,10 +595,7 @@ test("shortcut recorder supports keyboard setup, Tab capture, focus return, and 
     probeStatus: g_app.services.commands.assignBinding("textMode.tool.pencil", {}).status,
   }))).toEqual({ ownMethod: true, probeStatus: "rejected" });
   await page.keyboard.press("Enter");
-  await expect(physical).toBeFocused();
-  await page.keyboard.press("Tab");
   await expect(capture).toBeFocused();
-  await page.keyboard.press("Enter");
   await expect(capture).toHaveAttribute("data-capturing", "true");
   await page.keyboard.press("q");
   await expect(page.locator("#keyboardShortcutsReplaceConflicts")).toBeFocused();
@@ -558,7 +620,7 @@ test("shortcut recorder supports keyboard setup, Tab capture, focus return, and 
   await pencilBinding.focus();
   await page.keyboard.press("Enter");
   await physical.check();
-  await capture.click();
+  await expect(capture).toHaveAttribute("data-capturing", "true");
   await page.keyboard.press("Shift+Tab");
   await expect(recorder).toBeHidden();
   await expect(conflictsOnly).toBeChecked();
@@ -571,15 +633,18 @@ test("shortcut recorder supports keyboard setup, Tab capture, focus return, and 
   const headerState = await page.locator("#keyboardShortcutsTableHolder").evaluate((holder) => {
     holder.scrollTop = holder.scrollHeight;
     const columnHeader = holder.querySelector("thead th");
-    const commandHeader = holder.querySelector("tbody .keyboard-shortcuts-command");
-    const groupHeader = holder.querySelector("tbody .keyboard-shortcuts-group-heading");
+    const groupHeaders = Array.from(holder.querySelectorAll("tbody .keyboard-shortcuts-group-heading"));
+    const visibleGroupHeader = groupHeaders.reverse().find((header) =>
+      header.getBoundingClientRect().top <= holder.getBoundingClientRect().top + columnHeader.offsetHeight + 2,
+    );
     return {
       columnPosition: getComputedStyle(columnHeader).position,
       columnTop: columnHeader.getBoundingClientRect().top,
       clientHeight: holder.clientHeight,
-      groupPosition: getComputedStyle(groupHeader).position,
+      groupPosition: getComputedStyle(visibleGroupHeader).position,
+      groupTop: visibleGroupHeader.getBoundingClientRect().top,
+      headerHeight: columnHeader.offsetHeight,
       holderTop: holder.getBoundingClientRect().top,
-      rowPosition: getComputedStyle(commandHeader).position,
       scrollHeight: holder.scrollHeight,
       scrollTop: holder.scrollTop,
     };
@@ -588,8 +653,9 @@ test("shortcut recorder supports keyboard setup, Tab capture, focus return, and 
   expect(headerState.scrollTop).toBeGreaterThan(0);
   expect(headerState.columnPosition).toBe("sticky");
   expect(Math.abs(headerState.columnTop - headerState.holderTop)).toBeLessThanOrEqual(2);
-  expect(headerState.groupPosition).toBe("static");
-  expect(headerState.rowPosition).toBe("static");
+  expect(headerState.groupPosition).toBe("sticky");
+  expect(headerState.groupTop - headerState.holderTop - headerState.headerHeight)
+    .toBeCloseTo(0, 0);
 });
 
 test("shortcut overrides survive reload and can be reset", async ({ page }) => {

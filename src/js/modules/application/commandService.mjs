@@ -4,6 +4,7 @@ import {
   bindingHasUnknownLayout,
   bindingPrefixCoincidence,
   bindingSignature,
+  bindingsCanCoincide as domainBindingsCanCoincide,
   bindingsEqual,
   chordFromKeyboardEvent,
   contextClausesOverlap,
@@ -1192,6 +1193,11 @@ export class CommandService {
   /** @param {Keybinding} binding */
   bindingIdentifier(binding) { return JSON.stringify(bindingSignature(binding, this.platform)); }
 
+  /** @param {Keybinding} left @param {Keybinding} right */
+  bindingsCanCoincide(left, right) {
+    return domainBindingsCanCoincide(left, right, this.platform);
+  }
+
   /** @param {string} commandId */
   formatBindings(commandId) {
     return this.getEffectiveBindings(commandId).map((binding) => this.formatBinding(binding)).join(" / ");
@@ -1513,7 +1519,7 @@ export class CommandService {
       this.consumeEvent(event);
       return { handled: true, status: "recording" };
     }
-    if (shortcutEvent.composing || shortcutEvent.altGraph) {
+    if (shortcutEvent.composing || (shortcutEvent.altGraph && this.platform !== "mac")) {
       this.cancelPending();
       return { handled: false, status: "ignored" };
     }

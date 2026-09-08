@@ -222,9 +222,10 @@ function physicalCodeCanProducePrintableKey(code) {
 }
 
 /**
- * TanStack reaches its physical-code fallback only for dead keys or printable
- * mismatches that are not ordinary layout-produced letters. Dead keys cannot
- * be recorded, so conflict analysis needs the latter rule here.
+ * TanStack reaches its physical-code fallback for dead keys and printable
+ * mismatches that are not ordinary layout-produced letters. Recorded dead keys
+ * recover a base key from `code`; this predicate models the latter case for
+ * conflict analysis.
  *
  * @param {KeyChord} recorded
  */
@@ -367,10 +368,12 @@ function hasAltGraph(eventValue) {
 /**
  * Normalize browser KeyboardEvent identity once at the keybinding boundary.
  * Composition and AltGraph are retained so callers can reject them without
- * losing the reason. Dead keys remain dispatchable through TanStack's physical
- * fallback, but are deliberately not recordable because they do not provide a
- * stable semantic key. Layout changes affect semantic events naturally at
- * dispatch; captured complementary metadata is an analysis snapshot only.
+ * losing the reason. Firefox reports macOS Option as both Alt and AltGraph, so
+ * callers use the active platform to distinguish it from AltGr. Dead keys
+ * remain dispatchable through TanStack's physical fallback; recording can
+ * recover their base key from `code` while retaining that layout metadata.
+ * Layout changes affect semantic events naturally at dispatch; captured
+ * complementary metadata is an analysis snapshot only.
  *
  * @param {unknown} eventValue
  * @returns {ShortcutKeyboardEvent | null}
@@ -406,8 +409,9 @@ export function shortcutKeyboardEvent(eventValue) {
  */
 export function chordFromKeyboardEvent(eventValue, options) {
   const event = shortcutKeyboardEvent(eventValue);
-  if (!event || event.composing || event.dead || event.altGraph || event.modifierOnly) return null;
-  const key = event.key;
+  if (!event || event.composing || (event.altGraph && options.platform !== "mac") ||
+      event.modifierOnly) return null;
+  const key = event.dead ? fallbackKeyForCode(event.code) : event.key;
   const code = options.physical ? event.code : null;
   if (options.physical ? !code : !key) return null;
   const primaryIsMeta = options.platform === "mac";
@@ -437,7 +441,7 @@ export function chordFromKeyboardEvent(eventValue, options) {
  */
 export function eventMatchesChord(chord, eventValue, platform) {
   const event = shortcutKeyboardEvent(eventValue);
-  if (!event || event.composing || event.altGraph) return false;
+  if (!event || event.composing || (event.altGraph && platform !== "mac")) return false;
   const resolved = resolvePrimaryModifier(chord, platform);
   if (resolved.code) {
     return event.alt === resolved.alt && event.ctrl === resolved.ctrl &&

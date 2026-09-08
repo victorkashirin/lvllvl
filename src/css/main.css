@@ -1684,6 +1684,13 @@ body.zen-mode .zen-mode-panel-stacked-bottom {
   gap: 8px;
 }
 
+.keyboard-shortcuts-toolbar > .ui-button {
+  align-items: center;
+  display: inline-flex;
+  height: 28px;
+  justify-content: center;
+}
+
 .keyboard-shortcuts-search-label {
   display: flex;
   flex: 1 1 320px;
@@ -1693,7 +1700,6 @@ body.zen-mode .zen-mode-panel-stacked-bottom {
 }
 
 .keyboard-shortcuts-search-label > span,
-.keyboard-shortcuts-command-category,
 .keyboard-shortcuts-command-id,
 .keyboard-shortcuts-context,
 .keyboard-shortcuts-source,
@@ -1736,6 +1742,7 @@ body.zen-mode .zen-mode-panel-stacked-bottom {
 }
 
 .keyboard-shortcuts-table {
+  --keyboard-shortcuts-column-header-height: 30px;
   border-collapse: collapse;
   table-layout: fixed;
   width: 100%;
@@ -1743,13 +1750,15 @@ body.zen-mode .zen-mode-panel-stacked-bottom {
 
 .keyboard-shortcuts-table thead th {
   background: #2b2b2b;
+  box-sizing: border-box;
   color: #bbbbbb;
   font-weight: 600;
+  height: var(--keyboard-shortcuts-column-header-height);
   padding: 7px 8px;
   position: sticky;
   text-align: left;
   top: 0;
-  z-index: 1;
+  z-index: 3;
 }
 
 .keyboard-shortcuts-table thead th:nth-child(1) { width: 25%; }
@@ -1778,20 +1787,20 @@ body.zen-mode .zen-mode-panel-stacked-bottom {
   border-top: 1px solid #52606d !important;
   color: #eeeeee;
   padding: 8px !important;
+  position: sticky;
+  top: calc(var(--keyboard-shortcuts-column-header-height) - 1px);
+  z-index: 2;
 }
 
-.keyboard-shortcuts-group-scope {
-  color: #86b6df;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
+.keyboard-shortcuts-group-scope,
 .keyboard-shortcuts-group-function {
   font-size: 13px;
   font-weight: 700;
-  margin-left: 9px;
+}
+
+.keyboard-shortcuts-group-separator {
+  color: #777f87;
+  font-size: 13px;
 }
 
 .keyboard-shortcuts-group-count {
@@ -1898,9 +1907,13 @@ body.zen-mode .zen-mode-panel-stacked-bottom {
 }
 
 .keyboard-shortcuts-action {
+  align-items: center;
+  display: inline-flex;
+  justify-content: center;
   margin: 2px 4px 2px 0;
   padding-left: 6px;
   padding-right: 6px;
+  text-align: center;
 }
 
 .keyboard-shortcuts-action:disabled {

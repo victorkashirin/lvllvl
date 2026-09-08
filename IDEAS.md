@@ -8,6 +8,12 @@
 - magic wand
 - sketch layer with pen
 - navigate tile/color picker with arrows
+- grid on/off setting doesn't get saved
+- select tiles/colors modal should show currently used tiles/map set, if unmodified
+- add reference image as layer that can be reshaped
+- replace native alert dialogs with styled + add 'save changes' on closing
+- stylise input fields to be true dark mode
+
 
 + improve mobile mode
 + tab for preview mode
