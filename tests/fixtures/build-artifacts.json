@@ -35,12 +35,12 @@
       "sha256": "121cfa4ba2edebdf6ff59b0e26c6b6d5bb46ae737c2ab447c1f4563b41f7b82f"
     },
     "js/bootstrap.mjs": {
-      "bytes": 6928,
-      "sha256": "1ce9a4ffaebcee3ad690a90e5286ca233979ca060ed8114430b0c45847f04086"
+      "bytes": 7587,
+      "sha256": "8ee8547e323333141a8671c2f79622f19ac0ef988128ecd45b0b29b840551d48"
     },
     "js/modules/application/commandService.mjs": {
-      "bytes": 68364,
-      "sha256": "34ccad588818b15e09aa988d359a2e0915fccde000beec1059f42dc7e7fa77f2"
+      "bytes": 74563,
+      "sha256": "23d1537f8078505cff59f18034e13f1d5ba28437287cd56e75c1710b4f16226c"
     },
     "js/modules/application/documentSession.mjs": {
       "bytes": 4351,
@@ -59,16 +59,16 @@
       "sha256": "edf8e490574850373e5e2f3b305c4420e5b1ad9ef032158103e708cf1ed3130d"
     },
     "js/modules/domain/keybindings.mjs": {
-      "bytes": 28976,
-      "sha256": "893f2f96ef12655886f17be1467090e0a81a0a4de7f0b3cd6ed0ef254f98ad2d"
+      "bytes": 29995,
+      "sha256": "3933500dc894253a6755122a9910c5f900e9de74dd988ee063edd455efdad6f1"
     },
     "js/modules/domain/legacyMenuCommandDefinitions.mjs": {
       "bytes": 12675,
       "sha256": "006681e95ef3765c89fb060e8fb8fdde011cd1f26ddc869e89acc9188eb41fe2"
     },
     "js/modules/domain/shortcutContext.mjs": {
-      "bytes": 6777,
-      "sha256": "e85b1cb20bbb12d78841bab33ea5c271212bf6cb9413315bec64f42d2f7abed8"
+      "bytes": 7284,
+      "sha256": "2cc8219bfa5b6d2bcf76a05c369bf0846877c3c5d31338b535a7942c72fced00"
     },
     "js/modules/domain/svgExport.mjs": {
       "bytes": 3727,
@@ -83,8 +83,8 @@
       "sha256": "01472954f1ac9bda34d13f521bc5bab724d779fe0b10ca5d27dd2842862dfc52"
     },
     "js/modules/feature-adapters/keyboardShortcutsDialog.mjs": {
-      "bytes": 33868,
-      "sha256": "a6e320a44a0571bfa9324435bfd1ac28980ae5ebe268fcf18ed0f207c4f1d26d"
+      "bytes": 34030,
+      "sha256": "814dacb6e9df769ff9916b2d06fc34e58eca46604d348430490b53d7d188b582"
     },
     "js/modules/feature-adapters/legacyCommandCatalogAdapter.mjs": {
       "bytes": 29842,
@@ -111,8 +111,8 @@
       "sha256": "1b3b8e5f9b2c10a23c24b096a7c8696a83e0ffcaa8bbd6fff6af473a40265141"
     },
     "js/modules/infrastructure/keybindingStorageAdapter.mjs": {
-      "bytes": 1139,
-      "sha256": "9d8b1381179bb0ab5bd4406ac4f1bb9b49f5862e2005dab680e6a0b073cc7ea6"
+      "bytes": 1652,
+      "sha256": "39910d65b3eefeca62745b5e41651a3feb750b28cbe27edbde0a74c0c4ea6e20"
     },
     "js/features/image-import.js": {
       "bytes": 147877,

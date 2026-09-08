@@ -6,6 +6,7 @@ import {
   chordFromKeyboardEvent,
   contextClausesOverlap,
   contextMatches,
+  contextSpecificity,
   eventMatchesChord,
   formatAriaBinding,
   formatBinding,
@@ -318,13 +319,63 @@ test("matches structured contexts and identifies risky bindings", () => {
     modal: "none",
   }), true);
   assert.equal(contextMatches({ focus: { not: "textInput" } }, { focus: "canvas" }), true);
+  assert.equal(contextMatches({ focus: { not: "textInput" } }, {}), false);
   assert.equal(contextClausesOverlap({ editorMode: "2d" }, { editorMode: "color palette" }), false);
   assert.equal(contextClausesOverlap(
     { editorMode: ["2d", "3d"] },
     { editorMode: { not: "tile set" } },
   ), true);
+  assert.equal(contextClausesOverlap(
+    { selectionActive: { not: true } },
+    { selectionActive: { not: false } },
+  ), false);
+  assert.equal(contextSpecificity({ selectionActive: [false, true] }), 0);
   assert.equal(isRiskyBinding(keybinding("w", { mod: true }), "mac"), true);
+  assert.equal(isRiskyBinding(keybinding("ArrowLeft", { alt: true }), "mac"), false);
+  assert.equal(isRiskyBinding(keybinding("ArrowLeft", { alt: true }), "other"), true);
   assert.equal(isRiskyBinding(keybinding("n"), "other"), false);
+});
+
+test("intersects command and binding contexts before conflict replacement and ranking", () => {
+  const { commands } = createCommandHarness({
+    context: { selectionActive: false, textTool: "pen" },
+  });
+  register(commands, "selection.inactive", keybinding("x"), () => {}, [{
+    selectionActive: { not: true },
+  }]);
+  register(commands, "selection.active", keybinding("x"), () => {}, [{
+    selectionActive: { not: false },
+  }]);
+
+  const separated = commands.analyzeBinding("selection.inactive", keybinding("x"))
+    .find(({ commandId }) => commandId === "selection.active");
+  assert.equal(separated.type, "context-separated");
+  commands.assignBinding("selection.inactive", keybinding("x"), { conflicts: "replace" });
+  assert.equal(commands.formatBindings("selection.active"), "X",
+    "replace must preserve a mutually exclusive command");
+
+  const executed = [];
+  register(commands, "tool.redundant", keybinding("n", {
+    when: { editorMode: "2d" },
+  }), () => executed.push("redundant"), [{ editorMode: "2d" }]);
+  register(commands, "tool.specific", keybinding("n"), () => executed.push("specific"), [{
+    editorMode: "2d",
+    textTool: "pen",
+  }]);
+
+  assert.equal(commands.handleKeyDown(keyboardEvent("n")).status, "executed");
+  assert.deepEqual(executed, ["specific"]);
+  const ranked = commands.analyzeBinding("tool.redundant", commands.getEffectiveBindings("tool.redundant")[0])
+    .find(({ commandId }) => commandId === "tool.specific");
+  assert.equal(ranked.precedence, "existing");
+
+  register(commands, "tool.unconditional", keybinding("z"), () => executed.push("unconditional"));
+  register(commands, "tool.tautological", keybinding("z", {
+    when: { selectionActive: [false, true] },
+  }), () => executed.push("tautological"));
+  assert.equal(commands.handleKeyDown(keyboardEvent("z")).status, "conflict",
+    "a finite-domain tautology must not manufacture precedence");
+  assert.deepEqual(executed, ["specific"]);
 });
 
 test("dispatches by active context and refuses unresolved ties", () => {
@@ -808,6 +859,47 @@ test("preference edits expose session-only and rejected persistence outcomes", (
   assert.equal(saveCalls, 1);
   assert.equal(quota.errors.length, 1);
 
+  let unsafeSaveCalls = 0;
+  let readsAllowed = false;
+  let recoveredStorageValue = null;
+  const unreadable = createCommandHarness({
+    storage: {
+      load: () => null,
+      loadFresh() {
+        if (!readsAllowed) throw new Error("read denied");
+        return recoveredStorageValue;
+      },
+      save(value) {
+        unsafeSaveCalls++;
+        recoveredStorageValue = value;
+      },
+    },
+  });
+  register(unreadable.commands, "tool.draw", keybinding("n"), () => {});
+  const unreadableResult = unreadable.commands.assignBinding("tool.draw", keybinding("p"));
+  assert.equal(unreadableResult.status, "session-only");
+  assert.equal(unreadableResult.persistence, "failed");
+  assert.match(unreadableResult.error.message, /read denied/);
+  assert.equal(unreadable.commands.formatBindings("tool.draw"), "P");
+  assert.equal(unsafeSaveCalls, 0, "an edit must not overwrite a snapshot it could not read");
+  assert.deepEqual(unreadable.errors.map(({ operation }) => operation), [
+    "read latest keyboard shortcuts",
+  ]);
+
+  readsAllowed = true;
+  recoveredStorageValue = JSON.stringify({
+    version: 1,
+    overrides: { "remote.command": [keybinding("r")] },
+  });
+  register(unreadable.commands, "tool.fill", keybinding("f"), () => {});
+  assert.equal(unreadable.commands.assignBinding("tool.fill", keybinding("q")).status, "durable");
+  assert.deepEqual(Object.keys(JSON.parse(recoveredStorageValue).overrides).sort(), [
+    "remote.command",
+    "tool.draw",
+    "tool.fill",
+  ]);
+  assert.equal(unsafeSaveCalls, 1);
+
   const rejectedResult = quota.commands.importConfiguration(JSON.stringify({
     version: 1,
     overrides: { "tool.draw": [{ sequence: [] }] },
@@ -922,6 +1014,60 @@ test("persists only overrides and supports unbind, reset, import, and corrupt-da
   assert.equal(corruptStorage.quarantined.length, 1);
   assert.equal(corrupt.commands.formatBindings("tool.draw"), "N");
   assert.equal(corrupt.errors.length, 1);
+});
+
+test("synchronizes durable shortcut snapshots without writing them back", () => {
+  const storage = createMemoryStorage();
+  let saves = 0;
+  const save = storage.save;
+  storage.save = (value) => {
+    saves++;
+    save(value);
+  };
+  const { commands } = createCommandHarness({ storage });
+  register(commands, "tool.draw", keybinding("n"), () => {});
+  const changes = [];
+  commands.onDidChange((result) => changes.push(result));
+
+  const synchronized = commands.synchronizeConfiguration(JSON.stringify({
+    version: 1,
+    overrides: { "tool.draw": [keybinding("p")] },
+  }));
+  assert.equal(synchronized.status, "durable");
+  assert.equal(commands.formatBindings("tool.draw"), "P");
+  assert.equal(saves, 0);
+  assert.deepEqual(changes.map(({ operation }) => operation), ["synchronize"]);
+
+  commands.synchronizeConfiguration(null);
+  assert.equal(commands.formatBindings("tool.draw"), "N");
+  assert.equal(saves, 0);
+  assert.deepEqual(changes.map(({ changedCommandIds }) => changedCommandIds), [
+    ["tool.draw"],
+    ["tool.draw"],
+  ]);
+});
+
+test("merges stale per-command edits into the latest durable shortcut snapshot", () => {
+  const storage = createMemoryStorage();
+  const first = createCommandHarness({ storage });
+  const second = createCommandHarness({ storage });
+  for (const { commands } of [first, second]) {
+    register(commands, "tool.draw", keybinding("n"), () => {});
+    register(commands, "tool.erase", keybinding("e"), () => {});
+  }
+
+  assert.equal(first.commands.assignBinding("tool.draw", keybinding("p")).status, "durable");
+  assert.equal(second.commands.assignBinding("tool.erase", keybinding("x")).status, "durable");
+  assert.deepEqual(Object.keys(JSON.parse(storage.value).overrides).sort(), [
+    "tool.draw",
+    "tool.erase",
+  ]);
+  assert.equal(second.commands.formatBindings("tool.draw"), "P");
+  assert.equal(second.commands.formatBindings("tool.erase"), "X");
+
+  first.commands.synchronizeConfiguration(storage.value);
+  assert.equal(first.commands.formatBindings("tool.draw"), "P");
+  assert.equal(first.commands.formatBindings("tool.erase"), "X");
 });
 
 test("shortcut override API owns one binding and preserves unknown preferences", () => {
@@ -1109,5 +1255,16 @@ test("browser storage adapter isolates failures and quarantines invalid document
     setItem() { throw new Error("denied") },
   });
   assert.equal(unavailable.load(), null);
+  assert.throws(() => unavailable.loadFresh(), /denied/);
   assert.throws(() => unavailable.save("value"), /denied/);
+
+  const fullValues = new Map([["shortcuts", "invalid"]]);
+  const fullStorage = createKeybindingStorageAdapter({
+    getItem: (key) => fullValues.get(key) || null,
+    removeItem: (key) => fullValues.delete(key),
+    setItem() { throw new Error("quota exceeded") },
+  }, { key: "shortcuts", now: () => 43 });
+  assert.throws(() => fullStorage.quarantine("invalid", "bad format"), /quota exceeded/);
+  assert.equal(fullValues.has("shortcuts"), false,
+    "failed archival must not leave corrupt preferences active");
 });

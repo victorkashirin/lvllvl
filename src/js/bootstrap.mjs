@@ -40,6 +40,8 @@ const shortcutContext = createLegacyShortcutContextAdapter({
   },
 });
 
+const shortcutStorage = createKeybindingStorageAdapter(shortcutBrowserStorage, { now: clock });
+
 const commands = new CommandService({
   clearTimer: (timer) => globalThis.clearTimeout(/** @type {number} */ (timer)),
   getContext: shortcutContext,
@@ -48,7 +50,7 @@ const commands = new CommandService({
     console.warn(`Could not ${operation}.`, error);
   },
   setTimer: (callback, delay) => globalThis.setTimeout(callback, delay),
-  storage: createKeybindingStorageAdapter(shortcutBrowserStorage, { now: clock }),
+  storage: shortcutStorage,
 });
 
 const shortcutSettings = createKeyboardShortcutsDialog({
@@ -85,8 +87,20 @@ const disposeCommandDispatcher = (/** @type {Event} */ event) =>
 const cleanupHiddenCommandDispatcher = () => {
   if (globalThis.document.hidden) commands.cleanup({ source: "visibilitychange" });
 };
+const synchronizeShortcutStorage = (/** @type {StorageEvent} */ event) => {
+  if (!shortcutBrowserStorage || event.storageArea !== shortcutBrowserStorage ||
+      (event.key !== shortcutStorage.key && event.key !== null)) return;
+  // Read the latest value instead of trusting a queued event snapshot. Two
+  // tabs can write before either receives the other's storage event.
+  try {
+    commands.synchronizeConfiguration(shortcutStorage.loadFresh());
+  } catch (error) {
+    console.warn("Could not synchronize keyboard shortcuts.", error);
+  }
+};
 globalThis.addEventListener("blur", cleanupCommandDispatcher);
 globalThis.addEventListener("pagehide", disposeCommandDispatcher);
+globalThis.addEventListener("storage", synchronizeShortcutStorage);
 globalThis.document.addEventListener("compositionstart", cleanupCommandDispatcher);
 globalThis.document.addEventListener("focusout", cleanupCommandDispatcher);
 globalThis.document.addEventListener("visibilitychange", cleanupHiddenCommandDispatcher);

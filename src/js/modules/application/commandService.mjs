@@ -130,7 +130,9 @@ const alwaysEnabled = () => true;
 
 /**
  * @typedef {object} KeybindingStorage
+ * @property {string} [key]
  * @property {() => string | null} load
+ * @property {() => string | null} [loadFresh]
  * @property {(value: string) => boolean | void} save
  * @property {(value: string, reason: string) => void} [quarantine]
  */
@@ -514,6 +516,8 @@ const listenerStores = new WeakMap();
 const dispatcherStores = new WeakMap();
 /** @type {WeakMap<object, KeybindingStorage>} */
 const storageStores = new WeakMap();
+/** @type {WeakMap<object, Set<string>>} */
+const pendingPersistenceStores = new WeakMap();
 /** @type {WeakMap<object, CommandDerivedData>} */
 const derivedDataStores = new WeakMap();
 
@@ -562,6 +566,13 @@ function storageFor(service) {
   const storage = storageStores.get(service);
   if (!storage) throw new Error("Shortcut persistence is not initialized");
   return storage;
+}
+
+/** @param {object} service */
+function pendingPersistenceFor(service) {
+  const pending = pendingPersistenceStores.get(service);
+  if (!pending) throw new Error("Shortcut pending-persistence storage is not initialized");
+  return pending;
 }
 
 /** @param {object} service */
@@ -661,27 +672,77 @@ function loadShortcutOverrides(service) {
   } catch (error) {
     overrideStores.set(service, new Map());
     if (raw) {
-      try { storageFor(service).quarantine?.(raw, error instanceof Error ? error.message : String(error)); } catch {}
+      try {
+        storageFor(service).quarantine?.(raw, error instanceof Error ? error.message : String(error));
+      } catch (quarantineError) {
+        service.reportError("quarantine keyboard shortcuts", quarantineError);
+      }
     }
     service.reportError("load keyboard shortcuts", error);
   }
 }
 
-/** @param {CommandService} service @param {ShortcutOverrides} overrides */
-function persistShortcutOverrides(service, overrides) {
+/**
+ * Merge an edit into the latest durable snapshot before writing it. Storage
+ * events are asynchronous, so another tab may have committed unrelated
+ * commands that are not present in this service's in-memory snapshot yet.
+ *
+ * @param {CommandService} service
+ * @param {ShortcutOverrides} overrides
+ * @param {readonly string[]} changedCommandIds
+ * @param {boolean} replaceConfiguration
+ */
+function persistShortcutOverrides(
+  service,
+  overrides,
+  changedCommandIds,
+  replaceConfiguration,
+) {
+  /** @type {ShortcutOverrides} */
+  let durableCandidate = new Map(overrides);
+  if (!replaceConfiguration) {
+    try {
+      const storage = storageFor(service);
+      const raw = storage.loadFresh ? storage.loadFresh() : storage.load();
+      const latest = raw
+        ? readShortcutConfiguration(JSON.parse(raw)).overrides
+        : new Map();
+      durableCandidate = new Map(latest);
+      for (const commandId of changedCommandIds) {
+        if (overrides.has(commandId)) {
+          durableCandidate.set(commandId, overrides.get(commandId) ?? null);
+        } else {
+          durableCandidate.delete(commandId);
+        }
+      }
+    } catch (error) {
+      service.reportError("read latest keyboard shortcuts", error);
+      return {
+        error: errorValue(error, "Could not read the latest keyboard shortcuts."),
+        overrides: new Map(overrides),
+        persistence: /** @type {const} */ ("failed"),
+      };
+    }
+  }
   try {
-    const saved = storageFor(service).save(JSON.stringify(configurationSnapshot(overrides)));
+    const saved = storageFor(service).save(JSON.stringify(configurationSnapshot(durableCandidate)));
     if (saved === false) {
       return {
         error: new Error("Keyboard shortcut storage is unavailable."),
+        overrides: new Map(overrides),
         persistence: /** @type {const} */ ("unavailable"),
       };
     }
-    return { error: null, persistence: /** @type {const} */ ("saved") };
+    return {
+      error: null,
+      overrides: durableCandidate,
+      persistence: /** @type {const} */ ("saved"),
+    };
   } catch (error) {
     service.reportError("save keyboard shortcuts", error);
     return {
       error: errorValue(error, "Could not save keyboard shortcuts."),
+      overrides: new Map(overrides),
       persistence: /** @type {const} */ ("failed"),
     };
   }
@@ -742,6 +803,20 @@ function unchangedEdit(service, operation, diagnostics = null) {
 }
 
 /**
+ * @param {Readonly<ShortcutConfiguration>} previous
+ * @param {Readonly<ShortcutConfiguration>} next
+ */
+function changedConfigurationCommandIds(previous, next) {
+  const commandIds = new Set([
+    ...Object.keys(previous.overrides),
+    ...Object.keys(next.overrides),
+  ]);
+  return Array.from(commandIds).filter((commandId) =>
+    JSON.stringify(previous.overrides[commandId]) !==
+      JSON.stringify(next.overrides[commandId])).sort();
+}
+
+/**
  * @param {CommandService} service
  * @param {string} operation
  * @param {ShortcutOverrides} next
@@ -750,24 +825,43 @@ function unchangedEdit(service, operation, diagnostics = null) {
  */
 function commitEdit(service, operation, next, diagnostics = null) {
   const previousConfiguration = configurationSnapshot(overridesFor(service));
-  const nextConfiguration = configurationSnapshot(next);
-  const commandIds = new Set([
-    ...Object.keys(previousConfiguration.overrides),
-    ...Object.keys(nextConfiguration.overrides),
-  ]);
-  const changedCommandIds = Array.from(commandIds).filter((commandId) =>
-    JSON.stringify(previousConfiguration.overrides[commandId]) !==
-      JSON.stringify(nextConfiguration.overrides[commandId])).sort();
-  if (!changedCommandIds.length) return unchangedEdit(service, operation, diagnostics);
+  const requestedConfiguration = configurationSnapshot(next);
+  const requestedChangedCommandIds = changedConfigurationCommandIds(
+    previousConfiguration,
+    requestedConfiguration,
+  );
+  if (!requestedChangedCommandIds.length) return unchangedEdit(service, operation, diagnostics);
+  const persistenceCommandIds = Array.from(new Set([
+    ...pendingPersistenceFor(service),
+    ...requestedChangedCommandIds,
+  ])).sort();
 
   // Persistence failure deliberately does not roll back a usable in-memory
   // edit. Subscribers see the complete committed configuration and whether
   // it is durable in the same single notification.
-  overrideStores.set(service, new Map(next));
+  const persistence = persistShortcutOverrides(
+    service,
+    next,
+    persistenceCommandIds,
+    operation === "import" || operation === "reset-all",
+  );
+  const committedOverrides = persistence.overrides;
+  const nextConfiguration = configurationSnapshot(committedOverrides);
+  const changedCommandIds = changedConfigurationCommandIds(
+    previousConfiguration,
+    nextConfiguration,
+  );
+  overrideStores.set(service, new Map(committedOverrides));
   invalidateOverrideData(service);
-  const persistence = persistShortcutOverrides(service, overridesFor(service));
   service.sessionOnlyEdits = persistence.persistence !== "saved";
   service.lastPersistenceError = persistence.error;
+  if (persistence.persistence === "saved") {
+    pendingPersistenceFor(service).clear();
+  } else {
+    for (const commandId of requestedChangedCommandIds) {
+      pendingPersistenceFor(service).add(commandId);
+    }
+  }
   const result = Object.freeze({
     applied: true,
     changedCommandIds: Object.freeze(changedCommandIds),
@@ -780,6 +874,54 @@ function commitEdit(service, operation, next, diagnostics = null) {
     status: /** @type {"durable" | "session-only"} */ (
       persistence.persistence === "saved" ? "durable" : "session-only"
     ),
+  });
+  notifyShortcutChange(service, result);
+  return result;
+}
+
+/**
+ * Adopt a complete configuration already made durable by another browser
+ * context. This must not write it back and start a storage-event echo.
+ *
+ * @param {CommandService} service
+ * @param {ShortcutOverrides} next
+ * @param {ShortcutImportDiagnostics | null} diagnostics
+ */
+function commitSynchronizedConfiguration(service, next, diagnostics) {
+  const previousConfiguration = configurationSnapshot(overridesFor(service));
+  const nextConfiguration = configurationSnapshot(next);
+  const changedCommandIds = changedConfigurationCommandIds(
+    previousConfiguration,
+    nextConfiguration,
+  );
+  service.sessionOnlyEdits = false;
+  service.lastPersistenceError = null;
+  pendingPersistenceFor(service).clear();
+  if (!changedCommandIds.length) {
+    return Object.freeze({
+      applied: false,
+      changedCommandIds: Object.freeze([]),
+      configuration: previousConfiguration,
+      diagnostics,
+      error: null,
+      operation: "synchronize",
+      persistence: "not-needed",
+      reason: null,
+      status: /** @type {const} */ ("durable"),
+    });
+  }
+  overrideStores.set(service, new Map(next));
+  invalidateOverrideData(service);
+  const result = Object.freeze({
+    applied: true,
+    changedCommandIds: Object.freeze(changedCommandIds),
+    configuration: nextConfiguration,
+    diagnostics,
+    error: null,
+    operation: "synchronize",
+    persistence: "not-needed",
+    reason: null,
+    status: /** @type {const} */ ("durable"),
   });
   notifyShortcutChange(service, result);
   return result;
@@ -880,6 +1022,7 @@ export class CommandService {
     overrideStores.set(this, new Map());
     listenerStores.set(this, new Set());
     storageStores.set(this, storage);
+    pendingPersistenceStores.set(this, new Set());
     derivedDataStores.set(this, {
       bindings: null,
       catalogRevision: 0,
@@ -1302,7 +1445,7 @@ export class CommandService {
   }
 
   /**
-   * @param {{command: CommandDescriptor, binding: Keybinding, context: Record<string, unknown>, specificity: number}[]} candidates
+   * @param {{command: CommandDescriptor, binding: Keybinding, specificity: number}[]} candidates
    */
   chooseCandidate(candidates) {
     const ranked = candidates.slice().sort((left, right) =>
@@ -1323,7 +1466,7 @@ export class CommandService {
    * @param {unknown} [target]
    */
   matchingCandidatesForEvent(paths, event, context, target) {
-    /** @type {{command: CommandDescriptor, binding: Keybinding, context: Record<string, unknown>, exact: boolean, path: string[], specificity: number}[]} */
+    /** @type {{command: CommandDescriptor, binding: Keybinding, exact: boolean, path: string[], specificity: number}[]} */
     const candidates = [];
     for (const command of commandsFor(this).values()) {
       const activeContext = this.activeContext(command, context);
@@ -1343,10 +1486,9 @@ export class CommandService {
           candidates.push({
             command,
             binding,
-            context: { ...activeContext, ...(binding.when || {}) },
             exact: nextPath.length === signature.length,
             path: nextPath,
-            specificity: contextSpecificity(activeContext) + contextSpecificity(binding.when || {}),
+            specificity: contextSpecificity(activeContext, binding.when || {}),
           });
         }
       }
@@ -1498,11 +1640,11 @@ export class CommandService {
         const precedence = compareCandidatePrecedence({
           binding: leftBinding,
           command: left,
-          specificity: contextSpecificity(leftContext) + contextSpecificity(leftBinding.when || {}),
+          specificity: contextSpecificity(leftContext, leftBinding.when || {}),
         }, {
           binding: rightBinding,
           command: right,
-          specificity: contextSpecificity(rightContext) + contextSpecificity(rightBinding.when || {}),
+          specificity: contextSpecificity(rightContext, rightBinding.when || {}),
         });
         outcomes.add(precedence > 0 ? "new" : precedence < 0 ? "existing" : "unresolved");
       }
@@ -1706,6 +1848,53 @@ export class CommandService {
 
   exportConfiguration() {
     return JSON.stringify(configurationSnapshot(overridesFor(this)), null, 2);
+  }
+
+  /**
+   * Apply a preference snapshot written by another browser context. Invalid
+   * external data follows startup recovery: quarantine it, fail closed to
+   * defaults, and report the failure.
+   *
+   * @param {string | null} raw
+   * @returns {ShortcutEditResult}
+   */
+  synchronizeConfiguration(raw) {
+    /** @type {ShortcutOverrides} */
+    let synchronizedOverrides;
+    /** @type {ShortcutImportDiagnostics | null} */
+    let diagnostics = null;
+    if (raw === null) {
+      synchronizedOverrides = new Map();
+    } else {
+      try {
+        const synchronized = readShortcutConfiguration(JSON.parse(raw));
+        synchronizedOverrides = synchronized.overrides;
+        diagnostics = Object.freeze({
+          ...synchronized.diagnostics,
+          unknownCommandIds: Object.freeze(Array.from(synchronizedOverrides.keys())
+            .filter((commandId) => !commandsFor(this).has(commandId)).sort()),
+        });
+        if (diagnostics.skipped.length || diagnostics.truncatedCommandIds.length) {
+          this.reportError("recover synchronized keyboard shortcuts", new Error(
+            `Recovered synchronized shortcut preferences with ${diagnostics.skipped.length} invalid ` +
+            `entr${diagnostics.skipped.length === 1 ? "y" : "ies"} skipped and ` +
+            `${diagnostics.truncatedCommandIds.length} truncated.`,
+          ));
+        }
+      } catch (error) {
+        synchronizedOverrides = new Map();
+        try {
+          storageFor(this).quarantine?.(
+            raw,
+            error instanceof Error ? error.message : String(error),
+          );
+        } catch (quarantineError) {
+          this.reportError("quarantine synchronized keyboard shortcuts", quarantineError);
+        }
+        this.reportError("synchronize keyboard shortcuts", error);
+      }
+    }
+    return commitSynchronizedConfiguration(this, synchronizedOverrides, diagnostics);
   }
 
   /** @param {string} text */

@@ -235,6 +235,28 @@ test("shortcut settings replace conflicts and drive the editor from one binding"
 
   await openShortcutSettings(page);
 
+  const conflictsOnly = page.locator("#keyboardShortcutsConflictsOnly");
+  await conflictsOnly.check();
+  const canvasCopyLeft = page.locator('tr[data-command-id="textMode.canvas.copyContents.left"]');
+  const isMac = await page.evaluate(() => UI.os === "Mac OS");
+  if (isMac) {
+    await expect(canvasCopyLeft).toBeHidden();
+  } else {
+    await expect(canvasCopyLeft).toBeVisible();
+    const canvasCopyWarning = canvasCopyLeft.locator(".keyboard-shortcuts-warning-badge");
+    await expect(canvasCopyWarning).toHaveText("!");
+    await expect(canvasCopyWarning).toHaveAttribute(
+      "title",
+      "May be reserved by the browser or operating system",
+    );
+  }
+  await conflictsOnly.uncheck();
+  if (isMac) {
+    const canvasCopyReuse = canvasCopyLeft.locator(".keyboard-shortcuts-reuse-badge");
+    await expect(canvasCopyReuse).toHaveText("↔");
+    await expect(canvasCopyReuse).toHaveAttribute("title", /Also used by Copy Selection Contents Left/);
+  }
+
   await expect(page.locator(".keyboard-shortcuts-group-heading")
     .filter({ hasText: /Current editor.*Text Tools/ })).toHaveCount(1);
   await expect(page.locator(".keyboard-shortcuts-group-heading")
@@ -586,6 +608,59 @@ test("shortcut overrides survive reload and can be reset", async ({ page }) => {
   expect(await page.evaluate(() =>
     g_app.services.commands.formatBindings("textMode.tool.pencil"),
   )).toBe("N");
+});
+
+test("shortcut overrides synchronize across open tabs without dropping stale edits", async ({ page, context }) => {
+  await open2DProject(page);
+  const secondPage = await context.newPage();
+  await open2DProject(secondPage);
+
+  // Hold storage-event application so both services begin their edits from the
+  // same stale snapshot. Persistence must merge the second command itself.
+  await Promise.all([page, secondPage].map((candidate) => candidate.evaluate(() => {
+    g_app.services.commands.synchronizeConfiguration = () => {};
+  })));
+  await page.evaluate(() => {
+    const commands = g_app.services.commands;
+    commands.assignBinding(
+      "textMode.tool.pencil",
+      commands.bindingFromLegacyShortcut({ key: "5" }),
+    );
+  });
+  await secondPage.evaluate(() => {
+    const commands = g_app.services.commands;
+    commands.assignBinding(
+      "textMode.tool.erase",
+      commands.bindingFromLegacyShortcut({ key: "6" }),
+    );
+  });
+  expect(await secondPage.evaluate(() => Object.keys(JSON.parse(
+    localStorage.getItem("lvllvl.keyboardShortcuts"),
+  ).overrides).sort())).toEqual(["textMode.tool.erase", "textMode.tool.pencil"]);
+
+  await Promise.all([page, secondPage].map((candidate) => candidate.evaluate(() => {
+    const commands = g_app.services.commands;
+    delete commands.synchronizeConfiguration;
+    commands.synchronizeConfiguration(localStorage.getItem("lvllvl.keyboardShortcuts"));
+  })));
+  for (const candidate of [page, secondPage]) {
+    await expect.poll(() => candidate.evaluate(() => ({
+      erase: g_app.services.commands.formatBindings("textMode.tool.erase"),
+      pencil: g_app.services.commands.formatBindings("textMode.tool.pencil"),
+    }))).toEqual({ erase: "6", pencil: "5" });
+  }
+
+  await secondPage.evaluate(() => {
+    const commands = g_app.services.commands;
+    commands.assignBinding(
+      "textMode.tool.pencil",
+      commands.bindingFromLegacyShortcut({ key: "7" }),
+    );
+  });
+  await expect.poll(() => page.evaluate(() =>
+    g_app.services.commands.formatBindings("textMode.tool.pencil"),
+  )).toBe("7");
+  await secondPage.close();
 });
 
 test("Preview and tile placement are listed and honor their effective bindings", async ({ page }) => {

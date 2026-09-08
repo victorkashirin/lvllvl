@@ -69,6 +69,21 @@ const enumeratedContextValues = Object.freeze({
     "canvasPassive", "canvasTyping", "editableText", "focusableControl", "unknown",
   ]),
 });
+const booleanContextValues = Object.freeze([false, true]);
+
+/**
+ * Return the complete value set only for closed context domains. Open-ended
+ * strings such as editor modes deliberately return null.
+ *
+ * @param {string} key
+ * @returns {readonly ShortcutContextValue[] | null}
+ */
+export function shortcutContextValueDomain(key) {
+  if (booleanContextKeys.has(key)) return booleanContextValues;
+  return enumeratedContextValues[
+    /** @type {keyof typeof enumeratedContextValues} */ (key)
+  ] || null;
+}
 
 /** @param {string} key @param {unknown} value @returns {value is ShortcutContextValue} */
 function isSupportedContextValue(key, value) {

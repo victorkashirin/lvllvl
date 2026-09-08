@@ -342,12 +342,15 @@ export function createKeyboardShortcutsDialog({
     const warningCell = createElement("td", "keyboard-shortcuts-warning");
     if (summary.conflicts.length) {
       const actionable = summary.conflicts.some((conflict) => conflict.type !== "context-separated");
+      const displayedConflicts = actionable
+        ? summary.conflicts.filter((conflict) => conflict.type !== "context-separated")
+        : summary.conflicts;
       const warning = createElement(
         "span",
         actionable ? "keyboard-shortcuts-warning-badge" : "keyboard-shortcuts-reuse-badge",
         actionable ? "!" : "↔",
       );
-      warning.title = summary.conflicts.map(conflictLabel).join("\n");
+      warning.title = displayedConflicts.map(conflictLabel).join("\n");
       warning.setAttribute("aria-label", warning.title);
       warningCell.appendChild(warning);
     }

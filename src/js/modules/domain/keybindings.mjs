@@ -5,7 +5,10 @@ import {
   parseKeyboardEvent,
   PUNCTUATION_CODE_MAP,
 } from "@tanstack/hotkeys";
-import { normalizeShortcutContextClause } from "./shortcutContext.mjs";
+import {
+  normalizeShortcutContextClause,
+  shortcutContextValueDomain,
+} from "./shortcutContext.mjs";
 
 /** @type {Readonly<Record<string, string>>} */
 const keyAliases = Object.freeze({
@@ -553,7 +556,9 @@ function conditionMatches(condition, actual) {
 
 /** @param {Record<string, unknown>} when @param {Record<string, unknown>} context */
 export function contextMatches(when, context) {
-  return Object.keys(when).every((key) => conditionMatches(when[key], context[key]));
+  return Object.keys(when).every((key) =>
+    Object.prototype.hasOwnProperty.call(context, key) &&
+      conditionMatches(when[key], context[key]));
 }
 
 /** @param {unknown} value @returns {string} */
@@ -608,27 +613,47 @@ function conditionDomain(condition) {
   return { include: [condition], exclude: [] };
 }
 
-/** @param {unknown} left @param {unknown} right */
-function conditionsOverlap(left, right) {
-  const leftDomain = conditionDomain(left);
-  const rightDomain = conditionDomain(right);
-  if (leftDomain.include && rightDomain.include) {
-    const rightIncluded = rightDomain.include;
-    return leftDomain.include.some((value) => rightIncluded.includes(value));
+/** @param {unknown[]} values */
+function uniqueValues(values) {
+  return values.filter((value, index) => values.indexOf(value) === index);
+}
+
+/**
+ * Intersect conditions for one context key. Closed domains make opposing
+ * exclusion-only rules conclusive instead of leaving them "possibly" open.
+ *
+ * @param {string} key
+ * @param {unknown[]} conditions
+ * @returns {{include: unknown[] | null, exclude: unknown[]}}
+ */
+function combinedConditionDomain(key, conditions) {
+  const domains = conditions.map(conditionDomain);
+  const excluded = uniqueValues(domains.flatMap((domain) => domain.exclude));
+  const closedDomain = shortcutContextValueDomain(key);
+  /** @type {unknown[] | null} */
+  let included = closedDomain ? Array.from(closedDomain) : null;
+  for (const domain of domains) {
+    if (!domain.include) continue;
+    included = included === null
+      ? uniqueValues(domain.include)
+      : included.filter((value) => domain.include?.includes(value));
   }
-  if (leftDomain.include) {
-    return leftDomain.include.some((value) => !rightDomain.exclude.includes(value));
+  if (included !== null) {
+    included = included.filter((value) => !excluded.includes(value));
   }
-  if (rightDomain.include) {
-    return rightDomain.include.some((value) => !leftDomain.exclude.includes(value));
-  }
-  return true;
+  return { exclude: excluded, include: included };
+}
+
+/** @param {string} key @param {unknown} left @param {unknown} right */
+function conditionsOverlap(key, left, right) {
+  const domain = combinedConditionDomain(key, [left, right]);
+  return domain.include === null || domain.include.length > 0;
 }
 
 /** @param {Record<string, unknown>} left @param {Record<string, unknown>} right */
 export function contextsOverlap(left, right) {
   const sharedKeys = Object.keys(left).filter((key) => Object.prototype.hasOwnProperty.call(right, key));
-  return sharedKeys.every((key) => conditionsOverlap(left[key], right[key]));
+  return sharedKeys.every((key) => conditionsOverlap(key, left[key], right[key]));
 }
 
 /**
@@ -641,43 +666,43 @@ export function contextsOverlap(left, right) {
 export function contextClausesOverlap(...contexts) {
   const keys = new Set(contexts.flatMap((context) => Object.keys(context)));
   for (const key of keys) {
-    const domains = contexts
+    const conditions = contexts
       .filter((context) => Object.prototype.hasOwnProperty.call(context, key))
-      .map((context) => conditionDomain(context[key]));
-    /** @type {unknown[] | null} */
-    let included = null;
-    const excluded = domains.flatMap((domain) => domain.exclude);
-    for (const domain of domains) {
-      if (!domain.include) continue;
-      included = included === null
-        ? domain.include.slice()
-        : included.filter((value) => domain.include?.includes(value));
-    }
-    if (included !== null && !included.some((value) => !excluded.includes(value))) return false;
+      .map((context) => context[key]);
+    const domain = combinedConditionDomain(key, conditions);
+    if (domain.include !== null && domain.include.length === 0) return false;
   }
   return true;
 }
 
-/** @param {Record<string, unknown>} context @returns {number} */
-export function contextSpecificity(context) {
-  let score = Object.keys(context).length * 1000;
-  for (const condition of Object.values(context)) {
-    if (Array.isArray(condition)) {
-      score += Math.max(2, 100 - condition.length);
+/**
+ * Score the effective intersection of context clauses. Each key contributes
+ * once, so repeating a command constraint in a binding cannot manufacture
+ * precedence over a genuinely narrower command.
+ *
+ * @param {...Record<string, unknown>} contexts
+ * @returns {number}
+ */
+export function contextSpecificity(...contexts) {
+  const keys = new Set(contexts.flatMap((context) => Object.keys(context)));
+  let score = 0;
+  for (const key of keys) {
+    const conditions = contexts
+      .filter((context) => Object.prototype.hasOwnProperty.call(context, key))
+      .map((context) => context[key]);
+    const domain = combinedConditionDomain(key, conditions);
+    const closedDomain = shortcutContextValueDomain(key);
+    if (domain.include !== null && closedDomain &&
+        domain.include.length === closedDomain.length &&
+        domain.include.every((value) => closedDomain.some((candidate) => candidate === value))) continue;
+    score += 1000;
+    if (domain.include !== null) {
+      score += domain.include.length <= 1
+        ? 100
+        : Math.max(2, 100 - domain.include.length);
       continue;
     }
-    if (condition && typeof condition === "object") {
-      const rule = /** @type {{anyOf?: unknown[], not?: unknown}} */ (condition);
-      if (Array.isArray(rule.anyOf)) {
-        score += Math.max(2, 100 - rule.anyOf.length);
-        continue;
-      }
-      if (Object.prototype.hasOwnProperty.call(rule, "not")) {
-        score += 1;
-        continue;
-      }
-    }
-    score += 100;
+    score += Math.min(99, domain.exclude.length);
   }
   return score;
 }
@@ -727,5 +752,5 @@ export function isRiskyBinding(binding, platform) {
   const key = chord.key || chord.layoutKey;
   if (chord.meta && platform === "mac" && ["h", "m", "q", "w"].includes(String(key))) return true;
   if (chord.ctrl && platform !== "mac" && ["l", "n", "r", "t", "w"].includes(String(key))) return true;
-  return chord.alt && ["ArrowLeft", "ArrowRight", "F4"].includes(String(key));
+  return platform !== "mac" && chord.alt && ["ArrowLeft", "ArrowRight", "F4"].includes(String(key));
 }

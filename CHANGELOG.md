@@ -27,6 +27,13 @@
 
 ### Fixed
 
+- Keep shortcut conflict replacement and precedence aligned with the logical
+  intersection of command and binding contexts, including finite-domain and
+  missing-value cases; remove corrupt preferences even when archival storage
+  is full; and merge durable command-level edits across open browser tabs
+  without echoing ordinary synchronization writes. Keep safely context-separated
+  shortcut reuse out of actionable warning tooltips, and do not treat macOS
+  Option+Arrow shortcuts as Windows/Linux browser-navigation reservations.
 - Restrict bundled keyboard dependency imports to the keybinding domain
   boundary, surface unexpected unresolved package imports during builds, and
   centralize production dependency rewriting while independently verifying
