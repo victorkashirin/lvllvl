@@ -8,15 +8,15 @@
 
 
     <div id="tileEditorMobileFrameControls" style="display: none">
-      Frame <button id="tileEditorMobilePrevFrame">&lt;</button>
-      <input class="number" size="2" min="1" value="1" id="tileEditorMobileFrame">
-      <button id="tileEditorMobileNextFrame">&gt;</button>
+      Frame <button id="tileEditorMobilePrevFrame" aria-label="Previous frame">&lt;</button>
+      <input class="number" size="2" min="1" value="1" id="tileEditorMobileFrame" aria-label="Current frame">
+      <button id="tileEditorMobileNextFrame" aria-label="Next frame">&gt;</button>
       &nbsp;
       of
       &nbsp;
-      <input class="number" size="2" value="1" min="1" max="8" id="tileEditorMobileFrames">
-      <button id="tileEditorMobileInsertFrame">+</button>
-      <button id="tileEditorMobileDeleteFrame">-</button>
+      <input class="number" size="2" value="1" min="1" max="8" id="tileEditorMobileFrames" aria-label="Total frames">
+      <button id="tileEditorMobileInsertFrame" aria-label="Insert frame">+</button>
+      <button id="tileEditorMobileDeleteFrame" aria-label="Delete frame">-</button>
 
     </div>
 
@@ -30,7 +30,7 @@
       <div>
         Colour:
       </div>
-      <div id="tileEditorMobileC64Colors">
+      <div id="tileEditorMobileC64ColorsControl">
       </div>
     </div>
 
@@ -68,7 +68,7 @@
           <div class="ui-button" data-label="Cut" id="tileEditorMobileClear"><img src="icons/svg/glyphicons-basic-612-scissors.svg"/></div>
           <div class="ui-button" data-label="Copy" id="tileEditorMobileCopy"><img src="icons/svg/glyphicons-basic-614-copy.svg"/></div>
           <div class="ui-button" data-label="Paste" id="tileEditorMobilePaste"><img src="icons/svg/glyphicons-basic-613-paste.svg"/></div>
-          Clipboard: <canvas width="16" height="16" style="background-color: black" id="tileEditorMobileClipboard"></canvas>
+          Clipboard: <canvas width="16" height="16" style="background-color: black" id="tileEditorMobileClipboard" role="img" aria-label="Tile clipboard preview"></canvas>
         </div>
       </div>
     </div>

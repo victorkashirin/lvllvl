@@ -24,7 +24,7 @@ C64MulticolorTypeControl.prototype = {
     var html = '';
 
     html += '<div class="tileEditorC64ColorType tileEditorC64ColorType_background" data-type="background">';
-    html += '  <div class="tileEditorC64Color backgroundColorDisplay" data-type="background" id="tileEditorC64Color-background"></div>';
+    html += '  <div class="tileEditorC64Color backgroundColorDisplay" data-type="background"></div>';
     html += '<span class="tileEditorC64ColorLabel">&nbsp;Frame';
     if(!UI.isMobile.any()) {
       html += ' (1)';

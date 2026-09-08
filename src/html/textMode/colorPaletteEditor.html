@@ -66,7 +66,6 @@
               <div>
                 <div class="ui-button" id="colorPaletteEditorClear">Clear Palette</div>
                 <div class="ui-button" style="margin-left: 10px" id="colorPaletteEditorLoad">Load Palette...</div>
-                <div class="ui-button" style="margin-left: 10px" id="colorPaletteEditorLoad">Load Palette...</div>
 
                 <form id="colorPaletteEditorLoadForm" style="position: absolute; top: -50px; left: -100px">
                   <input type="file" id="colorPaletteEditorChooseFile" accept=".png,.json,.aco,.act,.ase,.gpl,.txt,.hex,.vpl,.jpg,.jpeg"/>
@@ -138,7 +137,7 @@
                 <h3>RGB</h3>
                 <div>
                   <div class="colorComponentSelector">
-                    <label for="editColorPaletteR">R</label>
+                    <label for="colorPaletteEditorR">R</label>
                     <canvas width="200" height="28" id="colorPaletteEditorRCanvas" class="colorPaletteSlider" data-component="r"></canvas>
     
                     <input type="text" class="number colorPaletteNumber" size="4" id="colorPaletteEditorR" data-component="r" min="0" max="255" value="0">
@@ -146,13 +145,13 @@
     
     
                   <div class="colorComponentSelector">
-                    <label for="editColorPaletteG">G</label>              
+                    <label for="colorPaletteEditorG">G</label>              
                     <canvas width="200" height="28" id="colorPaletteEditorGCanvas" class="colorPaletteSlider" data-component="g"></canvas>
                     <input type="text" class="number colorPaletteNumber" size="4" id="colorPaletteEditorG"  data-component="g" min="0" max="255" value="0">
                   </div>
     
                   <div class="colorComponentSelector">
-                    <label for="editColorPaletteB">B</label>
+                    <label for="colorPaletteEditorB">B</label>
                     <canvas width="200" height="28" id="colorPaletteEditorBCanvas" class="colorPaletteSlider" data-component="b"></canvas>            
                     <input type="text" class="number colorPaletteNumber" size="4" id="colorPaletteEditorB" data-component="b" min="0" max="255" value="0">            
                   </div>
@@ -163,20 +162,20 @@
                 <h3>HSV</h3>
                 <div>
                   <div class="colorComponentSelector">
-                    <label for="editColorPaletteH">H</label>              
+                    <label for="colorPaletteEditorH">H</label>              
                     <canvas width="200" height="28" id="colorPaletteEditorHCanvas" class="colorPaletteSlider" data-component="h"></canvas>
                     <input type="text" class="number colorPaletteNumber" size="4" id="colorPaletteEditorH" data-component="h" min="0" max="360" value="0">
                   </div>
     
     
                   <div class="colorComponentSelector">
-                    <label for="editColorPaletteS">S</label>              
+                    <label for="colorPaletteEditorS">S</label>              
                     <canvas width="200" height="28" id="colorPaletteEditorSCanvas" class="colorPaletteSlider" data-component="s"></canvas>
                     <input type="text" class="number colorPaletteNumber" size="4" id="colorPaletteEditorS"  data-component="s" min="0" max="100" value="0">
                   </div>
     
                   <div class="colorComponentSelector">
-                    <label for="editColorPaletteB">V</label>              
+                    <label for="colorPaletteEditorV">V</label>              
                     <canvas width="200" height="28" id="colorPaletteEditorVCanvas" class="colorPaletteSlider" data-component="v"></canvas>
                     <input type="text" class="number colorPaletteNumber" size="4" id="colorPaletteEditorV" data-component="v" min="0" max="100" value="0">            
                   </div>
@@ -201,10 +200,10 @@
                 </div>
     
                 <div>
-                  <label>Scale</label>
-                  <div class="ui-button" id="colorPaletteEditorImageScaleDecrease">-</div>
+                  <label for="colorPaletteEditorImageScale">Scale</label>
+                  <div class="ui-button" id="colorPaletteEditorImageScaleDecrease" aria-label="Decrease image scale">-</div>
                   <input type="text" size="3" style="width: 40px" type="text" id="colorPaletteEditorImageScale" min="1" class="number"  value="100"/>
-                  <div class="ui-button" id="colorPaletteEditorImageScaleIncrease">+</div>
+                  <div class="ui-button" id="colorPaletteEditorImageScaleIncrease" aria-label="Increase image scale">+</div>
                   <div class="ui-button" id="colorPaletteEditorImageFit">Fit</div>
                 </div>
     

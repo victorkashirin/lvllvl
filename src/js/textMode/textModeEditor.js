@@ -1330,8 +1330,8 @@ TextModeEditor.prototype = {
       $('.backgroundColorMobile').css('background-color', 'transparent');
 
       $('.backgroundColor').css('background-color', 'transparent');
-      $('#backgroundColor').css('background-image', "url('images/transparent.png')");
-      $('#backgroundColorMobile').css('background-image', "url('images/transparent.png')");
+      $('.backgroundColor').css('background-image', "url('images/transparent.png')");
+      $('.backgroundColorMobile').css('background-image', "url('images/transparent.png')");
 
       $('.backgroundColorDisplay').css('background-color', '#000000');
       //$('.backgroundColorDisplay').html('<i style="font-size: 28px; margin-top: -1px" class="halflings halflings-remove"></i>');  
@@ -1344,8 +1344,8 @@ TextModeEditor.prototype = {
 
       $('.backgroundColor').html('');      
       $('.backgroundColor').css('background-color', '#' + colorHexString);
-      $('#backgroundColor').css('background-image', "none");
-      $('#backgroundColorMobile').css('background-image', "none");
+      $('.backgroundColor').css('background-image', "none");
+      $('.backgroundColorMobile').css('background-image', "none");
 
       $('.backgroundColorDisplay').html('');      
       $('.backgroundColorDisplay').css('background-color', '#' + colorHexString);
@@ -1418,16 +1418,16 @@ TextModeEditor.prototype = {
       $('.borderColor').css('background-color', 'transparent');
       $('.borderColorMobile').css('background-color', 'transparent');         
 
-      $('#borderColor').css('background-image', "url('images/transparent.png')") 
-      $('#borderColorMobile').css('background-image', "url('images/transparent.png')") 
+      $('.borderColor').css('background-image', "url('images/transparent.png')") 
+      $('.borderColorMobile').css('background-image', "url('images/transparent.png')") 
 
     } else {
       var colorHexString = colorPalette.getHexString(color);
       $('.borderColor').css('background-color', '#' + colorHexString);
       $('.borderColorMobile').css('background-color', '#' + colorHexString);          
 
-      $('#borderColor').css('background-image', "none");
-      $('#borderColorMobile').css('background-image', "none");
+      $('.borderColor').css('background-image', "none");
+      $('.borderColorMobile').css('background-image', "none");
     }
 
   },

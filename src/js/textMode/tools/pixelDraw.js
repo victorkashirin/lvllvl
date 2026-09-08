@@ -105,7 +105,7 @@ PixelDraw.prototype = {
   drawSelectedSubPaletteColor: function() {
     var colorIndex = this.color;
     $('.pixelToolSubPaletteColor').css({"border-width": "1px"});
-    $('#pixelToolSettingsSubPaletteColor-' + colorIndex).css({"border-width": "2px"});
+    $('.pixelToolSubPaletteColor[data-index="' + colorIndex + '"]').css({"border-width": "2px"});
 
   },
 

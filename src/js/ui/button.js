@@ -81,6 +81,10 @@ UI.Button = function(args) {
   this.getElement = function() {
     this.element = document.createElement('div');
     this.element.setAttribute('id', this.id);
+    this.element.setAttribute('role', 'button');
+    if(this.args.text) {
+      this.element.setAttribute('aria-label', this.args.text);
+    }
     this.element.setAttribute('data-ui-event-token', UI.markupEventToken);
     this.element.setAttribute('data-ui-button-id', this.id);
     if(this.enabled) {
@@ -131,6 +135,10 @@ UI.Button = function(args) {
     
 //    html += '<button type="button" id="' + this.id + '" ';
     html += '<div id="' + this.id + '" ';
+    html += 'role="button" ';
+    if(this.args.text) {
+      html += 'aria-label="' + SafeHTML.escape(this.args.text) + '" ';
+    }
     html += UI.getMarkupEventAttribute();
     html += ' data-ui-button-id="' + this.id + '" ';
     if(this.cssclass) {

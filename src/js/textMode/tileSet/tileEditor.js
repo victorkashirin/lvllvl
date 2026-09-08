@@ -267,7 +267,7 @@ TileEditor.prototype = {
     UI.on('ready', function() {
       _this.textModePanel.load('html/textMode/tileEditor.html', function() {
         _this.c64MulticolorTypeControl = new C64MulticolorTypeControl();
-        _this.c64MulticolorTypeControl.init(_this.editor, { "elementId": "tileEditorC64Colors" })
+        _this.c64MulticolorTypeControl.init(_this.editor, { "elementId": "tileEditorC64ColorsControl" })
         _this.initEvents();
       });
 

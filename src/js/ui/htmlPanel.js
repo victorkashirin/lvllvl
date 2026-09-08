@@ -1,3 +1,142 @@
+/**
+ * Give icon-only controls accessible names after a panel template is loaded.
+ *
+ * Tool panels are mounted side-by-side (desktop + mobile, tile + pixel), so
+ * this only adds aria attributes and never creates ids. Names are derived
+ * from data-label / title / data-shortcut-label / data-type attributes that
+ * the templates already carry; purely decorative images get alt="".
+ */
+UI.enhancePanelAccessibility = function(root) {
+  if(!root || !root.querySelectorAll) {
+    return;
+  }
+
+  var toolTypeLabels = {
+    pen: 'Pencil', erase: 'Eraser', fill: 'Fill bucket', eyedropper: 'Eyedropper',
+    line: 'Line', rect: 'Rectangle', oval: 'Oval', select: 'Marquee select',
+    move: 'Move', hand: 'Hand', zoom: 'Zoom', type: 'Type', pixel: 'Pixel',
+    block: 'Meta tile', charpixel: 'Character pixel', linesegment: 'Line segments',
+    rotate: 'Rotate', draw: 'Draw', cut: 'Cut', copy: 'Copy', paste: 'Paste'
+  };
+
+  // Most specific first: cellBackgroundColor also matches backgroundColor.
+  var wellLabels = [
+    [/tileEditorMobileMultiColor/i, 'Tile color'],
+    [/tileEditorMultiColor/i, 'Tile color'],
+    [/cellBackgroundColor/i, 'Cell background color'],
+    [/foregroundColor/i, 'Cell foreground color'],
+    [/borderColor/i, 'Frame border color'],
+    [/backgroundColor/i, 'Frame background color'],
+    [/c64Multi1Color/i, 'C64 multi color 1'],
+    [/c64Multi2Color/i, 'C64 multi color 2'],
+    [/subPaletteColor/i, 'Sub palette color'],
+    [/multiColor/i, 'Multi color']
+  ];
+
+  function wellLabel(element) {
+    var className = element.getAttribute ? (element.getAttribute('class') || '') : '';
+    // Some swatches (tileEditorMultiColor) carry no class, so match the id too.
+    var identity = className + ' ' + (element.getAttribute ? (element.getAttribute('id') || '') : '');
+    for(var i = 0; i < wellLabels.length; i++) {
+      if(wellLabels[i][0].test(identity)) {
+        var label = wellLabels[i][1];
+        var index = element.getAttribute('data-index');
+        if(index !== null && index !== '') {
+          label += ' ' + (parseInt(index, 10) + 1);
+        }
+        return label;
+      }
+    }
+    return '';
+  }
+
+  function labelFromAttributes(element) {
+    var label = element.getAttribute('data-label') || element.getAttribute('title') || '';
+    if(label) {
+      return label;
+    }
+    var labelled = element.querySelector('[data-shortcut-label], img[title]');
+    if(labelled) {
+      label = labelled.getAttribute('data-shortcut-label') || labelled.getAttribute('title') || '';
+    }
+    if(label) {
+      return label;
+    }
+    var toolType = element.getAttribute('data-type') || element.getAttribute('data-toolType') || '';
+    if(toolType && toolTypeLabels[toolType]) {
+      return toolTypeLabels[toolType];
+    }
+    return '';
+  }
+
+  var controls = root.querySelectorAll(
+    '.ui-button, .drawTool, .pixelDrawTool, .drawToolMobile, ' +
+    '.drawToolMobileSide, .pixelDrawToolMobileSide, .pixelTool, ' +
+    '.colorPaletteTool, .mobileRadio, .tileEditorC64ColorType'
+  );
+  for(var i = 0; i < controls.length; i++) {
+    var control = controls[i];
+    if(control.hasAttribute('aria-label') || control.hasAttribute('aria-labelledby')) {
+      continue;
+    }
+    var label = labelFromAttributes(control);
+    if(!label && control.textContent) {
+      var text = control.textContent.replace(/\s+/g, ' ').trim();
+      if(text && text.length <= 40) {
+        label = text;
+      }
+    }
+    if(label) {
+      control.setAttribute('aria-label', label);
+      if(control.tagName === 'DIV' && !control.hasAttribute('role')) {
+        control.setAttribute('role', 'button');
+      }
+    }
+  }
+
+  var wells = root.querySelectorAll(
+    '.borderColor, .backgroundColor, .foregroundColor, .cellBackgroundColor, ' +
+    '.borderColorMobile, .backgroundColorMobile, .foregroundColorMobile, ' +
+    '.cellBackgroundColorMobile, .colorSetting, .pixelToolSubPaletteColor, ' +
+    '.tileEditorSubPaletteColor, .tileEditorMobileSubPaletteColor, .tileEditorC64Color, ' +
+    '#tileEditorMultiColor, #tileEditorMobileMultiColor'
+  );
+  for(var w = 0; w < wells.length; w++) {
+    var well = wells[w];
+    if(well.hasAttribute('aria-label') || well.hasAttribute('aria-labelledby')) {
+      continue;
+    }
+    var name = wellLabel(well);
+    if(name) {
+      well.setAttribute('aria-label', name);
+      if(well.tagName === 'DIV' && !well.hasAttribute('role')) {
+        well.setAttribute('role', 'button');
+      }
+    }
+  }
+
+  var images = root.querySelectorAll('img:not([alt])');
+  for(var m = 0; m < images.length; m++) {
+    var img = images[m];
+    img.setAttribute('alt', img.getAttribute('title') || '');
+  }
+
+  var fields = root.querySelectorAll('input, select, textarea');
+  for(var f = 0; f < fields.length; f++) {
+    var field = fields[f];
+    if(field.hasAttribute('aria-label') || field.hasAttribute('aria-labelledby')) {
+      continue;
+    }
+    if(field.labels && field.labels.length > 0) {
+      continue;
+    }
+    var fieldLabel = field.getAttribute('data-label') || field.getAttribute('title') || '';
+    if(fieldLabel) {
+      field.setAttribute('aria-label', fieldLabel);
+    }
+  }
+};
+
 UI.HTMLPanel = function() {
 
   this.init = function(args) {
@@ -38,6 +177,7 @@ UI.HTMLPanel = function() {
       return;
     }
     SafeHTML.setTemplateHTML(panelElement, response);
+    UI.enhancePanelAccessibility(panelElement);
 
     if(typeof UI.number != 'undefined') {
       UI.number.initControls('#' + _this.id + ' .number');
@@ -88,6 +228,7 @@ UI.HTMLPanel = function() {
     
     if(typeof this.html != 'undefined' && this.html !== '') {
       SafeHTML.setHTML(element, this.html);
+      UI.enhancePanelAccessibility(element);
     }
 
     return element;

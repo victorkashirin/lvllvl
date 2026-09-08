@@ -477,7 +477,8 @@ input[type=checkbox] {
 
 /* TODO: use class instead of id */
 
-#cellForegroundColorMobile {
+#cellForegroundColorMobile,
+#pixelCellForegroundColorMobile {
   width: 42px;
   height: 42px;
 

@@ -6,7 +6,7 @@
     </div>
     
     <div style="position: absolute; top: 2px; right: 2px; width: 20px">
-      <div id="tileEditorCloseButton" class="ui-button ui-dialog-close-button ui-button-danger" style="padding: 1px 4px"><img src="icons/svg/glyphicons-basic-599-menu-close.svg"></div>
+      <div id="tileEditorCloseButton" class="ui-button ui-dialog-close-button ui-button-danger" style="padding: 1px 4px" aria-label="Close tile editor"><img src="icons/svg/glyphicons-basic-599-menu-close.svg" alt=""></div>
     </div>        
   </div>
 
@@ -19,9 +19,9 @@
 
 
     <div id="tileEditorFrameControls" style="display: none; margin: 8px">
-      Frame <button id="tileEditorPrevFrame">&lt;</button>
-      <input class="number" size="2" min="1" value="1" style="width: 30px" id="tileEditorFrame">
-      <button id="tileEditorNextFrame">&gt;</button>
+      Frame <button id="tileEditorPrevFrame" aria-label="Previous frame">&lt;</button>
+      <input class="number" size="2" min="1" value="1" style="width: 30px" id="tileEditorFrame" aria-label="Current frame">
+      <button id="tileEditorNextFrame" aria-label="Next frame">&gt;</button>
       &nbsp;
       of
       &nbsp;
@@ -29,8 +29,8 @@
       <input class="number" size="2" value="1" min="1" max="8" id="tileEditorFrames">
       -->
       <div style="display: inline-block; width: 20px; color: white" id="tileEditorFrames"></div>
-      <button id="tileEditorInsertFrame">+</button>
-      <button id="tileEditorDeleteFrame">-</button>
+      <button id="tileEditorInsertFrame" aria-label="Insert frame">+</button>
+      <button id="tileEditorDeleteFrame" aria-label="Delete frame">-</button>
 
     </div>
 
@@ -44,7 +44,7 @@
       <div>
         Colour:
       </div>
-      <div id="tileEditorC64Colors">
+      <div id="tileEditorC64ColorsControl">
       </div>
     </div>
 
@@ -81,7 +81,7 @@
           <div class="ui-button" data-label="Cut" title="Cut" id="tileEditorClear"><img src="icons/svg/glyphicons-basic-612-scissors.svg"/></div>
           <div class="ui-button" data-label="Copy" title="Copy" id="tileEditorCopy"><img src="icons/svg/glyphicons-basic-614-copy.svg"/></div>
           <div class="ui-button" data-label="Paste" title="Paste" id="tileEditorPaste"><img src="icons/svg/glyphicons-basic-613-paste.svg"/></div>
-          Clipboard: <canvas width="16" height="16" style="background-color: black" id="tileEditorClipboard"></canvas>
+          Clipboard: <canvas width="16" height="16" style="background-color: black" id="tileEditorClipboard" role="img" aria-label="Tile clipboard preview"></canvas>
         </div>
       </div>
     </div>

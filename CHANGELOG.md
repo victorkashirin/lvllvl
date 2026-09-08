@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+### Fixed
+
+- Fix duplicate element ids across simultaneously mounted tool panels
+  (desktop/mobile, tile/pixel) by scoping mobile side-panel, sub-palette,
+  tile-editor colour, and material-control ids and selecting frame colours
+  and sub-palette swatches by class.
+- Give icon-only tool buttons, colour wells, and sub-palette swatches
+  accessible names (template labels plus automatic naming from existing
+  data-label, title, and shortcut labels) and add alt text handling for
+  tool icons.
+- Fix mismatched colour-editor label associations and label previously
+  unlabeled frame and palette controls.
+- Add a visible focus indicator for buttons and raise disabled-control
+  and placeholder text contrast.
+- Guard the pixel mobile tool scroll indicator against hidden panels.
+
 ## 0.498.0 - 2026-09-08
 
 ### Fixed

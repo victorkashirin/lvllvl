@@ -268,6 +268,10 @@ PixelDrawTools.prototype = {
     var holderHeight = $('#pixelToolIconHolderMobile').height();
     var toolsHeight = $('#pixelToolIconsMobile').height();
     var position = $('#pixelToolIconsMobile').position();
+
+    if(typeof position == 'undefined') {
+      return;
+    }
     var top = position.top;
 
     if(top < -2) {

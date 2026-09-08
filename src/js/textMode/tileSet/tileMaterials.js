@@ -16,7 +16,7 @@ TileMaterials.prototype = {
   getHTML: function() {
     var materialsHTML = '<div class="panelFill" style="color: white">';
 
-    materialsHTML += '  <div style="padding-left: 2px;" id="tileMaterialControls">';
+    materialsHTML += '  <div style="padding-left: 2px;" class="tileMaterialControls">';
     materialsHTML += '    <div style="margin: 4px 0 2px 0; font-size: 10px; font-weight: normal; color: #999999">Tile Material</div>';
     materialsHTML += '    <canvas id="' + this.prefix + 'tileMaterialsCanvas"></canvas>';
     materialsHTML += '  </div>';

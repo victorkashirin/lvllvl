@@ -5,11 +5,11 @@
   </div>
 
 
-  <div id="toolIconsScrollTop" style="z-index: 100; position: absolute; top: 81px; left: 0; right: 0; height: 14px; background-image: linear-gradient(to top, rgba(0, 0, 0, 0), rgba(0, 0, 0, 255)); display: none"></div>
-  <div id="toolIconsScrollBottom" style="z-index: 100; position: absolute; bottom: 144px; left: 0; right: 0; height: 10px; background-image: linear-gradient(to top, rgba(0, 0, 0, 255), rgba(0, 0, 0, 0)); display: none"></div>
+  <div id="pixelToolIconsScrollTop" style="z-index: 100; position: absolute; top: 81px; left: 0; right: 0; height: 14px; background-image: linear-gradient(to top, rgba(0, 0, 0, 0), rgba(0, 0, 0, 255)); display: none"></div>
+  <div id="pixelToolIconsScrollBottom" style="z-index: 100; position: absolute; bottom: 144px; left: 0; right: 0; height: 10px; background-image: linear-gradient(to top, rgba(0, 0, 0, 255), rgba(0, 0, 0, 0)); display: none"></div>
 
 
-  <div id="toolIconHolderMobile" style="padding: 0px 8px 0 8px; position: absolute; text-align: center; top: 82px; left: 0px; right: 0; bottom: 144px; border-bottom: 1px solid #111111; overflow-y: auto; overflow-x: hidden">
+  <div id="pixelToolIconHolderMobile" class="toolIconHolderMobile" style="padding: 0px 8px 0 8px; position: absolute; text-align: center; top: 82px; left: 0px; right: 0; bottom: 144px; border-bottom: 1px solid #111111; overflow-y: auto; overflow-x: hidden">
 
     <div id="pixelToolIconsMobile" style="padding: 3px 0 3px 0">
       <div class="pixelDrawToolMobileSide" id="pixelDrawToolMobileSide_pen" data-type="pen"><img src="icons/svg/glyphicons-basic-31-pencil.svg"/></div>
@@ -32,13 +32,13 @@
   <div style="position: absolute; left: 0px; right: 0; bottom: 8px; height: 130px; text-align: center">
 
     <div style="margin-bottom: 2px">Layers</div>
-    <img id="pixelLayersButtonMobile" style="filter: invert(60%)" src="icons/material/baseline-layers-24px.svg" height="40"/>
+    <img id="pixelLayersButtonMobile" role="button" aria-label="Layers" alt="" style="filter: invert(60%)" src="icons/material/baseline-layers-24px.svg" height="40"/>
 
 
     <div style="margin-bottom: 2px">Cell</div>
 
     <div id="pixelDrawToolsMobile-cellColor" style="position: relative; height: 50px; margin-bottom: 6px">
-      <div style="position: absolute; top: 2px; left: 7px; width: 34px; height: 34px; z-index: 6" id="cellForegroundColorMobile" class="foregroundColorMobile"></div>
+      <div style="position: absolute; top: 2px; left: 7px; width: 34px; height: 34px; z-index: 6" id="pixelCellForegroundColorMobile" class="foregroundColorMobile"></div>
 
       <!--
       <div style="display: block; position: absolute; top: 16px; left: 29px; width: 34px; height: 34px; text-align: center; line-height: 34px; vertical-align: middle; background-color: #000000; z-index: 5;" id="cellBackgroundColorMobile" class="cellBackgroundColorMobile"></div>

@@ -179,9 +179,9 @@ currentTileSplitPanel
 */
   setTileMaterialsVisible: function(visible) {
     if(visible) {
-      $('#tileMaterialControls').show();
+      $('.tileMaterialControls').show();
     } else {
-      $('#tileMaterialControls').hide();
+      $('.tileMaterialControls').hide();
     }
 
     if(this.editor.sideTilePalette) {

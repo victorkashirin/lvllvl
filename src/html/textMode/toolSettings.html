@@ -1,11 +1,11 @@
 <div class="activeBackground panelFill" style="display: flex; align-items: center">
 
   <div id="tileToolsOpenButtonHolder" style="display: inline-block; width: 20px;">
-    <div id="tileToolsOpenButton" class="ui-button ui-panel-close-button ui-button-danger" style="padding: 1px 4px"><img src="icons/svg/glyphicons-halflings-131-chevron-right.svg"></div>    
+    <div id="tileToolsOpenButton" class="ui-button ui-panel-close-button ui-button-danger" style="padding: 1px 4px" aria-label="Show tile tools"><img src="icons/svg/glyphicons-halflings-131-chevron-right.svg" alt=""></div>    
   </div>
 
   <div id="toolSettingsCurrentTileHolder">
-    <canvas id="toolSettingsCurrentTile"></canvas>
+    <canvas id="toolSettingsCurrentTile" role="button" aria-label="Current tile, choose tile"></canvas>
   </div>
 
   <div style="display: flex" id="drawToolSettings-tileOrientation">
@@ -22,9 +22,9 @@
 
   <div id="drawToolSettings-frameColors" style=" position: relative; width: 50px; height: 30px">
 
-    <div style="display: block; position: absolute; top: 3px; left: 8px; width: 30px; height: 22px; background-color: rgb(112, 109, 235); z-index: 5; background-image: none;" id="borderColor" class="borderColor  colorSetting"></div>
+    <div style="display: block; position: absolute; top: 3px; left: 8px; width: 30px; height: 22px; background-color: rgb(112, 109, 235); z-index: 5; background-image: none;" class="borderColor  colorSetting"></div>
 
-    <div style="display: block; position: absolute; top: 7px; left: 14px; width: 18px; height: 14px; background-color: rgb(46, 44, 155); z-index: 10; background-image: none;" id="backgroundColor" class="backgroundColor  colorSetting"></div>
+    <div style="display: block; position: absolute; top: 7px; left: 14px; width: 18px; height: 14px; background-color: rgb(46, 44, 155); z-index: 10; background-image: none;" class="backgroundColor  colorSetting"></div>
 
   </div>  
 

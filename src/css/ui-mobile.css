@@ -642,7 +642,7 @@
 }
 
 
-.mobileMode #toolIconHolderMobile::-webkit-scrollbar {
+.mobileMode .toolIconHolderMobile::-webkit-scrollbar {
   width: 0px;
   /* remove scrollbar space */
   background: transparent;

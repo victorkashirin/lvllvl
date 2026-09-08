@@ -179,10 +179,10 @@ input[type=number]:disabled,
 textarea:disabled,
 select:disabled {
   background-color: #2b2b2b;
-  color: #777777;
+  color: #a6a6a6;
   cursor: default;
   opacity: 1;
-  -webkit-text-fill-color: #777777;
+  -webkit-text-fill-color: #a6a6a6;
 }
 
 input:not([type]):focus-visible,
@@ -196,7 +196,7 @@ select:focus-visible {
 
 input::placeholder,
 textarea::placeholder {
-  color: #aaaaaa;
+  color: #bdbdbd;
   opacity: 1;
 }
 
@@ -539,6 +539,12 @@ background-image: linear-gradient(top, #ebf3fd,#ebf3fd 39%,#d9e8fb 40%,#d9e8fb)
 }
 
 
+button:focus-visible,
+.ui-button:focus-visible {
+  outline: 2px solid #80b8eb;
+  outline-offset: 1px;
+}
+
 button:active,
 .ui-button:active {
 
@@ -633,7 +639,7 @@ background-image: linear-gradient(top, #ebf3fd,#ebf3fd 39%,#d9e8fb 40%,#d9e8fb)
   cursor: default;
   background-image: none;
   background-color: #333333 !important;
-  color: #666666 !important;
+  color: #a3a3a3 !important;
 }
 
 

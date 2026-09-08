@@ -65,7 +65,7 @@ TileEditorMobile.prototype = {
 
 
           _this.c64MulticolorTypeControl = new C64MulticolorTypeControl();
-          _this.c64MulticolorTypeControl.init(_this.editor, { "elementId": "tileEditorMobileC64Colors" })
+          _this.c64MulticolorTypeControl.init(_this.editor, { "elementId": "tileEditorMobileC64ColorsControl" })
           _this.initEvents();
 
           _this.tileEditorMobileGrid = new TileEditorGrid();
