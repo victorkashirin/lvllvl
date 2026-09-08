@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.497.10 - 2026-09-08
+
 ### Fixed
 
 - Keep source verification aligned with the in-app keyboard-shortcut dialog,
