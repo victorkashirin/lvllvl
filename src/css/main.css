@@ -54,17 +54,42 @@ a {
   flex: 0 0 auto;
 }
 
-.tile-palette-scale-value {
-  color: #222222;
+.tile-palette-sort-order,
+.tile-palette-fit-button,
+.tile-palette-step-button {
+  box-sizing: border-box;
+  height: 24px;
+}
+
+.tile-palette-fit-button,
+.tile-palette-step-button {
+  align-items: center;
+  display: inline-flex;
+  justify-content: center;
+  padding-bottom: 0;
+  padding-top: 0;
+}
+
+.tile-palette-step-button {
+  line-height: 1;
+}
+
+.tile-palette-step-button .tile-palette-step-button-symbol {
   display: inline-block;
-  height: 20px;
+  margin-left: 0;
+}
+
+.tile-palette-scale-value {
+  color: #dddddd;
+  display: inline-block;
+  height: 24px;
   margin: 0;
   position: relative;
   width: 60px;
 }
 
 .tile-palette-scale-value-disabled {
-  color: #777777;
+  color: #888888;
 }
 
 .tile-palette-scale-value input:disabled {

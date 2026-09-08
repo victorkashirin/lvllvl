@@ -89,6 +89,107 @@ async function open2DProject(page, testInfo, { vector = false } = {}) {
   )).toBe(true);
 }
 
+test("form controls keep their dark theme across supported browsers", async ({ page }, testInfo) => {
+  await page.route(/^https:\/\//, (route) =>
+    route.fulfill({ body: "", contentType: "application/javascript", status: 200 }),
+  );
+  await page.goto("/", { waitUntil: "domcontentloaded" });
+  await waitForStableStartPage(
+    page,
+    browserPolicy.performanceBudgets.startupMilliseconds,
+  );
+
+  const isFirefox = testInfo.project.name.startsWith("firefox");
+  const usesMobileControls = testInfo.project.metadata.deviceClass !== "desktop";
+  const controlTheme = await page.evaluate(({ isFirefox, usesMobileControls }) => {
+    const fixture = document.createElement("div");
+    fixture.innerHTML = `
+      <input id="browser-theme-text" type="text" value="Enabled">
+      <input id="browser-theme-text-disabled" type="text" value="Disabled" disabled>
+      <select id="browser-theme-select-disabled" disabled><option>Disabled</option></select>
+      <input id="browser-theme-checkbox" type="checkbox" checked>
+      <input id="browser-theme-range" type="range" value="50">
+    `;
+    document.body.append(fixture);
+
+    const style = (id) => getComputedStyle(document.getElementById(id));
+    const rulePrefix = usesMobileControls ? ".mobileMode " : "";
+    const trackSelector = isFirefox
+      ? `${rulePrefix}input[type="range"]::-moz-range-track`
+      : `${rulePrefix}input[type="range"]::-webkit-slider-runnable-track`;
+    const thumbSelector = isFirefox
+      ? `${rulePrefix}input[type="range"]::-moz-range-thumb`
+      : `${rulePrefix}input[type="range"]::-webkit-slider-thumb`;
+    const stylesheetRules = Array.from(document.styleSheets).flatMap((stylesheet) =>
+      Array.from(stylesheet.cssRules));
+    const trackStyle = stylesheetRules.find((rule) => rule.selectorText === trackSelector)?.style;
+    const thumbStyle = stylesheetRules.find((rule) => rule.selectorText === thumbSelector)?.style;
+    const checkboxStyle = style("browser-theme-checkbox");
+    const disabledSelectStyle = style("browser-theme-select-disabled");
+    const disabledTextStyle = style("browser-theme-text-disabled");
+    const rangeStyle = style("browser-theme-range");
+    const textStyle = style("browser-theme-text");
+
+    return {
+      checkbox: {
+        appearance: checkboxStyle.appearance,
+        backgroundColor: checkboxStyle.backgroundColor,
+        borderRadius: checkboxStyle.borderRadius,
+      },
+      disabledSelect: {
+        backgroundColor: disabledSelectStyle.backgroundColor,
+        color: disabledSelectStyle.color,
+        opacity: disabledSelectStyle.opacity,
+      },
+      disabledText: {
+        backgroundColor: disabledTextStyle.backgroundColor,
+        color: disabledTextStyle.color,
+        opacity: disabledTextStyle.opacity,
+      },
+      range: {
+        appearance: rangeStyle.appearance,
+        thumbBackgroundColor: thumbStyle?.backgroundColor,
+        thumbBorderWidth: thumbStyle?.borderTopWidth,
+        trackBackgroundColor: trackStyle?.backgroundColor,
+        trackBorderWidth: trackStyle?.borderTopWidth,
+      },
+      text: {
+        backgroundColor: textStyle.backgroundColor,
+        color: textStyle.color,
+      },
+    };
+  }, { isFirefox, usesMobileControls });
+
+  expect(controlTheme).toEqual({
+    checkbox: {
+      appearance: "none",
+      backgroundColor: "rgb(63, 111, 150)",
+      borderRadius: "2px",
+    },
+    disabledSelect: {
+      backgroundColor: "rgb(43, 43, 43)",
+      color: "rgb(119, 119, 119)",
+      opacity: "1",
+    },
+    disabledText: {
+      backgroundColor: "rgb(43, 43, 43)",
+      color: "rgb(119, 119, 119)",
+      opacity: "1",
+    },
+    range: {
+      appearance: "none",
+      thumbBackgroundColor: "rgb(136, 136, 136)",
+      thumbBorderWidth: "0px",
+      trackBackgroundColor: "rgb(51, 51, 51)",
+      trackBorderWidth: "0px",
+    },
+    text: {
+      backgroundColor: "rgb(51, 51, 51)",
+      color: "rgb(221, 221, 221)",
+    },
+  });
+});
+
 test("desktop canvas context clicks open tile and color palettes", async ({ page }, testInfo) => {
   test.skip(testInfo.project.metadata.deviceClass !== "desktop");
   await open2DProject(page, testInfo);

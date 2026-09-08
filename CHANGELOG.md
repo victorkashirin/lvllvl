@@ -35,6 +35,15 @@
 
 ### Fixed
 
+- Theme text fields, dropdowns, native and custom checkboxes, and radio buttons
+  with the application's dark surface, text, focus, disabled, and selection
+  colours. Give
+  standard buttons, text fields, dropdowns, and checkboxes consistent two-pixel
+  corner rounding, and add comfortable horizontal padding to dropdowns.
+  Restyle sliders with dark tracks, muted handles, and consistent interaction
+  states. Keep tile-palette sort, fit, scale, spacing, and count controls at a
+  common height, with consistent markup and flex centering for every step-button
+  symbol.
 - Make single-key shortcut searches exact instead of matching incidental text,
   and capture modified search chords such as Option+1 and Shift+/ with
   layout-aware matching instead of inserting their transformed character into

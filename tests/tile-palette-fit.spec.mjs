@@ -522,35 +522,97 @@ test("tile palettes fit their panels and retain a precise manual scale", async (
     const fitStyle = getComputedStyle(document.getElementById("tilePaletteFitWidth"));
     const inputElement = document.getElementById("tilePaletteScale");
     const percentElement = document.getElementById("tilePaletteScalePercent");
-    const decrease = document.getElementById("tilePaletteScaleDec").getBoundingClientRect();
-    const increase = document.getElementById("tilePaletteScaleInc").getBoundingClientRect();
+    const decreaseElement = document.getElementById("tilePaletteScaleDec");
+    const increaseElement = document.getElementById("tilePaletteScaleInc");
+    const spacingDecreaseElement = document.getElementById("tilePaletteTileMarginDec");
+    const spacingIncreaseElement = document.getElementById("tilePaletteTileMarginInc");
+    const countDecreaseElement = document.getElementById("tilePaletteTileCountDec");
+    const countIncreaseElement = document.getElementById("tilePaletteTileCountInc");
+    const stepButtons = [
+      decreaseElement,
+      increaseElement,
+      spacingDecreaseElement,
+      spacingIncreaseElement,
+      countDecreaseElement,
+      countIncreaseElement,
+    ];
+    const decrease = decreaseElement.getBoundingClientRect();
+    const increase = increaseElement.getBoundingClientRect();
+    const spacingDecrease = spacingDecreaseElement.getBoundingClientRect();
+    const spacingIncrease = spacingIncreaseElement.getBoundingClientRect();
+    const countDecrease = countDecreaseElement.getBoundingClientRect();
+    const countIncrease = countIncreaseElement.getBoundingClientRect();
     const input = inputElement.getBoundingClientRect();
     const percent = percentElement.getBoundingClientRect();
     const sort = document.getElementById("charPaletteSortOrder").getBoundingClientRect();
     const fit = document.getElementById("tilePaletteFitWidth").getBoundingClientRect();
+    const chooseTileSet = document.getElementById("tilePaletteChooseTileSet").getBoundingClientRect();
     const spacing = document.getElementById("tilePaletteTileMargin").parentElement.getBoundingClientRect();
     return {
       colorsMatch: getComputedStyle(inputElement).color === getComputedStyle(percentElement).color,
+      controlHeight: fit.height,
       disabledScaleColor: getComputedStyle(inputElement).color,
+      equalControlHeights: [
+        sort,
+        fit,
+        decrease,
+        input,
+        increase,
+        spacingDecrease,
+        spacingIncrease,
+        countDecrease,
+        countIncrease,
+      ].every(
+        (control) => Math.abs(control.height - fit.height) < 0.1,
+      ),
+      matchesChooseTileSetHeight: Math.abs(chooseTileSet.height - fit.height) < 0.1,
       fitAlignItems: fitStyle.alignItems,
       fitDisplay: fitStyle.display,
+      stepButtonsAlignItems: stepButtons.map(
+        (button) => getComputedStyle(button).alignItems,
+      ),
+      stepButtonNodeNames: stepButtons.map((button) => button.nodeName),
+      stepButtonsUseFlex: stepButtons.every((button) =>
+        ["flex", "inline-flex"].includes(getComputedStyle(button).display)),
+      stepButtonSymbolsCentered: stepButtons.every((button) => {
+        const buttonRect = button.getBoundingClientRect();
+        const symbolRect = button.querySelector(".tile-palette-step-button-symbol").getBoundingClientRect();
+        const horizontalDelta =
+          (symbolRect.left + symbolRect.width / 2) -
+          (buttonRect.left + buttonRect.width / 2);
+        const verticalDelta =
+          (symbolRect.top + symbolRect.height / 2) -
+          (buttonRect.top + buttonRect.height / 2);
+        return Math.abs(horizontalDelta) < 0.1 && Math.abs(verticalDelta) < 0.1;
+      }),
       leftGroupSpacing: fit.left - sort.right,
       percentInsideInput: percent.left >= input.left && percent.right <= input.right,
       rightGroupSpacing: spacing.left - increase.right,
       scaleGroupIsFlush:
         Math.abs(decrease.right - input.left) < 0.1 &&
         Math.abs(input.right - increase.left) < 0.1,
+      scaleStepButtonRadii: [decreaseElement, increaseElement].map(
+        (button) => getComputedStyle(button).borderRadius,
+      ),
     };
   });
   expect(scaleControlLayout).toEqual({
     colorsMatch: true,
-    disabledScaleColor: "rgb(119, 119, 119)",
+    controlHeight: 24,
+    disabledScaleColor: "rgb(136, 136, 136)",
+    equalControlHeights: true,
+    matchesChooseTileSetHeight: true,
     fitAlignItems: "center",
     fitDisplay: "flex",
     leftGroupSpacing: 20,
     percentInsideInput: true,
     rightGroupSpacing: 20,
     scaleGroupIsFlush: true,
+    scaleStepButtonRadii: ["2px 0px 0px 2px", "0px 2px 2px 0px"],
+    stepButtonNodeNames: ["BUTTON", "BUTTON", "BUTTON", "BUTTON", "BUTTON", "BUTTON"],
+    stepButtonsAlignItems: ["center", "center", "center", "center", "center", "center"],
+    stepButtonSymbolsCentered: true,
+    stepButtonsUseFlex: true,
   });
 
   const fitted = await page.evaluate(() => {
@@ -611,7 +673,7 @@ test("tile palettes fit their panels and retain a precise manual scale", async (
   await bottomFit.click();
   await expect(bottomScale).toBeEnabled();
   await expect(bottomScale).toHaveValue(String(fittedPercentage));
-  expect(await bottomScale.evaluate((element) => getComputedStyle(element).color)).toBe("rgb(34, 34, 34)");
+  expect(await bottomScale.evaluate((element) => getComputedStyle(element).color)).toBe("rgb(221, 221, 221)");
   expect(await page.evaluate(() => localStorage.getItem("tilepalette.fitToWidth.bottom"))).toBe("no");
 
   await bottomScale.fill("176");

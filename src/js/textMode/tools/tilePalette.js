@@ -131,7 +131,7 @@ TilePalette.prototype = {
 
     // ---------
 //    html += '<label class="gridinfo-label" class="gridinfo-label" for="charPaletteSortOrder">Sort</label>&nbsp;';
-    html += '<select id="' + this.prefix + 'charPaletteSortOrder" style="margin-right: 20px">';
+    html += '<select class="tile-palette-sort-order" id="' + this.prefix + 'charPaletteSortOrder" style="margin-right: 20px">';
     html += '<option value="source">Tile Index</option>';
     html += '<option value="similar" selected="selected">Group Similar</option>';
     html += '</select>';
@@ -140,13 +140,13 @@ TilePalette.prototype = {
     //html += '<label class="gridinfo-label" for="tilePaletteScale" style="margin-left: 20px">Scale</label>&nbsp;';
 
     html += '<div style="display: flex; align-items: center">';
-    html += '<button type="button" class="ui-button" id="' + this.prefix + 'tilePaletteFitWidth" aria-pressed="false" title="Fit tile palette to panel width" style="box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; height: 20px">Fit</button>';
-    html += '<button type="button" class="ui-button" id="' + this.prefix + 'tilePaletteScaleDec" aria-label="Decrease tile palette scale" title="Decrease scale by at least 50%" style="border-radius: 4px 0 0 4px; margin-right: 0">-</button>';
+    html += '<button type="button" class="ui-button tile-palette-fit-button" id="' + this.prefix + 'tilePaletteFitWidth" aria-pressed="false" title="Fit tile palette to panel width">Fit</button>';
+    html += '<button type="button" class="ui-button tile-palette-step-button" id="' + this.prefix + 'tilePaletteScaleDec" aria-label="Decrease tile palette scale" title="Decrease scale by at least 50%" style="border-radius: 2px 0 0 2px; margin-right: 0"><span class="tile-palette-step-button-symbol">-</span></button>';
     html += '<span class="tile-palette-scale-value" id="' + this.prefix + 'tilePaletteScaleValue">';
-    html += '<input type="text" inputmode="decimal" id="' + this.prefix + 'tilePaletteScale" value="200" aria-label="Tile palette scale percentage" style="border-radius: 0; box-sizing: border-box; color: inherit; height: 20px; margin: 0; padding-right: 14px; text-align: right; width: 60px">';
-    html += '<span id="' + this.prefix + 'tilePaletteScalePercent" aria-hidden="true" style="position: absolute; right: 4px; top: 0; line-height: 20px; pointer-events: none">%</span>';
+    html += '<input type="text" inputmode="decimal" id="' + this.prefix + 'tilePaletteScale" value="200" aria-label="Tile palette scale percentage" style="border-radius: 0; box-sizing: border-box; color: inherit; height: 24px; margin: 0; padding-right: 14px; text-align: right; width: 60px">';
+    html += '<span id="' + this.prefix + 'tilePaletteScalePercent" aria-hidden="true" style="position: absolute; right: 4px; top: 0; line-height: 24px; pointer-events: none">%</span>';
     html += '</span>';
-    html += '<button type="button" class="ui-button" id="' + this.prefix + 'tilePaletteScaleInc" aria-label="Increase tile palette scale" title="Increase scale by at least 50%" style="border-radius: 0 4px 4px 0; margin-right: 0">+</button>';
+    html += '<button type="button" class="ui-button tile-palette-step-button" id="' + this.prefix + 'tilePaletteScaleInc" aria-label="Increase tile palette scale" title="Increase scale by at least 50%" style="border-radius: 0 2px 2px 0; margin-right: 0"><span class="tile-palette-step-button-symbol">+</span></button>';
     html += '</div>';
 
     html += '<span style="margin-left: 20px">';
@@ -155,9 +155,9 @@ TilePalette.prototype = {
     html += '</span>';
 
     html += '<span>';
-    html += '<div class="ui-button" id="' + this.prefix + 'tilePaletteTileMarginDec">-</div>';
+    html += '<button type="button" class="ui-button tile-palette-step-button" id="' + this.prefix + 'tilePaletteTileMarginDec" aria-label="Decrease tile spacing"><span class="tile-palette-step-button-symbol">-</span></button>';
     html += '&nbsp;'
-    html += '<div class="ui-button" id="' + this.prefix + 'tilePaletteTileMarginInc">+</div>';
+    html += '<button type="button" class="ui-button tile-palette-step-button" id="' + this.prefix + 'tilePaletteTileMarginInc" aria-label="Increase tile spacing"><span class="tile-palette-step-button-symbol">+</span></button>';
     html += '</span>';
     // -----------
 
@@ -176,9 +176,9 @@ TilePalette.prototype = {
     html += '</span>';
 
     html += '<span style="margin-right: 16px">';
-    html += '<div class="ui-button" id="' + this.prefix + 'tilePaletteTileCountDec">-</div>';
+    html += '<button type="button" class="ui-button tile-palette-step-button" id="' + this.prefix + 'tilePaletteTileCountDec" aria-label="Decrease tile count"><span class="tile-palette-step-button-symbol">-</span></button>';
     html += '&nbsp;'
-    html += '<div class="ui-button" id="' + this.prefix + 'tilePaletteTileCountInc">+</div>';
+    html += '<button type="button" class="ui-button tile-palette-step-button" id="' + this.prefix + 'tilePaletteTileCountInc" aria-label="Increase tile count"><span class="tile-palette-step-button-symbol">+</span></button>';
     html += '</span>';
 
     html += '<div class="ui-button" id="' + this.prefix + 'tilePaletteChooseTileSet">Choose Tile Set...<div class="rippleJS"></div></div>';
