@@ -32,7 +32,7 @@ var MattiasCRTEffect = function() {
 
     },
     {
-      "name": "Colour Bleed",
+      "name": "Color Bleed",
       "min": 0,
       "max": 100,
       "type": "range",
@@ -122,7 +122,7 @@ MattiasCRTEffect.prototype = {
         }
         this.crtPass.uniforms['pixelRatio'].value = this.pixelRatio;
         break;
-      case 'Colour Bleed':
+      case 'Color Bleed':
         this.colorBleed = value / 50;
         this.crtPass.uniforms['colorBleed'].value = this.colorBleed;
         break;

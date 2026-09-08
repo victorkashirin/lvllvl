@@ -79,11 +79,11 @@ ColorSubPalettes.prototype = {
     var colorPalette = this.editor.colorPaletteManager.getCurrentColorPalette();
     var colorCount = colorPalette.getColorCount();
 
-    console.log('colour count = ' + colorCount);
+    console.log('color count = ' + colorCount);
 
     /*
     if(colorCount !== 52) {
-      if(confirm("You are not currently using the NES colour palette, would you like to switch?")) {
+      if(confirm("You are not currently using the NES color palette, would you like to switch?")) {
         this.editor.colorPaletteManager.choosePreset('nes', { "callback": function() {
           _this.initColors();
           if(typeof callback != 'undefined') {

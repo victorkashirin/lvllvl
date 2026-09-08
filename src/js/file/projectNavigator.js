@@ -702,7 +702,7 @@ ProjectNavigator.prototype = {
     }
     
     if(type == 'color palette') {
-      var colorPaletteId = g_app.textModeEditor.colorPaletteManager.createColorPalette({ name: "Colour Palette" });
+      var colorPaletteId = g_app.textModeEditor.colorPaletteManager.createColorPalette({ name: "Color Palette" });
 
       this.refreshTreeNode(parentDocRecord, parentNode);
       this.reloadTreeBranch('/color palettes');

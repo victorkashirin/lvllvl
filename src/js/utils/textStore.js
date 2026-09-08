@@ -202,11 +202,11 @@ TextStore.content = {
 
   },
 
-  "C64 Multicolour": {
+  "C64 Multicolor": {
 
   },
 
-  "Indexed Colour": {
+  "Indexed Color": {
 
   },
 
@@ -218,18 +218,18 @@ TextStore.content = {
 
   },
 
-  "Colour Mode": {
+  "Color Mode": {
 
   },
 
-  "Colour Per Cell": {
+  "Color Per Cell": {
 
   },
 
-  "Colour Per Tile": {
+  "Color Per Tile": {
 
   },
-  "Colour Per Block": {
+  "Color Per Block": {
 
   },
   "Reference Image": {
@@ -292,28 +292,28 @@ TextStore.content = {
   "Save Tile Set": {
 
   },
-  "Colours": {
-    "en-gb": "Colours",
+  "Colors": {
+    "en-gb": "Colors",
     "en-us": "Colors"
   },
-  "Show Colour Editor": {
-    "en-gb": "Show Colour Editor",
+  "Show Color Editor": {
+    "en-gb": "Show Color Editor",
     "en-us": "Show Color Editor"    
   },
-  "Choose A Colour Palette": {
-    "en-gb": "Choose A Colour Palette",
+  "Choose A Color Palette": {
+    "en-gb": "Choose A Color Palette",
     "en-us": "Choose A Color Palette"    
   },
-  "Edit Colour Palette": {
-    "en-gb": "Edit Colour Palette",
+  "Edit Color Palette": {
+    "en-gb": "Edit Color Palette",
     "en-us": "Edit Color Palette"
   },
-  "Load Colour Palette": {
-    "en-gb": "Load Colour Palette",
+  "Load Color Palette": {
+    "en-gb": "Load Color Palette",
     "en-us": "Load Color Palette"
   },
-  "Save Colour Palette": {
-    "en-gb": "Save Colour Palette",
+  "Save Color Palette": {
+    "en-gb": "Save Color Palette",
     "en-us": "Save Color Palette"
   },
   "View": {
@@ -358,7 +358,7 @@ TextStore.content = {
 
   "Color": {
     "en-us": "Color",
-    "en-gb": "Colour",
+    "en-gb": "Color",
     "ja": ""
   },
 

@@ -359,7 +359,7 @@ ColorPalettePanel.prototype = {
 
       var defaultSortMethods = [
 
-        { value: "source" , label: "Colour Index" },
+        { value: "source" , label: "Color Index" },
         { value: "hls" , label: "Hue" },
   //      { value: "hue" , label: "Source" },
         { value: "saturation" , label: "Saturation" },

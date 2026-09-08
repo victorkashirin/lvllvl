@@ -300,7 +300,7 @@ TileEditorMobile.prototype = {
     $('.tileEditorMobileSubPaletteColor').on('click', function(event) {
       
       var colorIndex = $(this).attr('data-index');
-      console.log('select colour ' + colorIndex);
+      console.log('select color ' + colorIndex);
       _this.selectSubPaletteColorIndex(colorIndex);
     });
 

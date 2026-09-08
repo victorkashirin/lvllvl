@@ -206,7 +206,7 @@ export function createKeyboardShortcutsDialog({
     "Screen",
     "Layers",
     "Tiles",
-    "Colours",
+    "Colors",
     "Project",
     "Import",
     "Export",

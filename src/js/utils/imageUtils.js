@@ -312,7 +312,7 @@ ImageUtils.limitColorsPerCell = function(srcContext, args) {
   }
 
 
-  console.log('limited the colours');
+  console.log('limited the colors');
   srcContext.putImageData(imageData, 0, 0, 0, 0, width, height); 
 
 }

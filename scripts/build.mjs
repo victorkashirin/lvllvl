@@ -44,6 +44,7 @@ const publishedBuildRoot = path.join(projectRoot, buildDirectory);
 const thirdPartyNoticesFile = path.join(projectRoot, "THIRD_PARTY_NOTICES.md");
 const thirdPartySbomFile = path.join(projectRoot, "docs/runtime-dependencies.spdx.json");
 const embeddedPackageSourceMaps = new Set(packageSourceMapsWithEmbeddedSources);
+const excludedAssetFiles = new Set(["css/old.css"]);
 
 const outputDirectories = [
   "js/html",
@@ -357,7 +358,10 @@ async function patchC64Runtime() {
 async function copyAssets() {
   for (const directory of assetDirectories) {
     await cp(path.join(sourceRoot, directory), path.join(buildRoot, directory), {
-      filter: (filename) => path.basename(filename) !== ".DS_Store",
+      filter: (filename) => {
+        const relativePath = path.relative(sourceRoot, filename).split(path.sep).join("/");
+        return path.basename(filename) !== ".DS_Store" && !excludedAssetFiles.has(relativePath);
+      },
       force: true,
       recursive: true,
     });

@@ -212,7 +212,7 @@ console.log(w + ',' + x + ',' + y + ',' + z);
 
     this.colorCount = this.readUint16BE();
 
-console.log('colour count = ' + this.colorCount);
+console.log('color count = ' + this.colorCount);
 
     for(var i = 0; i < this.colorCount; i++) {
       this.readColor();

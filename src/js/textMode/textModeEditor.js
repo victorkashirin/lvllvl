@@ -470,7 +470,7 @@ TextModeEditor.prototype = {
     }
     colorPaletteArgs.colorPalette = args.colorPalette;
 
-    colorPaletteArgs.colorPaletteName = 'Colour Palette';
+    colorPaletteArgs.colorPaletteName = 'Color Palette';
     if(typeof args.colorPaletteName != 'undefined') {
       colorPaletteArgs.colorPaletteName = args.colorPaletteName;
     }

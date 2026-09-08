@@ -63,7 +63,7 @@ var ImageShaderEffects = function() {
       }
     },
     {
-      "name": "Colour Cycle",
+      "name": "Color Cycle",
       "params": {
         "amount": { name: "Amount", min:0.1, max: 1.0, defaultValue: 0.05 },
         "offset": { name: "Offset", min:0, max: 2, defaultValue: 0.0 },
@@ -73,7 +73,7 @@ var ImageShaderEffects = function() {
 
 
     {
-      "name": "Colour Halftone",
+      "name": "Color Halftone",
       "params": {
         "scale": { min:0, max: 6, defaultValue: 2 },
         "angle": { type: "angle", min:0, max: 2, defaultValue: 1.0 }
@@ -244,7 +244,7 @@ var ImageShaderEffects = function() {
       }
     },
     {
-      "name": "Technicolour",
+      "name": "Technicolor",
       "params": {
       }
     },
@@ -484,14 +484,14 @@ ImageShaderEffects.prototype = {
           this.composer.addPass(this.effectsList[i].pass);
           break;
 
-        case 'Colour Cycle':
+        case 'Color Cycle':
           this.effectsList[i].pass = new THREE.ShaderPass(THREE.RainbowShader);
           this.composer.addPass(this.effectsList[i].pass);
           break;
 
 
 
-        case 'Colour Halftone':
+        case 'Color Halftone':
           this.effectsList[i].pass = new THREE.ShaderPass(ColorHalftoneShader);
           this.composer.addPass(this.effectsList[i].pass);
           break;
@@ -577,7 +577,7 @@ ImageShaderEffects.prototype = {
           this.effectsList[i].pass = new THREE.ShaderPass( THREE.SepiaShader );
           this.composer.addPass(this.effectsList[i].pass);
           break;
-        case 'Technicolour':
+        case 'Technicolor':
           this.effectsList[i].pass = new THREE.ShaderPass( THREE.TechnicolorShader );
           this.composer.addPass(this.effectsList[i].pass);
           break;

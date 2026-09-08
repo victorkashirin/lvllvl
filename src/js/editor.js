@@ -1740,7 +1740,7 @@ main split panel north is menu
       menu.addItem({ "label": "Flip H", "id": "edit-fliph", "commandId": "edit.fliph" });//, "shortcut": { "key": "F" } });
       menu.addItem({ "label": "Flip V", "id": "edit-flipv", "commandId": "edit.flipv" });//, "shortcut": { "key": "G" } });
 
-      menu.addItem({ "label": "Replace Colour" + "...", "id": "edit-replaceColor", "commandId": "edit.replaceColor"});
+      menu.addItem({ "label": "Replace Color" + "...", "id": "edit-replaceColor", "commandId": "edit.replaceColor"});
       menu.addItem({ "label": "Replace Tile" + "...", "id": "edit-replaceCharacter", "commandId": "edit.replaceCharacter"});
       menu.addItem({ "label": "Clear Hidden Tiles" + "...", "id": "edit-clearHiddenTiles", "commandId": "edit.clearHiddenTiles"});
 
@@ -1859,12 +1859,12 @@ main split panel north is menu
       menu.addSeparator({ "label": "Mode" });
       menu.addItem({"label": "Text Mode", "id": "mode-textmode", "commandId": "textMode.mode.textmode", "checked": true });
       menu.addItem({"label": "C64 Standard Character Mode", "id": "mode-c64standard", "commandId": "textMode.mode.c64standard"});
-      menu.addItem({"label": "C64 Multicolour Character Mode", "id": "mode-c64multicolor", "commandId": "textMode.mode.c64multicolor"});
-      menu.addItem({"label": "C64 Extended BG Colour Mode", "id": "mode-c64ecm", "commandId": "textMode.mode.c64ecm"});
+      menu.addItem({"label": "C64 Multicolor Character Mode", "id": "mode-c64multicolor", "commandId": "textMode.mode.c64multicolor"});
+      menu.addItem({"label": "C64 Extended BG Color Mode", "id": "mode-c64ecm", "commandId": "textMode.mode.c64ecm"});
       menu.addItem({"label": "Vector Mode", "id": "mode-vector", "commandId": "textMode.mode.vector"});
 //      menu.addItem({"label": "NES", "id": "mode-nes"});
-      menu.addItem({"label": "Indexed Colour", "id": "mode-indexed", "commandId": "textMode.mode.indexed"});
-      menu.addItem({"label": "RGB Colour", "id": "mode-rgb", "commandId": "textMode.mode.rgb"});
+      menu.addItem({"label": "Indexed Color", "id": "mode-indexed", "commandId": "textMode.mode.indexed"});
+      menu.addItem({"label": "RGB Color", "id": "mode-rgb", "commandId": "textMode.mode.rgb"});
 
 
       if(SHOWUNFINISHED) {
@@ -1873,7 +1873,7 @@ main split panel north is menu
 
       /*
       menu.addItem({"label": "NES", "id": "mode-nes"});
-      menu.addItem({"label": "Indexed Colour", "id": "mode-indexed"});
+      menu.addItem({"label": "Indexed Color", "id": "mode-indexed"});
       menu.addItem({"label": "NES", "id": "mode-rgb"});
       */
       menu.addSeparator({ "label": "Tile Orientation" });
@@ -1888,10 +1888,10 @@ main split panel north is menu
       UI('mode-blocksize').setEnabled(false);
 
 
-      menu.addSeparator({ "label": "Colour Mode" });
-      menu.addItem({"label": "Colour Per Cell", "id": "colorpermode-cell", "commandId": "textMode.colorMode.cell", "checked": true });
-      menu.addItem({"label": "Colour Per Tile", "id": "colorpermode-character", "commandId": "textMode.colorMode.character"});
-      menu.addItem({"label": "Colour Per " + styles.text.blockName, "id": "colorpermode-block", "commandId": "textMode.colorMode.block"});
+      menu.addSeparator({ "label": "Color Mode" });
+      menu.addItem({"label": "Color Per Cell", "id": "colorpermode-cell", "commandId": "textMode.colorMode.cell", "checked": true });
+      menu.addItem({"label": "Color Per Tile", "id": "colorpermode-character", "commandId": "textMode.colorMode.character"});
+      menu.addItem({"label": "Color Per " + styles.text.blockName, "id": "colorpermode-block", "commandId": "textMode.colorMode.block"});
       UI('colorpermode-block').setEnabled(false);
 
       menu.addSeparator({ "label": "Reference Image" });
@@ -1903,7 +1903,7 @@ main split panel north is menu
       
       menu.addSeparator({ "label": "Mode" });
       menu.addItem({"label": "Monochrome", "id": "mode-spritetextmode", "commandId": "textMode.mode.textmode", "checked": true });
-      menu.addItem({"label": "C64 Multicolour", "id": "mode-spritec64multicolor", "commandId": "textMode.mode.c64multicolor"});
+      menu.addItem({"label": "C64 Multicolor", "id": "mode-spritec64multicolor", "commandId": "textMode.mode.c64multicolor"});
       menu.addItem({"label": "NES", "id": "mode-spritenes", "commandId": "textMode.mode.nes"});
       menu.addItem({"label": "Indexed", "id": "mode-spriteindexed", "commandId": "textMode.mode.indexed"});
 
@@ -1942,21 +1942,21 @@ main split panel north is menu
       menu.addItem({ "label": "Save Tile Set" + "...", "id": "tileset-save", "commandId": "textMode.tiles.save" });
 
 
-      _this.colorPaletteMenu = _this.menuBar.addMenu({"label": "Colours", "className": 'ui-menu-tilemode ui-menu-3d' });
-      _this.colorPaletteMenu.addItem({ "label": "Show Colour Editor", "id": "color-edit", "commandId": "application.color-edit", "shortcut": { "cmd": true, "shift": true, "key": "E" } });
+      _this.colorPaletteMenu = _this.menuBar.addMenu({"label": "Colors", "className": 'ui-menu-tilemode ui-menu-3d' });
+      _this.colorPaletteMenu.addItem({ "label": "Show Color Editor", "id": "color-edit", "commandId": "application.color-edit", "shortcut": { "cmd": true, "shift": true, "key": "E" } });
       _this.colorPaletteMenu.addSeparator({ });      
-      _this.colorPaletteMenu.addItem({ "label": "Choose A Colour Palette" + "...", "id": "colors-preset", "commandId": "textMode.colors.preset" });
-      _this.colorPaletteMenu.addItem({ "label": "Edit Colour Palette" + "...", "id": "color-editcolorpalette", "commandId": "application.color-editcolorpalette" });
+      _this.colorPaletteMenu.addItem({ "label": "Choose A Color Palette" + "...", "id": "colors-preset", "commandId": "textMode.colors.preset" });
+      _this.colorPaletteMenu.addItem({ "label": "Edit Color Palette" + "...", "id": "color-editcolorpalette", "commandId": "application.color-editcolorpalette" });
 //      menu.addItem({ "label": "Edit/Create Palette...", "id": "colors-edit" });
-      _this.colorPaletteMenu.addItem({ "label": "Load Colour Palette" + "...", "id": "colors-load", "commandId": "textMode.colors.load" });
-      _this.colorPaletteMenu.addItem({ "label": "Save Colour Palette" + "...", "id": "colors-save", "commandId": "textMode.colors.save" });
+      _this.colorPaletteMenu.addItem({ "label": "Load Color Palette" + "...", "id": "colors-load", "commandId": "textMode.colors.load" });
+      _this.colorPaletteMenu.addItem({ "label": "Save Color Palette" + "...", "id": "colors-save", "commandId": "textMode.colors.save" });
       _this.colorPaletteMenu.addSeparator({ "label": "Project Tile Sets" });
-      _this.colorPaletteMenu.addItem({ "label": "Create a Colour Palette...", "id": "colorpalette-new", "commandId": "textMode.colors.new" });
+      _this.colorPaletteMenu.addItem({ "label": "Create a Color Palette...", "id": "colorpalette-new", "commandId": "textMode.colors.new" });
 
       menu = _this.menuBar.addMenu({"label": "Import / Export", "className": 'ui-menu-colorpalette' });
-      menu.addItem({ "label": "Choose A Colour Palette" + "...", "id": "colorpalette-preset", "commandId": "textMode.colors.preset" });
-      menu.addItem({ "label": "Load Colour Palette" + "...", "id": "colorpalette-load", "commandId": "textMode.colors.load" });
-      menu.addItem({ "label": "Save Colour Palette" + "...", "id": "colorpalette-save", "commandId": "textMode.colors.save" });
+      menu.addItem({ "label": "Choose A Color Palette" + "...", "id": "colorpalette-preset", "commandId": "textMode.colors.preset" });
+      menu.addItem({ "label": "Load Color Palette" + "...", "id": "colorpalette-load", "commandId": "textMode.colors.load" });
+      menu.addItem({ "label": "Save Color Palette" + "...", "id": "colorpalette-save", "commandId": "textMode.colors.save" });
 
 
       menu = _this.menuBar.addMenu({"label": "View", "className": 'ui-menu-tilemode' });
@@ -2007,7 +2007,7 @@ main split panel north is menu
       menu.addItem({ "label": "Layers Panel", "id": "view-layerspanel", "commandId": "view.layerspanel" });
       menu.addItem({ "label": "Tile Palette Panel Side", "id": "view-tilepalettepanelside", "commandId": "view.tilepalettepanelside" });
       menu.addItem({ "label": "Meta Tile Palette Panel Side", "id": "view-metatilepalettepanelside", "commandId": "view.metatilepalettepanelside" });
-      menu.addItem({ "label": "Colour Palette Panel", "id": "view-palettepanel", "commandId": "view.palettepanel" });
+      menu.addItem({ "label": "Color Palette Panel", "id": "view-palettepanel", "commandId": "view.palettepanel" });
       menu.addSeparator({  });
       menu.addItem({ "label": "Tile Palette Panel Bottom", "id": "view-tilepalettepanelbottom", "commandId": "view.tilepalettepanelbottom" });
       menu.addItem({ "label": "Meta Tile Palette Panel Bottom", "id": "view-metatilepalettepanelbottom", "commandId": "view.metatilepalettepanelbottom" });
@@ -2112,7 +2112,7 @@ main split panel north is menu
       menu.addItem({ "label": "Disassembly", "id": "c64-view-toggle-disassembly" });
       menu.addItem({ "label": "Scripting", "id": "c64-view-toggle-scripting" });
       menu.addItem({ "label": "BASIC", "id": "c64-view-toggle-basic" });
-      menu.addItem({ "label": "Colours", "id": "c64-view-toggle-colors" });
+      menu.addItem({ "label": "Colors", "id": "c64-view-toggle-colors" });
       menu.addItem({ "label": "Memory", "id": "c64-view-toggle-memory" });
       menu.addItem({ "label": "Character Set", "id": "c64-view-toggle-charset" });
       menu.addItem({ "label": "Sprites", "id": "c64-view-toggle-sprites" });
@@ -3458,7 +3458,7 @@ main split panel north is menu
 
     // load the colour palette and tile set
     var colorPalettePresetId = 'c64_colodore';
-    var colorPaletteName = 'Colour Palette';
+    var colorPaletteName = 'Color Palette';
 
     if(typeof args.colorPalettePresetId !== 'undefined') {
       if(args.colorPalettePresetId) {

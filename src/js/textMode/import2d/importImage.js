@@ -311,7 +311,7 @@ var ImportImage = function() {
       }
     },
     {
-      name: "Colour Cycle",
+      name: "Color Cycle",
       type: "shadereffect",
       enabled: false,
       params: {
@@ -2049,7 +2049,7 @@ ImportImage.prototype = {
       }
 
       var html = count;
-      html += ' Colour';
+      html += ' Color';
       if(count != 1) {
         html += 's';
       }
@@ -2060,7 +2060,7 @@ ImportImage.prototype = {
 
 
     this.editor.chooseColorsDialog.show({ 
-      message: "Choose colours",
+      message: "Choose colors",
       callback: chooseColorsCallback, 
       colors: this.customColorSet 
     });
@@ -3867,7 +3867,7 @@ ImportImage.prototype = {
 
     if(this.useColors == 'choose') {
       if(typeof this.customColorSet == 'undefined' || this.customColorSet.length == 0) {
-        alert('No colours chosen');
+        alert('No colors chosen');
         return false;
       }
 

@@ -138,8 +138,8 @@ DbgC64Colors.prototype = {
 
     html += '<div>';
     html += '<div style="margin-top: 14px; padding-top: 8px; border-top: 1px solid #222222">';
-    html += '<div class="ui-button" style="margin-right: 6px" id="' + this.prefix + 'ResetCurrentColor">Reset Current Colour</div>';
-    html += '<div class="ui-button" style="margin-right: 6px" id="' + this.prefix + 'ResetAllColors">Reset All Colours</div>';
+    html += '<div class="ui-button" style="margin-right: 6px" id="' + this.prefix + 'ResetCurrentColor">Reset Current Color</div>';
+    html += '<div class="ui-button" style="margin-right: 6px" id="' + this.prefix + 'ResetAllColors">Reset All Colors</div>';
     html += '<div class="ui-button" id="' + this.prefix + 'LoadPalette">Load Palette...</div>';
     html += '</div>';
 
@@ -295,7 +295,7 @@ DbgC64Colors.prototype = {
 
   selectColor: function(colorIndex)  {
     this.currentColor = colorIndex;
-    $('#' + this.prefix + 'colorHeading').html('Colour ' + colorIndex);
+    $('#' + this.prefix + 'colorHeading').html('Color ' + colorIndex);
 
     var color = c64.colors.getColor(colorIndex) & 0xffffff;
     var r = color & 0xff;

@@ -315,7 +315,7 @@ ImportCharPad.prototype = {
       if(this.colorMethod == 1) {
         b = content[index++];
         if(b != 0xda) {
-          console.log('tile colours block: bad block marker');
+          console.log('tile colors block: bad block marker');
           return;        
         }
         b = content[index++];
@@ -626,9 +626,9 @@ ImportCharPad.prototype = {
       if(this.version >= 6) {
         if(content[index++] == 0xda ) {
           var block = content[index++];
-          console.log('found tile colours block: ' + block);
+          console.log('found tile colors block: ' + block);
         } else {
-          console.log('couldnt find tile colours block');
+          console.log('couldnt find tile colors block');
         }
       }
       for(var tile = 0; tile < this.numTiles; tile++) {
@@ -644,7 +644,7 @@ ImportCharPad.prototype = {
           var block = content[index++];
           console.log('found tile tags block: ' + block);
         } else {
-          console.log('couldnt find tile colours block');
+          console.log('couldnt find tile colors block');
         }
         for(var tile = 0; tile < this.numTiles; tile++) {
           var tileTag = content[index++];

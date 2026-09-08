@@ -1056,7 +1056,7 @@ ExportX16Assembly.prototype = {
 
 
         charColorData += commentSymbol + ' CHAR SET ATTRIBUTE DATA : ' + charCount + ' attributes : total size is ' + charCount + ' ($' + this.toHex(charCount) + ') bytes.' + lineEnding;
-        charColorData += commentSymbol + ' nb. Upper nybbles = Material, Lower nybbles = Colour.' + lineEnding;
+        charColorData += commentSymbol + ' nb. Upper nybbles = Material, Lower nybbles = Color.' + lineEnding;
         charColorData += lineEnding;
         charColorData += setPCSymbol + ' ADDR_CHARSET_ATTRIB_DATA';
         if(args.format == 'kickass') {
@@ -1126,7 +1126,7 @@ ExportX16Assembly.prototype = {
 
 
         blockColorData += commentSymbol + ' TILE SET ATTRIBUTE DATA : ' + blockCount + ' attributes : total size is ' + size + ' ($' + sizeHex + ') bytes.' + lineEnding;
-        blockColorData += commentSymbol + ' nb. Upper nybbles = Material, Lower nybbles = Colour.' + lineEnding;
+        blockColorData += commentSymbol + ' nb. Upper nybbles = Material, Lower nybbles = Color.' + lineEnding;
         blockColorData += lineEnding;
         blockColorData += setPCSymbol + ' ADDR_TILESET_ATTRIB_DATA';
         if(args.format == 'kickass') {
@@ -1217,7 +1217,7 @@ ExportX16Assembly.prototype = {
 
         var column = 0;
 
-        screenData += commentSymbol + '  MAP COLOUR DATA : 1 (' + gridWidth + 'x' + gridHeight + ') map : total size is ' + charMapSize + ' ($' + this.toHex(charMapSize) + ') bytes.' + lineEnding;
+        screenData += commentSymbol + '  MAP COLOR DATA : 1 (' + gridWidth + 'x' + gridHeight + ') map : total size is ' + charMapSize + ' ($' + this.toHex(charMapSize) + ') bytes.' + lineEnding;
         screenData += lineEnding;
         screenData += setPCSymbol + ' ADDR_CHAR_MAP_COLOUR_DATA';
         if(args.format == 'kickass') {

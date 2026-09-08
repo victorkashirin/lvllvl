@@ -259,7 +259,7 @@ input[type=checkbox] {
 
 
 .cellBackgroundColor i {
-  font-size: 24px;
+  font-size: 26px;
 }
 
 
@@ -269,7 +269,7 @@ input[type=checkbox] {
 
 .popup-tool {
   padding: 10px;
-  cursor: hand;
+  cursor: pointer;
   display: flex;
   align-content: center;
 }
@@ -289,7 +289,7 @@ input[type=checkbox] {
 
 .mobile-popup-tool {
   padding: 8px;
-  cursor: hand;
+  cursor: pointer;
   display: flex;
   align-content: center;
 }
@@ -319,6 +319,11 @@ input[type=checkbox] {
 .colorPaletteTool img,
 .blockEditTool img {
   filter: var(--icon-normal) !important;
+}
+
+.drawTool img,
+.pixelDrawTool img {
+  filter: var(--icon-toolbar) !important;
 }
 
 .drawToolSelected img,
@@ -783,8 +788,8 @@ input[type=checkbox] {
 }
 
 ::-webkit-scrollbar-thumb {
-  background-color: darkgrey;
-  outline: 1px solid slategrey;
+  background-color: var(--scrollbar-thumb);
+  outline: 1px solid var(--scrollbar-thumb-outline);
 }
 
 .infoTable {}
@@ -1049,8 +1054,8 @@ input[type=checkbox] {
 }
 
 .colorPickerTypeMobileSelected {
-  color: #111111;
-  background-color: #e0e0e0;
+  color: var(--bg-0);
+  background-color: var(--text-1);
   font-weight: bold;
 }
 
@@ -1103,8 +1108,8 @@ input[type=checkbox] {
 }
 
 .mobileRadioSelected {
-  color: #0a0a0a;
-  background-color: #e0e0e0;
+  color: var(--bg-0);
+  background-color: var(--text-1);
   font-weight: bold;
 }
 
@@ -1353,7 +1358,7 @@ input[type=checkbox] {
 }
 
 .colorPalettePanelSubPaletteColor-selected {
-  border: 1px solid #999999;
+  border: 1px solid var(--text-3);
 }
 
 .colorPalettePanelSubPaletteColor:hover {
@@ -1413,7 +1418,7 @@ input[type=checkbox] {
 }
 
 .colorPalettePanelSubPaletteColorMobile-selected {
-  border: 1px solid #ff9999 !important;
+  border: 1px solid var(--text-3) !important;
 }
 
 

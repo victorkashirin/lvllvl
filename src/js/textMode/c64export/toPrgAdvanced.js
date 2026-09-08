@@ -2080,8 +2080,8 @@ ToPRGAdv.prototype = {
 
     var dataTo = index;
     if(dataTo != dataFrom) {
-      memoryMap.push({ "type": "Animated BG Colours Table", "from": dataFrom, "to": dataTo });
-      blocks.push({"type": "Animated BG Colours Table", "start": dataFrom + 0x801 - 2, "end": dataTo + 0x801 - 2});
+      memoryMap.push({ "type": "Animated BG Colors Table", "from": dataFrom, "to": dataTo });
+      blocks.push({"type": "Animated BG Colors Table", "start": dataFrom + 0x801 - 2, "end": dataTo + 0x801 - 2});
     }
 
 

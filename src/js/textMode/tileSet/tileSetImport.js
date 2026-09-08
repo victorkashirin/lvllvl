@@ -988,7 +988,7 @@ TileSetImport.prototype = {
           this.paletteMap['c' + argb] = { "index": index, "count": 1 };
           colorCount++;
           if(colorCount > 255) {
-            console.log('too many colours!');
+            console.log('too many colors!');
             y = srcHeight + 1;
             x = srcWidth + 1;
             break;
@@ -1014,7 +1014,7 @@ TileSetImport.prototype = {
         if(selectedOption === false) {
           selectedOption = colorOptions[i];
         }
-        html += '<option value="' + colorOptions[i] + '">Source Image (' + colorOptions[i] + ' Colours)</option>';
+        html += '<option value="' + colorOptions[i] + '">Source Image (' + colorOptions[i] + ' Colors)</option>';
       }
     }
 
@@ -1735,7 +1735,7 @@ TileSetImport.prototype = {
           this.paletteMap['c' + argb] = { "index": index, "count": 1 };
           colourCount++;
           if(colourCount > 255) {
-            console.log('too many colours!');
+            console.log('too many colors!');
             return;
           }
         }

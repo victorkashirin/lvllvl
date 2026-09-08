@@ -7,10 +7,10 @@ var REGSP = 3;
 var sampleC64DebuggerScript = [
 '// sample script (ES6)',
 '',
-'// set the border colour',
+'// set the border color',
 'c64.cpuWrite(0xd020, 0);',
 '',
-'// set the background colour',
+'// set the background color',
 'c64.cpuWrite(0xd021, 11);',
 '',
 '// counter',
@@ -23,7 +23,7 @@ var sampleC64DebuggerScript = [
 '    // set screen char',
 '    c64.cpuWrite(0x400 + i, counter);',
 '',    
-'    // set fg colour',
+'    // set fg color',
 '    c64.cpuWrite(0xd800 + i, i % 16);',
 '  }',
 '',
@@ -1303,7 +1303,7 @@ C64Debugger.prototype = {
       this.westTabPanel.addTab({ key: 'disassembly',   title: 'Disassembly', isTemp: false }, true);
       this.westTabPanel.addTab({ key: 'scripting',   title: 'Scripting', isTemp: false }, false);
       this.westTabPanel.addTab({ key: 'basic',   title: 'BASIC', isTemp: false }, false);
-      this.westTabPanel.addTab({ key: 'colors',   title: 'Colours', isTemp: false }, false);
+      this.westTabPanel.addTab({ key: 'colors',   title: 'Colors', isTemp: false }, false);
   
       this.westTabPanel.on('tabfocus', function(key, tabPanel) {      
         var tabIndex = _this.westTabPanel.getTabIndex(key);
@@ -4267,7 +4267,7 @@ C64Debugger.prototype = {
     }
     
     var colorAddress = 0xd800 + address;
-    html += 'colour: 0x' + colorAddress.toString(16);
+    html += 'color: 0x' + colorAddress.toString(16);
 
     $('#' + this.c64CanvasId + 'InspectInfo').html(html);
 
@@ -4350,7 +4350,7 @@ C64Debugger.prototype = {
         //info += ' char';
         if(d016 & 0x10) {
           this.context.fillStyle = "#aaffaa";
-          info += ' multicolour char';
+          info += ' multicolor char';
         } else {
           this.context.fillStyle = "#aaaaff";
           info += ' standard char';

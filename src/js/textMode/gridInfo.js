@@ -29,9 +29,9 @@ GridInfo.prototype = {
 
 
     html += '<div style="position: absolute; top: 4px; right: 4px">';
-    html += '<div class="ui-button" style="margin-right: 4px; height: 14px; width: 10px; padding: 2px 4px; text-align: center; line-height: 12px" id="gridInfoZoomOut">-</div>';
-    html += '<div class="ui-button" style="margin-right: 4px; height: 14px; width: 10px;  padding: 2px 4px; text-align: center; line-height: 12px" id="gridInfoZoomIn">+</div>';
-    html += '<div class="ui-button" style="height: 14px; width: 10px;  padding: 2px 8px 2px 6px; text-align: center; line-height: 12px" id="gridInfoZoomFit">Fit</div>';
+    html += '<div class="ui-button" style="margin-right: 4px; height: 18px; width: 18px; padding: 2px 4px; text-align: center; line-height: 12px" id="gridInfoZoomOut">-</div>';
+    html += '<div class="ui-button" style="margin-right: 4px; height: 18px; width: 18px; padding: 2px 4px; text-align: center; line-height: 12px" id="gridInfoZoomIn">+</div>';
+    html += '<div class="ui-button" style="height: 18px; width: 24px; padding: 2px 8px 2px 6px; text-align: center; line-height: 12px" id="gridInfoZoomFit">Fit</div>';
     html += '</div>';
 
 
@@ -125,7 +125,7 @@ GridInfo.prototype = {
     html += '</div>';
 
     html += '<div style="display: inline-block; width: 100px; overflow: hidden">';
-    html += '<label class="gridinfo-label">FG Colour:</label>';
+    html += '<label class="gridinfo-label">FG Color:</label>';
     
     html += '<div class="gridinfo-value">';
     
@@ -135,7 +135,7 @@ GridInfo.prototype = {
     html += '</div>';
 
     html += '<div style="display: inline-block; width: 140px; overflow: hidden">';
-    html += '<label class="gridinfo-label">BG colour:</label>';
+    html += '<label class="gridinfo-label">BG Color:</label>';
     html += '<div class="gridinfo-value">';
     if(this.bc != -1) {
       html += '<span class="gridinfo-color-swatch" style="background-color:' + this.bgColorHex + ';"></span>';
@@ -211,7 +211,7 @@ GridInfo.prototype = {
     html += '</div>';
 
     html += '<div style="display: inline-block; width: 100px; overflow: hidden">';
-    html += '<label class="gridinfo-label">FG Colour</label>';
+    html += '<label class="gridinfo-label">FG Color</label>';
     
     html += '<div class="gridinfo-value">';
     
@@ -221,7 +221,7 @@ GridInfo.prototype = {
     html += '</div>';
 
     html += '<div style="display: inline-block; width: 140px; overflow: hidden">';
-    html += '<label class="gridinfo-label">BG Colour</label>';
+    html += '<label class="gridinfo-label">BG Color</label>';
     html += '<div class="gridinfo-value">';
     if(this.bc != -1) {
       html += '<span class="gridinfo-color-swatch" style="background-color:' + this.bgColorHex + ';"></span>';

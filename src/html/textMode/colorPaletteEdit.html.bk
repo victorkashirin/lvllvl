@@ -65,7 +65,7 @@
 
       <td valign="top">
         <div class="editColorPalettePanel">        
-          <h2>Current Colour</h2>
+          <h2>Current Color</h2>
           <div style="position: relative; width: 240px; height: 130px">
             <div style="position: absolute; left: 0; top: 0; width: 128px; height: 65px" id="colorPaletteImageMouseSelectedColor"></div>
             <div style="position: absolute; left: 138px; top: 0; width: 110px; height: 65px;" class="editColorPaletteColorInfo" id="colorPaletteImageMouseSelectedColorInfo"/>
@@ -78,7 +78,7 @@
 
         <div class="editColorPalettePanel">
           <div style="margin-bottom: 4px">
-            <h2>Choose Colours</h2>
+            <h2>Choose Colors</h2>
             <label class="rb-container" style="margin-right: 4px">HSV / RGB
               <input type="radio" name="editColorPaletteMethod" value="rgb" checked="checked"> 
               <span class="checkmark"/>
@@ -88,7 +88,7 @@
               <span class="checkmark"/>
             </label>
 
-            <label class="rb-container" style="margin-right: 4px">Colour Wheel
+            <label class="rb-container" style="margin-right: 4px">Color Wheel
               <input type="radio" name="editColorPaletteMethod" value="colorwheel"> 
               <span class="checkmark"/>
             </label>
@@ -191,7 +191,7 @@
             </div>
 
             <div class="formGroup">
-              <label class="controlLabel" for="colorPaletteFromImageColorCount">Colour Count</label>
+              <label class="controlLabel" for="colorPaletteFromImageColorCount">Color Count</label>
               <select id="colorPaletteFromImageColorCount">
                 <option value="2">2</option>
                 <option value="4">4</option>
@@ -202,7 +202,7 @@
                 <option value="128">128</option>
               </select>
 
-              <button id="colorPaletteFromImageAdd">Add These Colours &gt;</button>
+              <button id="colorPaletteFromImageAdd">Add These Colors &gt;</button>
             </div>
 
 

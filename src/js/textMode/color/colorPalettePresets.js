@@ -1,6 +1,6 @@
 var ColorPalettePresets = [
   {
-    category: "2 Colour",
+    category: "2 Color",
     colorPalettes: [
       {
         "name": "Commodore PET", "id": "commodorepet"
@@ -16,7 +16,7 @@ var ColorPalettePresets = [
     ]
   },
   {
-    category: "4 Colour",
+    category: "4 Color",
     colorPalettes: [
       { "name": "Gameboy", "id": "gameboy",
         "options": [
@@ -37,28 +37,28 @@ var ColorPalettePresets = [
 
   },
   {
-    category: "8 Colour",
+    category: "8 Color",
     colorPalettes: [
       { "name": "Teletext", "id": "teletext", "description": "3-bit RGB Palette" },
       { "name": "Sharp MZ-700", "id": "sharpmz700" },
     ]
   },
   {
-    category: "10 Colour",
+    category: "10 Color",
     colorPalettes: [
       { "name": "LTRO-1", "id": "ltro-1", "author": "skeddles" }
     ]
   },
 
   {
-    category: "12 Colour",
+    category: "12 Color",
     colorPalettes: [
       { "name": "Japanese Woodblock", "id": "japanesewoodblock", "author": "Polyducks" }
     ]
   },
 
   {
-    category: "16 Colour",
+    category: "16 Color",
     colorPalettes: [
       { "name": "ANSI VGA", "id": "ansi" },
       { "name": "Apple II", "id": "appleII", "description": "The Apple II series features a 16-color composite video palette, based on the YIQ color space used by the NTSC color TV system. Colors 5 and 10 (gray) are indistinguishable on original hardware" },
@@ -77,13 +77,13 @@ var ColorPalettePresets = [
   },
   {
     // http://www.cpcwiki.eu/index.php/Video_modes
-    category: "27 Colour",
+    category: "27 Color",
     colorPalettes: [
-      { "name": "Amstrad CPC", "id": "amstradcpc", "description": "The 3-level (not bits) RGB uses three level for every red, green and blue color components, resulting in a 33 = 27 colours palette." }
+      { "name": "Amstrad CPC", "id": "amstradcpc", "description": "The 3-level (not bits) RGB uses three level for every red, green and blue color components, resulting in a 33 = 27 colors palette." }
     ]
   },
   {
-    category: "52 Colour",
+    category: "52 Color",
     colorPalettes: [
       { "name": "NES", "id": "nes" }
     ]
@@ -91,7 +91,7 @@ var ColorPalettePresets = [
   },
 
   {
-    category: "64 Colour",
+    category: "64 Color",
     colorPalettes: [
       { "name": "Sega Master System", "id": "sms" },
       { "name": "IBM EGA", "id": "ega" }
@@ -99,7 +99,7 @@ var ColorPalettePresets = [
 
   },
   {
-    category: "128 Colour",
+    category: "128 Color",
     colorPalettes: [
       { "name": "Atari 2600", "id": "atari2600_ntsc",
         "options": [

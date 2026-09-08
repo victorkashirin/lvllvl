@@ -783,7 +783,7 @@ LayerPropertiesDialog.prototype = {
 
     var chooseColorsCallback = function(chosenColors) {
 
-      console.log('choose colours callback!!!');
+      console.log('choose colors callback!!!');
 
       _this.customColorSet = [];
       var count = chosenColors.length;
@@ -792,7 +792,7 @@ LayerPropertiesDialog.prototype = {
       }
 
       var html = count;
-      html += ' Colour';
+      html += ' Color';
       if(count != 1) {
         html += 's';
       }

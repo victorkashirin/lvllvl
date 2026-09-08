@@ -17,22 +17,22 @@
 
 
       <div class="formRow">
-        <label class="controlLabel">BG Colour:</label>
+        <label class="controlLabel">BG Color:</label>
         <div class="radioGroup" id="importImageBGSettingsC64Standard" style="display: none">
-          Colour per Frame
+          Color per Frame
         </div>
         <div class="radioGroup" id="importImageBGSettings">
           <select name="importImageBackgroundColorType" id="importImageBackgroundColorType">
-            <option value="perCell" selected="selected">Background Colour Per Cell</option>
-            <option value="frame">Background Colour Per Frame</option>
+            <option value="perCell" selected="selected">Background Color Per Cell</option>
+            <option value="frame">Background Color Per Frame</option>
           </select>
           <br/>
-          <span style="margin-top: 4px; display: inline-block">Choose 'Background Colour Per Frame' for 'authentic' PETSCII</span>
+          <span style="margin-top: 4px; display: inline-block">Choose 'Background Color Per Frame' for 'authentic' PETSCII</span>
         </div>
       </div>
 
       <div class="formRow" id="importFrameBGSettings">
-        <label class="controlLabel">Frame BG Colour:</label>
+        <label class="controlLabel">Frame BG Color:</label>
         <div class="radioGroup">
           <select name="importImageBackgroundColorChoose" id="importImageBackgroundColorChoose">
             <option value="auto" selected="selected">Choose Automatically</option>
@@ -42,12 +42,12 @@
 
 
           <div style="padding: 4px;display: none" id="importImageUseBackgroundColor">  
-            Use colour: 
+            Use color:
             &nbsp;
             <div id="importImageBackgroundColor" class="backgroundColor" style="display: inline-block; width: 16px; height: 16px; border: 1px solid #eee"></div>
           </div>
           <br/>
-          <span style="margin-top: 4px; display: inline-block">The best choice for a colour can be where the most detail appears</span>
+          <span style="margin-top: 4px; display: inline-block">The best choice for a color can be where the most detail appears</span>
         </div>
       </div>
     </fieldset>
@@ -55,22 +55,22 @@
 
     <fieldset class="form-section">
 
-      <h3><img src="images/colors.png" width="16" height="16"/> Colours</h3>
+      <h3><img src="images/colors.png" width="16" height="16"/> Colors</h3>
       <div class="formRow">
-        <label class="controlLabel">Use Colours:</label>
+        <label class="controlLabel">Use Colors:</label>
 
         <div class="radioGroup">
 
           <select name="importImageUseColors" id="importImageUseColors">
-            <option value="all">All Colours</option>
+            <option value="all">All Colors</option>
             <option value="greyscale">Greyscale</option>
-            <option value="choose">Custom Colour Set</option>
+            <option value="choose">Custom Color Set</option>
             <option value="create">Create Palette From Image</option>
           </select>
 
           <div style="padding: 8px 0 2px 0; display: none" id="importImageChooseColorsRow">
-            <button id="importImageChooseColors" type="button">Choose Colours...</button>
-            <span id="importImageColoursChosen">0 Colours Chosen</span>
+            <button id="importImageChooseColors" type="button">Choose Colors...</button>
+            <span id="importImageColoursChosen">0 Colors Chosen</span>
           </div>
 
           <div style="padding: 4px; display: none" id="importImageCreatePalette">
@@ -85,9 +85,9 @@
               <option value="128">128</option>
               <option value="256">256</option>
             </select>
-            Colours
+            Colors
             <div style="margin-top: 2px">
-              The new colour palette will replace the current colour palette
+              The new color palette will replace the current color palette
             </div>
           </div>
 
@@ -96,7 +96,7 @@
       </div>
 
       <div class="formRow">
-        <label class="controlLabel">Colour Reduction:</label>
+        <label class="controlLabel">Color Reduction:</label>
 
         <select name="importImageColorReduction" id="importImageColorReduction">
           <option value="none">None</option>
@@ -204,7 +204,7 @@
           <div>
             <label><input type="radio" name="importImageCellBGColor" value="none">None</label>
             <label><input type="radio" name="importImageCellBGColor" value="limit"  checked="checked">Limit To 4</label>
-            <label><input type="radio" name="importImageCellBGColor" value="any">Any Colour</label>
+            <label><input type="radio" name="importImageCellBGColor" value="any">Any Color</label>
           </div>
         </div>
       </div>
@@ -214,7 +214,7 @@
       <div class="formGroup">  
         <label class="controlLabel"></label>
         <div class="checkboxGroup">
-          <label><input type="checkbox" value="1" id="petsciiMultipleBackgroundColors"> Multiple background colours</label>
+          <label><input type="checkbox" value="1" id="petsciiMultipleBackgroundColors"> Multiple background colors</label>
 
           <div style="margin-left: 12px">
             <label><input type="checkbox" value="1" id="petsciiMultipleBackgroundColorsLimit" checked="checked">Limit to 4</label>
@@ -229,7 +229,7 @@
       <div class="formGroup">
         <label class="controlLabel"></label>
         <div class="checkboxGroup">
-          <label><input type="checkbox" id="importImageQuantise" value="1" checked="checked">Quantise Image Colours First</label>
+          <label><input type="checkbox" id="importImageQuantise" value="1" checked="checked">Quantise Image Colors First</label>
         </div>
       </div>
   -->

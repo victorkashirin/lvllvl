@@ -120,7 +120,7 @@ ExportBinaryData.prototype = {
     }
 
 
-    console.log('bg colours:');
+    console.log('bg colors:');
     console.log(bgColors);
     console.log(this.extendedColorBGColors);
 

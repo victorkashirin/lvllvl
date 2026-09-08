@@ -43,6 +43,14 @@
   the custom checkbox container's trailing gap.
 - Keep the 12 px panel close buttons instead of upsizing them to the
   16 px icon standard, preserving the small layouts that use them.
+- Polish the dark UI by sharing focus and mobile-selection tokens, adding
+  Firefox scrollbar styling, darkening CodeMirror and breadcrumbs, standardizing
+  user-facing "Color" spelling, excluding the obsolete light stylesheet, and
+  using valid pointer cursors.
+- Restore the grid-info zoom controls to their original rendered sizes after
+  adopting border-box button sizing.
+- Restore the background-color remove glyph's alignment and the dimmer inactive
+  icon tone in the left drawing toolbar.
 
 ## 0.498.0 - 2026-09-08
 

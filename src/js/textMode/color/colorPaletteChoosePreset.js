@@ -70,7 +70,7 @@ ColorPaletteChoosePreset.prototype = {
     if(this.uiComponent == null) {
       var width = 800;
       var height = 800;
-      this.uiComponent = UI.create("UI.Dialog", { "id": "colorPaletteChoosePresetDialog", "title": "Choose A Colour Palette", "width": width, "height": height });
+      this.uiComponent = UI.create("UI.Dialog", { "id": "colorPaletteChoosePresetDialog", "title": "Choose A Color Palette", "width": width, "height": height });
 
       this.splitPanel = UI.create("UI.SplitPanel");
 

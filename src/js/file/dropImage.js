@@ -40,7 +40,7 @@ DropImage.prototype = {
 
 
     html += '<div>';
-    html += '<label class="rb-container">Import as a Colour Palette';
+    html += '<label class="rb-container">Import as a Color Palette';
     html += '<input type="radio" name="dropImageAction" id="dropImageAction_colorpalette" value="colorpalette">';
     html += '<span class="checkmark"></span>';
     html += '</label>';

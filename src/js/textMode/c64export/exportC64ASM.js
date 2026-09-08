@@ -863,8 +863,8 @@ ExportC64ASM.prototype = {
 
     var dataTo = index;
     if(dataTo != dataFrom) {
-      memoryMap.push({ "type": "Animated BG Colours Table", "from": dataFrom, "to": dataTo });
-      blocks.push({"type": "Animated BG Colours Table", "start": dataFrom + 0x801 - 2, "end": dataTo + 0x801 - 2});
+      memoryMap.push({ "type": "Animated BG Colors Table", "from": dataFrom, "to": dataTo });
+      blocks.push({"type": "Animated BG Colors Table", "start": dataFrom + 0x801 - 2, "end": dataTo + 0x801 - 2});
     }
 
 
@@ -958,7 +958,7 @@ ExportC64ASM.prototype = {
         // work out the background colors for this frame..
         this.getExtendedColorBGColors(args, [frame]);
 
-        console.log('extended bg colours');
+        console.log('extended bg colors');
         console.log(this.extendedColorBGColors);
 
       } else {

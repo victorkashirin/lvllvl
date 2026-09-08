@@ -139,7 +139,7 @@ ReplaceColorDialog.prototype = {
     }
 
     var args = {};
-    this.editor.history.startEntry('Replace Colour');
+    this.editor.history.startEntry('Replace Color');
 
 
     for(var frameIndex = fromFrame; frameIndex < toFrame; frameIndex++) {

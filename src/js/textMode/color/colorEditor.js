@@ -68,9 +68,9 @@ ColorEditor.prototype = {
     // set the menu
     if(UI.exists('color-edit')) {
       if(visible) {
-        UI('color-edit').setLabel('Hide Colour Editor');
+        UI('color-edit').setLabel('Hide Color Editor');
       } else {
-        UI('color-edit').setLabel('Show Colour Editor');
+        UI('color-edit').setLabel('Show Color Editor');
       }
     }
 
@@ -83,7 +83,7 @@ ColorEditor.prototype = {
 
   buildInterface: function(parentComponent) {
     var _this = this;
-    var html = 'colour editor';
+    var html = 'color editor';
     this.uiComponent = UI.create("UI.HTMLPanel", { "id": "colorEditorPanel" });
     UI.on('ready', function() {
 

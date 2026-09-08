@@ -18,10 +18,10 @@ c64Asm_example += "!source \"inc/macros.asm\"\n\n";
 c64Asm_example += '; macro to create the basic program to start code\n';
 c64Asm_example += "+start_at $0900\n\n";
 c64Asm_example += "  lda #00   \n";
-c64Asm_example += "  sta $d020  ; border colour\n";
-c64Asm_example += "  sta $d021  ; background colour\n";
+c64Asm_example += "  sta $d020  ; border color\n";
+c64Asm_example += "  sta $d021  ; background color\n";
 c64Asm_example += "loop\n";
-c64Asm_example += "  inc $d021    ; increase background colour\n";
+c64Asm_example += "  inc $d021    ; increase background color\n";
 c64Asm_example += "  jmp loop     ; loop forever\n";
 
 /*

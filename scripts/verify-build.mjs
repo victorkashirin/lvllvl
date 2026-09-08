@@ -749,6 +749,7 @@ for (const filename of providerBoundaryFiles) {
   }
 }
 for (const forbiddenArtifact of [
+  "css/old.css",
   "js/githubApi.js",
   "js/githubClient.js",
   "lib/google-api/api.js",

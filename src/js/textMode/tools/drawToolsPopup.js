@@ -439,7 +439,7 @@ DrawToolsPopup.prototype = {
 
     this.drawPopupContext.font = "8px Verdana";
     this.drawPopupContext.fillStyle = "#eeeeee";
-    this.drawPopupContext.fillText("Recent Colours",  recentColorsHeadingX, recentColorsHeadingY + 6); 
+    this.drawPopupContext.fillText("Recent Colors",  recentColorsHeadingX, recentColorsHeadingY + 6);
 
   },
 

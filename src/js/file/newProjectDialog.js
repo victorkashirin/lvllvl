@@ -192,7 +192,7 @@ NewProjectDialog.prototype = {
       html += '    </div>';
 
       html += '    <div class="formRow">';
-      html += '      <label class="formControlLabel" for="newProjectColorPalette">Colour Palette</label>';
+      html += '      <label class="formControlLabel" for="newProjectColorPalette">Color Palette</label>';
 
       html += '      <div style="display: flex; align-items: center; padding: 2px 2px 2px 4px; background-color: #222222; min-height: 26px">';
       html += '      <div style="display: inline-block; width: 140px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis" id="newProjectColorPalette">C64</div>';

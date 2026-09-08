@@ -522,7 +522,7 @@ DrawTools.prototype = {
     $('#background3dColor').on('click', function(event) {
       var args = {};
       args.colorPickedCallback = function(color) {
-        console.log('colour chosen:' + color);
+        console.log('color chosen:' + color);
         _this.editor.grid3d.setBackgroundColor(color);
 //        _this.editor.currentTile.setColor(color);
       }
@@ -566,7 +566,7 @@ DrawTools.prototype = {
     });
 
     $('.cellBackgroundColor').on('click', function(event) {
-      console.log('colour picked!');
+      console.log('color picked!');
       
       var args = {};
       args.colorPickedCallback = function(color) {

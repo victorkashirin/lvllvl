@@ -190,6 +190,36 @@ test("form controls keep their dark theme across supported browsers", async ({ p
   });
 });
 
+test("desktop toolbar controls retain their original sizing and tone", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.metadata.deviceClass !== "desktop");
+  await open2DProject(page, testInfo);
+
+  const toolbarStyles = await page.evaluate(() => {
+    const dimensions = Object.fromEntries(
+      ["gridInfoZoomOut", "gridInfoZoomIn", "gridInfoZoomFit"].map((id) => {
+        const { width, height } = document.getElementById(id).getBoundingClientRect();
+        return [id, { width, height }];
+      }),
+    );
+    const backgroundIcon = document.querySelector("#cellBackgroundColor i");
+    const inactiveToolIcon = document.querySelector("#drawTool_erase img");
+
+    return {
+      backgroundIconFontSize: getComputedStyle(backgroundIcon).fontSize,
+      dimensions,
+      inactiveToolIconFilter: getComputedStyle(inactiveToolIcon).filter,
+    };
+  });
+
+  expect(toolbarStyles.dimensions).toEqual({
+    gridInfoZoomOut: { width: 18, height: 18 },
+    gridInfoZoomIn: { width: 18, height: 18 },
+    gridInfoZoomFit: { width: 24, height: 18 },
+  });
+  expect(toolbarStyles.backgroundIconFontSize).toBe("26px");
+  expect(toolbarStyles.inactiveToolIconFilter).toBe("invert(0.65)");
+});
+
 test("desktop canvas context clicks open tile and color palettes", async ({ page }, testInfo) => {
   test.skip(testInfo.project.metadata.deviceClass !== "desktop");
   await open2DProject(page, testInfo);
@@ -1360,7 +1390,7 @@ test("desktop dialogs refit without losing their preferred size or selector cont
     g_app.textModeEditor.colorPaletteManager.showChoosePreset({}),
   );
   const paletteDialog = page.locator(".ui-dialog:visible")
-    .filter({ hasText: "Choose A Colour Palette" });
+    .filter({ hasText: "Choose A Color Palette" });
   await expect(paletteDialog).toBeVisible();
   await page.locator('.colorPaletteListEntry[value="appleII"]').click();
 

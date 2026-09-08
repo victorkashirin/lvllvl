@@ -75,7 +75,7 @@ ColorPickerPopup.prototype = {
       var rgbHexString = colorPalette.getHexString(this.highlightedColor);
 
       var highlightedColorHex = ("00" + this.highlightedColor.toString(16)).substr(-2);
-      //html += 'Colour: ';
+      //html += 'Color: ';
       html += '<div style="display: inline-block; width: 20px">' + this.highlightedColor + '</div>';
       html += '<div style="display: inline-block; width: 30px">0x' + highlightedColorHex + '</div>';
       html += '<div style="display: inline-block; width: 60px">#' + rgbHexString + '</div>';

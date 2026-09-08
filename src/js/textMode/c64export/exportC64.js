@@ -658,8 +658,8 @@ ExportC64.prototype = {
 
     var dataTo = index;
     if(dataTo != dataFrom) {
-      memoryMap.push({ "type": "Animated BG Colours Table", "from": dataFrom, "to": dataTo });
-      blocks.push({"type": "Animated BG Colours Table", "start": dataFrom + 0x801 - 2, "end": dataTo + 0x801 - 2});
+      memoryMap.push({ "type": "Animated BG Colors Table", "from": dataFrom, "to": dataTo });
+      blocks.push({"type": "Animated BG Colors Table", "start": dataFrom + 0x801 - 2, "end": dataTo + 0x801 - 2});
     }
 
     // -------------------------- end animated colors
@@ -1728,18 +1728,18 @@ ExportC64.prototype = {
     console.log("FRAME COUNT = " + frameCount);
     
     initAsm += '\n';
-    initAsm += '; border colour\n';
+    initAsm += '; border color\n';
     initAsm += '  lda #' + this.getC64Color(borderColor) + '\n';;
     initAsm += '  sta $d020' + '\n';
 
     if(isPETSCIISingle && !hasSID) {
-      initAsm += '; background colour\n';
+      initAsm += '; background color\n';
       initAsm += '  lda #' + this.getC64Color(firstFrameBGColor) + '\n';
       initAsm += '  sta $d021' + '\n';  
     }
 
     if(!multicolorMode) {
-      initAsm += '; turn multicolour mode off\n';
+      initAsm += '; turn multicolor mode off\n';
       initAsm += '  lda #%00001000\n';
       initAsm += '  sta $d016\n';
     }
@@ -1751,7 +1751,7 @@ ExportC64.prototype = {
       initAsm += '  sta $d011\n';
     } else if(multicolorMode) {
       data[configPos++] = 2;
-      initAsm += '; turn multicolour mode on\n';
+      initAsm += '; turn multicolor mode on\n';
       initAsm += '  lda #%00011000\n';
       initAsm += '  sta $d016\n';
     } else {

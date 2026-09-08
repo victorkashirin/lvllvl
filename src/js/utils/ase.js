@@ -497,7 +497,7 @@ console.log(this.colors);
   readBlockColor: function() {
     var model = this.blockModel.toUpperCase();
     var count = this.COLOR_SIZES[model];
-    console.log('colour count = ' + count);
+    console.log('color count = ' + count);
     var channels = [];
 
     for(var i = 0; i < count; i++) {

@@ -19,7 +19,7 @@ ColorPaletteSave.prototype = {
     var _this = this;
 
     if(this.uiComponent == null) {
-      this.uiComponent = UI.create("UI.Dialog", { "id": "saveColorPaletteDialog", "title": "Save Colour Palette", "width": 640 });
+      this.uiComponent = UI.create("UI.Dialog", { "id": "saveColorPaletteDialog", "title": "Save Color Palette", "width": 640 });
 
       this.htmlComponent = UI.create("UI.HTMLPanel");
       this.uiComponent.add(this.htmlComponent);

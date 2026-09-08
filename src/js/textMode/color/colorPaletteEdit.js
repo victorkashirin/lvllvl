@@ -1757,7 +1757,7 @@ ColorPaletteEdit.prototype = {
       var height = 660;
 
       this.uiComponent = UI.create("UI.Dialog", 
-        { "id": "editColorPaletteDialog", "title": "Edit Colour Palette", "width": width, "height": height });
+        { "id": "editColorPaletteDialog", "title": "Edit Color Palette", "width": width, "height": height });
 
       this.uiComponent.on('close', function() {
         _this.visible = false;
@@ -1854,7 +1854,7 @@ ColorPaletteEdit.prototype = {
     var colorHexString = ("000000" + color.toString(16)).substr(-6);
     $('#' + this.prefix + 'ImageMouseHoverColor').css('background-color', '#' + colorHexString);
 
-    var colorInfo = '<div style="font-weight: bold; font-size: 12px; margin: 2px 0 2px 0">Hover Colour</div>' + this.getColorInfo(color);
+    var colorInfo = '<div style="font-weight: bold; font-size: 12px; margin: 2px 0 2px 0">Hover Color</div>' + this.getColorInfo(color);
     $('#' + this.prefix + 'ImageMouseHoverColorInfo').html(colorInfo);
   },
 
@@ -1863,7 +1863,7 @@ ColorPaletteEdit.prototype = {
     var colorHexString = ("000000" + this.selectedColor.toString(16)).substr(-6);
     $('#' + this.prefix + 'ImageMouseSelectedColor').css('background-color', '#' + colorHexString);
 
-    var colorInfo = '<div style="font-weight: bold; font-size: 12px; margin: 2px 0 2px 0">Draw Colour</div>' + this.getColorInfo(color);
+    var colorInfo = '<div style="font-weight: bold; font-size: 12px; margin: 2px 0 2px 0">Draw Color</div>' + this.getColorInfo(color);
     $('#' + this.prefix + 'ImageMouseSelectedColorInfo').html(colorInfo);
 
     this.colorPaletteDisplay.setCursorRGB(this.selectedColor);
@@ -1874,7 +1874,7 @@ ColorPaletteEdit.prototype = {
   addSelectedColor: function() {
     for(var i = 0; i < this.colors.length; i++) {
       if(this.colors[i] == this.selectedColor) {
-        alert('This colour has already been added');
+        alert('This color has already been added');
         return;
       }
     }
@@ -1904,7 +1904,7 @@ ColorPaletteEdit.prototype = {
       var colorIndex = this.colorPaletteDisplay.getColorAtMapXY(gridX, gridY);
       if(colorIndex !== this.colorPaletteDisplay.noColor) {
         this.colorPaletteDisplay.setColorAtMapXY(gridX, gridY, this.colorPaletteDisplay.noColor);
-        console.error('need to delete the colour as well?..');
+        console.error('need to delete the color as well?..');
       }
 
     }

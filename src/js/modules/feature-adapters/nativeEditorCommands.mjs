@@ -175,7 +175,7 @@ export function registerNativeEditorCommands({ app, commands, toolMetadata }) {
   for (let colorIndex = 0; colorIndex < 16; colorIndex++) {
     register({
       id: `textMode.color.select.${colorIndex + 1}`,
-      title: `Select Colour ${colorIndex + 1}`,
+      title: `Select Color ${colorIndex + 1}`,
       category: "Palettes",
       contexts: context({ textEditorMode: ["tile", "pixel"] }),
       allowDuringCanvasTyping: true,
@@ -332,12 +332,12 @@ export function registerNativeEditorCommands({ app, commands, toolMetadata }) {
     contexts: context({ textEditorMode: "tile" }), execute: () => textMode.gridView2d.showCharacterPicker(),
   });
   register({
-    id: "textMode.picker.colors", title: "Show Colour Picker", category: "Palettes", key: "?",
+    id: "textMode.picker.colors", title: "Show Color Picker", category: "Palettes", key: "?",
     modifiers: { shift: true }, contexts: context({ textEditorMode: "tile" }),
     execute: () => textMode.gridView2d.showColorPicker(),
   });
   register({
-    id: "textMode.colors.switch", title: "Switch Foreground and Background Colours", category: "Palettes", key: "X",
+    id: "textMode.colors.switch", title: "Switch Foreground and Background Colors", category: "Palettes", key: "X",
     contexts: context({ textEditorMode: "tile" }), execute: () => textMode.currentTile.switchColors(),
   });
 
@@ -385,7 +385,7 @@ export function registerNativeEditorCommands({ app, commands, toolMetadata }) {
     });
     register({
       id: `textMode.colorPalette.${direction.id}`,
-      title: direction.title.replace("Palette", "Colour Palette"),
+      title: direction.title.replace("Palette", "Color Palette"),
       category: "Palettes",
       contexts: context({ focus: ["canvas", "palette"] }),
       key: direction.key,
@@ -423,12 +423,12 @@ export function registerNativeEditorCommands({ app, commands, toolMetadata }) {
     }],
   });
   register({
-    id: "textMode.colorPalette.recentNext", title: "Next Recent Colour", category: "Palettes", key: "E",
+    id: "textMode.colorPalette.recentNext", title: "Next Recent Color", category: "Palettes", key: "E",
     modifiers: { shift: true }, contexts: context({ focus: ["canvas", "palette"] }), repeat: true,
     execute: () => textMode.colorPalettePanel.selectRecent(1),
   });
   register({
-    id: "textMode.colorPalette.recentPrevious", title: "Previous Recent Colour", category: "Palettes", key: "Q",
+    id: "textMode.colorPalette.recentPrevious", title: "Previous Recent Color", category: "Palettes", key: "Q",
     modifiers: { shift: true }, contexts: context({ focus: ["canvas", "palette"] }), repeat: true,
     execute: () => textMode.colorPalettePanel.selectRecent(-1),
   });
@@ -455,10 +455,10 @@ export function registerNativeEditorCommands({ app, commands, toolMetadata }) {
     });
   }
   for (const color of [
-    { id: "background", title: "Use Background Colour", key: "1", type: "background" },
-    { id: "foreground", title: "Use Foreground Colour", key: "2", type: "cell" },
-    { id: "multi1", title: "Use Multicolour 1", key: "3", type: "multi1" },
-    { id: "multi2", title: "Use Multicolour 2", key: "4", type: "multi2" },
+    { id: "background", title: "Use Background Color", key: "1", type: "background" },
+    { id: "foreground", title: "Use Foreground Color", key: "2", type: "cell" },
+    { id: "multi1", title: "Use Multicolor 1", key: "3", type: "multi1" },
+    { id: "multi2", title: "Use Multicolor 2", key: "4", type: "multi2" },
   ]) {
     register({
       id: `textMode.multicolor.${color.id}`, title: color.title, category: "Palettes", key: color.key,

@@ -42,7 +42,7 @@ C64Scripting.prototype = {
 
     completions.push({
       value: 'c64.setColor',
-      meta: 'Set C64 Colour'
+      meta: 'Set C64 Color'
     });
 
     return completions;

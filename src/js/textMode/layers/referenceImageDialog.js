@@ -835,7 +835,7 @@ ReferenceImageDialog.prototype = {
       }
 
       var html = count;
-      html += ' Colour';
+      html += ' Color';
       if(count != 1) {
         html += 's';
       }

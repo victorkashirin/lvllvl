@@ -383,7 +383,7 @@ test("shortcut settings replace conflicts and drive the editor from one binding"
   await expect(page.locator(".keyboard-shortcuts-group-scope, .keyboard-shortcuts-group-separator"))
     .toHaveCount(0);
   await expect(page.locator(".keyboard-shortcuts-group-heading")
-    .filter({ hasText: /Current Editor|Other editor modes|Colour Palette Editor/ })).toHaveCount(0);
+    .filter({ hasText: /Current Editor|Other editor modes|Color Palette Editor/ })).toHaveCount(0);
   const pencilActions = page.locator('tr[data-command-id="editor.tool.pencil"] .keyboard-shortcuts-action');
   await expect(pencilActions).toHaveCount(2);
   for (const action of await pencilActions.all()) {

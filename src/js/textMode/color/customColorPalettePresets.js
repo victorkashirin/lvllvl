@@ -1,13 +1,13 @@
 var ColorPaletteCustomPresets = [
   {
-    category: "12 Colour",
+    category: "12 Color",
     colorPalettes: [
       { "name": "Japanese Woodblock", "id": "japanesewoodblock", "author": "Polyducks" }
     ]
   },
 
   {
-    category: "16 Colour",
+    category: "16 Color",
     colorPalettes: [
       {
         "name": "Dots", "id": "custom-dots"

@@ -32,13 +32,13 @@ var Layers = function() {
 
     { "label": 'Darken', 'operation': 'darken' },
     { "label": 'Multiply', 'operation': 'multiply' },
-    { "label": 'Colour Burn', 'operation': 'color-burn' },
+    { "label": 'Color Burn', 'operation': 'color-burn' },
 
     { "label": "-" },
 
     { "label": 'Lighten', 'operation': 'lighten' },
     { "label": 'Screen', 'operation': 'screen' },
-    { "label": 'Colour Dodge', 'operation': 'color-dodge' },
+    { "label": 'Color Dodge', 'operation': 'color-dodge' },
     { "label": 'Lighter', 'operation': 'lighter' },
 
     { "label": "-" },
@@ -57,7 +57,7 @@ var Layers = function() {
 
     { "label": 'Hue', 'operation': 'hue' },
     { "label": 'Saturation', 'operation': 'saturation' },
-    { "label": 'Colour', 'operation': 'color' },
+    { "label": 'Color', 'operation': 'color' },
     { "label": 'Luminosity', 'operation': 'luminosity' },
 
 
@@ -805,22 +805,22 @@ Layers.prototype = {
             }
           break;
           case TextModeEditor.Mode.C64STANDARD:
-            screenMode = 'C64 Standard Colour Mode';
+            screenMode = 'C64 Standard Color Mode';
             break;
           case TextModeEditor.Mode.C64ECM:
-            screenMode = 'C64 Extended Colour Mode';
+            screenMode = 'C64 Extended Color Mode';
             break;
           case TextModeEditor.Mode.C64MULTICOLOR:
-            screenMode = 'C64 Multicolour';
+            screenMode = 'C64 Multicolor';
             break;
           case TextModeEditor.Mode.NES:
             screenMode = 'NES';
             break;
           case TextModeEditor.Mode.INDEXED:
-            screenMode = 'Indexed Colour';
+            screenMode = 'Indexed Color';
             break;
           case TextModeEditor.Mode.RGB:
-            screenMode = 'RGB Colour';
+            screenMode = 'RGB Color';
             break;
           case TextModeEditor.Mode.VECTOR:
             screenMode = 'Vector Mode';

@@ -76,7 +76,7 @@ ColorPaletteManager.prototype = {
   },
 
   initNewColorPaletteDialogContent: function() {
-    $('#newColorPaletteName').val('Colour Palette');
+    $('#newColorPaletteName').val('Color Palette');
     $('#newColorPaletteName').focus();
     $('#newColorPaletteName').select();    
 
@@ -169,7 +169,7 @@ ColorPaletteManager.prototype = {
 
   createColorPalette: function(args) {
 
-    var name = 'colour palette';
+    var name = 'color palette';
     if(typeof args.name != 'undefined') {
       name = args.name
     }
@@ -277,7 +277,7 @@ return;
     } 
 
     // uh oh..need to create new colour palette
-    var paletteName = "Colour Palette";
+    var paletteName = "Color Palette";
     if(typeof args.colorPaletteName != 'undefined') {
       paletteName = args.colorPaletteName;
     }
@@ -301,7 +301,7 @@ return;
 
   addColorPaletteFromPreset: function(args, callback) {
     var preset = args.preset;
-    var colorPaletteName = 'Colour Palette';
+    var colorPaletteName = 'Color Palette';
     if(typeof args.colorPaletteName != 'undefined') {
       colorPaletteName = args.colorPaletteName;
     }

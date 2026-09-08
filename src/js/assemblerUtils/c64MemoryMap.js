@@ -174,7 +174,7 @@ var C64IORegisters = [
     ],
     examples: [
       {
-        "description": "Turn on Extended Background Colour Mode",
+        "description": "Turn on Extended Background Color Mode",
         "code": "; turn on ecm mode\nlda $d011\nora #%01000000\nsta $d011"      
       }
     ],
@@ -250,12 +250,12 @@ var C64IORegisters = [
     bits: [
       { "l": "0-2", "d": "Horizontal scroll" },
       { "l": "3", "d": "Screen width (columns). 0 = 38, 1 = 40"},
-      { "l": "4", "d": "0 = Multicolour Off, 1 = Multicolor On"},
+      { "l": "4", "d": "0 = Multicolor Off, 1 = Multicolor On"},
       { "l": "5", "d": "Always set to 0"},
       { "l": "6-7", "d": "Unused"},
       
     ],    
-    keywords: "multicolour multicolor horizontal scroll text bitmap extended background raster"
+    keywords: "multicolor multicolor horizontal scroll text bitmap extended background raster"
 
   },
   {
@@ -299,7 +299,7 @@ var C64IORegisters = [
   },
   {
     address: 'd01c',
-    label: 'Sprite multicolour',
+    label: 'Sprite multicolor',
     chip: 'VIC-II',
   },
   {
@@ -319,79 +319,79 @@ var C64IORegisters = [
   },
   {
     address: 'd020',
-    label: 'Border colour',
+    label: 'Border color',
     chip: 'VIC-II',
   },
   {
     address: 'd021',
-    label: 'Background colour 0',
+    label: 'Background color 0',
     chip: 'VIC-II',
   },
   {
     address: 'd022',
-    label: 'Background colour 1',
+    label: 'Background color 1',
     chip: 'VIC-II',
-    keywords: "multicolor multicolour"
+    keywords: "multicolor multicolor"
   },
   {
     address: 'd023',
-    label: 'Background colour 2',
+    label: 'Background color 2',
     chip: 'VIC-II',
-    keywords: "multicolor multicolour"
+    keywords: "multicolor multicolor"
   },
   {
     address: 'd024',
-    label: 'Background colour 3',
+    label: 'Background color 3',
     chip: 'VIC-II',
   },
   {
     address: 'd025',
-    label: 'Sprite multicolour 0',
+    label: 'Sprite multicolor 0',
     chip: 'VIC-II',
   },
   {
     address: 'd026',
-    label: 'Sprite multicolour 1',
+    label: 'Sprite multicolor 1',
     chip: 'VIC-II',
   },
   {
     address: 'd027',
-    label: 'Sprite 0 colour',
+    label: 'Sprite 0 color',
     chip: 'VIC-II',
   },
   {
     address: 'd028',
-    label: 'Sprite 1 colour',
+    label: 'Sprite 1 color',
     chip: 'VIC-II',
   },
   {
     address: 'd029',
-    label: 'Sprite 2 colour',
+    label: 'Sprite 2 color',
     chip: 'VIC-II',
   },
   {
     address: 'd02a',
-    label: 'Sprite 3 colour',
+    label: 'Sprite 3 color',
     chip: 'VIC-II',
   },
   {
     address: 'd02b',
-    label: 'Sprite 4 colour',
+    label: 'Sprite 4 color',
     chip: 'VIC-II',
   },
   {
     address: 'd02c',
-    label: 'Sprite 5 colour',
+    label: 'Sprite 5 color',
     chip: 'VIC-II',
   },
   {
     address: 'd02d',
-    label: 'Sprite 6 colour',
+    label: 'Sprite 6 color',
     chip: 'VIC-II',
   },
   {
     address: 'd02e',
-    label: 'Sprite 7 colour',
+    label: 'Sprite 7 color',
     chip: 'VIC-II',
   },
 

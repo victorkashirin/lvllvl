@@ -834,7 +834,7 @@ DbgSprites.prototype = {
 
       line = "MONOCHROME";
       if (spriteMulticolor & (1 << i)) {
-        line = "MULTICOLOUR";
+        line = "MULTICOLOR";
       }
       this.drawLine(line, x + 8 * this.fontCharWidth, y + scrollY);
 

@@ -97,8 +97,8 @@ ImportShaderEditor.prototype = {
       html += '<div>';
       html += 'Display: ';
       html += '<label><input type="checkbox" id="importShaderEditorOutputCharacter" checked="checked">Character</label>';
-      html += '<label><input type="checkbox" id="importShaderEditorOutputColor" checked="checked">FG Colour</label>';
-      html += '<label><input type="checkbox" id="importShaderEditorOutputBGColor" checked="checked">BG Colour</label>';
+      html += '<label><input type="checkbox" id="importShaderEditorOutputColor" checked="checked">FG Color</label>';
+      html += '<label><input type="checkbox" id="importShaderEditorOutputBGColor" checked="checked">BG Color</label>';
       html += '<label><input type="checkbox" id="importShaderEditorOutputOriginalImage" checked="checked">Original Image</label>';
       html += '</div>';
 

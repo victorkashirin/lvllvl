@@ -48,7 +48,7 @@ ColorPaletteLoad.prototype = {
 
       if(this.parentComponent == null) {
         this.uiComponent = UI.create("UI.Dialog", 
-          { "id": "colourPaletteLoadDialog", "title": "Colour Palette Load", "width": 384 });
+          { "id": "colourPaletteLoadDialog", "title": "Color Palette Load", "width": 384 });
       } else {
         this.uiComponent = this.parentComponent;
       }
@@ -551,7 +551,7 @@ ColorPaletteLoad.prototype = {
         }
         this.errorMessage('');
       } else {
-        this.errorMessage('No colours found');
+        this.errorMessage('No colors found');
 
       }
     } catch(err) {
@@ -568,7 +568,7 @@ ColorPaletteLoad.prototype = {
     var colors = this.ase.readPalette(data);
     if(colors === false) {
       //console.log('no colours');
-      this.errorMessage('No colours found');
+      this.errorMessage('No colors found');
       return;
     }
 
@@ -595,7 +595,7 @@ ColorPaletteLoad.prototype = {
     var colors = this.aco.readPalette(data);
     if(colors === false) {
 //      console.log('no colours');
-      this.errorMessage('No colours found');
+      this.errorMessage('No colors found');
       return;
     }
 

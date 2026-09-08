@@ -26,7 +26,7 @@ ColorSubPalettePickerMobile.prototype = {
     var _this = this;
 
     $('.colorPalettePanelSubPaletteColorMobile').on('click', function() {
-      console.log('select colour');
+      console.log('select color');
       var subPalette = parseInt($(this).attr('data-subpalette'), 10);
       var subPaletteColor = parseInt($(this).attr('data-color'), 10);
 
@@ -208,7 +208,7 @@ ColorSubPalettePickerMobile.prototype = {
 
     var colorSubPalettes = this.editor.colorPaletteManager.colorSubPalettes;
 
-    console.log('highlight sub palette colours!!!!');
+    console.log('highlight sub palette colors!!!!');
     console.log('palette = ' + palette + ',' + paletteColor);
     var colorIndex = colorSubPalettes.getPaletteColor(palette, paletteColor);
     if(colorIndex !== false) {

@@ -57,7 +57,7 @@ DbgC64CharEditor.prototype = {
     /*
     html += '    <div>';
     html += '      <label class="cb-container" style="margin-right: 4px; display: inline-block">';
-    html += 'Multicolour';
+    html += 'Multicolor';
     html += '      <input type="checkbox" value="mouse" class="showMouseInfo"  id="' + this.prefix + 'CharEditorMulti"><span class="checkmark"></span></label>';
     html += '    </div>';
 */

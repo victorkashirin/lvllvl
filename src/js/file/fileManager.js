@@ -399,7 +399,7 @@ FileManager.prototype = {
 
 
   loadColorPalette: function(file) {
-    console.log('load colour palette!!');
+    console.log('load color palette!!');
     if(g_app.doc !== null) {
       if(g_app.textModeEditor.colorPaletteManager.colorPaletteLoad && g_app.textModeEditor.colorPaletteManager.colorPaletteLoad.visible) {
         g_app.textModeEditor.colorPaletteManager.colorPaletteLoad.setImportFile(file);

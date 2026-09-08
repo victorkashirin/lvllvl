@@ -1198,9 +1198,9 @@ ImportC64Formats.prototype = {
     info += '<div style="margin-top: 2px">' + mapWidth + ' x ' + mapHeight + ' Blocks</div>';
     info += '</div>';
 
-    var colorMode = 'Colour Per Character';
+    var colorMode = 'Color Per Character';
     info += '<div class="c64ImportRow">';
-    info += '<div class="c64ImportHeading">Colour Mode:</div>';
+    info += '<div class="c64ImportHeading">Color Mode:</div>';
     info += '<div>' + colorMode + '</div>';  
     info += '</div>';
 

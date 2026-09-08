@@ -270,7 +270,7 @@ ColorPaletteChoosePresetMobile.prototype = {
 
 
     if(this.uiComponent == null) {
-      this.uiComponent = UI.create("UI.MobilePanel", { "id": "colorPaletteChoosePresetMobileDialog", "title": "Colours", "width": width, "height": height });
+      this.uiComponent = UI.create("UI.MobilePanel", { "id": "colorPaletteChoosePresetMobileDialog", "title": "Colors", "width": width, "height": height });
 
       this.htmlComponent = UI.create("UI.HTMLPanel");
       this.uiComponent.add(this.htmlComponent);

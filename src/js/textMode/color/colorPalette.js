@@ -900,7 +900,7 @@ ColorPalette.prototype = {
 
 
       } else {
-        this.errorMessage('No colours found');
+        this.errorMessage('No colors found');
 
       }
 /*

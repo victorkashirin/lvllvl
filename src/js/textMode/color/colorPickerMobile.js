@@ -423,7 +423,7 @@ ColorPickerMobile.prototype = {
       break;
       case 'cellbg':
         if(screenMode === TextModeEditor.Mode.C64ECM)  {
-          console.log('set ecm colour ' + this.c64ECMColorIndex + ':' + color);
+          console.log('set ecm color ' + this.c64ECMColorIndex + ':' + color);
           this.editor.setC64ECMColor(this.c64ECMColorIndex, color);
           this.updateC64ECMColors();
         } else {
@@ -515,10 +515,10 @@ ColorPickerMobile.prototype = {
     var heading = '';
     switch(type) {
       case 'cell':
-        heading = 'Cell FG Colour';
+        heading = 'Cell FG Color';
       break;
       case 'cellbg':
-        heading = 'Cell BG Colour';
+        heading = 'Cell BG Color';
 
         if(screenMode === TextModeEditor.Mode.C64ECM)  {
           $('#noColorMobileHolder').hide();
@@ -528,18 +528,18 @@ ColorPickerMobile.prototype = {
         }
       break;
       case 'background':
-        heading = 'Frame Background Colour';
+        heading = 'Frame Background Color';
         $('#noColorMobileHolder').show();
       break;
       case 'border':
-        heading = 'Border Colour';
+        heading = 'Border Color';
         $('#noColorMobileHolder').show();
       break;
       case 'multi1':
-        heading = 'Multi Colour 1';
+        heading = 'Multi Color 1';
       break;
       case 'multi2':
-        heading = 'Multi Colour 2';
+        heading = 'Multi Color 2';
       break;
 
     }

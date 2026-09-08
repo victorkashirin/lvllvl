@@ -56,7 +56,7 @@ DbgC64SpriteEditor.prototype = {
 
     html += '    <div>';
     html += '      <label class="cb-container" style="margin-right: 4px; display: inline-block">';
-    html += 'Multicolour';
+    html += 'Multicolor';
     html += '      <input type="checkbox" value="mouse" class="showMouseInfo"  id="' + this.prefix + 'SpriteEditorMulti"><span class="checkmark"></span>';
     html += '</label>';
     html += '    </div>';

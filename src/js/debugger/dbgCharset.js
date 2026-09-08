@@ -158,7 +158,7 @@ DbgCharset.prototype = {
     html += '</label>';
 
     html += '<label class="rb-container" style="margin-right: 4px; display: inline-block">';
-    html += 'Multicolour';
+    html += 'Multicolor';
     html += '<input type="radio" value="multicolor"  name="' + this.prefix + 'charDebuggerMode" id="' + this.prefix + 'charDebuggerModemulticolor"><span class="checkmark"></span>';
     html += '</label>';
 

@@ -90,7 +90,7 @@ MobileMenu.prototype = {
       { "label": "Reference Image", "id": "referenceimage", "icon": '<img  height="25" src="icons/svg/glyphicons-halflings-15-picture.svg"/>' },
 
       { "className": "screen-menu-item", "label": "Choose A Character Set", "id": "tilesetpreset", "icon": '<img height="25" src="icons/svg/glyphicons-basic-422-book-library.svg"/>' },
-      { "label": "Choose A Colour Palette", "id": "colorpalettepreset", "icon": '<img height="25" src="icons/svg/glyphicons-basic-444-sampler.svg"/>' },
+      { "label": "Choose A Color Palette", "id": "colorpalettepreset", "icon": '<img height="25" src="icons/svg/glyphicons-basic-444-sampler.svg"/>' },
       { "className": "screen-menu-item", "label": "Import Image / Video", "id": "importimage", "icon": '<img  height="25" src="icons/svg/glyphicons-basic-399-import.svg">' },
       { "label": "Export Image", "id": "exportimage", "icon": '<img  height="25" src="icons/svg/glyphicons-basic-199-save.svg">' },
       { "className": "screen-menu-item", "label": "Export Tileset", "id": "exporttileset", "icon": '<img  height="25" src="icons/svg/glyphicons-basic-199-save.svg">' },

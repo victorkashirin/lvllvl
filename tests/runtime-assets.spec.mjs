@@ -77,10 +77,15 @@ test("production stylesheet includes Perfect Scrollbar and CodeMirror", async ({
     });
     editor.setValue("const note = 1;");
     const line = document.querySelector(".CodeMirror-lines");
+    const editorStyle = getComputedStyle(document.querySelector(".CodeMirror"));
+    const gutterStyle = getComputedStyle(document.querySelector(".CodeMirror-gutters"));
     const rail = document.querySelector(".ps__rail-x");
     return {
       codeMirror: typeof CodeMirror === "function",
+      editorBackground: editorStyle.backgroundColor,
+      editorColor: editorStyle.color,
       editorValue: editor.getValue(),
+      gutterBackground: gutterStyle.backgroundColor,
       linePadding: getComputedStyle(line).paddingTop,
       railDisplay: getComputedStyle(rail).display,
       scrollbarOverflow: getComputedStyle(document.querySelector("#scrollbar")).overflow,
@@ -88,7 +93,10 @@ test("production stylesheet includes Perfect Scrollbar and CodeMirror", async ({
   });
 
   expect(result.codeMirror).toBe(true);
+  expect(result.editorBackground).toBe("rgb(17, 17, 17)");
+  expect(result.editorColor).toBe("rgb(221, 221, 221)");
   expect(result.editorValue).toBe("const note = 1;");
+  expect(result.gutterBackground).toBe("rgb(29, 29, 29)");
   expect(result.linePadding).toBe("4px");
   expect(result.railDisplay).toBe("none");
   expect(result.scrollbarOverflow).toBe("hidden");

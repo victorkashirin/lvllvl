@@ -50,7 +50,7 @@ test("form controls use the dark theme and align with adjacent text", async ({ p
     const gridInfo = document.getElementById("gridinfo-coordinates");
     const gridValues = [...gridInfo.querySelectorAll(".gridinfo-value")];
     const colorLabels = [...gridInfo.querySelectorAll(".gridinfo-label")].filter(
-      (label) => label.textContent.endsWith("Colour"),
+      (label) => label.textContent.endsWith("Color"),
     );
     const swatches = [...gridInfo.querySelectorAll(".gridinfo-color-swatch")];
     const nativeCheckbox = document.getElementById("native-checkbox");

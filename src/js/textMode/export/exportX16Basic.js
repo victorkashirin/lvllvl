@@ -159,7 +159,7 @@ ExportX16Basic.prototype = {
 
     var colorByteCount = colorCount * 2;
     var lastColorByte = colorByteCount - 1;
-    lines += this.getLine("REM SET THE COLOUR PALETTE");
+    lines += this.getLine("REM SET THE COLOR PALETTE");
     lines += this.getLine("FOR I = 0 TO " + lastColorByte);
     lines += this.getLine("READ D");
     lines += this.getLine("VPOKE $F,$1000+I,D");

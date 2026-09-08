@@ -30,7 +30,7 @@ EditColorPaletteDialog.prototype = {
 
   initColors: function() {
     var colorPalette = this.editor.colorPaletteManager.getCurrentColorPalette();
-    console.log('colour count = ' + colorPalette.getColorCount());
+    console.log('color count = ' + colorPalette.getColorCount());
 
     this.colors = [];
     for(var i = 0; i < 256; i++) {
@@ -47,7 +47,7 @@ EditColorPaletteDialog.prototype = {
     var _this = this;
     if(this.uiComponent == null) {
       this.uiComponent = UI.create("UI.Dialog", 
-        { "id": "editColorPalette", "title": "Edit/Create Colour Palette", "width": 810 });
+        { "id": "editColorPalette", "title": "Edit/Create Color Palette", "width": 810 });
 
       this.editColorPanel = UI.create("UI.HTMLPanel");
       this.editColorPanel.load('html/textMode/editColorPalette.html', function() {
