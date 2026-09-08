@@ -93,6 +93,15 @@ function isSupportedContextValue(key, value) {
   return !allowed || allowed.includes(value);
 }
 
+/** @param {unknown} value @returns {value is ShortcutContext} */
+export function isShortcutContext(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const context = /** @type {Record<string, unknown>} */ (value);
+  return Object.keys(context).length === booleanContextKeys.size + stringContextKeys.size &&
+    [...booleanContextKeys, ...stringContextKeys].every((key) =>
+      Object.prototype.hasOwnProperty.call(context, key) && isSupportedContextValue(key, context[key]));
+}
+
 /**
  * Context clauses cross the domain/application boundary in command activations
  * and imported binding `when` conditions. Own and freeze the supported shape
@@ -171,7 +180,7 @@ export function createSafeShortcutContext() {
 
 /**
  * Keep older injected contexts usable while all production DOM/legacy state
- * is translated by the shared adapter.
+ * is translated by the shortcut context provider.
  *
  * @param {Record<string, unknown>} context
  * @returns {ShortcutInputOwner}

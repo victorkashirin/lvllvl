@@ -5,12 +5,26 @@ import vm from "node:vm";
 
 import { CommandService } from "../src/js/modules/application/commandService.mjs";
 import {
-  commandIdForLegacyMenuItem,
-  createLegacyCommandCatalogAdapter,
+  createLegacyCommandCatalogAdapter as createCatalogBridge,
 } from "../src/js/modules/feature-adapters/legacyCommandCatalogAdapter.mjs";
+import { editorCommandDefinitions, getEditorCommandDefinition } from "../src/js/modules/domain/editorCommandDefinitions.mjs";
+import { createSafeShortcutContext } from "../src/js/modules/domain/shortcutContext.mjs";
+import { registerNativeEditorCommands } from "../src/js/modules/feature-adapters/nativeEditorCommands.mjs";
+import { createShortcutContextProvider } from "../src/js/modules/feature-adapters/shortcutContextProvider.mjs";
+import { createShortcutLabelProjection } from "../src/js/modules/feature-adapters/shortcutLabelProjection.mjs";
 import "../src/js/styles.js";
 
 const toolMetadata = globalThis.ShortcutCatalogMetadata;
+
+// Mirror bootstrap composition without allowing one feature adapter to own
+// another's registration or presentation responsibilities.
+function createLegacyCommandCatalogAdapter(dependencies) {
+  return createCatalogBridge({
+    ...dependencies,
+    registerNativeCommands: () => registerNativeEditorCommands(dependencies),
+    labels: createShortcutLabelProjection(dependencies),
+  });
+}
 
 async function loadClassic(relativePath, exportName, globals = {}) {
   const source = await readFile(new URL(`../src/${relativePath}`, import.meta.url), "utf8");
@@ -52,6 +66,7 @@ test("Zoom In keeps both built-in aliases in one override lifecycle", async () =
     },
   });
   const zoomItem = {
+    commandId: "view.zoomin",
     enabled: true,
     id: "menu-view-zoomin",
     label: "Renamed Zoom",
@@ -126,7 +141,8 @@ test("equivalent 2D and 3D menu actions share command identity and behavior", ()
     setTimer: () => 1,
     storage: { load: () => null, save() {} },
   });
-  const menuItem = (uiID) => ({
+  const menuItem = (uiID, commandId) => ({
+    commandId,
     enabled: true,
     id: `menu-${uiID}`,
     label: uiID,
@@ -151,57 +167,39 @@ test("equivalent 2D and 3D menu actions share command identity and behavior", ()
       {
         className: "ui-menu-tilemode ui-menu-screen",
         menuItems: [
-          menuItem("file-dimensions"),
-          menuItem("mode-textmode"),
-          menuItem("mode-c64multicolor"),
-          menuItem("mode-nes"),
-          menuItem("mode-indexed"),
+          menuItem("file-dimensions", "project.dimensions"),
+          menuItem("mode-textmode", "textMode.mode.textmode"),
+          menuItem("mode-c64multicolor", "textMode.mode.c64multicolor"),
+          menuItem("mode-nes", "textMode.mode.nes"),
+          menuItem("mode-indexed", "textMode.mode.indexed"),
         ],
       },
       {
         className: "ui-menu-tilemode ui-menu-sprite",
         menuItems: [
-          menuItem("file-spritedimensions"),
-          menuItem("mode-spritetextmode"),
-          menuItem("mode-spritec64multicolor"),
-          menuItem("mode-spritenes"),
-          menuItem("mode-spriteindexed"),
+          menuItem("file-spritedimensions", "project.dimensions"),
+          menuItem("mode-spritetextmode", "textMode.mode.textmode"),
+          menuItem("mode-spritec64multicolor", "textMode.mode.c64multicolor"),
+          menuItem("mode-spritenes", "textMode.mode.nes"),
+          menuItem("mode-spriteindexed", "textMode.mode.indexed"),
         ],
       },
       {
         className: "ui-menu-tilemode",
         menuItems: [
-          menuItem("edit-showgrid"),
-          menuItem("view-perfstats"),
-          menuItem("view-zoomin"),
-          menuItem("view-zoomout"),
-          menuItem("view-fitonscreen"),
-          menuItem("view-actualpixels"),
-          menuItem("edit-undo"),
+          menuItem("edit-showgrid", "view.grid"),
+          menuItem("view-perfstats", "view.performanceStats"),
+          menuItem("view-zoomin", "view.zoomin"),
+          menuItem("view-zoomout", "view.zoomout"),
+          menuItem("view-fitonscreen", "view.fitonscreen"),
+          menuItem("view-actualpixels", "view.actualpixels"),
+          menuItem("edit-undo", "edit.undo"),
         ],
       },
-      { className: "ui-menu-3d", menuItems: [menuItem("view-3dgrid"), menuItem("view-3dperfstats")] },
+      { className: "ui-menu-3d", menuItems: [menuItem("view-3dgrid", "view.grid"), menuItem("view-3dperfstats", "view.performanceStats")] },
     ],
     shortcuts: [],
   });
-
-  assert.equal(commandIdForLegacyMenuItem("file-dimensions"), "project.dimensions");
-  assert.equal(commandIdForLegacyMenuItem("file-spritedimensions"), "project.dimensions");
-  assert.equal(commandIdForLegacyMenuItem("edit-showgrid"), "view.grid");
-  assert.equal(commandIdForLegacyMenuItem("view-3dgrid"), "view.grid");
-  assert.equal(commandIdForLegacyMenuItem("view-perfstats"), "view.performanceStats");
-  assert.equal(commandIdForLegacyMenuItem("view-3dperfstats"), "view.performanceStats");
-  for (const [screenAction, spriteAction] of [
-    ["mode-textmode", "mode-spritetextmode"],
-    ["mode-c64multicolor", "mode-spritec64multicolor"],
-    ["mode-nes", "mode-spritenes"],
-    ["mode-indexed", "mode-spriteindexed"],
-  ]) {
-    assert.equal(commandIdForLegacyMenuItem(spriteAction), commandIdForLegacyMenuItem(screenAction));
-  }
-  assert.equal(commandIdForLegacyMenuItem("export-3d-png"), null);
-  assert.equal(commandIdForLegacyMenuItem("dimensions3d"), null);
-  assert.equal(commandIdForLegacyMenuItem("mode-help"), null);
 
   assert.equal(commands.execute("project.dimensions", { source: "test" }, {
     editorMode: "2d",
@@ -236,18 +234,176 @@ test("equivalent 2D and 3D menu actions share command identity and behavior", ()
     }).accepted, true);
   }
   assert.deepEqual(activations, [
-    ["file-dimensions", "command", "test"],
-    ["edit-showgrid", "command", "test"],
-    ["view-perfstats", "command", "test"],
-    ["view-zoomin", "command", "test"],
-    ["view-zoomout", "command", "test"],
-    ["view-fitonscreen", "command", "test"],
-    ["edit-undo", "command", "test"],
-    ["mode-textmode", "command", "test"],
-    ["mode-c64multicolor", "command", "test"],
-    ["mode-nes", "command", "test"],
-    ["mode-indexed", "command", "test"],
+    ["file-dimensions", "test"],
+    ["edit-showgrid", "test"],
+    ["view-perfstats", "test"],
+    ["view-zoomin", "test"],
+    ["view-zoomout", "test"],
+    ["view-fitonscreen", "test"],
+    ["edit-undo", "test"],
+    ["mode-textmode", "test"],
+    ["mode-c64multicolor", "test"],
+    ["mode-nes", "test"],
+    ["mode-indexed", "test"],
   ]);
+});
+
+test("declared menu IDs dispatch once through real menu and editor handlers; unowned items stay local", async () => {
+  const document = { getElementById: () => null, querySelector: () => null, querySelectorAll: () => [] };
+  const elements = new Map();
+  const componentTypes = new Map();
+  let nextId = 0;
+  const UI = (id) => elements.get(id);
+  UI.getID = () => `menu-${nextId++}`;
+  UI.registerComponentType = (name, constructor) => componentTypes.set(name, constructor);
+  UI.create = (name, args) => {
+    const item = new (componentTypes.get(name))();
+    item.init(args);
+    item.uiID = args.id;
+    item.trigger = () => {};
+    elements.set(args.id, item);
+    return item;
+  };
+  const jquery = { addClass() {}, removeClass() {}, hide() {}, html() {}, text() {} };
+  await loadClassic("js/ui/menuBar.js", "UI", { UI, document, $: () => jquery, setTimeout() {} });
+  const menuBar = new UI.MenuBar();
+  menuBar.hideMenu = () => {};
+  // Execute the actual menu declarations, including conditional entries, not
+  // a second alias table that could drift from production construction.
+  const source = await readFile(new URL("../src/js/editor.js", import.meta.url), "utf8");
+  vm.runInNewContext(source.slice(source.indexOf("      var menu = null;"),
+    source.indexOf("      _this.menuBar.on('itemclick'")), {
+    _this: { menuBar }, UI, SHOWUNFINISHED: true, g_paramEditor: "", styles: { text: { blockName: "Meta Tile" } },
+  });
+  const commandItems = menuBar.menus.flatMap((menu) => menu.menuItems).filter((item) => item.commandId !== null);
+  assert.equal(commandItems.length, 124);
+  assert.deepEqual(new Set(commandItems.map((item) => item.commandId)), new Set(editorCommandDefinitions.map(({ id }) => id)));
+  for (const definition of editorCommandDefinitions) {
+    assert.equal(getEditorCommandDefinition(definition.id), definition);
+    assert.ok(Object.isFrozen(definition));
+    assert.ok(Object.isFrozen(definition.defaultShortcuts));
+    assert.ok(definition.defaultShortcuts.every(Object.isFrozen));
+    assert.equal("aliases" in definition, false);
+  }
+  for (const [first, second, commandId] of [
+    ["edit-showgrid", "view-3dgrid", "view.grid"],
+    ["view-perfstats", "view-3dperfstats", "view.performanceStats"],
+    ["file-dimensions", "file-spritedimensions", "project.dimensions"],
+    ["mode-textmode", "mode-spritetextmode", "textMode.mode.textmode"],
+    ["mode-c64multicolor", "mode-spritec64multicolor", "textMode.mode.c64multicolor"],
+    ["mode-nes", "mode-spritenes", "textMode.mode.nes"],
+    ["mode-indexed", "mode-spriteindexed", "textMode.mode.indexed"],
+    ["edit-undo", "colorpaletteedit-undo", "edit.undo"],
+  ]) {
+    assert.equal(UI(first).commandId, commandId);
+    assert.equal(UI(second).commandId, commandId);
+  }
+  UI("view-3dgrid").uiID = "renamed-grid-surface";
+  const context = { editorMode: "2d", graphicType: "screen", focus: "canvas", modal: "none", popupOpen: false, shortcutsAllowed: true };
+  let persisted;
+  const commands = new CommandService({
+    getContext: () => context, platform: "other", clearTimer() {}, setTimer: () => 1,
+    storage: { load: () => null, save: (value) => { persisted = JSON.parse(value); } },
+  });
+  let dispatches = 0;
+  const execute = commands.execute.bind(commands);
+  commands.execute = (...args) => { dispatches++; return execute(...args); };
+  const Editor = await loadClassic("js/editor.js", "Editor", {
+    UI, URLSearchParams, window: { location: { search: "" } }, TextModeEditor: { Mode: { TEXTMODE: "textmode" } },
+  });
+  const effects = [];
+  const hostCalls = [];
+  let gridVisible = true;
+  const app = {
+    mode: "2d",
+    textModeEditor: {
+      getGridVisible: () => gridVisible,
+      setGridVisible: (value) => { gridVisible = value; effects.push(["grid", value]); },
+      showDimensionsDialog: () => effects.push("dimensions"),
+      setScreenMode: (value) => effects.push(["screenMode", value]),
+      history: { undo: () => effects.push("editor undo") },
+    },
+    colorPaletteEditor: { colorPaletteEdit: { undo: () => effects.push("palette undo") } },
+    undo: Editor.prototype.undo,
+    menuClick(...args) { hostCalls.push(args); return Editor.prototype.menuClick.call(this, ...args); },
+  };
+  const catalog = createLegacyCommandCatalogAdapter({ app, commands, document, toolMetadata });
+  app.services = { commands, shortcutCatalog: catalog };
+  const localEvents = [];
+  menuBar.trigger = (event, id, source) => { localEvents.push(id); app.menuClick(id, source); };
+  catalog.connectMenuBar(menuBar);
+  assert.throws(() => catalog.connectMenuBar(menuBar), /already connected/);
+  assert.equal(commands.getCommands().filter(({ id }) => id === "view.grid").length, 1);
+  commands.assignBinding("view.grid", commands.bindingFromLegacyShortcut({ key: "F2" }));
+  assert.deepEqual(Object.keys(persisted.overrides), ["view.grid"]);
+  assert.equal(UI("edit-showgrid").shortcutLabel, "F2");
+  assert.equal(UI("view-3dgrid").shortcutLabel, "F2");
+  UI("edit-showgrid").click();
+  app.mode = context.editorMode = "3d";
+  UI("view-3dgrid").click();
+  app.mode = context.editorMode = "2d";
+  context.graphicType = "sprite";
+  UI("file-spritedimensions").click();
+  UI("mode-spritetextmode").click();
+  UI("edit-undo").click();
+  app.mode = context.editorMode = "color palette";
+  UI("colorpaletteedit-undo").click();
+  assert.equal(dispatches, 6);
+  assert.equal(hostCalls.length, 6);
+  assert.deepEqual(hostCalls.slice(0, 2), [["edit-showgrid", "menu"], ["edit-showgrid", "menu"]]);
+  assert.deepEqual(effects, [["grid", false], ["grid", true], "dimensions", ["screenMode", "textmode"], "editor undo", "palette undo"]);
+  assert.deepEqual(localEvents, []);
+
+  app.mode = context.editorMode = "3d";
+  UI("view-3dgrid").setEnabled(false);
+  UI("view-3dgrid").click();
+  assert.equal(dispatches, 6);
+  assert.equal(commands.execute("view.grid").accepted, false); // 2D alias cannot enable 3D.
+  UI("view-3dgrid").enabled = true;
+  UI("view-3dgrid").visible = false;
+  assert.equal(commands.execute("view.grid").accepted, false);
+  assert.equal(hostCalls.length, 6);
+
+  // Project palettes are added dynamically, after catalog connection. Their
+  // local click callbacks and default accelerators must not be commandeered.
+  const localItem = menuBar.menus[0].addItem({ id: "project-palette-42", label: "Project Palette", shortcut: { key: "F3" } });
+  localItem.trigger = () => effects.push("local palette");
+  const beforeLocal = dispatches;
+  localItem.click();
+  assert.equal(localItem.commandId, null);
+  assert.equal(dispatches, beforeLocal);
+  assert.deepEqual(localEvents, ["project-palette-42"]);
+  assert.equal(effects.at(-1), "local palette");
+  assert.equal(UI("edit-musicundo").commandId, null);
+  assert.ok(menuBar.shortcuts.some(({ menuItem }) => menuItem === UI("edit-musicundo")));
+  assert.ok(menuBar.shortcuts.some(({ menuItem }) => menuItem === localItem));
+  assert.ok(!menuBar.shortcuts.some(({ menuItem }) => menuItem === UI("edit-showgrid")));
+});
+
+test("shortcut context provider validates input state and fails closed with rate-limited diagnostics", () => {
+  const document = { body: {}, documentElement: {}, activeElement: null };
+  const app = { mode: "2d", textModeEditor: { tools: { drawTools: { isTyping: () => true } } } };
+  const UI = { dialogStack: [], popup: null };
+  let now = 0;
+  const errors = [];
+  const context = createShortcutContextProvider({ app, document, UI, isRecording: () => false,
+    now: () => now, reportError: (...args) => errors.push(args) });
+  assert.equal(context().inputOwner, "canvasTyping");
+  assert.equal(context({ tagName: "INPUT", type: "text" }).inputOwner, "editableText");
+  UI.dialogStack.push({ uiID: "editColorPaletteDialog" });
+  assert.equal(context().modal, "editColorPaletteDialog");
+  assert.equal(context().textTyping, false);
+  assert.equal(context({}).inputOwner, "unknown");
+  assert.equal(context({ matches: (selector) => selector.includes("button") }).inputOwner, "focusableControl");
+  UI.popup = {};
+  assert.equal(context().popupOpen, true);
+  app.mode = { unexpected: "mode" };
+  assert.deepEqual(context(), createSafeShortcutContext());
+  assert.deepEqual(context(), createSafeShortcutContext());
+  assert.equal(errors.length, 1);
+  now = 5000;
+  assert.deepEqual(context(), createSafeShortcutContext());
+  assert.equal(errors.length, 2);
 });
 
 test("3D grid view implements shared zoom and fit commands", async () => {
@@ -345,7 +501,7 @@ test("2D and 3D grid menu checks keep their independent visibility", async () =>
   assert.doesNotThrow(() => emptyGrid.setGridVisible(true));
 });
 
-test("Block Editor uses shared tool, palette, rotation, and multicolour commands", () => {
+test("Block Editor and palette surfaces use shared native commands", () => {
   const context = {
     editorMode: "2d",
     focus: "canvas",
@@ -438,9 +594,31 @@ test("Block Editor uses shared tool, palette, rotation, and multicolour commands
     ["rotate"],
     ["multicolour", "background"],
   ]);
+
+  blockEditor.visible = false;
+  app.mode = context.editorMode = "color palette";
+  context.modal = "none";
+  app.colorPaletteEditor = { colorPaletteEdit: {
+    setColorPaletteTool: (tool) => events.push(["standalone palette", tool]),
+  } };
+  assert.equal(keyDown("F2").commandId, "editor.tool.pencil");
+  assert.equal(keyDown("l").commandId, "editor.tool.erase");
+  app.mode = context.editorMode = "2d";
+  context.modal = "editColorPaletteDialog";
+  app.textModeEditor.colorPaletteEdit = {
+    visible: true,
+    setColorPaletteTool: (tool) => events.push(["modal palette", tool]),
+  };
+  assert.equal(keyDown("F2").commandId, "editor.tool.pencil");
+  assert.equal(keyDown("l").commandId, "editor.tool.erase");
+  assert.equal(commands.getCommands().filter(({ id }) => id === "editor.tool.pencil").length, 1);
+  assert.deepEqual(events.slice(-4), [
+    ["standalone palette", "pen"], ["standalone palette", "erase"],
+    ["modal palette", "pen"], ["modal palette", "erase"],
+  ]);
 });
 
-test("menu alias order cannot change canonical metadata, defaults, or action", () => {
+test("menu IDs, labels, classes, and order cannot redefine explicit command identity", () => {
   const context = {
     editorMode: "tile set",
     focus: "canvas",
@@ -456,6 +634,7 @@ test("menu alias order cannot change canonical metadata, defaults, or action", (
     storage: { load: () => null, save() {} },
   });
   const menuItem = (uiID) => ({
+    commandId: "textMode.tiles.load",
     enabled: true,
     id: `menu-${uiID}`,
     label: `Renamed ${uiID}`,
@@ -474,8 +653,8 @@ test("menu alias order cannot change canonical metadata, defaults, or action", (
   });
   catalog.connectMenuBar({
     menus: [
-      { className: "ui-menu-tileset", label: "Renamed Tiles", menuItems: [menuItem("tileset-load")] },
-      { className: "ui-menu-tilemode", label: "Other Tiles", menuItems: [menuItem("charactersets-load")] },
+      { className: "renamed-menu-class", label: "Renamed Tiles", menuItems: [menuItem("unrelated-ui-id")] },
+      { className: "ui-menu-tilemode", label: "Other Tiles", menuItems: [menuItem(null)] },
     ],
     shortcuts: [],
   });
@@ -485,10 +664,10 @@ test("menu alias order cannot change canonical metadata, defaults, or action", (
   assert.equal(summary.category, "Tiles");
   assert.equal(commands.formatBindings("textMode.tiles.load"), "");
   assert.equal(commands.execute("textMode.tiles.load", { source: "test" }, context).accepted, true);
-  assert.deepEqual(activations, [["charactersets-load", "command", "test"]]);
+  assert.deepEqual(activations, [["charactersets-load", "test"]]);
 });
 
-test("supported menu aliases require an explicit catalog definition", () => {
+test("every explicit menu commandId is validated before startup registration", () => {
   const commands = new CommandService({
     clearTimer() {},
     getContext: () => ({}),
@@ -503,12 +682,13 @@ test("supported menu aliases require an explicit catalog definition", () => {
     toolMetadata,
   });
 
-  assert.equal(commandIdForLegacyMenuItem("unregistered-menu-item"), null);
-  assert.throws(() => catalog.connectMenuBar({
+  const menuBar = {
     menus: [{
-      className: "ui-menu-tilemode",
+      // Formerly excluded classes must not bypass explicit-ID validation.
+      className: "ui-menu-c64-assembler",
       label: "Test",
       menuItems: [{
+        commandId: "missing.definition",
         enabled: true,
         id: "menu-unregistered",
         label: "Unregistered",
@@ -519,7 +699,13 @@ test("supported menu aliases require an explicit catalog definition", () => {
       }],
     }],
     shortcuts: [],
-  }), /has no command definition/);
+  };
+  for (const commandId of ["missing.definition", "", false, 42]) {
+    menuBar.menus[0].menuItems[0].commandId = commandId;
+    assert.throws(() => catalog.connectMenuBar(menuBar), /has no command definition/);
+    assert.equal(menuBar.commandService, undefined);
+    assert.equal(commands.getCommands().length, 0);
+  }
 });
 
 test("menu aliases keep one stable command identity, metadata, handler, and preference", () => {
@@ -548,6 +734,7 @@ test("menu aliases keep one stable command identity, metadata, handler, and pref
     storage: { load: () => stored, save() {} },
   });
   const menuItem = (id, uiID, label) => ({
+    commandId: "edit.undo",
     enabled: true,
     id,
     label,
@@ -574,8 +761,6 @@ test("menu aliases keep one stable command identity, metadata, handler, and pref
     shortcuts: [],
   });
 
-  assert.equal(commandIdForLegacyMenuItem("edit-undo"), "edit.undo");
-  assert.equal(commandIdForLegacyMenuItem("colorpaletteedit-undo"), "edit.undo");
   assert.deepEqual(catalog.getToolPresentation("draw", "pen"), {
     commandId: "editor.tool.pencil",
     label: "Pencil",
@@ -595,7 +780,7 @@ test("menu aliases keep one stable command identity, metadata, handler, and pref
 
   const result = commands.execute("edit.undo", { source: "menu" }, context);
   assert.equal(result.accepted, true);
-  assert.deepEqual(activations, [["edit-undo", "command", "menu"]]);
+  assert.deepEqual(activations, [["edit-undo", "menu"]]);
 });
 
 test("classic tools keep catalog labels and default shortcuts without services", async () => {

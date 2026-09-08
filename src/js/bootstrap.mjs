@@ -12,7 +12,9 @@ import { createDisabledRemoteProviders } from "./modules/feature-adapters/legacy
 import { createLegacySvgExportPort } from "./modules/feature-adapters/legacySvgExportAdapter.mjs";
 import { createKeyboardShortcutsDialog } from "./modules/feature-adapters/keyboardShortcutsDialog.mjs";
 import { createLegacyCommandCatalogAdapter } from "./modules/feature-adapters/legacyCommandCatalogAdapter.mjs";
-import { createLegacyShortcutContextAdapter } from "./modules/feature-adapters/legacyShortcutContextAdapter.mjs";
+import { registerNativeEditorCommands } from "./modules/feature-adapters/nativeEditorCommands.mjs";
+import { createShortcutContextProvider } from "./modules/feature-adapters/shortcutContextProvider.mjs";
+import { createShortcutLabelProjection } from "./modules/feature-adapters/shortcutLabelProjection.mjs";
 import { createBrowserStorageAdapter } from "./modules/infrastructure/browserStorageAdapter.mjs";
 import { createImageImportModuleLoader } from "./modules/infrastructure/imageImportModuleLoader.mjs";
 import { createKeybindingStorageAdapter } from "./modules/infrastructure/keybindingStorageAdapter.mjs";
@@ -29,11 +31,11 @@ try {
   shortcutBrowserStorage = globalThis.localStorage;
 } catch {}
 
-const shortcutContext = createLegacyShortcutContextAdapter({
+const shortcutContext = createShortcutContextProvider({
   app,
   document: globalThis.document,
   isRecording: () => commands.isRecording(),
-  legacy,
+  UI: legacy.UI,
   now: clock,
   reportError(operation, error) {
     console.warn(`Could not ${operation}.`, error);
@@ -70,10 +72,19 @@ const shortcutSettings = createKeyboardShortcutsDialog({
 const shortcutCatalog = createLegacyCommandCatalogAdapter({
   app,
   commands,
-  document: globalThis.document,
+  registerNativeCommands: () => registerNativeEditorCommands({
+    app,
+    commands,
+    toolMetadata: legacy.ShortcutCatalogMetadata,
+  }),
+  labels: createShortcutLabelProjection({
+    app,
+    commands,
+    document: globalThis.document,
+    toolMetadata: legacy.ShortcutCatalogMetadata,
+    translate: (value) => legacy.TextStore.get(value),
+  }),
   schedule: (callback) => globalThis.setTimeout(callback, 0),
-  toolMetadata: legacy.ShortcutCatalogMetadata,
-  translate: (value) => legacy.TextStore.get(value),
 });
 
 legacy.UI.commandKeyDown = (/** @type {KeyboardEvent} */ event) => commands.handleKeyDown(event).handled;

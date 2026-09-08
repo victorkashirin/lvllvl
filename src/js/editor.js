@@ -1699,24 +1699,24 @@ main split panel north is menu
 
       var menu = null;
       menu = _this.menuBar.addMenu({"label": "Project", "className": 'ui-menu-music ui-menu-tilemode ui-menu-3d ui-menu-colorpalette ui-menu-tileset ui-menu-script ui-menu-c64-assembler' });
-      menu.addItem({ "label": "New Project...", "id": "file-new" });//, "shortcut": { "key": 'N', "cmd": true } });
+      menu.addItem({ "label": "New Project...", "id": "file-new", "commandId": "project.new" });//, "shortcut": { "key": 'N', "cmd": true } });
 //      menu.addItem({ "label": "Open Project...", "id": "file-open" });
 //      menu.addItem({ "label": "Home", "id": "home-page" });
 //      menu.addSeparator({  });
 
       if(SHOWUNFINISHED && g_paramEditor != 'assembler') {
-        menu.addItem({ "label": "Project Explorer" + "...", "id": "show-project-explorer", "shortcut": { "cmd": true, "key": "P" } });
+        menu.addItem({ "label": "Project Explorer" + "...", "id": "show-project-explorer", "commandId": "view.projectExplorer", "shortcut": { "cmd": true, "key": "P" } });
         menu.addSeparator({  });
       }
 
-      menu.addItem({ "label": "Save", "id": "file-save", "shortcut": { "key": 'S', "cmd": true } });
-      menu.addItem({ "label": "Save As...", "id": "file-saveas", "shortcut": { "key": 'S',  "cmd": true, "shift": true } });
+      menu.addItem({ "label": "Save", "id": "file-save", "commandId": "project.save", "shortcut": { "key": 'S', "cmd": true } });
+      menu.addItem({ "label": "Save As...", "id": "file-saveas", "commandId": "project.saveas", "shortcut": { "key": 'S',  "cmd": true, "shift": true } });
 
-      menu.addItem({ "label": "Download Project...", "id": "file-download", "shortcut": { "key": 'D',  "shift": true, "cmd": true, "shift": true } });
+      menu.addItem({ "label": "Download Project...", "id": "file-download", "commandId": "project.download", "shortcut": { "key": 'D',  "shift": true, "cmd": true, "shift": true } });
       //menu.addItem({ "label": "C64", "id": "edit-c64", "shortcut": { "cmd": true, "key": "L"} });
 
       menu.addSeparator({  });
-      menu.addItem({ "label": "Create A Template Link...", "id": "file-templateLink" });
+      menu.addItem({ "label": "Create A Template Link...", "id": "file-templateLink", "commandId": "project.templateLink" });
 
 //      menu.addSeparator({  });
 //      menu.addItem({ "label": "Go To Home Screen", "id": "project-home" });
@@ -1725,29 +1725,29 @@ main split panel north is menu
 
       menu = _this.menuBar.addMenu({"label": "Edit", "className": 'ui-menu-tilemode ui-menu-3d' });
  
-      menu.addItem({ "label": "Undo", "id": "edit-undo", "shortcut": { "cmd": true, "key": "Z" } });
-      menu.addItem({ "label": "Redo", "id": "edit-redo", "shortcut": { "cmd": true, "shift": true, "key": "Z" } });
+      menu.addItem({ "label": "Undo", "id": "edit-undo", "commandId": "edit.undo", "shortcut": { "cmd": true, "key": "Z" } });
+      menu.addItem({ "label": "Redo", "id": "edit-redo", "commandId": "edit.redo", "shortcut": { "cmd": true, "shift": true, "key": "Z" } });
       menu.addSeparator({  });
-      menu.addItem({ "label": "Cut", "id": "edit-cut", "shortcut": { "cmd": true, "key": "X" } });
-      menu.addItem({ "label": "Copy", "id": "edit-copy", "shortcut": { "cmd": true, "key": "C" } });
-      menu.addItem({ "label": "Copy as Image To Clipboard", "id": "edit-copyimage", "shortcut": { "cmd": true, "key": "I" } });
-      menu.addItem({ "label": "Paste", "id": "edit-paste", "shortcut": { "cmd": true, "key": "V" } });
-      menu.addItem({ "label": "Clear All", "id": "edit-clearall", "shortcut": { "key": "Del" } });
-      menu.addItem({ "label": "Clear...", "id": "edit-clear" });
-      menu.addItem({ "label": "Select All", "id": "edit-selectall", "shortcut": { "cmd": true, "key": "A" } });
-      menu.addItem({ "label": "Deselect", "id": "edit-deselect", "shortcut": { "cmd": true, "key": "D" } });
+      menu.addItem({ "label": "Cut", "id": "edit-cut", "commandId": "edit.cut", "shortcut": { "cmd": true, "key": "X" } });
+      menu.addItem({ "label": "Copy", "id": "edit-copy", "commandId": "edit.copy", "shortcut": { "cmd": true, "key": "C" } });
+      menu.addItem({ "label": "Copy as Image To Clipboard", "id": "edit-copyimage", "commandId": "edit.copyimage", "shortcut": { "cmd": true, "key": "I" } });
+      menu.addItem({ "label": "Paste", "id": "edit-paste", "commandId": "edit.paste", "shortcut": { "cmd": true, "key": "V" } });
+      menu.addItem({ "label": "Clear All", "id": "edit-clearall", "commandId": "edit.clearall", "shortcut": { "key": "Del" } });
+      menu.addItem({ "label": "Clear...", "id": "edit-clear", "commandId": "edit.clear" });
+      menu.addItem({ "label": "Select All", "id": "edit-selectall", "commandId": "edit.selectAll", "shortcut": { "cmd": true, "key": "A" } });
+      menu.addItem({ "label": "Deselect", "id": "edit-deselect", "commandId": "edit.deselect", "shortcut": { "cmd": true, "key": "D" } });
       menu.addSeparator({  });
-      menu.addItem({ "label": "Flip H", "id": "edit-fliph" });//, "shortcut": { "key": "F" } });
-      menu.addItem({ "label": "Flip V", "id": "edit-flipv" });//, "shortcut": { "key": "G" } });
+      menu.addItem({ "label": "Flip H", "id": "edit-fliph", "commandId": "edit.fliph" });//, "shortcut": { "key": "F" } });
+      menu.addItem({ "label": "Flip V", "id": "edit-flipv", "commandId": "edit.flipv" });//, "shortcut": { "key": "G" } });
 
-      menu.addItem({ "label": "Replace Colour" + "...", "id": "edit-replaceColor"});
-      menu.addItem({ "label": "Replace Tile" + "...", "id": "edit-replaceCharacter"});
-      menu.addItem({ "label": "Clear Hidden Tiles" + "...", "id": "edit-clearHiddenTiles"});
+      menu.addItem({ "label": "Replace Colour" + "...", "id": "edit-replaceColor", "commandId": "edit.replaceColor"});
+      menu.addItem({ "label": "Replace Tile" + "...", "id": "edit-replaceCharacter", "commandId": "edit.replaceCharacter"});
+      menu.addItem({ "label": "Clear Hidden Tiles" + "...", "id": "edit-clearHiddenTiles", "commandId": "edit.clearHiddenTiles"});
 
 
       menu = _this.menuBar.addMenu({"label": "Edit", "className": 'ui-menu-colorpalette' });
-      menu.addItem({ "label": "Undo", "id": "colorpaletteedit-undo", "shortcut": { "cmd": true, "key": "Z" } });
-      menu.addItem({ "label": "Redo", "id": "colorpaletteedit-redo", "shortcut": { "cmd": true, "shift": true, "key": "Z" } });
+      menu.addItem({ "label": "Undo", "id": "colorpaletteedit-undo", "commandId": "edit.undo", "shortcut": { "cmd": true, "key": "Z" } });
+      menu.addItem({ "label": "Redo", "id": "colorpaletteedit-redo", "commandId": "edit.redo", "shortcut": { "cmd": true, "shift": true, "key": "Z" } });
 
       /*
       menu.addSeparator({  });
@@ -1756,43 +1756,43 @@ main split panel north is menu
 
       menu = _this.menuBar.addMenu({"label": "Export", "className": 'ui-menu-tilemode' });
       menu.addSeparator({ "label": "Visual Formats" });
-      menu.addItem({ "label": "GIF / PNG...", "id": "export-image" });
+      menu.addItem({ "label": "GIF / PNG...", "id": "export-image", "commandId": "export.image" });
 
-      menu.addItem({ "label": "Sprite Sheet (PNG)...", "id": "export-png" });
+      menu.addItem({ "label": "Sprite Sheet (PNG)...", "id": "export-png", "commandId": "export.png" });
 
 
 
-      menu.addItem({ "label": "SVG...", "id": "export-svg" });
+      menu.addItem({ "label": "SVG...", "id": "export-svg", "commandId": "export.svg" });
 
       menu.addSeparator({ "label": "C64 Formats" });
-      menu.addItem({ "label": "C64 PRG / D64...", "id": "export-prg" });
+      menu.addItem({ "label": "C64 PRG / D64...", "id": "export-prg", "commandId": "export.prg" });
       
-      menu.addItem({ "label": "C64 Assembly Source" + "...", "id": "export-c64assembly" });
-      menu.addItem({ "label": "Mega65 Assembly Source" + "...", "id": "export-mega65assembly" });
-      menu.addItem({ "label": "X16 Assembly Source" + "...", "id": "export-x16assembly" });
+      menu.addItem({ "label": "C64 Assembly Source" + "...", "id": "export-c64assembly", "commandId": "export.c64assembly" });
+      menu.addItem({ "label": "Mega65 Assembly Source" + "...", "id": "export-mega65assembly", "commandId": "export.mega65assembly" });
+      menu.addItem({ "label": "X16 Assembly Source" + "...", "id": "export-x16assembly", "commandId": "export.x16assembly" });
       //menu.addItem({ "label": "C64 PRG Advanced...", "id": "export-prgadvanced" });
-      menu.addItem({ "label": "SEQ...", "id": "export-seq" });
-      menu.addItem({ "label": "PETSCII C...", "id": "export-petsciic" });
-      menu.addItem({ "label": ".PET...", "id": "export-pet" });
-      menu.addItem({ "label": "CharPad V5...", "id": "export-charpad" });
+      menu.addItem({ "label": "SEQ...", "id": "export-seq", "commandId": "export.seq" });
+      menu.addItem({ "label": "PETSCII C...", "id": "export-petsciic", "commandId": "export.petsciic" });
+      menu.addItem({ "label": ".PET...", "id": "export-pet", "commandId": "export.pet" });
+      menu.addItem({ "label": "CharPad V5...", "id": "export-charpad", "commandId": "export.charpad" });
 
-      menu.addItem({ "label": "SpritePad...", "id": "export-spritepad" });
+      menu.addItem({ "label": "SpritePad...", "id": "export-spritepad", "commandId": "export.spritepad" });
 
       if(SHOWUNFINISHED) {
         menu.addSeparator({ "label": "X16 Formats" });
-        menu.addItem({ "label": "X16 Basic" + "...", "id": "export-x16basic" });
+        menu.addItem({ "label": "X16 Basic" + "...", "id": "export-x16basic", "commandId": "export.x16basic" });
       }
 
       menu.addSeparator({ "label": "Dev Formats" });
-      menu.addItem({ "label": "JSON...", "id": "export-json" });
-      menu.addItem({ "label": "Binary Data" + "...", "id": "export-binary" });
-      menu.addItem({ "label": "TXT...", "id": "export-txt" });
+      menu.addItem({ "label": "JSON...", "id": "export-json", "commandId": "export.json" });
+      menu.addItem({ "label": "Binary Data" + "...", "id": "export-binary", "commandId": "export.binary" });
+      menu.addItem({ "label": "TXT...", "id": "export-txt", "commandId": "export.txt" });
 
       menu = _this.menuBar.addMenu({"label": "Export", "className": 'ui-menu-3d' });
       menu.addSeparator({ "label": "Visual Formats" });
-      menu.addItem({ "label": "GIF" + "...", "id": "export-3d-gif" });
-      menu.addItem({ "label": "OBJ" + "...", "id": "export-obj" });
-      menu.addItem({ "label": "MagicaVoxel" + "...", "id": "export-magicavoxel" });
+      menu.addItem({ "label": "GIF" + "...", "id": "export-3d-gif", "commandId": "export.3d-gif" });
+      menu.addItem({ "label": "OBJ" + "...", "id": "export-obj", "commandId": "export.obj" });
+      menu.addItem({ "label": "MagicaVoxel" + "...", "id": "export-magicavoxel", "commandId": "export.magicavoxel" });
 
 
       menu = _this.menuBar.addMenu({"label": "Edit", "className": 'ui-menu-music' });
@@ -1837,6 +1837,7 @@ main split panel north is menu
       menu.addItem({
         "label": "Image / Video" + "...",
         "id": "import-image",
+        "commandId": "import.image",
         "shortcut": { "alt": true, "shift": true, "key": "I" }
       });
 //      menu.addItem({ "label": "Video...", "id": "import-video" });
@@ -1845,29 +1846,29 @@ main split panel north is menu
 
 //      menu.addItem({ "label": "PRG...", "id": "import-prg" });
 //      menu.addItem({ "label": "VICE Snapshot...", "id": "import-vice" });
-      menu.addItem({ "label": "C64 Formats" + "...", "id": "import-c64formats" });
-      menu.addItem({ "label": "C64 Formats" + "...", "id": "import-c64spriteformats" });
-      menu.addItem({ "label": "Image" + "...", "id": "import-spriteimage" });
+      menu.addItem({ "label": "C64 Formats" + "...", "id": "import-c64formats", "commandId": "import.c64formats" });
+      menu.addItem({ "label": "C64 Formats" + "...", "id": "import-c64spriteformats", "commandId": "import.c64spriteformats" });
+      menu.addItem({ "label": "Image" + "...", "id": "import-spriteimage", "commandId": "import.spriteimage" });
 
       menu = _this.menuBar.addMenu({"label": "Screen", "className": 'ui-menu-tilemode ui-menu-screen' });
-      menu.addItem({ "label": "Dimensions" + "...", "id": "file-dimensions" });
-      menu.addItem({ "label": "Crop To Selection", "id": "screen-crop"});
+      menu.addItem({ "label": "Dimensions" + "...", "id": "file-dimensions", "commandId": "project.dimensions" });
+      menu.addItem({ "label": "Crop To Selection", "id": "screen-crop", "commandId": "textMode.screen.crop"});
 //      menu.addItem({ "label": "3D Mode", "id": "3d-mode" });
 
 
       menu.addSeparator({ "label": "Mode" });
-      menu.addItem({"label": "Text Mode", "id": "mode-textmode", "checked": true });
-      menu.addItem({"label": "C64 Standard Character Mode", "id": "mode-c64standard"});
-      menu.addItem({"label": "C64 Multicolour Character Mode", "id": "mode-c64multicolor"});
-      menu.addItem({"label": "C64 Extended BG Colour Mode", "id": "mode-c64ecm"});
-      menu.addItem({"label": "Vector Mode", "id": "mode-vector"});
+      menu.addItem({"label": "Text Mode", "id": "mode-textmode", "commandId": "textMode.mode.textmode", "checked": true });
+      menu.addItem({"label": "C64 Standard Character Mode", "id": "mode-c64standard", "commandId": "textMode.mode.c64standard"});
+      menu.addItem({"label": "C64 Multicolour Character Mode", "id": "mode-c64multicolor", "commandId": "textMode.mode.c64multicolor"});
+      menu.addItem({"label": "C64 Extended BG Colour Mode", "id": "mode-c64ecm", "commandId": "textMode.mode.c64ecm"});
+      menu.addItem({"label": "Vector Mode", "id": "mode-vector", "commandId": "textMode.mode.vector"});
 //      menu.addItem({"label": "NES", "id": "mode-nes"});
-      menu.addItem({"label": "Indexed Colour", "id": "mode-indexed"});
-      menu.addItem({"label": "RGB Colour", "id": "mode-rgb"});
+      menu.addItem({"label": "Indexed Colour", "id": "mode-indexed", "commandId": "textMode.mode.indexed"});
+      menu.addItem({"label": "RGB Colour", "id": "mode-rgb", "commandId": "textMode.mode.rgb"});
 
 
       if(SHOWUNFINISHED) {
-        menu.addItem({"label": "NES", "id": "mode-nes"});
+        menu.addItem({"label": "NES", "id": "mode-nes", "commandId": "textMode.mode.nes"});
       }
 
       /*
@@ -1876,46 +1877,46 @@ main split panel north is menu
       menu.addItem({"label": "NES", "id": "mode-rgb"});
       */
       menu.addSeparator({ "label": "Tile Orientation" });
-      menu.addItem({"label": "Allow Tile Flip", "id": "mode-tileflip"});
-      menu.addItem({"label": "Allow Tile Rotate", "id": "mode-tilerotate"});
-      menu.addItem({"label": "Has Tile Materials", "id": "mode-tilematerials"});
+      menu.addItem({"label": "Allow Tile Flip", "id": "mode-tileflip", "commandId": "textMode.mode.tileflip"});
+      menu.addItem({"label": "Allow Tile Rotate", "id": "mode-tilerotate", "commandId": "textMode.mode.tilerotate"});
+      menu.addItem({"label": "Has Tile Materials", "id": "mode-tilematerials", "commandId": "textMode.mode.tilematerials"});
 
 
       menu.addSeparator({ "label": styles.text.blockName + " Mode" });
-      menu.addItem({"label": styles.text.blockName + " Mode", "id": "mode-blockmode"});
-      menu.addItem({"label": styles.text.blockName + " Size" + "...", "id": "mode-blocksize"});
+      menu.addItem({"label": styles.text.blockName + " Mode", "id": "mode-blockmode", "commandId": "textMode.mode.blockmode"});
+      menu.addItem({"label": styles.text.blockName + " Size" + "...", "id": "mode-blocksize", "commandId": "textMode.mode.blocksize"});
       UI('mode-blocksize').setEnabled(false);
 
 
       menu.addSeparator({ "label": "Colour Mode" });
-      menu.addItem({"label": "Colour Per Cell", "id": "colorpermode-cell", "checked": true });
-      menu.addItem({"label": "Colour Per Tile", "id": "colorpermode-character"});
-      menu.addItem({"label": "Colour Per " + styles.text.blockName, "id": "colorpermode-block"});
+      menu.addItem({"label": "Colour Per Cell", "id": "colorpermode-cell", "commandId": "textMode.colorMode.cell", "checked": true });
+      menu.addItem({"label": "Colour Per Tile", "id": "colorpermode-character", "commandId": "textMode.colorMode.character"});
+      menu.addItem({"label": "Colour Per " + styles.text.blockName, "id": "colorpermode-block", "commandId": "textMode.colorMode.block"});
       UI('colorpermode-block').setEnabled(false);
 
       menu.addSeparator({ "label": "Reference Image" });
-      menu.addItem({ "label": "Set Reference Image" + "...", "id": "screen-referenceimage", "shortcut": { "cmd": true, "alt": true, "key": "I"} });
+      menu.addItem({ "label": "Set Reference Image" + "...", "id": "screen-referenceimage", "commandId": "textMode.referenceImage", "shortcut": { "cmd": true, "alt": true, "key": "I"} });
 
       menu = _this.menuBar.addMenu({"label": "Sprite", "className": 'ui-menu-tilemode ui-menu-sprite' });
-      menu.addItem({ "label": "Dimensions" + "...", "id": "file-spritedimensions" });
+      menu.addItem({ "label": "Dimensions" + "...", "id": "file-spritedimensions", "commandId": "project.dimensions" });
       
       
       menu.addSeparator({ "label": "Mode" });
-      menu.addItem({"label": "Monochrome", "id": "mode-spritetextmode", "checked": true });
-      menu.addItem({"label": "C64 Multicolour", "id": "mode-spritec64multicolor"});
-      menu.addItem({"label": "NES", "id": "mode-spritenes"});
-      menu.addItem({"label": "Indexed", "id": "mode-spriteindexed"});
+      menu.addItem({"label": "Monochrome", "id": "mode-spritetextmode", "commandId": "textMode.mode.textmode", "checked": true });
+      menu.addItem({"label": "C64 Multicolour", "id": "mode-spritec64multicolor", "commandId": "textMode.mode.c64multicolor"});
+      menu.addItem({"label": "NES", "id": "mode-spritenes", "commandId": "textMode.mode.nes"});
+      menu.addItem({"label": "Indexed", "id": "mode-spriteindexed", "commandId": "textMode.mode.indexed"});
 
       menu = _this.menuBar.addMenu({"label": "Layers", "className": 'ui-menu-tilemode' });
-      menu.addItem({"label": "New Layer" + "...", "id": "layers-new", "shortcut": { "cmd": true, "key": "L"}  });   // { "cmd": true, "shift": true, "key": "N" }
+      menu.addItem({"label": "New Layer" + "...", "id": "layers-new", "commandId": "textMode.layers.new", "shortcut": { "cmd": true, "key": "L"}  });   // { "cmd": true, "shift": true, "key": "N" }
       menu.addSeparator({ });
-      menu.addItem({"label": "Layer Properties" + "...", "id": "layers-properties"});
-      menu.addItem({"label": "Delete Layer", "id": "layers-delete"});
-      menu.addItem({"label": "Bring Forward", "id": "layers-moveUp", "shortcut": {"cmd": true, "key": "]"} });
-      menu.addItem({"label": "Send Backward", "id": "layers-moveDown", "shortcut": {"cmd": true, "key": "["} });
-      menu.addItem({"label": "Toggle Layer Visibility", "id": "layers-toggle", "shortcut": { "cmd": true, "key": "\\" }});
-      menu.addItem({"label": "Select Above", "id": "layers-selectAbove", "shortcut": {"alt": true, "key": "]"} });
-      menu.addItem({"label": "Select Below", "id": "layers-selectBelow", "shortcut": {"alt": true, "key": "["} });
+      menu.addItem({"label": "Layer Properties" + "...", "id": "layers-properties", "commandId": "textMode.layers.properties"});
+      menu.addItem({"label": "Delete Layer", "id": "layers-delete", "commandId": "textMode.layers.delete"});
+      menu.addItem({"label": "Bring Forward", "id": "layers-moveUp", "commandId": "textMode.layers.moveUp", "shortcut": {"cmd": true, "key": "]"} });
+      menu.addItem({"label": "Send Backward", "id": "layers-moveDown", "commandId": "textMode.layers.moveDown", "shortcut": {"cmd": true, "key": "["} });
+      menu.addItem({"label": "Toggle Layer Visibility", "id": "layers-toggle", "commandId": "textMode.layers.toggle", "shortcut": { "cmd": true, "key": "\\" }});
+      menu.addItem({"label": "Select Above", "id": "layers-selectAbove", "commandId": "textMode.layers.selectAbove", "shortcut": {"alt": true, "key": "]"} });
+      menu.addItem({"label": "Select Below", "id": "layers-selectBelow", "commandId": "textMode.layers.selectBelow", "shortcut": {"alt": true, "key": "["} });
 /*
       menu.addSeparator({ });
       menu.addItem({"label": "Merge...", "id": "layers-merge"});
@@ -1924,50 +1925,50 @@ main split panel north is menu
 */
 
       _this.tileSetMenu = _this.menuBar.addMenu({"label": "Tiles", "className": 'ui-menu-tilemode ui-menu-screen ui-menu-3d' });
-      _this.tileSetMenu.addItem({ "label": "Show Tile Editor", "id": "charactersets-edit", "shortcut": { "cmd": true, "key": "E" } });
+      _this.tileSetMenu.addItem({ "label": "Show Tile Editor", "id": "charactersets-edit", "commandId": "textMode.tiles.edit", "shortcut": { "cmd": true, "key": "E" } });
       _this.tileSetMenu.addSeparator({ "label": "Current Tile Set" });
-      _this.tileSetMenu.addItem({ "label": "Choose A Tile Set" + "...", "id": "charactersets-preset" });
-      _this.tileSetMenu.addItem({ "label": "Load / Import Tile Set" + "...", "id": "charactersets-load" });
+      _this.tileSetMenu.addItem({ "label": "Choose A Tile Set" + "...", "id": "charactersets-preset", "commandId": "textMode.tiles.preset" });
+      _this.tileSetMenu.addItem({ "label": "Load / Import Tile Set" + "...", "id": "charactersets-load", "commandId": "textMode.tiles.load" });
 //      _this.tileSetMenu.addItem({ "label": "Load / Import Tile Set" + "...", "id": "charactersets-load" });
-      _this.tileSetMenu.addItem({ "label": "Save Tile Set" + "...", "id": "charactersets-save" });
+      _this.tileSetMenu.addItem({ "label": "Save Tile Set" + "...", "id": "charactersets-save", "commandId": "textMode.tiles.save" });
       _this.tileSetMenu.addSeparator({ "label": "Project Tile Sets" });
-      _this.tileSetMenu.addItem({ "label": "Create a Tile Set...", "id": "tileset-new" });
+      _this.tileSetMenu.addItem({ "label": "Create a Tile Set...", "id": "tileset-new", "commandId": "textMode.tiles.new" });
 
 
       //tileset
       menu = _this.menuBar.addMenu({"label": "Tiles", "className": 'ui-menu-tileset' });
-      menu.addItem({ "label": "Choose A Character Set" + "...", "id": "tileset-preset" });
-      menu.addItem({ "label": "Load / Import Tile Set" + "...", "id": "tileset-load" });
-      menu.addItem({ "label": "Save Tile Set" + "...", "id": "tileset-save" });
+      menu.addItem({ "label": "Choose A Character Set" + "...", "id": "tileset-preset", "commandId": "textMode.tiles.preset" });
+      menu.addItem({ "label": "Load / Import Tile Set" + "...", "id": "tileset-load", "commandId": "textMode.tiles.load" });
+      menu.addItem({ "label": "Save Tile Set" + "...", "id": "tileset-save", "commandId": "textMode.tiles.save" });
 
 
       _this.colorPaletteMenu = _this.menuBar.addMenu({"label": "Colours", "className": 'ui-menu-tilemode ui-menu-3d' });
-      _this.colorPaletteMenu.addItem({ "label": "Show Colour Editor", "id": "color-edit", "shortcut": { "cmd": true, "shift": true, "key": "E" } });
+      _this.colorPaletteMenu.addItem({ "label": "Show Colour Editor", "id": "color-edit", "commandId": "application.color-edit", "shortcut": { "cmd": true, "shift": true, "key": "E" } });
       _this.colorPaletteMenu.addSeparator({ });      
-      _this.colorPaletteMenu.addItem({ "label": "Choose A Colour Palette" + "...", "id": "colors-preset" });
-      _this.colorPaletteMenu.addItem({ "label": "Edit Colour Palette" + "...", "id": "color-editcolorpalette" });
+      _this.colorPaletteMenu.addItem({ "label": "Choose A Colour Palette" + "...", "id": "colors-preset", "commandId": "textMode.colors.preset" });
+      _this.colorPaletteMenu.addItem({ "label": "Edit Colour Palette" + "...", "id": "color-editcolorpalette", "commandId": "application.color-editcolorpalette" });
 //      menu.addItem({ "label": "Edit/Create Palette...", "id": "colors-edit" });
-      _this.colorPaletteMenu.addItem({ "label": "Load Colour Palette" + "...", "id": "colors-load" });
-      _this.colorPaletteMenu.addItem({ "label": "Save Colour Palette" + "...", "id": "colors-save" });
+      _this.colorPaletteMenu.addItem({ "label": "Load Colour Palette" + "...", "id": "colors-load", "commandId": "textMode.colors.load" });
+      _this.colorPaletteMenu.addItem({ "label": "Save Colour Palette" + "...", "id": "colors-save", "commandId": "textMode.colors.save" });
       _this.colorPaletteMenu.addSeparator({ "label": "Project Tile Sets" });
-      _this.colorPaletteMenu.addItem({ "label": "Create a Colour Palette...", "id": "colorpalette-new" });
+      _this.colorPaletteMenu.addItem({ "label": "Create a Colour Palette...", "id": "colorpalette-new", "commandId": "textMode.colors.new" });
 
       menu = _this.menuBar.addMenu({"label": "Import / Export", "className": 'ui-menu-colorpalette' });
-      menu.addItem({ "label": "Choose A Colour Palette" + "...", "id": "colorpalette-preset" });
-      menu.addItem({ "label": "Load Colour Palette" + "...", "id": "colorpalette-load" });
-      menu.addItem({ "label": "Save Colour Palette" + "...", "id": "colorpalette-save" });
+      menu.addItem({ "label": "Choose A Colour Palette" + "...", "id": "colorpalette-preset", "commandId": "textMode.colors.preset" });
+      menu.addItem({ "label": "Load Colour Palette" + "...", "id": "colorpalette-load", "commandId": "textMode.colors.load" });
+      menu.addItem({ "label": "Save Colour Palette" + "...", "id": "colorpalette-save", "commandId": "textMode.colors.save" });
 
 
       menu = _this.menuBar.addMenu({"label": "View", "className": 'ui-menu-tilemode' });
-      menu.addItem({ "label": "Zoom In", "id": "view-zoomin", "shortcut": { "cmd": true, "key": "=" } });
-      menu.addItem({ "label": "Zoom Out", "id": "view-zoomout", "shortcut": { "cmd": true, "key": "-" } });
-      menu.addItem({ "label": "Fit On Screen", "id": "view-fitonscreen", "shortcut": { "cmd": true, "key": "0" } });
-      menu.addItem({ "label": "Actual Pixels", "id": "view-actualpixels", "shortcut": { "cmd": true, "key": "1" } });
+      menu.addItem({ "label": "Zoom In", "id": "view-zoomin", "commandId": "view.zoomin", "shortcut": { "cmd": true, "key": "=" } });
+      menu.addItem({ "label": "Zoom Out", "id": "view-zoomout", "commandId": "view.zoomout", "shortcut": { "cmd": true, "key": "-" } });
+      menu.addItem({ "label": "Fit On Screen", "id": "view-fitonscreen", "commandId": "view.fitonscreen", "shortcut": { "cmd": true, "key": "0" } });
+      menu.addItem({ "label": "Actual Pixels", "id": "view-actualpixels", "commandId": "view.actualpixels", "shortcut": { "cmd": true, "key": "1" } });
       menu.addSeparator({  });
-      menu.addItem({ "label": "Grid Lines", "id": "edit-showgrid", "checked": true, "shortcut": { "cmd": true, "key": "G" } });
+      menu.addItem({ "label": "Grid Lines", "id": "edit-showgrid", "commandId": "view.grid", "checked": true, "shortcut": { "cmd": true, "key": "G" } });
 
-      menu.addItem({ "label": "Border", "id": "edit-showborder", "checked": true, "shortcut": { "cmd": true, "key": "H" } });
-      menu.addItem({ "label": "Background", "id": "edit-showbackground", "checked": true, "shortcut": { "cmd": true, "key": "B" } });
+      menu.addItem({ "label": "Border", "id": "edit-showborder", "commandId": "edit.showborder", "checked": true, "shortcut": { "cmd": true, "key": "H" } });
+      menu.addItem({ "label": "Background", "id": "edit-showbackground", "commandId": "edit.showbackground", "checked": true, "shortcut": { "cmd": true, "key": "B" } });
       /*
       menu.addItem({ "label": "Show/Hide Background Image", "id": "edit-showbackgroundimage", "shortcut": { "cmd": true, "key": "I" } });
       menu.addItem({ "label": "Set Background Image...", "id": "edit-setbackgroundimage" });
@@ -1981,7 +1982,7 @@ main split panel north is menu
       */
 
      menu.addSeparator({  });
-     menu.addItem({ "label": "Cursor Tile Is Transparent", "id": "cursor-tile-transparent" });
+     menu.addItem({ "label": "Cursor Tile Is Transparent", "id": "cursor-tile-transparent", "commandId": "application.cursor-tile-transparent" });
 
 
 
@@ -1989,36 +1990,36 @@ main split panel north is menu
 
 //     if(SHOWUNFINISHED) { 
       menu.addSeparator({  });
-      menu.addItem({ "label": "Scripting" + "...", "id": "edit-scripting", "shortcut": { "cmd": true, "key": "R" } });
+      menu.addItem({ "label": "Scripting" + "...", "id": "edit-scripting", "commandId": "edit.scripting", "shortcut": { "cmd": true, "key": "R" } });
 //     }
 //      menu.addItem({ "label": "Project View" + "...", "id": "view-project", "shortcut": { "cmd": true, "key": "P" } });
 
 
 
       menu = _this.menuBar.addMenu({"label": "Interface", "className": 'ui-menu-tilemode' });
-      menu.addItem({ "label": "Zen Mode", "id": "view-zenmode", "checked": false, "shortcut": { "alt": true, "shift": true, "key": "Z" } });
+      menu.addItem({ "label": "Zen Mode", "id": "view-zenmode", "commandId": "view.zenmode", "checked": false, "shortcut": { "alt": true, "shift": true, "key": "Z" } });
       menu.addSeparator({  });
-      menu.addItem({ "label": "Tools Panel", "id": "view-tools" });
+      menu.addItem({ "label": "Tools Panel", "id": "view-tools", "commandId": "view.tools" });
       menu.addSeparator({  });
 
 //      menu.addItem({ "label": "Info Panel", "id": "view-infopanel" });
 //      menu.addSeparator({  });
-      menu.addItem({ "label": "Layers Panel", "id": "view-layerspanel" });
-      menu.addItem({ "label": "Tile Palette Panel Side", "id": "view-tilepalettepanelside" });
-      menu.addItem({ "label": "Meta Tile Palette Panel Side", "id": "view-metatilepalettepanelside" });
-      menu.addItem({ "label": "Colour Palette Panel", "id": "view-palettepanel" });
+      menu.addItem({ "label": "Layers Panel", "id": "view-layerspanel", "commandId": "view.layerspanel" });
+      menu.addItem({ "label": "Tile Palette Panel Side", "id": "view-tilepalettepanelside", "commandId": "view.tilepalettepanelside" });
+      menu.addItem({ "label": "Meta Tile Palette Panel Side", "id": "view-metatilepalettepanelside", "commandId": "view.metatilepalettepanelside" });
+      menu.addItem({ "label": "Colour Palette Panel", "id": "view-palettepanel", "commandId": "view.palettepanel" });
       menu.addSeparator({  });
-      menu.addItem({ "label": "Tile Palette Panel Bottom", "id": "view-tilepalettepanelbottom" });
-      menu.addItem({ "label": "Meta Tile Palette Panel Bottom", "id": "view-metatilepalettepanelbottom" });
-      menu.addItem({ "label": "Animation Panel", "id": "view-animationpanel" });
+      menu.addItem({ "label": "Tile Palette Panel Bottom", "id": "view-tilepalettepanelbottom", "commandId": "view.tilepalettepanelbottom" });
+      menu.addItem({ "label": "Meta Tile Palette Panel Bottom", "id": "view-metatilepalettepanelbottom", "commandId": "view.metatilepalettepanelbottom" });
+      menu.addItem({ "label": "Animation Panel", "id": "view-animationpanel", "commandId": "view.animationpanel" });
 
       menu.addSeparator({  });
-      menu.addItem({ "label": "Perf Stats", "id": "view-perfstats" });
+      menu.addItem({ "label": "Perf Stats", "id": "view-perfstats", "commandId": "view.performanceStats" });
       menu.addSeparator({  });
-      menu.addItem({ "label": "Export GIF / " + "Video (old version)" + "...", "id": "export-gif" });
-      menu.addItem({ "label": "Export C64 (new)...", "id": "export-c64" });
+      menu.addItem({ "label": "Export GIF / " + "Video (old version)" + "...", "id": "export-gif", "commandId": "export.gif" });
+      menu.addItem({ "label": "Export C64 (new)...", "id": "export-c64", "commandId": "export.c64" });
       menu.addSeparator({  });
-      menu.addItem({ "label": "Mobile Mode", "id": "settings-mobilemode" });
+      menu.addItem({ "label": "Mobile Mode", "id": "settings-mobilemode", "commandId": "settings.mobilemode" });
 
       // ------------------------------------------------------------
       menu = _this.menuBar.addMenu({"label": "C64", "className": 'ui-menu-c64 ui-menu-c64-assembler' });
@@ -2083,13 +2084,13 @@ main split panel north is menu
       menu.addItem({ "label": "300%", "id": "c64debugger-speed-300" });
 
       menu = _this.menuBar.addMenu({"label": "View", "className": 'ui-menu-3d' });
-      menu.addItem({ "label": "Show / Hide Grid", "id": "view-3dgrid", "shortcut": { "cmd": true, "key": "G" } });
+      menu.addItem({ "label": "Show / Hide Grid", "id": "view-3dgrid", "commandId": "view.grid", "shortcut": { "cmd": true, "key": "G" } });
       menu.addSeparator({  });
-      menu.addItem({ "label": "Perf Stats", "id": "view-3dperfstats" });
+      menu.addItem({ "label": "Perf Stats", "id": "view-3dperfstats", "commandId": "view.performanceStats" });
 
 
       menu = _this.menuBar.addMenu({"label": "View", "className": 'ui-menu-music  ui-menu-colorpalette ui-menu-tileset ui-menu-script' });
-      menu.addItem({ "label": "Project View" + "...", "id": "view-project-explorer", "shortcut": { "cmd": true, "key": "P" } });
+      menu.addItem({ "label": "Project View" + "...", "id": "view-project-explorer", "commandId": "view.projectExplorer", "shortcut": { "cmd": true, "key": "P" } });
 
 
       menu = _this.menuBar.addMenu({"label": "View", "className": 'ui-menu-c64-assembler' });
@@ -2149,16 +2150,16 @@ main split panel north is menu
         "className": 'ui-menu-tilemode ui-menu-3d ui-menu-colorpalette ui-menu-tileset ui-menu-script'
       });
 
-      menu.addItem({ "label": "Common Actions" + "...", "id": "help-commonactionshortcuts" });
+      menu.addItem({ "label": "Common Actions" + "...", "id": "help-commonactionshortcuts", "commandId": "help.commonActions" });
 
-      menu.addItem({ "label": "Keyboard Shortcuts" + "...", "id": "help-keyboardshortcuts" });
+      menu.addItem({ "label": "Keyboard Shortcuts" + "...", "id": "help-keyboardshortcuts", "commandId": "help.keyboardReference" });
 
       if(SHOWUNFINISHED) {
-        menu.addItem({ "label": "Scripting API" + "...", "id": "help-scriptingapi" });
+        menu.addItem({ "label": "Scripting API" + "...", "id": "help-scriptingapi", "commandId": "help.scriptingapi" });
       }
 
       menu.addSeparator({ });
-      menu.addItem({ "label": "About lvllvl plus" + "...", "id": "help-about" });
+      menu.addItem({ "label": "About lvllvl plus" + "...", "id": "help-about", "commandId": "help.about" });
 
       _this.menuBar.on('itemclick', function(id, source) {
         _this.menuClick(id, source);
@@ -2312,17 +2313,9 @@ main split panel north is menu
 //    this.tabPanel.setTabLabel(0, docRecord.name);
   },
 
-  menuClick: function(menuItem, source, commandSource) {
-    if(source != 'command' && this.services && this.services.commands && this.services.shortcutCatalog) {
-      var commandId = this.services.shortcutCatalog.commandIdForMenuItem(menuItem);
-      if(this.services.commands.hasCommand(commandId)) {
-        this.services.commands.execute(commandId, { source: source || 'menu' });
-        return;
-      }
-    }
-    if(source == 'command') {
-      source = commandSource || 'menu';
-    }
+  // Temporary action host for commands that have not moved to their feature yet.
+  // Command-owned menus dispatch in UI.MenuItem.click, never back through here.
+  menuClick: function(menuItem, source) {
     var _this = this;
     switch(menuItem) {
       case 'file-new':

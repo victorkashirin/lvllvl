@@ -15,7 +15,7 @@ UI.MenuItem = function() {
       this.menu = args.menu;
     }
 
-    this.commandId = null;
+    this.commandId = typeof args.commandId === 'undefined' ? null : args.commandId;
     this.shortcutLabel = null;
 
     if(typeof args.label === 'undefined') {

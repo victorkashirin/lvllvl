@@ -35,6 +35,12 @@
 
 ### Fixed
 
+- Bind configurable menus directly to canonical command IDs instead of looking
+  up legacy menu IDs, keeping duplicate surfaces on one handler, binding, and
+  preference entry. Validate explicit menu commands at startup, preserve
+  non-configurable menu callbacks, and remove recursive command dispatch through
+  the legacy action host. Separate native command registration, shortcut labels,
+  and validated focus/editor context from the remaining menu-action bridge.
 - Theme text fields, dropdowns, native and custom checkboxes, and radio buttons
   with the application's dark surface, text, focus, disabled, and selection
   colours. Give

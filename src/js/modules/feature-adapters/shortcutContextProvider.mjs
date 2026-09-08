@@ -1,4 +1,4 @@
-import { createSafeShortcutContext } from "../domain/shortcutContext.mjs";
+import { createSafeShortcutContext, isShortcutContext } from "../domain/shortcutContext.mjs";
 
 /** @typedef {import("../domain/shortcutContext.mjs").ShortcutContext} ShortcutContext */
 /** @typedef {import("../domain/shortcutContext.mjs").ShortcutInputOwner} ShortcutInputOwner */
@@ -74,17 +74,17 @@ function modalIdentity(dialog) {
 }
 
 /**
- * Translate all DOM and legacy editor state at one boundary. The optional
+ * Translate and validate DOM/editor state at one input boundary. The optional
  * target lets keyboard dispatch classify the element that owns this event;
  * callers without an event receive the current active element.
  *
- * @param {{app: any, document: Document, isRecording: () => boolean, legacy: any, now?: () => number, reportError?: (operation: string, error: unknown) => void, reportInterval?: number}} dependencies
+ * @param {{app: any, document: Document, isRecording: () => boolean, UI: any, now?: () => number, reportError?: (operation: string, error: unknown) => void, reportInterval?: number}} dependencies
  */
-export function createLegacyShortcutContextAdapter({
+export function createShortcutContextProvider({
   app,
   document,
   isRecording,
-  legacy,
+  UI,
   now = () => Date.now(),
   reportError = () => {},
   reportInterval = 5000,
@@ -105,22 +105,22 @@ export function createLegacyShortcutContextAdapter({
   /** @param {unknown} [eventTarget] @returns {ShortcutContext} */
   return function shortcutContext(eventTarget) {
     try {
-      const activeDialog = legacy.UI.dialogStack.length
-        ? legacy.UI.dialogStack[legacy.UI.dialogStack.length - 1]
+      const activeDialog = UI.dialogStack.length
+        ? UI.dialogStack[UI.dialogStack.length - 1]
         : null;
       const drawTools = app.textModeEditor?.tools?.drawTools;
       const textEditorMode = app.textModeEditor?.getEditorMode?.() || "none";
       const textTyping = activeDialog === null && drawTools?.isTyping?.() === true;
       const input = classifyInput(eventTarget || document.activeElement, textTyping, document);
-      return {
-        browserEditOperations: legacy.UI.browserEditOperations === true,
+      const context = {
+        browserEditOperations: UI.browserEditOperations === true,
         deviceType: app.deviceType || "desktop",
         editorMode: app.mode || "none",
         focus: input.focus,
         graphicType: app.textModeEditor?.graphic?.getType?.() || "none",
         inputOwner: input.inputOwner,
         modal: modalIdentity(activeDialog),
-        popupOpen: legacy.UI.popup !== null,
+        popupOpen: UI.popup !== null,
         pointerCanvas: app.textModeEditor?.gridView2d?.mouseInCanvas === true,
         recorderActive: isRecording(),
         screenMode: app.textModeEditor?.getScreenMode?.() || "none",
@@ -137,6 +137,8 @@ export function createLegacyShortcutContextAdapter({
         textTool: drawTools?.tool || "none",
         textTyping,
       };
+      if (!isShortcutContext(context)) throw new TypeError("Invalid shortcut context from editor state");
+      return context;
     } catch (error) {
       reportFailure(error);
       return createSafeShortcutContext();

@@ -36,7 +36,7 @@ Use this plan when implementing or reviewing the remaining shortcut refactor. It
 
 **Why first:** dispatcher lifecycle and catalog extraction need a reliable definition of which surface owns an event. Service availability currently substitutes for migration ownership in legacy handlers.
 
-**Read:** [shared shortcut context](../src/js/modules/domain/shortcutContext.mjs#L1), [legacy context adapter](../src/js/modules/feature-adapters/legacyShortcutContextAdapter.mjs#L76), [keyboardPolicyAllows](../src/js/modules/application/commandService.mjs#L464), [menu contexts](../src/js/editor.js#L1682), [colour command registration](../src/js/editor.js#L1902), [palette key handling](../src/js/textMode/color/colorPaletteEdit.js#L2288), and [Tools.keyDown](../src/js/textMode/tools.js#L46).
+**Read:** [shared shortcut context](../src/js/modules/domain/shortcutContext.mjs#L1), [shortcut context provider](../src/js/modules/feature-adapters/shortcutContextProvider.mjs#L76), [keyboardPolicyAllows](../src/js/modules/application/commandService.mjs#L464), [menu contexts](../src/js/editor.js#L1682), [colour command registration](../src/js/editor.js#L1902), [palette key handling](../src/js/textMode/color/colorPaletteEdit.js#L2288), and [Tools.keyDown](../src/js/textMode/tools.js#L46).
 
 **Remaining behavior:**
 
@@ -335,6 +335,14 @@ mode aliases, 2D/3D Grid, and 2D/3D Performance Stats under one command
 identity each; enabled 3D activation for Zoom In, Zoom Out, and Fit On Screen;
 kept Actual Pixels 2D-only; and removed the exposed 3D PNG, 3D Dimensions, and
 sprite Help entries whose legacy actions had no implementation.
+
+**Integration tune-up:** See [shortcuts_tune.md](shortcuts_tune.md#implementation-record).
+Menu declarations now carry canonical IDs directly; the alias lookup and
+`Editor.menuClick` dispatch redirect are removed. Definition metadata lives in
+`editorCommandDefinitions.mjs`, input translation in `shortcutContextProvider.mjs`,
+and the native-command and label blocks are composed separately at bootstrap.
+The remaining catalog bridge explicitly calls `legacyAction`. IDs and version-2
+preferences are unchanged.
 
 ## Phase 7 — API and data ownership
 
