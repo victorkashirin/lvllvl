@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { rewriteModuleImports, versionModuleImports } from "../scripts/module-versioning.mjs";
+import { bundledModuleDependencies } from "../scripts/build-config.mjs";
+import {
+  prepareProductionModule,
+  rewriteModuleImports,
+  versionModuleImports,
+} from "../scripts/module-versioning.mjs";
 
 test("production module imports receive one encoded release version", () => {
   const source = [
@@ -42,5 +47,19 @@ test("production module imports can target a bundled dependency", () => {
       'const packageName = "@tanstack/hotkeys";',
       "",
     ].join("\n"),
+  );
+});
+
+test("production dependency imports use the authoritative output mapping", () => {
+  const source = 'import { parseKeyboardEvent } from "@tanstack/hotkeys";\n';
+
+  assert.equal(
+    prepareProductionModule(
+      source,
+      "js/modules/domain/keybindings.mjs",
+      "release 1",
+      bundledModuleDependencies,
+    ),
+    'import { parseKeyboardEvent } from "../../vendor/tanstack-hotkeys.mjs?v=release%201";\n',
   );
 });

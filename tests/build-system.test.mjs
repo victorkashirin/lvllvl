@@ -21,9 +21,14 @@ import { stripVTControlCharacters } from "node:util";
 import { buildGraph } from "../scripts/build-graph.mjs";
 import {
   assetDirectories,
+  bundledModuleDependencies,
   runtimeFeatureRequests,
 } from "../scripts/build-config.mjs";
-import { assertCaseExactPath, publishDirectory } from "../scripts/build.mjs";
+import {
+  assertCaseExactPath,
+  isAllowedUnresolvedDependencyWarning,
+  publishDirectory,
+} from "../scripts/build.mjs";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const require = createRequire(import.meta.url);
@@ -172,6 +177,30 @@ test("build input paths are validated with exact filesystem casing", async (cont
   await assert.rejects(
     assertCaseExactPath(root, "exact.js"),
     /uses "exact\.js" but the filesystem entry is "Exact\.js"/,
+  );
+});
+
+test("dependency bundling ignores only declared unresolved package edges", () => {
+  const dependency = bundledModuleDependencies["@tanstack/hotkeys"];
+  const knownImporter = path.join(projectRoot, dependency.allowedUnresolvedImports[0].importers[0]);
+  const warning = {
+    code: "UNRESOLVED_IMPORT",
+    exporter: "@tanstack/store",
+    id: knownImporter,
+  };
+
+  assert.equal(isAllowedUnresolvedDependencyWarning(warning, dependency), true);
+  assert.equal(
+    isAllowedUnresolvedDependencyWarning({ ...warning, exporter: "unexpected" }, dependency),
+    false,
+  );
+  assert.equal(
+    isAllowedUnresolvedDependencyWarning({ ...warning, id: `${knownImporter}.other` }, dependency),
+    false,
+  );
+  assert.equal(
+    isAllowedUnresolvedDependencyWarning({ ...warning, code: "OTHER_WARNING" }, dependency),
+    false,
   );
 });
 

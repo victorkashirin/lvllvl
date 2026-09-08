@@ -1,3 +1,5 @@
+import path from "node:path";
+
 import { parse } from "acorn";
 
 function importSpecifiers(ast) {
@@ -60,4 +62,35 @@ export function rewriteModuleImports(source, replacements) {
       `${replacements[specifier.value]}${rewritten.slice(specifier.end - 1)}`;
   }
   return rewritten;
+}
+
+/**
+ * Rewrite bare dependency imports to their relative production outputs using
+ * the authoritative dependency mapping from the build configuration.
+ *
+ * @param {string} source
+ * @param {string} output
+ * @param {Record<string, { output: string }>} dependencies
+ */
+export function rewriteModuleDependencyImports(source, output, dependencies) {
+  const replacements = Object.fromEntries(Object.entries(dependencies)
+    .map(([specifier, dependency]) => {
+      let relative = path.posix.relative(path.posix.dirname(output), dependency.output);
+      if (!relative.startsWith(".")) relative = `./${relative}`;
+      return [specifier, relative];
+    }));
+  return rewriteModuleImports(source, replacements);
+}
+
+/**
+ * @param {string} source
+ * @param {string} output
+ * @param {string} version
+ * @param {Record<string, { output: string }>} dependencies
+ */
+export function prepareProductionModule(source, output, version, dependencies) {
+  return versionModuleImports(
+    rewriteModuleDependencyImports(source, output, dependencies),
+    version,
+  );
 }

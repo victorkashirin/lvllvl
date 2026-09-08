@@ -24,7 +24,7 @@ import { browserPolicy } from "./browser-policy.mjs";
 import { buildGraph, copiedScripts } from "./build-graph.mjs";
 import { verifyProductionLegacyGraph } from "./legacy-graph-policy.mjs";
 import { verifyModuleBoundaries } from "./module-boundaries.mjs";
-import { rewriteModuleImports, versionModuleImports } from "./module-versioning.mjs";
+import { prepareProductionModule } from "./module-versioning.mjs";
 import {
   assetDirectories,
   buildDirectory,
@@ -387,9 +387,7 @@ async function bundleModuleDependencies() {
     const runtimeBundle = await rollup({
       input: virtualId,
       onwarn(warning, warn) {
-        // TanStack's public index re-exports optional manager classes that use
-        // @tanstack/store. They are removed by tree-shaking below.
-        if (warning.code === "UNRESOLVED_IMPORT") return;
+        if (isAllowedUnresolvedDependencyWarning(warning, dependency)) return;
         warn(warning);
       },
       plugins: [{
@@ -404,8 +402,15 @@ async function bundleModuleDependencies() {
     });
     try {
       const generated = await runtimeBundle.generate({ format: "es" });
-      const chunk = generated.output.find((entry) => entry.type === "chunk");
-      if (!chunk?.code || chunk.imports.length > 0) {
+      const chunks = generated.output.filter((entry) => entry.type === "chunk");
+      const chunk = chunks[0];
+      if (
+        generated.output.length !== 1 ||
+        chunks.length !== 1 ||
+        !chunk?.code ||
+        chunk.imports.length > 0 ||
+        chunk.dynamicImports.length > 0
+      ) {
         throw new Error(`Runtime dependency ${specifier} did not produce a self-contained module`);
       }
       const destination = path.join(buildRoot, dependency.output);
@@ -421,17 +426,26 @@ async function copyDeclaredScripts(scripts) {
   for (const [output, source] of Object.entries(scripts)) {
     let content = renderVersion(await readFile(path.join(sourceRoot, source), "utf8"));
     if (output.endsWith(".mjs")) {
-      const replacements = Object.fromEntries(Object.entries(bundledModuleDependencies)
-        .map(([specifier, dependency]) => {
-          let relative = path.posix.relative(path.posix.dirname(output), dependency.output);
-          if (!relative.startsWith(".")) relative = `./${relative}`;
-          return [specifier, relative];
-        }));
-      content = versionModuleImports(rewriteModuleImports(content, replacements), version);
+      content = prepareProductionModule(
+        content,
+        output,
+        version,
+        bundledModuleDependencies,
+      );
     }
     await mkdir(path.join(buildRoot, path.posix.dirname(output)), { recursive: true });
     await writeFile(path.join(buildRoot, output), `${content}\n`);
   }
+}
+
+function isAllowedUnresolvedDependencyWarning(warning, dependency) {
+  if (warning.code !== "UNRESOLVED_IMPORT") return false;
+  const importer = typeof warning.id === "string"
+    ? path.relative(projectRoot, warning.id).split(path.sep).join("/")
+    : null;
+  return (dependency.allowedUnresolvedImports ?? []).some((allowed) =>
+    warning.exporter === allowed.specifier && allowed.importers.includes(importer)
+  );
 }
 
 async function publishDirectory(stagedDirectory, publishedDirectory) {
@@ -564,4 +578,4 @@ async function build() {
 const isDirectRun = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (isDirectRun) await build();
 
-export { assertCaseExactPath, build, publishDirectory };
+export { assertCaseExactPath, build, isAllowedUnresolvedDependencyWarning, publishDirectory };

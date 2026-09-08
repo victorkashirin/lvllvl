@@ -39,8 +39,8 @@
       "sha256": "1ce9a4ffaebcee3ad690a90e5286ca233979ca060ed8114430b0c45847f04086"
     },
     "js/modules/application/commandService.mjs": {
-      "bytes": 61631,
-      "sha256": "6b5476c3055f30a270654c7642a326632fa9161213d1799087981de2dcf4e2cc"
+      "bytes": 68364,
+      "sha256": "34ccad588818b15e09aa988d359a2e0915fccde000beec1059f42dc7e7fa77f2"
     },
     "js/modules/application/documentSession.mjs": {
       "bytes": 4351,
@@ -83,8 +83,8 @@
       "sha256": "01472954f1ac9bda34d13f521bc5bab724d779fe0b10ca5d27dd2842862dfc52"
     },
     "js/modules/feature-adapters/keyboardShortcutsDialog.mjs": {
-      "bytes": 32221,
-      "sha256": "a06cb0db04f33a69c202f7f1d30cd51c5f0860647517aa5483ee4d072a238892"
+      "bytes": 33868,
+      "sha256": "a6e320a44a0571bfa9324435bfd1ac28980ae5ebe268fcf18ed0f207c4f1d26d"
     },
     "js/modules/feature-adapters/legacyCommandCatalogAdapter.mjs": {
       "bytes": 29842,

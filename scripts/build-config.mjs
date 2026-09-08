@@ -6,6 +6,21 @@ export const buildDirectory = "dist";
 // source imports are rewritten to the corresponding production URL.
 export const bundledModuleDependencies = Object.freeze({
   "@tanstack/hotkeys": Object.freeze({
+    allowedImporters: Object.freeze([
+      "js/modules/domain/keybindings.mjs",
+    ]),
+    allowedUnresolvedImports: Object.freeze([
+      Object.freeze({
+        importers: Object.freeze([
+          "node_modules/@tanstack/hotkeys/dist/hotkey-manager.js",
+          "node_modules/@tanstack/hotkeys/dist/hotkey-recorder.js",
+          "node_modules/@tanstack/hotkeys/dist/hotkey-sequence-recorder.js",
+          "node_modules/@tanstack/hotkeys/dist/key-state-tracker.js",
+          "node_modules/@tanstack/hotkeys/dist/sequence-manager.js",
+        ]),
+        specifier: "@tanstack/store",
+      }),
+    ]),
     entry: "node_modules/@tanstack/hotkeys/dist/index.js",
     exports: Object.freeze([
       "isSingleLetterKey",

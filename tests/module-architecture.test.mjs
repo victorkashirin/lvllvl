@@ -376,7 +376,7 @@ test("the production ES-module graph is discovered and obeys its boundaries", as
     "js/modules/infrastructure/imageImportModuleLoader.mjs",
     "js/modules/infrastructure/keybindingStorageAdapter.mjs",
   ]);
-  assert.equal(result.edges.length, 22);
+  assert.equal(result.edges.length, 23);
 });
 
 test("module discovery rejects an unreachable file under a governed root", async (context) => {
@@ -418,6 +418,31 @@ test("module verification rejects imports outside governed roots", async (contex
   await assert.rejects(
     verifyModuleBoundaries({ sourceRoot: root, graph: fixtureGraph() }),
     /imports module outside the governed roots: legacy\.js/,
+  );
+});
+
+test("external module allowances are restricted to their intended importers", async (context) => {
+  const root = await moduleFixture(context);
+  await mkdir(path.join(root, "modules", "domain"), { recursive: true });
+  await writeFile(path.join(root, "bootstrap.mjs"), 'import "./modules/domain/model.mjs";\n');
+  await writeFile(
+    path.join(root, "modules", "domain", "model.mjs"),
+    'import "example-package";\n',
+  );
+  const graph = fixtureGraph({
+    externalModules: { "example-package": ["modules/domain/model.mjs"] },
+    publicEntries: ["modules/domain/model.mjs"],
+  });
+
+  await assert.doesNotReject(verifyModuleBoundaries({ sourceRoot: root, graph }));
+
+  await writeFile(
+    path.join(root, "bootstrap.mjs"),
+    'import "./modules/domain/model.mjs";\nimport "example-package";\n',
+  );
+  await assert.rejects(
+    verifyModuleBoundaries({ sourceRoot: root, graph }),
+    /bootstrap\.mjs is not allowed to import external module example-package/,
   );
 });
 

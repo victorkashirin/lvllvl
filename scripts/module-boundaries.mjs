@@ -460,16 +460,49 @@ function matchingLayer(filename, layers) {
     .sort((left, right) => right.root.length - left.root.length)[0];
 }
 
-function resolveModuleImport(importer, specifier, externalModules = new Set()) {
+function resolveModuleImport(importer, specifier, externalModules = new Map()) {
   if (/[?#]/.test(specifier)) {
     throw new Error(`${importer} imports a source module with a query or fragment: ${specifier}`);
   }
   const withoutQuery = specifier.split(/[?#]/, 1)[0];
   if (!withoutQuery.startsWith(".")) {
-    if (externalModules.has(withoutQuery)) return null;
+    const allowedImporters = externalModules.get(withoutQuery);
+    if (allowedImporters?.has(importer)) return null;
+    if (allowedImporters) {
+      throw new Error(`${importer} is not allowed to import external module ${specifier}`);
+    }
     throw new Error(`${importer} imports unsupported external module ${specifier}`);
   }
   return path.posix.normalize(path.posix.join(path.posix.dirname(importer), withoutQuery));
+}
+
+function externalModuleRules(graph, declaredFiles) {
+  const configured = graph.externalModules ?? {};
+  if (!configured || Array.isArray(configured) || typeof configured !== "object") {
+    throw new Error("External module rules must map specifiers to allowed importers");
+  }
+
+  const rules = new Map();
+  for (const [specifier, importers] of Object.entries(configured)) {
+    if (
+      specifier.startsWith(".") ||
+      /[?#]/.test(specifier) ||
+      !Array.isArray(importers) ||
+      importers.length === 0
+    ) {
+      throw new Error(`External module ${specifier} must declare allowed importers`);
+    }
+    if (new Set(importers).size !== importers.length) {
+      throw new Error(`External module ${specifier} contains duplicate allowed importers`);
+    }
+    for (const importer of importers) {
+      if (!declaredFiles.has(importer)) {
+        throw new Error(`External module ${specifier} allows an unknown importer: ${importer}`);
+      }
+    }
+    rules.set(specifier, new Set(importers));
+  }
+  return rules;
 }
 
 async function filesUnderRoot(sourceRoot, relativeRoot) {
@@ -631,7 +664,7 @@ export async function verifyModuleBoundaries({ graph = moduleGraph, sourceRoot =
   const layers = moduleLayers(graph);
   const publicEntries = new Set(graph.publicEntries ?? []);
   const generatedEntries = new Set(graph.generatedEntries ?? []);
-  const externalModules = new Set(graph.externalModules ?? []);
+  const externalModules = externalModuleRules(graph, declaredFiles);
   const dynamicImportEntries = graph.dynamicImportEntries ?? {};
   for (const filename of publicEntries) {
     if (!declaredFiles.has(filename)) {

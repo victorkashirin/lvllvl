@@ -1,3 +1,5 @@
+import { bundledModuleDependencies } from "./build-config.mjs";
+
 // Ordered source graph for the legacy global-script application. Keep order stable:
 // many files still communicate through globals while migration to ES modules proceeds.
 export const buildGraph = {
@@ -417,8 +419,12 @@ export const buildGraph = {
 // injected through a layer-specific public entry point.
 export const moduleGraph = {
   entry: "js/bootstrap.mjs",
-  externalModules: ["@tanstack/hotkeys"],
-  generatedEntries: ["js/features/image-import.js", "js/vendor/tanstack-hotkeys.mjs"],
+  externalModules: Object.fromEntries(Object.entries(bundledModuleDependencies)
+    .map(([specifier, dependency]) => [specifier, dependency.allowedImporters])),
+  generatedEntries: [
+    "js/features/image-import.js",
+    ...Object.values(bundledModuleDependencies).map(({ output }) => output),
+  ],
   dynamicImportEntries: {
     "js/modules/infrastructure/imageImportModuleLoader.mjs": ["js/features/image-import.js"],
   },

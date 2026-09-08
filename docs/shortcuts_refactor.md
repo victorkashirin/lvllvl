@@ -30,7 +30,7 @@ Use this plan when implementing or reviewing the remaining shortcut refactor. It
 | [x] | [6. Catalog ownership and legacy cleanup](#phase-6--catalog-ownership-and-legacy-cleanup) | P2 / P3 | SC-14; CQ-01, CQ-02 |
 | [x] | [7. API and data ownership](#phase-7--api-and-data-ownership) | P3 | CQ-09 |
 | [x] | [8. Derived-data caching](#phase-8--derived-data-caching) | P3 | SC-15; CQ-10 |
-| [ ] | [9. Build boundary hardening](#phase-9--build-boundary-hardening) | P3 | CQ-11 |
+| [x] | [9. Build boundary hardening](#phase-9--build-boundary-hardening) | P3 | CQ-11 |
 
 ## Phase 1 — Input ownership and modal migration
 
@@ -417,9 +417,29 @@ predicates remained live. No Phase 8 work is deferred.
 2. Centralize specifier/output mapping and relative import rewriting, while retaining sufficiently independent verification to detect a wrong transformation.
 3. Restrict TanStack imports to the intended keybinding boundary where architecture tooling permits.
 
-**Validation target:** the relevant dependency-bundle/build-boundary verification only; obtain approval for any test execution and use existing checks where sufficient.
+**Validation target:** the relevant dependency-bundle/build-boundary verification only.
 
 **Gate:** valid bundles remain self-contained; unexpected unresolved imports surface; architectural exceptions cover only intended consumers; dependency updates require one authoritative mapping change.
+
+**Progress record (2026-09-08):** Added importer-scoped external dependency
+rules derived from `bundledModuleDependencies`, restricting
+`@tanstack/hotkeys` to the keybinding domain boundary. The same authoritative
+dependency entry now declares the exact optional manager-to-`@tanstack/store`
+edges whose Rollup warnings may be ignored; all other unresolved imports reach
+Rollup's warning handler. Production dependency-path rewriting is centralized
+in `prepareProductionModule`, while build verification independently resolves
+emitted dependency specifiers to their configured, versioned output and parses
+each generated dependency module to confirm that it contains no remaining
+imports. Bundle generation also rejects multiple outputs and static or dynamic
+chunk imports. Targeted regression cases were added for warning scope,
+importer scope, and the authoritative rewrite mapping. Static syntax and diff
+checks passed, as did all three module-versioning tests, the two focused module
+architecture cases, the focused build-warning case, the production module
+boundary check, the production build, and the independent verifier across 73
+outputs. The verifier exposed stale golden sizes and hashes for the Phase 8
+`commandService` and `keyboardShortcutsDialog` outputs; those two fixture
+entries were reconciled with the already-validated source changes before the
+verifier passed. No Phase 9 work is deferred.
 
 ## Validation reference
 

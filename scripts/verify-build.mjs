@@ -15,7 +15,7 @@ import {
   formatModuleDependencyReport,
   verifyModuleBoundaries,
 } from "./module-boundaries.mjs";
-import { rewriteModuleImports, versionModuleImports } from "./module-versioning.mjs";
+import { prepareProductionModule } from "./module-versioning.mjs";
 
 import {
   buildDirectory,
@@ -111,6 +111,78 @@ function requestPath(reference, baseDirectory = "") {
   }
 
   return normalized;
+}
+
+function moduleImportSpecifiers(source, filename) {
+  const ast = parse(source, {
+    allowHashBang: true,
+    ecmaVersion: "latest",
+    sourceFile: filename,
+    sourceType: "module",
+  });
+  const specifiers = [];
+
+  function visit(node) {
+    if (
+      (node.type === "ImportDeclaration" ||
+        node.type === "ExportAllDeclaration" ||
+        node.type === "ExportNamedDeclaration") &&
+      node.source
+    ) {
+      specifiers.push(node.source.value);
+    } else if (node.type === "ImportExpression") {
+      specifiers.push(node.source.type === "Literal" ? node.source.value : null);
+    }
+
+    for (const value of Object.values(node)) {
+      if (Array.isArray(value)) {
+        for (const child of value) {
+          if (child?.type) visit(child);
+        }
+      } else if (value?.type) {
+        visit(value);
+      }
+    }
+  }
+
+  visit(ast);
+  return specifiers;
+}
+
+function verifyModuleDependencyTargets(source, outputSource, output) {
+  const sourceSpecifiers = moduleImportSpecifiers(source, output);
+  const outputSpecifiers = moduleImportSpecifiers(outputSource, output);
+  if (sourceSpecifiers.length !== outputSpecifiers.length) {
+    throw new Error(`${output} changed the number of module imports`);
+  }
+
+  for (const [index, sourceSpecifier] of sourceSpecifiers.entries()) {
+    const dependency = bundledModuleDependencies[sourceSpecifier];
+    if (!dependency) continue;
+
+    const outputSpecifier = outputSpecifiers[index];
+    let expectedSpecifier = path.posix.relative(
+      path.posix.dirname(output),
+      dependency.output,
+    );
+    if (!expectedSpecifier.startsWith(".")) expectedSpecifier = `./${expectedSpecifier}`;
+    expectedSpecifier = `${expectedSpecifier}?v=${encodeURIComponent(version)}`;
+    if (outputSpecifier !== expectedSpecifier) {
+      throw new Error(
+        `${output} rewrites ${sourceSpecifier} incorrectly: expected ` +
+          `${expectedSpecifier}, received ${outputSpecifier}`,
+      );
+    }
+  }
+}
+
+async function verifySelfContainedModuleDependencies() {
+  for (const [specifier, dependency] of Object.entries(bundledModuleDependencies)) {
+    const outputSource = await readFile(path.join(buildRoot, dependency.output), "utf8");
+    if (moduleImportSpecifiers(outputSource, dependency.output).length > 0) {
+      throw new Error(`Runtime dependency ${specifier} is not a self-contained module`);
+    }
+  }
 }
 
 function stripJavaScriptComments(source) {
@@ -290,21 +362,20 @@ async function verifyBuildGraph() {
     const rendered = sourceContent.split("{v}").join(version);
     let expectedContent = rendered;
     if (output.endsWith(".mjs")) {
-      const replacements = Object.fromEntries(Object.entries(bundledModuleDependencies)
-        .map(([specifier, dependency]) => {
-          let relative = path.posix.relative(path.posix.dirname(output), dependency.output);
-          if (!relative.startsWith(".")) relative = `./${relative}`;
-          return [specifier, relative];
-        }));
-      expectedContent = versionModuleImports(
-        rewriteModuleImports(rendered, replacements),
+      expectedContent = prepareProductionModule(
+        rendered,
+        output,
         version,
+        bundledModuleDependencies,
       );
     }
     const expected = `${expectedContent}\n`;
     const actual = await readFile(path.join(buildRoot, output), "utf8");
     if (actual !== expected) throw new Error(`${output} differs from its declared source`);
+    if (output.endsWith(".mjs")) verifyModuleDependencyTargets(rendered, actual, output);
   }
+
+  await verifySelfContainedModuleDependencies();
 }
 
 async function verifySourceEntry() {

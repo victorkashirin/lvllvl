@@ -27,6 +27,10 @@
 
 ### Fixed
 
+- Restrict bundled keyboard dependency imports to the keybinding domain
+  boundary, surface unexpected unresolved package imports during builds, and
+  centralize production dependency rewriting while independently verifying
+  that generated modules target versioned, self-contained outputs.
 - Cache effective keyboard bindings, platform-resolved signatures, and conflict
   summaries by catalog and preference revision while keeping context and enabled
   checks live. Reuse shortcut-search summaries and rows so filtering does not
