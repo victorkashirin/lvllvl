@@ -110,7 +110,7 @@ export function createLegacyShortcutContextAdapter({
         : null;
       const drawTools = app.textModeEditor?.tools?.drawTools;
       const textEditorMode = app.textModeEditor?.getEditorMode?.() || "none";
-      const textTyping = drawTools?.isTyping?.() === true;
+      const textTyping = activeDialog === null && drawTools?.isTyping?.() === true;
       const input = classifyInput(eventTarget || document.activeElement, textTyping, document);
       return {
         browserEditOperations: legacy.UI.browserEditOperations === true,

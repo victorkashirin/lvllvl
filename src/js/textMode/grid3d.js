@@ -473,11 +473,13 @@ Grid3d.prototype = {
 */
 
   setGridVisible: function(visible) {
-    this.currentLayer.setGridVisible(visible);
+    if(this.currentLayer) {
+      this.currentLayer.setGridVisible(visible);
+    }
   },
 
   getGridVisible: function() {
-    return this.currentLayer.getGridVisible();
+    return this.currentLayer ? this.currentLayer.getGridVisible() : false;
   },
 
   getXYGridVisible: function() {

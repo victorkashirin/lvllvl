@@ -10,7 +10,7 @@ async function open2DProject(page) {
   await page.getByText("OK", { exact: true }).last().click();
   await expect(page.locator("#startPage")).toBeHidden();
   await expect.poll(() => page.evaluate(() => Boolean(
-    g_app.services?.commands?.hasCommand("textMode.tool.pencil") &&
+    g_app.services?.commands?.hasCommand("editor.tool.pencil") &&
     g_app.textModeEditor?.tileSetManager?.getCurrentTileSet(),
   ))).toBe(true);
 }
@@ -103,6 +103,34 @@ test("palette surfaces and canvas typing keep one shortcut owner", async ({ page
   await open2DProject(page);
   const modifier = await page.evaluate(() => UI.os === "Mac OS" ? "Meta" : "Control");
 
+  expect(await page.evaluate(() => {
+    const commands = g_app.services.commands;
+    const sharedIds = [
+      "editor.tool.pencil",
+      "editor.tool.erase",
+      "editor.tool.eyedropper",
+      "editor.tool.move",
+      "editor.tool.marquee",
+    ];
+    const eraser = commands.getCommands().find(({ id }) => id === "editor.tool.erase");
+    const eraserEditorModes = eraser.contexts.flatMap(({ editorMode }) =>
+      Array.isArray(editorMode) ? editorMode : (typeof editorMode === "string" ? [editorMode] : []));
+    return {
+      eraserEditorModes: [...new Set(eraserEditorModes)].sort(),
+      eraserHasPaletteModal: eraser.contexts.some(({ modal }) => modal === "editColorPaletteDialog"),
+      legacyCommandsPresent: [
+        "textMode.tool.pencil",
+        "colorPalette.tool.pencil",
+      ].some((id) => commands.hasCommand(id)),
+      sharedCommandCount: commands.getCommands().filter(({ id }) => sharedIds.includes(id)).length,
+    };
+  })).toEqual({
+    eraserEditorModes: ["2d", "3d", "color palette"],
+    eraserHasPaletteModal: true,
+    legacyCommandsPresent: false,
+    sharedCommandCount: 5,
+  });
+
   await page.evaluate(() => {
     const palette = g_app.colorPaletteEditor.colorPaletteEdit;
     palette.setColorPaletteTool = (tool) => window.__shortcutOwnerEvents.push(["standalone-tool", tool]);
@@ -128,7 +156,9 @@ test("palette surfaces and canvas typing keep one shortcut owner", async ({ page
 
   await page.evaluate(() => {
     g_app.setMode("2d");
-    g_app.textModeEditor.tools.drawTools.setDrawTool("type");
+    const drawTools = g_app.textModeEditor.tools.drawTools;
+    drawTools.setDrawTool("type");
+    drawTools.typing.isActive = () => true;
     g_app.textModeEditor.editColorPalette();
   });
   await expect(page.locator("#colorPaletteEdit")).toBeVisible();
@@ -163,7 +193,58 @@ test("palette surfaces and canvas typing keep one shortcut owner", async ({ page
   expect(await page.evaluate(() => window.__shortcutOwnerEvents)).toHaveLength(7);
 
   await page.evaluate(() => {
+    const commands = g_app.services.commands;
+    commands.assignBinding("editor.tool.erase",
+      commands.bindingFromLegacyShortcut({ key: "F2" }));
+    window.__shortcutOwnerEvents = [];
+    document.activeElement?.blur();
+  });
+  await expect(page.locator("#colorPaletteEditTool_erase"))
+    .toHaveAttribute("title", "Eraser (F2)");
+  await page.keyboard.press("l");
+  await page.keyboard.press("F2");
+  expect(await page.evaluate(() => window.__shortcutOwnerEvents)).toEqual([
+    ["modal-tool", "erase"],
+  ]);
+
+  await page.evaluate(() => {
     UI.closeDialog();
+    g_app.setMode("2d");
+    g_app.textModeEditor.tools.drawTools.setDrawTool("pen");
+    document.activeElement?.blur();
+  });
+  await expect(page.locator('#drawTool_erase [data-shortcut-command="editor.tool.erase"]'))
+    .toHaveAttribute("title", "Eraser (F2)");
+  await page.keyboard.press("F2");
+  await expect.poll(() => page.evaluate(() =>
+    g_app.textModeEditor.tools.drawTools.tool,
+  )).toBe("erase");
+
+  await page.evaluate(() => {
+    g_app.setMode("3d");
+    g_app.textModeEditor.tools.drawTools.setDrawTool("pen");
+    document.activeElement?.blur();
+  });
+  await expect.poll(() => page.evaluate(() => g_app.mode)).toBe("3d");
+  await page.keyboard.press("F2");
+  await expect.poll(() => page.evaluate(() =>
+    g_app.textModeEditor.tools.drawTools.tool,
+  )).toBe("erase");
+
+  await page.evaluate(() => {
+    g_app.setMode("color palette");
+    window.__shortcutOwnerEvents = [];
+    document.activeElement?.blur();
+  });
+  await expect(page.locator("#colorPaletteEditorTool_erase"))
+    .toHaveAttribute("title", "Eraser (F2)");
+  await page.keyboard.press("F2");
+  expect(await page.evaluate(() => window.__shortcutOwnerEvents)).toEqual([
+    ["standalone-tool", "erase"],
+  ]);
+
+  await page.evaluate(() => {
+    g_app.setMode("2d");
     const editor = g_app.textModeEditor;
     const drawTools = editor.tools.drawTools;
     window.__shortcutOwnerEvents = [];
@@ -186,6 +267,41 @@ test("palette surfaces and canvas typing keep one shortcut owner", async ({ page
     events: [["colour", 0], ["colour", 8], ["typed", "n"]],
     tool: "type",
   });
+});
+
+test("Meta Tile Editor uses rebound shared commands", async ({ page }) => {
+  await open2DProject(page);
+
+  await page.evaluate(() => {
+    const commands = g_app.services.commands;
+    commands.assignBinding("editor.tool.pencil",
+      commands.bindingFromLegacyShortcut({ key: "F2" }));
+    g_app.textModeEditor.blockEditor.show({ blockHeight: 2, blockWidth: 2 });
+  });
+  await expect.poll(() => page.evaluate(() =>
+    UI.dialogStack[UI.dialogStack.length - 1]?.uiID,
+  )).toBe("blockEditor");
+  await expect(page.locator("#blockEditTool_pen")).toHaveAttribute("title", "Pencil (F2)");
+
+  await page.evaluate(() => {
+    const blockEditor = g_app.textModeEditor.blockEditor;
+    window.__blockEditorShortcutEvents = [];
+    blockEditor.setTool = (tool) => window.__blockEditorShortcutEvents.push(["tool", tool]);
+    blockEditor.tilePaletteDisplay.moveSelection = (dx, dy) =>
+      window.__blockEditorShortcutEvents.push(["palette", dx, dy]);
+    blockEditor.rotateCharacter = () => window.__blockEditorShortcutEvents.push(["rotate"]);
+    document.activeElement?.blur();
+  });
+
+  await page.keyboard.press("n");
+  await page.keyboard.press("F2");
+  await page.keyboard.press("d");
+  await page.keyboard.press("r");
+  expect(await page.evaluate(() => window.__blockEditorShortcutEvents)).toEqual([
+    ["tool", "pen"],
+    ["palette", 1, 0],
+    ["rotate"],
+  ]);
 });
 
 test("menu rebindings retire the legacy default accelerator", async ({ page }) => {
@@ -257,22 +373,24 @@ test("shortcut settings replace conflicts and drive the editor from one binding"
     await expect(canvasCopyReuse).toHaveAttribute("title", /Also used by Copy Selection Contents Left/);
   }
 
-  const currentTextToolsHeading = page.locator(".keyboard-shortcuts-group-heading")
-    .filter({ hasText: /Current Editor > Text Tools/ });
-  await expect(currentTextToolsHeading).toHaveCount(1);
-  await expect(currentTextToolsHeading.locator(".keyboard-shortcuts-group-scope"))
+  const toolsHeading = page.locator(".keyboard-shortcuts-group-heading")
+    .filter({ hasText: /^Tools/ });
+  await expect(toolsHeading).toHaveCount(1);
+  await expect(page.locator(".keyboard-shortcuts-group-heading")
+    .filter({ hasText: /^Text Tools/ })).toHaveCount(0);
+  await expect(toolsHeading.locator(".keyboard-shortcuts-group-function"))
     .toHaveCSS("color", "rgb(238, 238, 238)");
-  await expect(currentTextToolsHeading.locator(".keyboard-shortcuts-group-function"))
-    .toHaveCSS("color", "rgb(238, 238, 238)");
-  const pencilActions = page.locator('tr[data-command-id="textMode.tool.pencil"] .keyboard-shortcuts-action');
+  await expect(page.locator(".keyboard-shortcuts-group-scope, .keyboard-shortcuts-group-separator"))
+    .toHaveCount(0);
+  await expect(page.locator(".keyboard-shortcuts-group-heading")
+    .filter({ hasText: /Current Editor|Other editor modes|Colour Palette Editor/ })).toHaveCount(0);
+  const pencilActions = page.locator('tr[data-command-id="editor.tool.pencil"] .keyboard-shortcuts-action');
   await expect(pencilActions).toHaveCount(2);
   for (const action of await pencilActions.all()) {
     await expect(action).toHaveCSS("align-items", "center");
     await expect(action).toHaveCSS("justify-content", "center");
   }
-  await expect(page.locator(".keyboard-shortcuts-group-heading")
-    .filter({ hasText: /Colour Palette Editor > Colour Palette Tools/ })).toHaveCount(1);
-  await expect(page.locator('tr[data-command-id="textMode.tool.pencil"] .keyboard-shortcuts-command-category'))
+  await expect(page.locator('tr[data-command-id="editor.tool.pencil"] .keyboard-shortcuts-command-category'))
     .toHaveCount(0);
 
   const toolbarControlAlignment = await page.locator(".keyboard-shortcuts-toolbar").evaluate((toolbar) => {
@@ -311,12 +429,12 @@ test("shortcut settings replace conflicts and drive the editor from one binding"
   const search = page.locator("#keyboardShortcutsSearch");
   await search.press("l");
   await expect(search).toHaveValue("l");
-  await expect(page.locator('tr[data-command-id="textMode.tool.erase"]')).toBeVisible();
-  await expect(page.locator('tr[data-command-id="textMode.tool.pencil"]')).toBeHidden();
+  await expect(page.locator('tr[data-command-id="editor.tool.erase"]')).toBeVisible();
+  await expect(page.locator('tr[data-command-id="editor.tool.pencil"]')).toBeHidden();
   expect(await page.evaluate(() => g_app.textModeEditor.tools.drawTools.tool)).toBe("pen");
 
   await search.fill("U");
-  await expect(page.locator('tr[data-command-id="textMode.tool.shape"]')).toBeVisible();
+  await expect(page.locator('tr[data-command-id="editor.tool.shape"]')).toBeVisible();
   await expect(page.locator('tr[data-command-id="textMode.pixelTool.shape"]')).toBeHidden();
 
   await search.evaluate((input, firefoxMac) => {
@@ -334,7 +452,7 @@ test("shortcut settings replace conflicts and drive the editor from one binding"
   }, isMac);
   await expect(search).toHaveValue(isMac ? "Option+1" : "Alt+1");
   await expect(page.locator('tr[data-command-id="textMode.color.select.1"]')).toBeVisible();
-  await expect(page.locator('tr[data-command-id="textMode.tool.shape"]')).toBeHidden();
+  await expect(page.locator('tr[data-command-id="editor.tool.shape"]')).toBeHidden();
 
   await search.press("Shift+/");
   await expect(search).toHaveValue("Shift+?");
@@ -350,7 +468,7 @@ test("shortcut settings replace conflicts and drive the editor from one binding"
   await expect(search).toHaveValue("P");
 
   await search.fill("Pencil");
-  const pencilRow = page.locator('tr[data-command-id="textMode.tool.pencil"]');
+  const pencilRow = page.locator('tr[data-command-id="editor.tool.pencil"]');
   await expect(pencilRow).toBeVisible();
   await expect(pencilRow.locator(".keyboard-shortcuts-binding")).toHaveText("N");
   const listHeight = await page.locator("#keyboardShortcutsTableHolder").evaluate((element) =>
@@ -369,16 +487,16 @@ test("shortcut settings replace conflicts and drive the editor from one binding"
   await expect(page.locator("#keyboardShortcutsRecorderMessage")).toContainText("Eraser");
   await page.locator("#keyboardShortcutsReplaceConflicts").click();
   expect(pageErrors).toEqual([]);
-  expect(await page.evaluate(() => g_app.services.commands.formatBindings("textMode.tool.pencil"))).toBe("L");
+  expect(await page.evaluate(() => g_app.services.commands.formatBindings("editor.tool.pencil"))).toBe("L");
   await expect(page.locator("#keyboardShortcutsStatus")).toContainText("Shortcut saved");
   await expect(pencilRow.locator(".keyboard-shortcuts-binding")).toHaveText("L");
   await expect(pencilRow.locator(".keyboard-shortcuts-binding")).toBeFocused();
   await expect(pencilRow.locator(".keyboard-shortcuts-source")).toHaveText("User");
 
   await search.fill("Eraser");
-  const eraserRow = page.locator('tr[data-command-id="textMode.tool.erase"]');
+  const eraserRow = page.locator('tr[data-command-id="editor.tool.erase"]');
   await expect(eraserRow.locator(".keyboard-shortcuts-binding-unassigned")).toHaveText("Assign");
-  await expect(page.locator('#drawTool_pen [data-shortcut-command="textMode.tool.pencil"]'))
+  await expect(page.locator('#drawTool_pen [data-shortcut-command="editor.tool.pencil"]'))
     .toHaveAttribute("title", "Pencil (L)");
 
   await search.fill("");
@@ -401,8 +519,8 @@ test("shortcut settings replace conflicts and drive the editor from one binding"
   expect(await page.evaluate(() => JSON.parse(
     localStorage.getItem("lvllvl.keyboardShortcuts"),
   ).overrides)).toMatchObject({
-    "textMode.tool.erase": [],
-    "textMode.tool.pencil": [{ sequence: [{ key: "l" }] }],
+    "editor.tool.erase": [],
+    "editor.tool.pencil": [{ sequence: [{ key: "l" }] }],
   });
 });
 
@@ -410,7 +528,7 @@ test("shortcut settings identify changes that are only applied for this session"
   await open2DProject(page);
   await openShortcutSettings(page);
   await page.locator("#keyboardShortcutsSearch").fill("Pencil");
-  const pencilRow = page.locator('tr[data-command-id="textMode.tool.pencil"]');
+  const pencilRow = page.locator('tr[data-command-id="editor.tool.pencil"]');
 
   await page.evaluate(() => {
     window.__shortcutOriginalSetItem = Storage.prototype.setItem;
@@ -441,12 +559,12 @@ test("shortcut import reports recovered, truncated, and unknown entries", async 
   await openShortcutSettings(page);
   await page.locator("#keyboardShortcutsImportFile").setInputFiles({
     buffer: Buffer.from(JSON.stringify({
-      version: 1,
+      version: 2,
       overrides: {
         "Bad id": [{ sequence: [{ key: "b" }] }],
         "future.command": [{ sequence: [{ key: "f" }] }],
-        "textMode.tool.invalid": [{ sequence: [] }],
-        "textMode.tool.pencil": [
+        "editor.tool.invalid": [{ sequence: [] }],
+        "editor.tool.pencil": [
           { sequence: [{ key: "p" }] },
           { sequence: [{ key: "q" }] },
         ],
@@ -463,7 +581,7 @@ test("shortcut import reports recovered, truncated, and unknown entries", async 
   );
   expect(await page.evaluate(() => ({
     exported: JSON.parse(g_app.services.commands.exportConfiguration()).overrides["future.command"],
-    pencil: g_app.services.commands.formatBindings("textMode.tool.pencil"),
+    pencil: g_app.services.commands.formatBindings("editor.tool.pencil"),
   }))).toEqual({
     exported: [{ priority: 0, repeat: false, sequence: [{
       alt: false,
@@ -479,9 +597,9 @@ test("shortcut import reports recovered, truncated, and unknown entries", async 
 
   await page.locator("#keyboardShortcutsImportFile").setInputFiles({
     buffer: Buffer.from(JSON.stringify({
-      version: 1,
+      version: 2,
       overrides: {
-        "textMode.tool.invalid": [{ sequence: [] }],
+        "editor.tool.invalid": [{ sequence: [] }],
       },
     })),
     mimeType: "application/json",
@@ -493,7 +611,7 @@ test("shortcut import reports recovered, truncated, and unknown entries", async 
   await expect(page.locator("#keyboardShortcutsStatus")).toHaveAttribute("data-kind", "error");
   expect(await page.evaluate(() => ({
     future: JSON.parse(g_app.services.commands.exportConfiguration()).overrides["future.command"],
-    pencil: g_app.services.commands.formatBindings("textMode.tool.pencil"),
+    pencil: g_app.services.commands.formatBindings("editor.tool.pencil"),
   }))).toEqual({
     future: [{ priority: 0, repeat: false, sequence: [{
       alt: false,
@@ -523,19 +641,19 @@ test("shortcut recorder supports keyboard setup, Tab capture, focus return, and 
   const search = page.locator("#keyboardShortcutsSearch");
   await page.evaluate(() => {
     window.__shortcutPencilRow = document.querySelector(
-      'tr[data-command-id="textMode.tool.pencil"]',
+      'tr[data-command-id="editor.tool.pencil"]',
     );
     window.__shortcutConflictAnalyses = 0;
   });
   await search.fill("Pencil");
   expect(await page.evaluate(() => ({
     reusedRow: window.__shortcutPencilRow === document.querySelector(
-      'tr[data-command-id="textMode.tool.pencil"]',
+      'tr[data-command-id="editor.tool.pencil"]',
     ),
     conflictAnalyses: window.__shortcutConflictAnalyses,
   }))).toEqual({ conflictAnalyses: 0, reusedRow: true });
   const pencilBinding = page.locator(
-    'tr[data-command-id="textMode.tool.pencil"] .keyboard-shortcuts-binding',
+    'tr[data-command-id="editor.tool.pencil"] .keyboard-shortcuts-binding',
   );
   const physical = page.locator("#keyboardShortcutsPhysicalKey");
   const capture = page.locator("#keyboardShortcutsRecorderCapture");
@@ -563,7 +681,7 @@ test("shortcut recorder supports keyboard setup, Tab capture, focus return, and 
   await expect(pencilBinding).toHaveText("Shift+[Tab]");
   await expect(pencilBinding).toBeFocused();
   expect(await page.evaluate(() => {
-    const chord = g_app.services.commands.getEffectiveBindings("textMode.tool.pencil")[0].sequence[0];
+    const chord = g_app.services.commands.getEffectiveBindings("editor.tool.pencil")[0].sequence[0];
     return { code: chord.code, key: chord.key, shift: chord.shift };
   })).toEqual({ code: "Tab", key: null, shift: true });
 
@@ -592,7 +710,7 @@ test("shortcut recorder supports keyboard setup, Tab capture, focus return, and 
   });
   expect(await page.evaluate(() => ({
     ownMethod: Object.hasOwn(g_app.services.commands, "assignBinding"),
-    probeStatus: g_app.services.commands.assignBinding("textMode.tool.pencil", {}).status,
+    probeStatus: g_app.services.commands.assignBinding("editor.tool.pencil", {}).status,
   }))).toEqual({ ownMethod: true, probeStatus: "rejected" });
   await page.keyboard.press("Enter");
   await expect(capture).toBeFocused();
@@ -611,7 +729,7 @@ test("shortcut recorder supports keyboard setup, Tab capture, focus return, and 
 
   await page.evaluate(() => {
     const commands = g_app.services.commands;
-    commands.assignBinding("textMode.tool.erase",
+    commands.assignBinding("editor.tool.erase",
       commands.bindingFromLegacyShortcut({ key: "l" }));
   });
   const conflictsOnly = page.locator("#keyboardShortcutsConflictsOnly");
@@ -662,17 +780,17 @@ test("shortcut overrides survive reload and can be reset", async ({ page }) => {
   await open2DProject(page);
   await page.evaluate(() => {
     const commands = g_app.services.commands;
-    commands.assignBinding("textMode.tool.pencil", commands.bindingFromLegacyShortcut({ key: "5" }));
+    commands.assignBinding("editor.tool.pencil", commands.bindingFromLegacyShortcut({ key: "5" }));
   });
 
   await page.reload({ waitUntil: "domcontentloaded" });
   await expect.poll(() => page.evaluate(() =>
-    g_app.services?.commands?.formatBindings("textMode.tool.pencil"),
+    g_app.services?.commands?.formatBindings("editor.tool.pencil"),
   )).toBe("5");
 
-  await page.evaluate(() => g_app.services.commands.resetBinding("textMode.tool.pencil"));
+  await page.evaluate(() => g_app.services.commands.resetBinding("editor.tool.pencil"));
   expect(await page.evaluate(() =>
-    g_app.services.commands.formatBindings("textMode.tool.pencil"),
+    g_app.services.commands.formatBindings("editor.tool.pencil"),
   )).toBe("N");
 });
 
@@ -689,20 +807,20 @@ test("shortcut overrides synchronize across open tabs without dropping stale edi
   await page.evaluate(() => {
     const commands = g_app.services.commands;
     commands.assignBinding(
-      "textMode.tool.pencil",
+      "editor.tool.pencil",
       commands.bindingFromLegacyShortcut({ key: "5" }),
     );
   });
   await secondPage.evaluate(() => {
     const commands = g_app.services.commands;
     commands.assignBinding(
-      "textMode.tool.erase",
+      "editor.tool.erase",
       commands.bindingFromLegacyShortcut({ key: "6" }),
     );
   });
   expect(await secondPage.evaluate(() => Object.keys(JSON.parse(
     localStorage.getItem("lvllvl.keyboardShortcuts"),
-  ).overrides).sort())).toEqual(["textMode.tool.erase", "textMode.tool.pencil"]);
+  ).overrides).sort())).toEqual(["editor.tool.erase", "editor.tool.pencil"]);
 
   await Promise.all([page, secondPage].map((candidate) => candidate.evaluate(() => {
     const commands = g_app.services.commands;
@@ -711,20 +829,20 @@ test("shortcut overrides synchronize across open tabs without dropping stale edi
   })));
   for (const candidate of [page, secondPage]) {
     await expect.poll(() => candidate.evaluate(() => ({
-      erase: g_app.services.commands.formatBindings("textMode.tool.erase"),
-      pencil: g_app.services.commands.formatBindings("textMode.tool.pencil"),
+      erase: g_app.services.commands.formatBindings("editor.tool.erase"),
+      pencil: g_app.services.commands.formatBindings("editor.tool.pencil"),
     }))).toEqual({ erase: "6", pencil: "5" });
   }
 
   await secondPage.evaluate(() => {
     const commands = g_app.services.commands;
     commands.assignBinding(
-      "textMode.tool.pencil",
+      "editor.tool.pencil",
       commands.bindingFromLegacyShortcut({ key: "7" }),
     );
   });
   await expect.poll(() => page.evaluate(() =>
-    g_app.services.commands.formatBindings("textMode.tool.pencil"),
+    g_app.services.commands.formatBindings("editor.tool.pencil"),
   )).toBe("7");
   await secondPage.close();
 });

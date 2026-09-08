@@ -9,12 +9,20 @@
   and animation frames, with live menu, tool, and accessibility
   labels, conflict analysis, semantic or physical key recording, searchable
   settings, browser-local overrides, and import, export, assign, clear, reset,
-  and bound-only filtering controls. Group the current editor's commands first
-  by function, then group commands for other modes separately. Use a single
-  custom shortcut per command, present built-in aliases in one centred keycap,
-  and include configurable held artwork Preview and Enter/Insert canvas tile
-  placement. Use pinned TanStack Hotkeys core parsing, normalization, and
-  layout-aware matching behind the application-owned command and context model.
+  and bound-only filtering controls. Group commands directly by function and
+  show applicability in each command's context instead of splitting current and
+  other editor modes. Share Pencil, Eraser, Eyedropper, Marquee, and Move as one
+  command and binding across the text/sprite editor and standalone or modal
+  colour-palette editors; reuse Pencil, Eyedropper, and Pixel plus palette
+  movement, tile rotation, and multicolour selection in the Meta Tile Editor.
+  Share zoom, grid visibility, and performance-stat commands across 2D and 3D,
+  and reset pre-production shortcut preferences with the version 2 schema
+  instead of retaining aliases for replaced tool IDs. Use
+  a single custom shortcut per command, present
+  built-in aliases in one centred keycap, and include configurable held artwork
+  Preview and Enter/Insert canvas tile placement. Use pinned TanStack Hotkeys
+  core parsing, normalization, and layout-aware matching behind the
+  application-owned command and context model.
 - Add FROGBLOCK, Kitchen Sink, Microbe-2, and Pixelchunk to the custom text-mode
   tile sets, including in-app attribution and bundled license texts. Join
   FROGBLOCK's normal and inverted glyph sheets into one preset, and remove
@@ -33,9 +41,9 @@
   the search field. Treat Firefox's macOS Option events as Option rather than
   AltGr, and recover the base key of Firefox dead-key events so Option shortcuts
   dispatch and record.
-- Keep the current keyboard-shortcut section visible below the sticky column
-  labels without exposing scrolling content between the sticky headers, present
-  scope and function as one consistent white breadcrumb heading, remove repeated
+- Keep keyboard-shortcut function sections visible below the sticky column
+  labels without exposing scrolling content between the sticky headers, use one
+  compact category heading without editor-scope breadcrumbs, remove repeated
   function labels from command rows, and vertically align the import, export,
   and reset controls with the toolbar filters. Center row-action labels, and
   start recording as soon as a shortcut assignment opens while keeping the
@@ -92,10 +100,17 @@
   reset lifecycle as Ctrl/Cmd+=.
 - Fix the production shortcut module failing to start because keyboard-
   matching helpers were omitted from the generated dependency exports.
-- Keep colour-palette dialog undo, redo, and tool shortcuts owned by the
-  dialog's palette instance even when the underlying canvas is typing, allow
+- Route colour-palette dialog undo, redo, and tool shortcuts through the shared
+  command owner to the dialog's palette instance, allow
   Alt+1…8 colour selection during canvas typing without inserting a character,
   and retain mode prerequisites for direct menu actions.
+- Merge identical screen/sprite Dimensions and display-mode aliases, 2D/3D
+  Grid, and 2D/3D Performance Stats into single command identities, keep their
+  menu state synchronized, and remove unfinished 3D PNG, 3D Dimensions, and
+  sprite Help actions that had no implementation.
+- Make shared 3D Zoom In, Zoom Out, and Fit On Screen shortcuts operate the
+  perspective camera, keep Actual Pixels 2D-only, and preserve independent 2D
+  and 3D grid menu checks when switching editors.
 - Detect layout-dependent shortcut conflicts using the same semantic-key and
   physical-code fallback rules as runtime dispatch, preventing translated
   Option/Alt bindings from silently disabling both affected commands, and flag

@@ -458,6 +458,9 @@ BlockEditor.prototype = {
   initEvents: function(args) {
     var _this = this;
 
+    if(g_app.services && g_app.services.shortcutCatalog) {
+      g_app.services.shortcutCatalog.updateLabels();
+    }
 
     $('#blockEditForegroundColor').on('click', function(event) {
 
@@ -602,7 +605,7 @@ BlockEditor.prototype = {
   setMouseCursor: function(event) {
     if(this.mouseInGrid) {
 
-      if(event.altKey) {
+      if(event && event.altKey) {
         UI.setCursor('eyedropper');
         return;
       }
@@ -632,79 +635,83 @@ BlockEditor.prototype = {
 
     var keyCode = event.keyCode;
     var c = String.fromCharCode(keyCode).toUpperCase();
+    var commandServiceActive = g_app.services && g_app.services.commands;
+    var handled = false;
 
-    switch(c) {
-      case keys.textMode.toolsPencil.key:
-        this.setTool('pen', event);
-      break;
-      case keys.textMode.toolsEyedropper.key:
-        this.setTool('eyedropper', event);      
-      break;
-      case keys.textMode.toolsPixel.key:
-        this.setTool('pixel', event);      
-      break;
-
-    }
-
-
-    switch(event.keyCode) {
-
-      case keys.textMode.tilePaletteLeft.keyCode:
-        if(keys.textMode.tilePaletteLeft.shift == event.shiftKey) {
-          this.tilePaletteDisplay.moveSelection(-1, 0);
-        }
-      break;
-      case keys.textMode.tilePaletteRight.keyCode:
-        if(keys.textMode.tilePaletteRight.shift == event.shiftKey) {
-          this.tilePaletteDisplay.moveSelection(1, 0);
-        }
-      break;
-      case keys.textMode.tilePaletteUp.keyCode:
-        if(keys.textMode.tilePaletteRight.shift == event.shiftKey) {
-          this.tilePaletteDisplay.moveSelection(0, -1);      
-        }
-      break;
-      case keys.textMode.tilePaletteDown.keyCode:
-        if(keys.textMode.tilePaletteDown.shift == event.shiftKey) {
-          this.tilePaletteDisplay.moveSelection(0, 1);      
-        }
-      break;
-      case keys.textMode.characterRecentNext.keyCode:
-        if(keys.textMode.characterRecentNext.shift == event.shiftKey) {
-          //this.selectRecent(1);
-        }
-      break;
-      case keys.textMode.characterRecentPrev.keyCode:
-        if(keys.textMode.characterRecentPrev.shift == event.shiftKey) {
-          //this.selectRecent(-1);
-        }
-      break;
-
-      case keys.textMode.characterRotate.keyCode: 
-        this.rotateCharacter();
-      break;
-
-    }
-
-    if(this.editor.getScreenMode() == TextModeEditor.Mode.C64MULTICOLOR) {
+    if(!commandServiceActive) {
       switch(c) {
-        case keys.textMode.c64MultiFG.key:
-          this.editor.tools.drawTools.pixelDraw.setC64MultiColorType('cell');
+        case keys.textMode.toolsPencil.key:
+          this.setTool('pen', event);
+          handled = true;
         break;
-        case keys.textMode.c64MultiBG.key:
-          this.editor.tools.drawTools.pixelDraw.setC64MultiColorType('background');
+        case keys.textMode.toolsEyedropper.key:
+          this.setTool('eyedropper', event);
+          handled = true;
         break;
-        case keys.textMode.c64MultiMC1.key:
-          this.editor.tools.drawTools.pixelDraw.setC64MultiColorType('multi1');
+        case keys.textMode.toolsPixel.key:
+          this.setTool('pixel', event);
+          handled = true;
         break;
-        case keys.textMode.c64MultiMC2.key:
-          this.editor.tools.drawTools.pixelDraw.setC64MultiColorType('multi2');
+      }
+
+      switch(event.keyCode) {
+        case keys.textMode.tilePaletteLeft.keyCode:
+          if(keys.textMode.tilePaletteLeft.shift == event.shiftKey) {
+            this.tilePaletteDisplay.moveSelection(-1, 0);
+            handled = true;
+          }
         break;
+        case keys.textMode.tilePaletteRight.keyCode:
+          if(keys.textMode.tilePaletteRight.shift == event.shiftKey) {
+            this.tilePaletteDisplay.moveSelection(1, 0);
+            handled = true;
+          }
+        break;
+        case keys.textMode.tilePaletteUp.keyCode:
+          if(keys.textMode.tilePaletteUp.shift == event.shiftKey) {
+            this.tilePaletteDisplay.moveSelection(0, -1);
+            handled = true;
+          }
+        break;
+        case keys.textMode.tilePaletteDown.keyCode:
+          if(keys.textMode.tilePaletteDown.shift == event.shiftKey) {
+            this.tilePaletteDisplay.moveSelection(0, 1);
+            handled = true;
+          }
+        break;
+        case keys.textMode.characterRotate.keyCode:
+          this.rotateCharacter();
+          handled = true;
+        break;
+      }
+
+      if(this.editor.getScreenMode() == TextModeEditor.Mode.C64MULTICOLOR) {
+        switch(c) {
+          case keys.textMode.c64MultiFG.key:
+            this.editor.tools.drawTools.pixelDraw.setC64MultiColorType('cell');
+            handled = true;
+          break;
+          case keys.textMode.c64MultiBG.key:
+            this.editor.tools.drawTools.pixelDraw.setC64MultiColorType('background');
+            handled = true;
+          break;
+          case keys.textMode.c64MultiMC1.key:
+            this.editor.tools.drawTools.pixelDraw.setC64MultiColorType('multi1');
+            handled = true;
+          break;
+          case keys.textMode.c64MultiMC2.key:
+            this.editor.tools.drawTools.pixelDraw.setC64MultiColorType('multi2');
+            handled = true;
+          break;
+        }
       }
     }
 
-
+    if(handled) {
+      event.preventDefault();
+    }
     this.setMouseCursor(event);
+    return handled;
 
   },
 

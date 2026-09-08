@@ -71,7 +71,6 @@ const definitions = Object.freeze([
     ["export.json", "JSON...", "export-json"],
     ["export.binary", "Binary Data...", "export-binary"],
     ["export.txt", "TXT...", "export-txt"],
-    ["export.3d-png", "PNG...", "export-3d-png"],
     ["export.3d-gif", "GIF...", "export-3d-gif"],
     ["export.obj", "OBJ...", "export-obj"],
     ["export.magicavoxel", "MagicaVoxel...", "export-magicavoxel"],
@@ -83,16 +82,26 @@ const definitions = Object.freeze([
     ["import.spriteimage", "Image...", "import-spriteimage"],
   ]),
   ...commandGroup("Screen", [
-    ["project.dimensions", "Dimensions...", "file-dimensions"],
+    ["project.dimensions", "Dimensions...", "file-dimensions", {
+      aliases: ["file-dimensions", "file-spritedimensions"],
+    }],
     ["textMode.screen.crop", "Crop To Selection", "screen-crop"],
-    ["textMode.mode.textmode", "Text Mode", "mode-textmode"],
+    ["textMode.mode.textmode", "Text / Monochrome Mode", "mode-textmode", {
+      aliases: ["mode-textmode", "mode-spritetextmode"],
+    }],
     ["textMode.mode.c64standard", "C64 Standard Character Mode", "mode-c64standard"],
-    ["textMode.mode.c64multicolor", "C64 Multicolour Character Mode", "mode-c64multicolor"],
+    ["textMode.mode.c64multicolor", "C64 Multicolour", "mode-c64multicolor", {
+      aliases: ["mode-c64multicolor", "mode-spritec64multicolor"],
+    }],
     ["textMode.mode.c64ecm", "C64 Extended BG Colour Mode", "mode-c64ecm"],
     ["textMode.mode.vector", "Vector Mode", "mode-vector"],
-    ["textMode.mode.indexed", "Indexed Colour", "mode-indexed"],
+    ["textMode.mode.indexed", "Indexed Colour", "mode-indexed", {
+      aliases: ["mode-indexed", "mode-spriteindexed"],
+    }],
     ["textMode.mode.rgb", "RGB Colour", "mode-rgb"],
-    ["textMode.mode.nes", "NES", "mode-nes"],
+    ["textMode.mode.nes", "NES", "mode-nes", {
+      aliases: ["mode-nes", "mode-spritenes"],
+    }],
     ["textMode.mode.tileflip", "Allow Tile Flip", "mode-tileflip"],
     ["textMode.mode.tilerotate", "Allow Tile Rotate", "mode-tilerotate"],
     ["textMode.mode.tilematerials", "Has Tile Materials", "mode-tilematerials"],
@@ -104,17 +113,6 @@ const definitions = Object.freeze([
     ["textMode.referenceImage", "Reference Image", "screen-referenceimage", {
       shortcuts: [shortcut("I", { alt: true, cmd: true })],
     }],
-  ]),
-  ...commandGroup("Sprite", [
-    ["project.spritedimensions", "Dimensions...", "file-spritedimensions"],
-    ["textMode.mode.spritetextmode", "Monochrome", "mode-spritetextmode"],
-    ["textMode.mode.spritec64multicolor", "C64 Multicolour", "mode-spritec64multicolor"],
-    ["textMode.mode.spritenes", "NES", "mode-spritenes"],
-    ["textMode.mode.spriteindexed", "Indexed", "mode-spriteindexed"],
-    ["textMode.mode.help", "Help!", "mode-help"],
-  ]),
-  ...commandGroup("Scene", [
-    ["application.dimensions3d", "Dimensions...", "dimensions3d"],
   ]),
   ...commandGroup("Layers", [
     ["textMode.layers.new", "New Layer...", "layers-new", { shortcuts: [shortcut("L", { cmd: true })] }],
@@ -160,13 +158,14 @@ const definitions = Object.freeze([
     ["view.zoomout", "Zoom Out", "view-zoomout", { shortcuts: [shortcut("-", { cmd: true })] }],
     ["view.fitonscreen", "Fit On Screen", "view-fitonscreen", { shortcuts: [shortcut("0", { cmd: true })] }],
     ["view.actualpixels", "Actual Pixels", "view-actualpixels", { shortcuts: [shortcut("1", { cmd: true })] }],
-    ["edit.showgrid", "Grid Lines", "edit-showgrid", { shortcuts: [shortcut("G", { cmd: true })] }],
+    ["view.grid", "Grid", "edit-showgrid", {
+      aliases: ["edit-showgrid", "view-3dgrid"],
+      shortcuts: [shortcut("G", { cmd: true })],
+    }],
     ["edit.showborder", "Border", "edit-showborder", { shortcuts: [shortcut("H", { cmd: true })] }],
     ["edit.showbackground", "Background", "edit-showbackground", { shortcuts: [shortcut("B", { cmd: true })] }],
     ["application.cursor-tile-transparent", "Cursor Tile Is Transparent", "cursor-tile-transparent"],
     ["edit.scripting", "Scripting...", "edit-scripting", { shortcuts: [shortcut("R", { cmd: true })] }],
-    ["view.3dgrid", "Show / Hide Grid", "view-3dgrid", { shortcuts: [shortcut("G", { cmd: true })] }],
-    ["view.3dperfstats", "Perf Stats", "view-3dperfstats"],
     ["view.projectExplorer", "Project Explorer", "view-project-explorer", {
       aliases: ["view-project-explorer", "show-project-explorer"],
       shortcuts: [shortcut("P", { cmd: true })],
@@ -182,7 +181,9 @@ const definitions = Object.freeze([
     ["view.tilepalettepanelbottom", "Tile Palette Panel Bottom", "view-tilepalettepanelbottom"],
     ["view.metatilepalettepanelbottom", "Meta Tile Palette Panel Bottom", "view-metatilepalettepanelbottom"],
     ["view.animationpanel", "Animation Panel", "view-animationpanel"],
-    ["view.perfstats", "Perf Stats", "view-perfstats"],
+    ["view.performanceStats", "Performance Stats", "view-perfstats", {
+      aliases: ["view-perfstats", "view-3dperfstats"],
+    }],
     ["export.gif", "Export GIF / Video (old version)...", "export-gif"],
     ["export.c64", "Export C64 (new)...", "export-c64"],
     ["settings.mobilemode", "Mobile Mode", "settings-mobilemode"],

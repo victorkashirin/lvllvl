@@ -318,7 +318,7 @@ test("detects a conflict when a recorded semantic key shares a layout fallback",
     .some(({ type }) => type === "layout-unknown"), false);
 
   reloaded.importConfiguration(JSON.stringify({
-    version: 1,
+    version: 2,
     overrides: { "tool.pencil": [keybinding("¡", { alt: true })] },
   }));
   const importedBinding = reloaded.getEffectiveBindings("tool.pencil")[0];
@@ -431,12 +431,13 @@ test("dispatches by active context and refuses unresolved ties", () => {
   register(commands, "tool.draw", keybinding("n"), () => executed.push("draw"), [{ editorMode: "2d" }]);
   register(commands, "palette.sample", keybinding("n"), () => executed.push("sample"), [{ editorMode: "color palette" }]);
 
-  assert.equal(commands.getCommands().find(({ id }) => id === "tool.draw").availableInCurrentMode, true);
-  assert.equal(commands.getCommands().find(({ id }) => id === "palette.sample").availableInCurrentMode, false);
+  const summaries = commands.getCommands();
+  assert.equal(Object.hasOwn(summaries.find(({ id }) => id === "tool.draw"), "availableInCurrentMode"), false);
 
   assert.equal(commands.handleKeyDown(keyboardEvent("n")).status, "executed");
   context.editorMode = "color palette";
-  assert.equal(commands.getCommands().find(({ id }) => id === "palette.sample").availableInCurrentMode, true);
+  assert.equal(commands.getCommands(), summaries,
+    "presentation summaries must not be partitioned by the active editor");
   assert.equal(commands.handleKeyDown(keyboardEvent("n")).status, "executed");
   assert.deepEqual(executed, ["draw", "sample"]);
   assert.equal(commands.analyzeBinding("tool.draw", keybinding("n"))
@@ -448,7 +449,7 @@ test("dispatches by active context and refuses unresolved ties", () => {
   assert.deepEqual(executed, ["draw", "sample"]);
 });
 
-test("caches derived bindings and conflicts while context availability stays live", () => {
+test("caches derived bindings and conflicts while dispatch context stays live", () => {
   const { commands, context } = createCommandHarness();
   const executed = [];
   let enabled = true;
@@ -494,12 +495,11 @@ test("caches derived bindings and conflicts while context availability stays liv
 
   context.editorMode = "color palette";
   const paletteMode = commands.getCommands();
-  assert.notEqual(paletteMode, initial);
-  assert.equal(paletteMode.find(({ id }) => id === "tool.draw").availableInCurrentMode, false);
-  assert.equal(paletteMode.find(({ id }) => id === "palette.sample").availableInCurrentMode, true);
+  assert.equal(paletteMode, initial,
+    "changing editor mode must not rebuild category-only presentation summaries");
   assert.equal(paletteMode.find(({ id }) => id === "tool.draw").conflicts, initialConflicts);
   assert.equal(conflictAnalyses, initialAnalysisCount,
-    "mode availability is recomputed separately from static conflicts");
+    "mode changes must not rebuild static conflicts");
 
   const layoutAwareBinding = keybinding("¡", { alt: true, layoutCode: "Digit1" });
   commands.assignBinding("palette.sample", layoutAwareBinding);
@@ -612,7 +612,7 @@ test("keeps an imported modified sequence pending across modifier release and re
     () => executed.push("single"));
   register(commands, "key.sequence", null, () => executed.push("sequence"));
   commands.importConfiguration(JSON.stringify({
-    version: 1,
+    version: 2,
     overrides: {
       "key.sequence": [{
         sequence: ["k", "c"].map((key) => ({
@@ -935,7 +935,7 @@ test("preference edits expose session-only and rejected persistence outcomes", (
 
   readsAllowed = true;
   recoveredStorageValue = JSON.stringify({
-    version: 1,
+    version: 2,
     overrides: { "remote.command": [keybinding("r")] },
   });
   register(unreadable.commands, "tool.fill", keybinding("f"), () => {});
@@ -948,7 +948,7 @@ test("preference edits expose session-only and rejected persistence outcomes", (
   assert.equal(unsafeSaveCalls, 1);
 
   const rejectedResult = quota.commands.importConfiguration(JSON.stringify({
-    version: 1,
+    version: 2,
     overrides: { "tool.draw": [{ sequence: [] }] },
   }));
   assert.equal(rejectedResult.status, "rejected");
@@ -1029,7 +1029,7 @@ test("persists only overrides and supports unbind, reset, import, and corrupt-da
   register(first.commands, "tool.draw", keybinding("n"), () => {});
   assert.equal(first.commands.assignBinding("tool.draw",
     keybinding("p", { shift: true })).status, "durable");
-  assert.equal(JSON.parse(first.storage.value).version, 1);
+  assert.equal(JSON.parse(first.storage.value).version, 2);
   assert.equal(JSON.parse(first.storage.value).overrides["tool.draw"][0].sequence[0].key, "p");
 
   const reloaded = createCommandHarness({ storage: createMemoryStorage(first.storage.value) });
@@ -1041,7 +1041,7 @@ test("persists only overrides and supports unbind, reset, import, and corrupt-da
   assert.equal(reloaded.commands.formatBindings("tool.draw"), "N");
 
   const truncatedImport = reloaded.commands.importConfiguration(JSON.stringify({
-    version: 1,
+    version: 2,
     overrides: { "tool.draw": [keybinding("p"), keybinding("q")] },
   }));
   assert.equal(truncatedImport.status, "durable");
@@ -1050,7 +1050,7 @@ test("persists only overrides and supports unbind, reset, import, and corrupt-da
   assert.equal(reloaded.commands.getEffectiveBindings("tool.draw").length, 1);
 
   assert.equal(reloaded.commands.importConfiguration(JSON.stringify({
-    version: 1,
+    version: 2,
     overrides: { "tool.draw": [] },
   })).status, "durable");
   assert.deepEqual(reloaded.commands.getEffectiveBindings("tool.draw"), []);
@@ -1061,6 +1061,15 @@ test("persists only overrides and supports unbind, reset, import, and corrupt-da
   assert.equal(corruptStorage.quarantined.length, 1);
   assert.equal(corrupt.commands.formatBindings("tool.draw"), "N");
   assert.equal(corrupt.errors.length, 1);
+
+  const obsoleteStorage = createMemoryStorage(JSON.stringify({
+    version: 1,
+    overrides: { "tool.draw": [keybinding("p")] },
+  }));
+  const obsolete = createCommandHarness({ storage: obsoleteStorage });
+  register(obsolete.commands, "tool.draw", keybinding("n"), () => {});
+  assert.equal(obsoleteStorage.quarantined.length, 1);
+  assert.equal(obsolete.commands.formatBindings("tool.draw"), "N");
 });
 
 test("synchronizes durable shortcut snapshots without writing them back", () => {
@@ -1077,7 +1086,7 @@ test("synchronizes durable shortcut snapshots without writing them back", () => 
   commands.onDidChange((result) => changes.push(result));
 
   const synchronized = commands.synchronizeConfiguration(JSON.stringify({
-    version: 1,
+    version: 2,
     overrides: { "tool.draw": [keybinding("p")] },
   }));
   assert.equal(synchronized.status, "durable");
@@ -1119,7 +1128,7 @@ test("merges stale per-command edits into the latest durable shortcut snapshot",
 
 test("shortcut override API owns one binding and preserves unknown preferences", () => {
   const storage = createMemoryStorage(JSON.stringify({
-    version: 1,
+    version: 2,
     overrides: {
       "future.command": [keybinding("f")],
       "tool.draw": [keybinding("p")],
@@ -1167,7 +1176,7 @@ test("interactive imports report invalid, truncated, and unknown entries", () =>
   const { commands } = createCommandHarness();
   register(commands, "tool.draw", keybinding("n"), () => {});
   const imported = commands.importConfiguration(JSON.stringify({
-    version: 1,
+    version: 2,
     overrides: {
       "Bad id": [keybinding("b")],
       "future.command": [keybinding("f")],
@@ -1200,7 +1209,7 @@ test("interactive imports report invalid, truncated, and unknown entries", () =>
 
 test("startup recovery keeps valid entries without quarantining the whole preference file", () => {
   const storage = createMemoryStorage(JSON.stringify({
-    version: 1,
+    version: 2,
     overrides: {
       "tool.draw": [keybinding("p")],
       "tool.invalid": [{ sequence: [] }],

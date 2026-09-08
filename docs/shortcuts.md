@@ -6,6 +6,15 @@ overrides, live labels, generated help view, and keyboard-shortcuts editor are
 active. Music, Ace commands, emulated-machine input, and joystick mappings
 remain deliberately separate as listed under non-goals.
 
+Shared editor actions have one command identity wherever their behavior is the
+same: common drawing and colour-palette tools, Meta Tile Editor tools and
+navigation, undo/redo in colour-palette surfaces, Zoom In, Zoom Out, and Fit On
+Screen in 2D and 3D, grid visibility, performance statistics, and screen/sprite
+dimensions. Actual Pixels remains 2D-only because perspective views have no 1:1
+pixel scale. Equivalent screen/sprite display-mode aliases also share their
+commands. Unimplemented 3D PNG, 3D dimensions, and sprite-help menu actions are
+not advertised as configurable commands.
+
 ## Executive summary
 
 The application should not add rebinding directly to the existing menu shortcut objects or the global `keys` object. Keyboard input is currently split across several unrelated systems, so doing that would make only a subset of shortcuts configurable and would preserve the existing precedence, focus, and conflict bugs.
@@ -293,9 +302,9 @@ Each configurable action should have a stable command descriptor:
 
 ```js
 {
-  id: "textMode.tool.pencil",
+  id: "editor.tool.pencil",
   title: "Pencil Tool",
-  category: "Text Mode",
+  category: "Tools",
   execute: commandHandler,
   isEnabled: enabledPredicate
 }
@@ -305,6 +314,7 @@ Stable IDs, rather than menu IDs or translated labels, are required for persiste
 
 - `project.*`
 - `edit.*`
+- `editor.*`
 - `view.*`
 - `textMode.*`
 - `frames.*`
@@ -317,7 +327,7 @@ A keybinding rule should contain:
 
 ```js
 {
-  command: "textMode.tool.pencil",
+  command: "editor.tool.pencil",
   sequence: [/* normalized key press definitions */],
   when: {
     editorMode: "tile",
@@ -443,8 +453,8 @@ Recommended columns and controls:
 - Activation context.
 - Default/user source.
 - Conflict or warning indicator.
-- Current-editor-first grouping by function, followed by separate groups for
-  other editor modes.
+- Category-only grouping, with activation context shown on each command instead
+  of splitting commands into current-editor and other-mode sections.
 - Assign or change the single custom binding.
 - Clear binding.
 - Reset command.
@@ -465,17 +475,17 @@ Store one versioned JSON document behind an injected persistence port, for examp
 
 ```js
 {
-  version: 1,
+  version: 2,
   overrides: {
     "edit.undo": [/* user bindings */],
-    "textMode.tool.pencil": []
+    "editor.tool.pencil": []
   }
 }
 ```
 
 An empty list can represent an intentionally unbound command; absence means use the code default. Deleting an override resets that command to its default.
 
-Persisting only overrides ensures that new or corrected defaults can ship without rewriting every user's saved document. Loading must validate the schema, ignore or quarantine malformed entries, and support migrations. Storage failure or unavailability should not prevent the application from starting with defaults.
+Persisting only overrides ensures that new or corrected defaults can ship without rewriting every user's saved document. Loading must validate the schema and quarantine malformed or unsupported versions. Version 2 intentionally resets the pre-production command IDs rather than carrying compatibility aliases; migrations can be introduced after the format ships. Storage failure or unavailability should not prevent the application from starting with defaults.
 
 Account synchronization can be added later without changing the command or override model if persistence remains behind a port.
 

@@ -1,18 +1,18 @@
 var ShortcutCatalogMetadata = (function() {
-  var textTools = Object.freeze([
-    Object.freeze({ id: 'textMode.tool.pencil', title: 'Pencil', key: 'N', tile: 'pen', pixel: 'pen' }),
-    Object.freeze({ id: 'textMode.tool.erase', title: 'Eraser', key: 'L', tile: 'erase', pixel: 'erase' }),
-    Object.freeze({ id: 'textMode.tool.fill', title: 'Fill Bucket', key: 'K', tile: 'fill', pixel: 'fill' }),
-    Object.freeze({ id: 'textMode.tool.eyedropper', title: 'Eyedropper', key: 'I', tile: 'eyedropper', pixel: 'eyedropper' }),
-    Object.freeze({ id: 'textMode.tool.marquee', title: 'Marquee', key: 'M', tile: 'select', pixel: 'select' }),
-    Object.freeze({ id: 'textMode.tool.shape', title: 'Cycle Shape Tool', key: 'U', tile: 'shape', pixel: 'shape' }),
-    Object.freeze({ id: 'textMode.tool.zoom', title: 'Zoom Tool', key: 'Z', tile: 'zoom', pixel: 'zoom' }),
-    Object.freeze({ id: 'textMode.tool.hand', title: 'Hand Tool', key: 'H', tile: 'hand', pixel: 'hand' }),
-    Object.freeze({ id: 'textMode.tool.move', title: 'Move Tool', key: 'V', tile: 'move', pixel: 'move' }),
-    Object.freeze({ id: 'textMode.tool.pixel', title: 'Pixel Tool', key: 'P', tile: 'pixel' }),
-    Object.freeze({ id: 'textMode.tool.characterPixel', title: 'Character Pixel Tool', key: 'O', tile: 'charpixel' }),
-    Object.freeze({ id: 'textMode.tool.type', title: 'Type Tool', key: 'T', tile: 'type' }),
-    Object.freeze({ id: 'textMode.tool.block', title: 'Meta Tile Tool', key: 'B', tile: 'block' })
+  var editorTools = Object.freeze([
+    Object.freeze({ id: 'editor.tool.pencil', title: 'Pencil', key: 'N', tile: 'pen', pixel: 'pen', palette: 'pen', block: 'pen' }),
+    Object.freeze({ id: 'editor.tool.erase', title: 'Eraser', key: 'L', tile: 'erase', pixel: 'erase', palette: 'erase' }),
+    Object.freeze({ id: 'editor.tool.fill', title: 'Fill Bucket', key: 'K', tile: 'fill', pixel: 'fill' }),
+    Object.freeze({ id: 'editor.tool.eyedropper', title: 'Eyedropper', key: 'I', tile: 'eyedropper', pixel: 'eyedropper', palette: 'eyedropper', block: 'eyedropper' }),
+    Object.freeze({ id: 'editor.tool.marquee', title: 'Marquee', key: 'M', tile: 'select', pixel: 'select', palette: 'select' }),
+    Object.freeze({ id: 'editor.tool.shape', title: 'Cycle Shape Tool', key: 'U', tile: 'shape', pixel: 'shape' }),
+    Object.freeze({ id: 'editor.tool.zoom', title: 'Zoom Tool', key: 'Z', tile: 'zoom', pixel: 'zoom' }),
+    Object.freeze({ id: 'editor.tool.hand', title: 'Hand Tool', key: 'H', tile: 'hand', pixel: 'hand' }),
+    Object.freeze({ id: 'editor.tool.move', title: 'Move Tool', key: 'V', tile: 'move', pixel: 'move', palette: 'move' }),
+    Object.freeze({ id: 'editor.tool.pixel', title: 'Pixel Tool', key: 'P', tile: 'pixel', block: 'pixel' }),
+    Object.freeze({ id: 'editor.tool.characterPixel', title: 'Character Pixel Tool', key: 'O', tile: 'charpixel' }),
+    Object.freeze({ id: 'editor.tool.type', title: 'Type Tool', key: 'T', tile: 'type' }),
+    Object.freeze({ id: 'editor.tool.block', title: 'Meta Tile Tool', key: 'B', tile: 'block' })
   ]);
 
   var pixelSubtools = Object.freeze([
@@ -23,51 +23,43 @@ var ShortcutCatalogMetadata = (function() {
     Object.freeze({ id: 'textMode.pixelTool.shape', title: 'Cycle Pixel Shape Tool', key: 'U', modifiers: Object.freeze({ shift: true }), tool: 'shape' })
   ]);
 
-  var paletteTools = Object.freeze([
-    Object.freeze({ id: 'colorPalette.tool.pencil', title: 'Pencil', key: 'N', tool: 'pen' }),
-    Object.freeze({ id: 'colorPalette.tool.erase', title: 'Eraser', key: 'L', tool: 'erase' }),
-    Object.freeze({ id: 'colorPalette.tool.eyedropper', title: 'Eyedropper', key: 'I', tool: 'eyedropper' }),
-    Object.freeze({ id: 'colorPalette.tool.move', title: 'Move Tool', key: 'V', tool: 'move' }),
-    Object.freeze({ id: 'colorPalette.tool.marquee', title: 'Marquee', key: 'M', tool: 'select' })
-  ]);
-
   var aliases = Object.freeze({
-    'draw.pen': Object.freeze({ commandId: 'textMode.tool.pencil' }),
-    'draw.erase': Object.freeze({ commandId: 'textMode.tool.erase', label: 'Blank' }),
-    'draw.fill': Object.freeze({ commandId: 'textMode.tool.fill' }),
-    'draw.eyedropper': Object.freeze({ commandId: 'textMode.tool.eyedropper' }),
-    'draw.line': Object.freeze({ commandId: 'textMode.tool.shape', label: 'Line' }),
-    'draw.rect': Object.freeze({ commandId: 'textMode.tool.shape', label: 'Rect' }),
-    'draw.oval': Object.freeze({ commandId: 'textMode.tool.shape', label: 'Oval' }),
-    'draw.select': Object.freeze({ commandId: 'textMode.tool.marquee' }),
-    'draw.charpixel': Object.freeze({ commandId: 'textMode.tool.characterPixel', label: 'Char Pixel' }),
-    'draw.type': Object.freeze({ commandId: 'textMode.tool.type', label: 'Type' }),
-    'draw.pixel': Object.freeze({ commandId: 'textMode.tool.pixel', label: 'Pixel' }),
-    'draw.block': Object.freeze({ commandId: 'textMode.tool.block', label: 'Meta Tile' }),
-    'draw.zoom': Object.freeze({ commandId: 'textMode.tool.zoom', label: 'Zoom' }),
-    'draw.hand': Object.freeze({ commandId: 'textMode.tool.hand', label: 'Hand' }),
-    'draw.move': Object.freeze({ commandId: 'textMode.tool.move', label: 'Move' }),
-    'draw.pixelzoom': Object.freeze({ commandId: 'textMode.tool.zoom', label: 'Zoom' }),
-    'draw.pixelhand': Object.freeze({ commandId: 'textMode.tool.hand', label: 'Hand' }),
-    'draw.pixelmove': Object.freeze({ commandId: 'textMode.tool.move', label: 'Move' }),
-    'pixelMode.pen': Object.freeze({ commandId: 'textMode.tool.pencil', label: 'Pencil' }),
-    'pixelMode.erase': Object.freeze({ commandId: 'textMode.tool.erase', label: 'Blank' }),
-    'pixelMode.fill': Object.freeze({ commandId: 'textMode.tool.fill' }),
-    'pixelMode.eyedropper': Object.freeze({ commandId: 'textMode.tool.eyedropper' }),
-    'pixelMode.line': Object.freeze({ commandId: 'textMode.tool.shape', label: 'Line' }),
-    'pixelMode.rect': Object.freeze({ commandId: 'textMode.tool.shape', label: 'Rect' }),
-    'pixelMode.oval': Object.freeze({ commandId: 'textMode.tool.shape', label: 'Oval' }),
-    'pixelMode.pixelselect': Object.freeze({ commandId: 'textMode.tool.marquee' }),
+    'draw.pen': Object.freeze({ commandId: 'editor.tool.pencil' }),
+    'draw.erase': Object.freeze({ commandId: 'editor.tool.erase' }),
+    'draw.fill': Object.freeze({ commandId: 'editor.tool.fill' }),
+    'draw.eyedropper': Object.freeze({ commandId: 'editor.tool.eyedropper' }),
+    'draw.line': Object.freeze({ commandId: 'editor.tool.shape', label: 'Line' }),
+    'draw.rect': Object.freeze({ commandId: 'editor.tool.shape', label: 'Rect' }),
+    'draw.oval': Object.freeze({ commandId: 'editor.tool.shape', label: 'Oval' }),
+    'draw.select': Object.freeze({ commandId: 'editor.tool.marquee' }),
+    'draw.charpixel': Object.freeze({ commandId: 'editor.tool.characterPixel', label: 'Char Pixel' }),
+    'draw.type': Object.freeze({ commandId: 'editor.tool.type', label: 'Type' }),
+    'draw.pixel': Object.freeze({ commandId: 'editor.tool.pixel', label: 'Pixel' }),
+    'draw.block': Object.freeze({ commandId: 'editor.tool.block', label: 'Meta Tile' }),
+    'draw.zoom': Object.freeze({ commandId: 'editor.tool.zoom', label: 'Zoom' }),
+    'draw.hand': Object.freeze({ commandId: 'editor.tool.hand', label: 'Hand' }),
+    'draw.move': Object.freeze({ commandId: 'editor.tool.move', label: 'Move' }),
+    'draw.pixelzoom': Object.freeze({ commandId: 'editor.tool.zoom', label: 'Zoom' }),
+    'draw.pixelhand': Object.freeze({ commandId: 'editor.tool.hand', label: 'Hand' }),
+    'draw.pixelmove': Object.freeze({ commandId: 'editor.tool.move', label: 'Move' }),
+    'pixelMode.pen': Object.freeze({ commandId: 'editor.tool.pencil', label: 'Pencil' }),
+    'pixelMode.erase': Object.freeze({ commandId: 'editor.tool.erase' }),
+    'pixelMode.fill': Object.freeze({ commandId: 'editor.tool.fill' }),
+    'pixelMode.eyedropper': Object.freeze({ commandId: 'editor.tool.eyedropper' }),
+    'pixelMode.line': Object.freeze({ commandId: 'editor.tool.shape', label: 'Line' }),
+    'pixelMode.rect': Object.freeze({ commandId: 'editor.tool.shape', label: 'Rect' }),
+    'pixelMode.oval': Object.freeze({ commandId: 'editor.tool.shape', label: 'Oval' }),
+    'pixelMode.pixelselect': Object.freeze({ commandId: 'editor.tool.marquee' }),
     'pixelMode.charpixel': Object.freeze({ commandId: null, label: 'Char Pixel', shortcut: 'O' }),
     'pixelMode.type': Object.freeze({ commandId: null, label: 'Type', shortcut: 'T' }),
     'pixelMode.pixel': Object.freeze({ commandId: null, label: 'Pixel', shortcut: 'P' }),
     'pixelMode.block': Object.freeze({ commandId: null, label: 'Block', shortcut: 'B' }),
-    'pixelMode.zoom': Object.freeze({ commandId: 'textMode.tool.zoom', label: 'Zoom' }),
-    'pixelMode.hand': Object.freeze({ commandId: 'textMode.tool.hand', label: 'Hand' }),
-    'pixelMode.move': Object.freeze({ commandId: 'textMode.tool.move', label: 'Move' }),
+    'pixelMode.zoom': Object.freeze({ commandId: 'editor.tool.zoom', label: 'Zoom' }),
+    'pixelMode.hand': Object.freeze({ commandId: 'editor.tool.hand', label: 'Hand' }),
+    'pixelMode.move': Object.freeze({ commandId: 'editor.tool.move', label: 'Move' }),
     'pixel.draw': Object.freeze({ commandId: 'textMode.pixelTool.draw', label: 'Pencil' }),
     'pixel.pen': Object.freeze({ commandId: 'textMode.pixelTool.draw', label: 'Pencil' }),
-    'pixel.erase': Object.freeze({ commandId: 'textMode.pixelTool.erase', label: 'Blank' }),
+    'pixel.erase': Object.freeze({ commandId: 'textMode.pixelTool.erase', label: 'Eraser' }),
     'pixel.fill': Object.freeze({ commandId: null, label: 'Fill Bucket', shortcut: 'Shift+K' }),
     'pixel.eyedropper': Object.freeze({ commandId: 'textMode.pixelTool.eyedropper', label: 'Eyedropper' }),
     'pixel.line': Object.freeze({ commandId: 'textMode.pixelTool.shape', label: 'Line' }),
@@ -81,15 +73,15 @@ var ShortcutCatalogMetadata = (function() {
     'pixel.zoom': Object.freeze({ commandId: null, label: 'Zoom', shortcut: 'Shift+Z' }),
     'pixel.hand': Object.freeze({ commandId: null, label: 'Hand', shortcut: 'Shift+H' }),
     'pixel.move': Object.freeze({ commandId: null, label: 'Move', shortcut: 'Shift+V' }),
-    'palette.pen': Object.freeze({ commandId: 'colorPalette.tool.pencil' }),
-    'palette.erase': Object.freeze({ commandId: 'colorPalette.tool.erase', label: 'Blank' }),
-    'palette.eyedropper': Object.freeze({ commandId: 'colorPalette.tool.eyedropper' }),
-    'palette.move': Object.freeze({ commandId: 'colorPalette.tool.move', label: 'Move' }),
-    'palette.select': Object.freeze({ commandId: 'colorPalette.tool.marquee', label: 'Marquee' })
+    'palette.pen': Object.freeze({ commandId: 'editor.tool.pencil' }),
+    'palette.erase': Object.freeze({ commandId: 'editor.tool.erase' }),
+    'palette.eyedropper': Object.freeze({ commandId: 'editor.tool.eyedropper' }),
+    'palette.move': Object.freeze({ commandId: 'editor.tool.move', label: 'Move' }),
+    'palette.select': Object.freeze({ commandId: 'editor.tool.marquee', label: 'Marquee' })
   });
 
   var definitionsById = {};
-  textTools.concat(pixelSubtools, paletteTools).forEach(function(definition) {
+  editorTools.concat(pixelSubtools).forEach(function(definition) {
     definitionsById[definition.id] = definition;
   });
   Object.freeze(definitionsById);
@@ -117,9 +109,8 @@ var ShortcutCatalogMetadata = (function() {
 
   return Object.freeze({
     aliases: aliases,
-    paletteTools: paletteTools,
+    editorTools: editorTools,
     pixelSubtools: pixelSubtools,
-    textTools: textTools,
     getToolAlias: function(scope, toolId) {
       return aliases[scope + '.' + toolId] || null;
     },
@@ -164,19 +155,19 @@ var keys = {
   textMode: {
     play: { keyCode: 32, shift: false },
 
-    toolsPencil: { key: toolShortcutKey('textMode.tool.pencil') },
-    toolsErase: { key: toolShortcutKey('textMode.tool.erase') },
-    toolsBucket: { key: toolShortcutKey('textMode.tool.fill') },
-    toolsEyedropper: { key: toolShortcutKey('textMode.tool.eyedropper') },
-    toolsPixel: { key: toolShortcutKey('textMode.tool.pixel') },
-    toolsCharPixel: { key: toolShortcutKey('textMode.tool.characterPixel') },
-    toolsMarquee: { key: toolShortcutKey('textMode.tool.marquee') },
-    toolsShape: { key: toolShortcutKey('textMode.tool.shape') },
-    toolsZoom: { key: toolShortcutKey('textMode.tool.zoom') },
-    toolsType: { key: toolShortcutKey('textMode.tool.type') },
-    toolsHand: { key: toolShortcutKey('textMode.tool.hand') },
-    toolsMove: { key: toolShortcutKey('textMode.tool.move') },
-    toolsBlock: { key: toolShortcutKey('textMode.tool.block') },
+    toolsPencil: { key: toolShortcutKey('editor.tool.pencil') },
+    toolsErase: { key: toolShortcutKey('editor.tool.erase') },
+    toolsBucket: { key: toolShortcutKey('editor.tool.fill') },
+    toolsEyedropper: { key: toolShortcutKey('editor.tool.eyedropper') },
+    toolsPixel: { key: toolShortcutKey('editor.tool.pixel') },
+    toolsCharPixel: { key: toolShortcutKey('editor.tool.characterPixel') },
+    toolsMarquee: { key: toolShortcutKey('editor.tool.marquee') },
+    toolsShape: { key: toolShortcutKey('editor.tool.shape') },
+    toolsZoom: { key: toolShortcutKey('editor.tool.zoom') },
+    toolsType: { key: toolShortcutKey('editor.tool.type') },
+    toolsHand: { key: toolShortcutKey('editor.tool.hand') },
+    toolsMove: { key: toolShortcutKey('editor.tool.move') },
+    toolsBlock: { key: toolShortcutKey('editor.tool.block') },
 
     drawCharacter: { key: 'C' },
     drawFGColor: { key: 'F' },

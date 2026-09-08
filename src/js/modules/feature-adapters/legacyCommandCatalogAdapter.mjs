@@ -91,7 +91,7 @@ export function createLegacyCommandCatalogAdapter({
   translate = (value) => value,
 }) {
   if (!toolMetadata) throw new TypeError("Legacy command catalog requires tool metadata");
-  const { paletteTools: paletteToolDefinitions, pixelSubtools: pixelSubtoolDefinitions, textTools: textToolDefinitions } = toolMetadata;
+  const { editorTools: editorToolDefinitions, pixelSubtools: pixelSubtoolDefinitions } = toolMetadata;
   let connected = false;
   /** @type {any[]} */
   let menuItems = [];
@@ -101,6 +101,17 @@ export function createLegacyCommandCatalogAdapter({
     commands.bindingFromLegacyShortcut({ key, ...modifiers });
   /** @param {ShortcutContextClause} [values] @returns {ShortcutContextClause[]} */
   const context = (values = {}) => [{ ...baseTextContext, ...values }];
+  const activePaletteEdit = () => {
+    const modalPaletteEdit = app.textModeEditor?.colorPaletteEdit;
+    if (modalPaletteEdit?.visible === true) return modalPaletteEdit;
+    return app.mode === "color palette"
+      ? app.colorPaletteEditor?.colorPaletteEdit || null
+      : null;
+  };
+  const activeBlockEditor = () => {
+    const blockEditor = app.textModeEditor?.blockEditor;
+    return blockEditor?.visible === true ? blockEditor : null;
+  };
   /** @param {LegacyCommandRegistration} definition */
   const register = (definition) => {
     const keys = Array.isArray(definition.keys)
@@ -257,15 +268,29 @@ export function createLegacyCommandCatalogAdapter({
       contexts: context(), key: "Space", execute: () => textMode.frames.play(),
     });
 
-    for (const tool of textToolDefinitions) {
+    for (const tool of editorToolDefinitions) {
       const supportsPixelMode = typeof tool.pixel === "string";
+      const supportsPalette = typeof tool.palette === "string";
+      const supportsBlockEditor = typeof tool.block === "string";
       register({
         id: tool.id,
         title: tool.title,
-        category: "Text Tools",
+        category: "Tools",
         contexts: context({ textEditorMode: supportsPixelMode ? ["tile", "pixel"] : "tile" }),
         key: tool.key,
         execute() {
+          const blockEditor = supportsBlockEditor ? activeBlockEditor() : null;
+          if (blockEditor) {
+            blockEditor.setTool(tool.block);
+            return;
+          }
+          if (supportsPalette && (app.mode === "color palette" ||
+              app.textModeEditor?.colorPaletteEdit?.visible === true)) {
+            const paletteEdit = activePaletteEdit();
+            if (!paletteEdit) return false;
+            paletteEdit.setColorPaletteTool(tool.palette);
+            return;
+          }
           if (textMode.getEditorMode() === "pixel" && supportsPixelMode) {
             if (tool.pixel === "shape") textMode.tools.pixelDrawTools.toggleShape();
             else textMode.tools.pixelDrawTools.setDrawTool(tool.pixel);
@@ -278,12 +303,52 @@ export function createLegacyCommandCatalogAdapter({
           }
         },
       });
+      if (supportsPalette || supportsBlockEditor) {
+        /** @type {ShortcutContextClause[]} */
+        const actionContexts = [];
+        /** @type {ShortcutContextClause[]} */
+        const keyboardContexts = [];
+        if (supportsPalette) {
+          actionContexts.push(
+            { editorMode: "color palette" },
+            { modal: "editColorPaletteDialog" },
+          );
+          keyboardContexts.push(
+            {
+              editorMode: "color palette",
+              focus: ["canvas", "palette"],
+              modal: "none",
+              popupOpen: false,
+              shortcutsAllowed: true,
+            },
+            {
+              focus: ["canvas", "palette"],
+              modal: "editColorPaletteDialog",
+              popupOpen: false,
+              shortcutsAllowed: true,
+            },
+          );
+        }
+        if (supportsBlockEditor) {
+          actionContexts.push({ modal: "blockEditor" });
+          keyboardContexts.push({
+            focus: ["canvas", "palette"],
+            modal: "blockEditor",
+            popupOpen: false,
+            shortcutsAllowed: true,
+          });
+        }
+        commands.addCommandActivation(tool.id, {
+          actionContexts,
+          contexts: keyboardContexts,
+        });
+      }
     }
     for (const tool of pixelSubtoolDefinitions) {
       register({
         id: tool.id,
         title: tool.title,
-        category: "Text Tools",
+        category: "Tools",
         contexts: context({ textEditorMode: "tile", textTool: "pixel" }),
         key: tool.key,
         modifiers: tool.modifiers,
@@ -306,12 +371,12 @@ export function createLegacyCommandCatalogAdapter({
       execute: () => textMode.currentTile.flipV2d(),
     });
     register({
-      id: "textMode.lineSegment.horizontal", title: "Horizontal Line Segment", category: "Text Tools", key: "F",
+      id: "textMode.lineSegment.horizontal", title: "Horizontal Line Segment", category: "Tools", key: "F",
       contexts: context({ textEditorMode: "tile", textTool: "linesegment" }),
       execute: () => textMode.tools.drawTools.lineSegmentDraw.setMode("horizontal"),
     });
     register({
-      id: "textMode.lineSegment.vertical", title: "Vertical Line Segment", category: "Text Tools", key: "G",
+      id: "textMode.lineSegment.vertical", title: "Vertical Line Segment", category: "Tools", key: "G",
       contexts: context({ textEditorMode: "tile", textTool: "linesegment" }),
       execute: () => textMode.tools.drawTools.lineSegmentDraw.setMode("vertical"),
     });
@@ -366,7 +431,21 @@ export function createLegacyCommandCatalogAdapter({
         id: `textMode.tilePalette.${direction.id}`, title: direction.title, category: "Palettes", key: direction.key,
         contexts: context({ focus: ["canvas", "palette"], spriteFramesVisible: false, textEditorMode: "tile", textTool: drawingTools }),
         repeat: true,
-        execute: () => textMode.tools.drawTools.tilePalette.tilePaletteDisplay.moveSelection(direction.dx, direction.dy),
+        execute() {
+          const blockEditor = activeBlockEditor();
+          const paletteDisplay = blockEditor?.tilePaletteDisplay ||
+            textMode.tools.drawTools.tilePalette.tilePaletteDisplay;
+          paletteDisplay.moveSelection(direction.dx, direction.dy);
+        },
+      });
+      commands.addCommandActivation(`textMode.tilePalette.${direction.id}`, {
+        actionContexts: [{ modal: "blockEditor" }],
+        contexts: [{
+          focus: ["canvas", "palette"],
+          modal: "blockEditor",
+          popupOpen: false,
+          shortcutsAllowed: true,
+        }],
       });
       register({
         id: `textMode.blockPalette.${direction.id}`,
@@ -407,7 +486,20 @@ export function createLegacyCommandCatalogAdapter({
     register({
       id: "textMode.tile.rotate", title: "Rotate Current Tile", category: "Tile", key: "R",
       contexts: context({ focus: ["canvas", "palette"], spriteFramesVisible: false, textEditorMode: "tile", textTool: drawingTools }),
-      execute: () => textMode.tools.drawTools.tilePalette.rotateCharacter(),
+      execute() {
+        const blockEditor = activeBlockEditor();
+        if (blockEditor) blockEditor.rotateCharacter();
+        else textMode.tools.drawTools.tilePalette.rotateCharacter();
+      },
+    });
+    commands.addCommandActivation("textMode.tile.rotate", {
+      actionContexts: [{ modal: "blockEditor" }],
+      contexts: [{
+        focus: ["canvas", "palette"],
+        modal: "blockEditor",
+        popupOpen: false,
+        shortcutsAllowed: true,
+      }],
     });
     register({
       id: "textMode.colorPalette.recentNext", title: "Next Recent Colour", category: "Palettes", key: "E",
@@ -452,20 +544,18 @@ export function createLegacyCommandCatalogAdapter({
         contexts: context({ screenMode: "c64multicolor" }),
         execute: () => textMode.tools.drawTools.pixelDraw.setC64MultiColorType(color.type),
       });
+      commands.addCommandActivation(`textMode.multicolor.${color.id}`, {
+        actionContexts: [{ modal: "blockEditor", screenMode: "c64multicolor" }],
+        contexts: [{
+          focus: ["canvas", "palette"],
+          modal: "blockEditor",
+          popupOpen: false,
+          screenMode: "c64multicolor",
+          shortcutsAllowed: true,
+        }],
+      });
     }
 
-    if (app.colorPaletteEditor?.colorPaletteEdit) {
-      for (const tool of paletteToolDefinitions) {
-        register({
-          id: tool.id,
-          title: tool.title,
-          category: "Colour Palette Tools",
-          contexts: [{ editorMode: "color palette", focus: "canvas", modal: "none", popupOpen: false, shortcutsAllowed: true }],
-          key: tool.key,
-          execute: () => app.colorPaletteEditor.colorPaletteEdit.setColorPaletteTool(tool.tool),
-        });
-      }
-    }
   }
 
   /** @param {any} menuBar @returns {LegacyMenuEntry[]} */
@@ -544,6 +634,36 @@ export function createLegacyCommandCatalogAdapter({
     menuItems = entries.map(({ menuItem }) => menuItem);
   }
 
+  function registerAdditionalSurfaceActivations() {
+    /** @param {string} modal @returns {ShortcutContextClause} */
+    const modalKeyboardContext = (modal) => ({
+      focus: ["canvas", "palette"],
+      modal,
+      popupOpen: false,
+      shortcutsAllowed: true,
+    });
+    for (const commandId of ["edit.undo", "edit.redo"]) {
+      if (!commands.hasCommand(commandId)) continue;
+      commands.addCommandActivation(commandId, {
+        actionContexts: [{ modal: "editColorPaletteDialog" }],
+        contexts: [modalKeyboardContext("editColorPaletteDialog")],
+      });
+    }
+    for (const commandId of ["view.zoomin", "view.zoomout", "view.fitonscreen"]) {
+      if (!commands.hasCommand(commandId)) continue;
+      commands.addCommandActivation(commandId, {
+        actionContexts: [{ editorMode: "3d" }],
+        contexts: [{
+          editorMode: "3d",
+          modal: "none",
+          popupOpen: false,
+          shortcutsAllowed: true,
+        }],
+        isEnabled: () => app.textModeEditor?.grid3d?.currentLayer != null,
+      });
+    }
+  }
+
   function updateMenuLabels() {
     for (const menuItem of menuItems) {
       const effectiveBindings = commands.getEffectiveBindings(menuItem.commandId);
@@ -597,10 +717,14 @@ export function createLegacyCommandCatalogAdapter({
         pixelToolLabel.textContent = pixelDraw.getToolLabel(pixelDraw.toolType);
       }
     }
-    const colorPaletteEdit = app.colorPaletteEditor?.colorPaletteEdit;
-    if (colorPaletteEdit?.currentTool) {
-      const paletteToolLabel = document.getElementById("colorPaletteEditorCurrentTool");
-      if (paletteToolLabel) paletteToolLabel.textContent = colorPaletteEdit.getToolLabel(colorPaletteEdit.currentTool);
+    for (const [surface, elementId] of [
+      [app.colorPaletteEditor?.colorPaletteEdit, "colorPaletteEditorCurrentTool"],
+      [app.textModeEditor?.colorPaletteEdit, "colorPaletteEditCurrentTool"],
+      [app.textModeEditor?.blockEditor, "currentBlockEditTool"],
+    ]) {
+      if (!surface?.currentTool) continue;
+      const toolLabel = document.getElementById(elementId);
+      if (toolLabel) toolLabel.textContent = surface.getToolLabel(surface.currentTool);
     }
   }
 
@@ -631,6 +755,7 @@ export function createLegacyCommandCatalogAdapter({
       connected = true;
       registerEditorCommands();
       registerMenuCommands(menuBar);
+      registerAdditionalSurfaceActivations();
       commands.onDidChange(updateLabels);
       menuBar.shortcuts = menuBar.shortcuts.filter((/** @type {any} */ shortcut) =>
         shortcut.menuItem.commandId === null || shortcut.menuItem.legacyShortcutModes.length > 0);

@@ -195,7 +195,7 @@ export function createKeyboardShortcutsDialog({
   }
 
   const functionOrder = [
-    "Text Tools",
+    "Tools",
     "Canvas",
     "Selection",
     "Tile",
@@ -221,44 +221,9 @@ export function createKeyboardShortcutsDialog({
     return rank === -1 ? functionOrder.length : rank;
   }
 
-  /** @param {unknown} value @returns {string[]} */
-  function modeValues(value) {
-    if (Array.isArray(value)) return value.flatMap(modeValues);
-    if (value && typeof value === "object") {
-      const condition = /** @type {{anyOf?: unknown[]}} */ (value);
-      if (Array.isArray(condition.anyOf)) return condition.anyOf.flatMap(modeValues);
-      return [];
-    }
-    return typeof value === "string" ? [value] : [];
-  }
-
-  /** @param {string} mode */
-  function modeLabel(mode) {
-    if (mode === "2d" || mode === "3d") return "Text / Sprite Editor";
-    if (mode === "color palette") return "Colour Palette Editor";
-    if (mode === "tile set") return "Tile Set Editor";
-    if (["script", "json", "text", "hex"].includes(mode)) return "Code / Data Editors";
-    return mode.replace(/(^|\s)\S/g, (letter) => letter.toLocaleUpperCase());
-  }
-
-  /** @param {ShortcutSummary} summary */
-  function commandScope(summary) {
-    if (summary.availableInCurrentMode) return "Current Editor";
-    const labels = Array.from(new Set(summary.contexts.flatMap((context) =>
-      modeValues(context.editorMode).map(modeLabel),
-    )));
-    return labels.length ? labels.join(" / ") : "Other editor modes";
-  }
-
   /** @param {readonly ShortcutSummary[]} summaries */
   function groupedRows(summaries) {
     const sorted = [...summaries].sort((left, right) => {
-      if (left.availableInCurrentMode !== right.availableInCurrentMode) {
-        return left.availableInCurrentMode ? -1 : 1;
-      }
-      const leftScope = commandScope(left);
-      const rightScope = commandScope(right);
-      if (leftScope !== rightScope) return leftScope.localeCompare(rightScope);
       const rankDifference = functionRank(left.category) - functionRank(right.category);
       if (rankDifference) return rankDifference;
       if (left.category !== right.category) return left.category.localeCompare(right.category);
@@ -272,7 +237,7 @@ export function createKeyboardShortcutsDialog({
     /** @type {Map<string, {bound: number, count: number}>} */
     const counts = new Map();
     for (const summary of sorted) {
-      const key = `${commandScope(summary)}\u0000${summary.category}`;
+      const key = summary.category;
       const count = counts.get(key) || { bound: 0, count: 0 };
       count.count++;
       if (summary.bindings.length) count.bound++;
@@ -280,8 +245,7 @@ export function createKeyboardShortcutsDialog({
     }
     let groupKey = "";
     for (const summary of sorted) {
-      const scope = commandScope(summary);
-      const nextGroupKey = `${scope}\u0000${summary.category}`;
+      const nextGroupKey = summary.category;
       if (nextGroupKey !== groupKey) {
         groupKey = nextGroupKey;
         const groupCount = counts.get(groupKey) || { bound: 0, count: 0 };
@@ -292,8 +256,6 @@ export function createKeyboardShortcutsDialog({
           const heading = createElement("th", "keyboard-shortcuts-group-heading");
           heading.setAttribute("colspan", "6");
           heading.setAttribute("scope", "rowgroup");
-          heading.appendChild(createElement("span", "keyboard-shortcuts-group-scope", scope));
-          heading.appendChild(createElement("span", "keyboard-shortcuts-group-separator", " > "));
           heading.appendChild(createElement("span", "keyboard-shortcuts-group-function", summary.category));
           heading.appendChild(createElement("span", "keyboard-shortcuts-group-count", countText));
           groupRow.appendChild(heading);

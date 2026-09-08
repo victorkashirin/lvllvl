@@ -1303,6 +1303,85 @@ GridView3d.prototype = {
     return this.scale;
   },
 
+  zoom: function(direction) {
+    if(direction == 0) {
+      return;
+    }
+
+    if(this.camera == null) {
+      this.setupCamera();
+    }
+
+    if(this.viewIsPerspective) {
+      var zoomScale = Math.pow(0.95, Math.abs(direction));
+      if(direction > 0) {
+        this.cameraControls.dollyOut(zoomScale);
+      } else {
+        this.cameraControls.dollyIn(zoomScale);
+      }
+      this.cameraControls.update();
+      return;
+    }
+
+    this.scale = Math.max(0.01, this.scale + direction / 2);
+    this.resize(this.left, this.top, this.width, this.height);
+  },
+
+  fitOnScreen: function() {
+    if(this.camera == null) {
+      this.setupCamera();
+    }
+
+    var grid3d = this.editor.grid3d;
+    var gridWidth = grid3d.getGridWidth() * grid3d.getCellSizeX();
+    var gridHeight = grid3d.getGridHeight() * grid3d.getCellSizeY();
+    var gridDepth = grid3d.getGridDepth() * grid3d.getCellSizeZ();
+
+    if(!this.viewIsPerspective) {
+      var widthScale = this.width > 0 && gridWidth > 0 ? this.width / gridWidth : this.scale;
+      var heightScale = this.height > 0 && gridHeight > 0 ? this.height / gridHeight : this.scale;
+      this.scale = Math.max(0.01, Math.min(widthScale, heightScale) * 0.9);
+      this.resize(this.left, this.top, this.width, this.height);
+      return;
+    }
+
+    var targetX = gridWidth / 2;
+    var targetY = gridHeight / 2;
+    var targetZ = gridDepth / 2;
+    var offsetX = this.camera.position.x - this.cameraControls.target.x;
+    var offsetY = this.camera.position.y - this.cameraControls.target.y;
+    var offsetZ = this.camera.position.z - this.cameraControls.target.z;
+    var offsetLength = Math.sqrt(offsetX * offsetX + offsetY * offsetY + offsetZ * offsetZ);
+    if(offsetLength == 0) {
+      offsetZ = 1;
+      offsetLength = 1;
+    }
+
+    var aspect = this.camera.aspect;
+    if(!isFinite(aspect) || aspect <= 0) {
+      aspect = this.width > 0 && this.height > 0 ? this.width / this.height : 1;
+    }
+    var verticalHalfFov = this.camera.fov * Math.PI / 360;
+    var horizontalHalfFov = Math.atan(Math.tan(verticalHalfFov) * aspect);
+    var fittingHalfFov = Math.min(verticalHalfFov, horizontalHalfFov);
+    var radius = Math.sqrt(gridWidth * gridWidth + gridHeight * gridHeight + gridDepth * gridDepth) / 2;
+    var distance = radius > 0 ? radius / Math.sin(fittingHalfFov) * 1.1 : 1;
+
+    this.setCameraTarget(targetX, targetY, targetZ);
+    this.setCameraPosition(
+      targetX + offsetX / offsetLength * distance,
+      targetY + offsetY / offsetLength * distance,
+      targetZ + offsetZ / offsetLength * distance
+    );
+
+    var requiredFar = distance + radius * 2;
+    if(requiredFar > this.camera.far) {
+      this.camera.far = requiredFar;
+      this.camera.updateProjectionMatrix();
+    }
+    this.cameraControls.update();
+  },
+
   resize: function(left, top, width, height) {
     
 

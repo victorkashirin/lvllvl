@@ -2281,13 +2281,13 @@ ColorPaletteEdit.prototype = {
     var modalOwnsEvent = commandServiceActive && this.visible === true &&
       g_app.textModeEditor && g_app.textModeEditor.colorPaletteEdit === this &&
       shortcutContext && shortcutContext.modal == 'editColorPaletteDialog';
-    var localOwnsEvent = !commandServiceActive || modalOwnsEvent;
+    var localOwnsUndo = !commandServiceActive;
     var inputAllowsPaletteShortcut = !shortcutContext ||
       shortcutContext.inputOwner == 'canvasPassive' ||
       (modalOwnsEvent && shortcutContext.inputOwner == 'canvasTyping');
     var handled = false;
 
-    if(localOwnsEvent && inputAllowsPaletteShortcut && typeof event.key != 'undefined' &&
+    if(localOwnsUndo && inputAllowsPaletteShortcut && typeof event.key != 'undefined' &&
       (event.ctrlKey || event.metaKey) && !event.altKey) {
       switch(event.key.toUpperCase()) {
         case 'Z':
@@ -2303,7 +2303,7 @@ ColorPaletteEdit.prototype = {
 
     var c = String.fromCharCode(keyCode).toUpperCase();
 
-    if(localOwnsEvent && inputAllowsPaletteShortcut &&
+    if(!commandServiceActive && inputAllowsPaletteShortcut &&
       !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
       switch(c) {
         case keys.textMode.toolsPencil.key:

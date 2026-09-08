@@ -1894,15 +1894,9 @@ body.zen-mode .zen-mode-panel-stacked-bottom {
   z-index: 2;
 }
 
-.keyboard-shortcuts-group-scope,
 .keyboard-shortcuts-group-function {
   font-size: 13px;
   font-weight: 700;
-}
-
-.keyboard-shortcuts-group-separator {
-  color: #777f87;
-  font-size: 13px;
 }
 
 .keyboard-shortcuts-group-count {

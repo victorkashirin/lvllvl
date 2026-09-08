@@ -63,8 +63,9 @@ keeps global/local boundaries and admits only registered Alt+1…8 colour action
 through canvas typing; direct/menu execution checks action prerequisites without
 inheriting keyboard-only focus, modal, pointer, popup, or typing restrictions.
 Editor action contexts no longer encode typing suppression. The palette-edit
-dialog retains its local N/L/I/V/M and undo/redo owner against the actual modal
-instance, while the standalone palette remains command-owned. Static validation
+dialog routes N/L/I/V/M and undo/redo through the shared command owner against
+the actual modal instance, while retaining its local path only when the command
+service is unavailable. Static validation
 passed via targeted syntax checks, module
 TypeScript checking, the production build, and the module-boundary and
 legacy-graph policy checks. The focused Chromium workflow `palette surfaces and
@@ -76,6 +77,14 @@ also verifies that direct actions retain mode prerequisites without inheriting
 input-boundary restrictions. That browser run exposed missing TanStack runtime
 exports in the production build; the dependency export list was completed and
 the rebuilt application passed the workflow. No Phase 1 work is deferred.
+
+**Follow-up (2026-09-08):** Pencil, Eraser, Eyedropper, Move, and Marquee now
+have one command owner across the text/sprite editor, standalone colour-palette
+editor, and colour-palette dialog. The dialog's N/L/I/V/M path remains only as
+the no-service fallback, as do its undo/redo paths. Pencil, Eyedropper, Pixel,
+palette movement, tile rotation, and multicolour selection use those same
+commands in the Meta Tile Editor. Modal context classification no longer
+inherits an active typing cursor from the covered editor.
 
 ## Phase 2 — Binding semantics, repeat, and aliases
 
@@ -301,8 +310,8 @@ the adapter. The per-tool label/default maps in `DrawTools`, `PixelDrawTools`,
 presentations. The retained `keys.textMode.tools*` compatibility values and
 guarded classic no-service labels now derive from that same frozen metadata.
 Existing command IDs and version-1 overrides remain unchanged. Music, Ace,
-C64/debugger, assembler, joystick, and the modal colour-palette owner remain
-explicitly outside this catalog. Targeted module type and syntax checks passed,
+C64/debugger, assembler, and joystick remain explicitly outside this catalog.
+Targeted module type and syntax checks passed,
 as did 36 focused command/editor unit tests. The production module graph passes
 at 20 modules and 22 edges, and the protected 304-input legacy graph has no new
 input or exception. The production build and artifact verification passed. Two
@@ -312,6 +321,20 @@ verifies aliased menus retain one persisted ID and canonical action when labels,
 alias order, or UI defaults change; unsupported configurable aliases fail; shared
 tool presentations keep classic fallback labels/defaults; and a second command
 definition cannot replace metadata or behavior. No Phase 6 work is deferred.
+
+**Follow-up (2026-09-08):** Primary tool IDs moved to the neutral
+`editor.tool.*` namespace. The five tools shared with colour-palette editing are
+defined once, with multiple activation contexts and one routed handler, rather
+than duplicated as `textMode.tool.*` and `colorPalette.tool.*` commands. The
+pre-production persistence boundary advanced to version 2 without aliases or a
+version-1 migration. Shortcut settings now group solely by category and leave
+surface applicability to the existing context column.
+
+The final flattening pass merged identical screen/sprite Dimensions and display
+mode aliases, 2D/3D Grid, and 2D/3D Performance Stats under one command
+identity each; enabled 3D activation for Zoom In, Zoom Out, and Fit On Screen;
+kept Actual Pixels 2D-only; and removed the exposed 3D PNG, 3D Dimensions, and
+sprite Help entries whose legacy actions had no implementation.
 
 ## Phase 7 — API and data ownership
 

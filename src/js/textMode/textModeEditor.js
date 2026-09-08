@@ -1191,6 +1191,7 @@ TextModeEditor.prototype = {
   setGridVisible: function(visible) {
     if(this.type == '3d') {
       this.grid3d.setGridVisible(visible);
+      UI('view-3dgrid').setChecked(visible);
     } else {
       this.gridVisible = visible;
       UI('edit-showgrid').setChecked(visible);
@@ -1813,8 +1814,11 @@ TextModeEditor.prototype = {
     this.type = type;
     this.currentTile.setType(type);
     if(type == '2d') {
+      UI('edit-showgrid').setChecked(this.gridVisible);
       this.graphic.redraw({ allCells: true });
       this.layers.updateAllLayerPreviews();
+    } else if(type == '3d') {
+      UI('view-3dgrid').setChecked(this.grid3d.getGridVisible());
     }
   },
 
@@ -2428,7 +2432,6 @@ TextModeEditor.prototype = {
     }
 
     if(this.type == '3d') {
-      console.error('need to get active grid view');
       this.gridView3d.zoom(direction);
     }
   },
@@ -2439,7 +2442,6 @@ TextModeEditor.prototype = {
     }
 
     if(this.type == '3d') {
-      console.error('need to get active grid view');
       this.gridView3d.fitOnScreen();
     }
   },
@@ -2449,10 +2451,6 @@ TextModeEditor.prototype = {
       this.gridView2d.actualPixels();
     }
 
-    if(this.type == '3d') {
-      console.error('need to get active grid view');
-      this.gridView3d.actualPixels();
-    }
   },
 
   replaceColor: function() {

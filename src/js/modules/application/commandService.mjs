@@ -26,7 +26,7 @@ import {
   normalizeShortcutContextClause,
 } from "../domain/shortcutContext.mjs";
 
-const persistenceVersion = 1;
+const persistenceVersion = 2;
 const inputOwnedKeys = new Set([
   "ArrowDown", "ArrowLeft", "ArrowRight", "ArrowUp", "Backspace", "Delete",
   "End", "Enter", "Escape", "Home", "Insert", "PageDown", "PageUp", "Space", "Tab",
@@ -77,13 +77,10 @@ const alwaysEnabled = () => true;
  * @property {readonly ShortcutContextClause[]} contexts
  * @property {string} contextLabel
  * @property {string} id
- * @property {boolean} availableInCurrentMode
  * @property {boolean} modified
  * @property {string} source
  * @property {string} title
  */
-
-/** @typedef {Omit<CommandSummary, "availableInCurrentMode">} StaticCommandSummary */
 
 /**
  * @typedef {object} EffectiveCommandBindings
@@ -103,9 +100,7 @@ const alwaysEnabled = () => true;
  * @typedef {object} CommandSummaryCache
  * @property {EffectiveBindingCache} bindingCache
  * @property {Map<string, readonly BindingConflict[]>} conflictsByCommand
- * @property {unknown} currentMode
- * @property {readonly CommandSummary[] | null} currentModeSummaries
- * @property {readonly StaticCommandSummary[]} summaries
+ * @property {readonly CommandSummary[]} summaries
  */
 
 /**
@@ -239,9 +234,9 @@ function commandExecutionResult(
 }
 
 /**
- * Version 1 stores arrays for compatibility with existing preferences, but
- * the application model owns one custom binding (or an explicit clear) per
- * command. This is also the migration boundary for future persistence versions.
+ * Version 2 stores override values as arrays, while the application model owns
+ * one custom binding (or an explicit clear) per command. This remains the
+ * migration boundary for future persistence versions.
  *
  * @param {unknown} value
  * @returns {{diagnostics: ShortcutImportDiagnostics, overrides: ShortcutOverrides}}
@@ -957,8 +952,7 @@ function buildCommandConflictSummary(service, commandId) {
 
 /**
  * Build conflict and presentation data once for a catalog/override/platform
- * revision. Current editor availability is deliberately added later because
- * it changes with live application context.
+ * revision.
  *
  * @param {CommandService} service
  * @returns {CommandSummaryCache}
@@ -980,7 +974,7 @@ function commandSummaryCacheFor(service) {
         .filter((binding) => binding.when && Object.keys(binding.when).length)
         .map((binding) => `binding: ${describeContext(binding.when || {})}`);
       const modified = service.isModified(command.id);
-      return /** @type {StaticCommandSummary} */ (Object.freeze({
+      return /** @type {CommandSummary} */ (Object.freeze({
         bindings,
         category: command.category,
         conflicts: conflictsByCommand.get(command.id) || emptyConflicts,
@@ -997,8 +991,6 @@ function commandSummaryCacheFor(service) {
   const next = {
     bindingCache,
     conflictsByCommand,
-    currentMode: undefined,
-    currentModeSummaries: null,
     summaries,
   };
   derived.summaries = next;
@@ -1764,23 +1756,7 @@ export class CommandService {
 
   /** @returns {readonly CommandSummary[]} */
   getCommands() {
-    const cache = commandSummaryCacheFor(this);
-    const currentMode = this.getContext().editorMode;
-    if (cache.currentModeSummaries && Object.is(cache.currentMode, currentMode)) {
-      return cache.currentModeSummaries;
-    }
-    cache.currentMode = currentMode;
-    cache.currentModeSummaries = Object.freeze(cache.summaries.map((summary) => {
-      const command = commandsFor(this).get(summary.id);
-      return Object.freeze({
-        ...summary,
-        availableInCurrentMode: Boolean(command?.contexts.some((context) => {
-          if (!Object.prototype.hasOwnProperty.call(context, "editorMode")) return true;
-          return contextMatches({ editorMode: context.editorMode }, { editorMode: currentMode });
-        })),
-      });
-    }));
-    return cache.currentModeSummaries;
+    return commandSummaryCacheFor(this).summaries;
   }
 
   /**

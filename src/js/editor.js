@@ -1790,7 +1790,6 @@ main split panel north is menu
 
       menu = _this.menuBar.addMenu({"label": "Export", "className": 'ui-menu-3d' });
       menu.addSeparator({ "label": "Visual Formats" });
-      menu.addItem({ "label": "PNG...", "id": "export-3d-png" });
       menu.addItem({ "label": "GIF" + "...", "id": "export-3d-gif" });
       menu.addItem({ "label": "OBJ" + "...", "id": "export-obj" });
       menu.addItem({ "label": "MagicaVoxel" + "...", "id": "export-magicavoxel" });
@@ -1906,14 +1905,6 @@ main split panel north is menu
       menu.addItem({"label": "C64 Multicolour", "id": "mode-spritec64multicolor"});
       menu.addItem({"label": "NES", "id": "mode-spritenes"});
       menu.addItem({"label": "Indexed", "id": "mode-spriteindexed"});
-
-
-      menu.addSeparator({ "label": "Help" });
-      menu.addItem({"label": "Help" + "!", "id": "mode-help"});
-
-      menu = _this.menuBar.addMenu({"label": "Scene", "className": 'ui-menu-3d' });
-      menu.addItem({"label": "Dimensions...", "id": "dimensions3d", "checked": true });
-
 
       menu = _this.menuBar.addMenu({"label": "Layers", "className": 'ui-menu-tilemode' });
       menu.addItem({"label": "New Layer" + "...", "id": "layers-new", "shortcut": { "cmd": true, "key": "L"}  });   // { "cmd": true, "shift": true, "key": "N" }
@@ -3038,14 +3029,11 @@ main split panel north is menu
       case 'c64-view-perfstats':
       case 'view-perfstats':
       case 'view-3dperfstats':
-        if(UI.getStatsEnabled()) {
-          UI.setStatsEnabled(false);
-          UI('view-perfstats').setChecked(false);
-
-        } else {
-          UI.setStatsEnabled(true);
-          UI('view-perfstats').setChecked(true);
-        }
+        var statsEnabled = !UI.getStatsEnabled();
+        UI.setStatsEnabled(statsEnabled);
+        UI('view-perfstats').setChecked(statsEnabled);
+        UI('view-3dperfstats').setChecked(statsEnabled);
+        UI('c64-view-perfstats').setChecked(statsEnabled);
         
         break;
       case 'help-commonactionshortcuts':
