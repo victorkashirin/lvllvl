@@ -14,13 +14,15 @@ a {
   padding: 0 0 10px 0;
   margin-top: 20px;
 }
+
 .dialogContent {
   padding: 10px;
 }
 
 
 .activeBackground {
-  background-color: #171717;/* #191919; */
+  background-color: #171717;
+  /* #191919; */
 }
 
 .panelFill {
@@ -48,7 +50,7 @@ a {
   display: none;
 }
 
-.tile-palette-control-row > * {
+.tile-palette-control-row>* {
   flex: 0 0 auto;
 }
 
@@ -112,9 +114,7 @@ table {
   color: #eeeeee;
 }
 
-.formControl {
-
-}
+.formControl {}
 
 
 .shaderEffectParamName {
@@ -127,7 +127,7 @@ table {
   display: flex;
 }
 
-.form-section{
+.form-section {
   border: 0;
   padding: 0;
   margin: 0 0 6px 0;
@@ -143,13 +143,15 @@ input[type=checkbox] {
   opacity: 0.45;
 }
 
-.checkboxGroup, .radioGroup {  
+.checkboxGroup,
+.radioGroup {
   display: inline-block;
 }
 
 .radioGroup .rb-container {
   margin-bottom: 6px;
 }
+
 .checkboxGroup .cb-container {
   margin-bottom: 4px;
 
@@ -170,44 +172,72 @@ input[type=checkbox] {
   border: 1px solid #cccccc;
 }
 
-.drawTool, .musicTool, .pixelDrawTool, .drawPopupTool, .drawPixelTool, .currentDrawTool, .pixelTool,  .colorPaletteTool, .blockEditTool {
-  display: inline-block; 
-  width: 20px; 
-  height: 20px; 
+.drawTool,
+.musicTool,
+.pixelDrawTool,
+.drawPopupTool,
+.drawPixelTool,
+.currentDrawTool,
+.pixelTool,
+.colorPaletteTool,
+.blockEditTool {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
   padding: 3px;
   margin: 1px;
 
-/*
-  background-color: #222222; 
+  /*
+  background-color: #222222;
   border: 1px solid #999999;
-*/  
+*/
 }
 
 
 
-.drawTool:hover,  .pixelDrawTool:hover, .drawPopupTool:hover, .drawPixelTool:hover, .pixelTool:hover, .colorPaletteTool:hover, .blockEditTool:hover {
-  background-color: #444444; 
+.drawTool:hover,
+.pixelDrawTool:hover,
+.drawPopupTool:hover,
+.drawPixelTool:hover,
+.pixelTool:hover,
+.colorPaletteTool:hover,
+.blockEditTool:hover {
+  background-color: #444444;
 }
 
 .musicTool:hover {
-  background-color: #666666;  
+  background-color: #666666;
 }
 
-.drawToolSelected, .musicToolSelected, .pixelDrawToolSelected, .drawPopupToolSelected, .drawPixelToolSelected, .pixelToolSelected, .colorPaletteToolSelected, .blockEditToolSelected {
-  background-color: #dddddd; 
-/*  border: 1px solid #999999; */
+.drawToolSelected,
+.musicToolSelected,
+.pixelDrawToolSelected,
+.drawPopupToolSelected,
+.drawPixelToolSelected,
+.pixelToolSelected,
+.colorPaletteToolSelected,
+.blockEditToolSelected {
+  background-color: #dddddd;
+  /*  border: 1px solid #999999; */
 }
 
 
-.drawToolSelected:hover, .musicToolSelected:hover, .pixelDrawToolSelected:hover, .drawPopupToolSelected:hover, .drawPixelToolSelected:hover, .pixelToolSelected, .colorPaletteToolSelected:hover, .blockEditToolSelected:hover {
-  background-color: #eeeeee; 
+.drawToolSelected:hover,
+.musicToolSelected:hover,
+.pixelDrawToolSelected:hover,
+.drawPopupToolSelected:hover,
+.drawPixelToolSelected:hover,
+.pixelToolSelected,
+.colorPaletteToolSelected:hover,
+.blockEditToolSelected:hover {
+  background-color: #eeeeee;
 
-/*  border: 1px solid #999999; */
+  /*  border: 1px solid #999999; */
 }
 
 
 .cellBackgroundColor i {
-  font-size: 26px; 
+  font-size: 26px;
 }
 
 
@@ -221,6 +251,7 @@ input[type=checkbox] {
   display: flex;
   align-content: center;
 }
+
 .popup-tool:hover {
   background-color: #222222;
 }
@@ -254,11 +285,28 @@ input[type=checkbox] {
 }
 
 
-.drawTool img, .popup-tool img, .mobile-popup-tool img, .musicTool img, .pixelDrawTool img, .drawPopupTool img, .drawPixelTool img, .currentDrawTool img, .pixelTool img, .colorPaletteTool img, .blockEditTool img {
+.drawTool img,
+.popup-tool img,
+.mobile-popup-tool img,
+.musicTool img,
+.pixelDrawTool img,
+.drawPopupTool img,
+.drawPixelTool img,
+.currentDrawTool img,
+.pixelTool img,
+.colorPaletteTool img,
+.blockEditTool img {
   filter: invert(65%) !important;
 }
 
-.drawToolSelected img, .musicToolSelected img, .pixelDrawToolSelected img, .drawPopupToolSelected img, .drawPixelToolSelected img, .pixelToolSelected img, .colorPaletteToolSelected img, .blockEditToolSelected img {
+.drawToolSelected img,
+.musicToolSelected img,
+.pixelDrawToolSelected img,
+.drawPopupToolSelected img,
+.drawPixelToolSelected img,
+.pixelToolSelected img,
+.colorPaletteToolSelected img,
+.blockEditToolSelected img {
   filter: invert(10%) !important;
 }
 
@@ -278,12 +326,12 @@ input[type=checkbox] {
 }
 
 .mobileMenuBarItem {
-  display: inline-block; 
-  width: 46px; 
-  height: 46px; 
+  display: inline-block;
+  width: 46px;
+  height: 46px;
   padding: 2px;
   margin: 4px;
-  background-color: #222222; 
+  background-color: #222222;
   border: 1px solid #999999;
   text-align: center;
 }
@@ -297,31 +345,35 @@ input[type=checkbox] {
 
 
 
-.drawToolMobile, .pixelDrawToolMobile  {
-  display: inline-block; 
-  width: 46px; 
-  height: 46px; 
+.drawToolMobile,
+.pixelDrawToolMobile {
+  display: inline-block;
+  width: 46px;
+  height: 46px;
   padding: 2px;
-  background-color: #222222; 
+  background-color: #222222;
   border: 1px solid #999999;
   text-align: center;
 }
 
-.drawToolMobileSelected, .pixelDrawToolMobileSelected {
+.drawToolMobileSelected,
+.pixelDrawToolMobileSelected {
   /*
-  background-color: #eeeeee; 
+  background-color: #eeeeee;
   border: 1px solid #999999;
   */
 }
 
 
-.drawToolMobile img, .pixelDrawToolMobile img {
+.drawToolMobile img,
+.pixelDrawToolMobile img {
   width: 42px;
   height: 42px;
   -webkit-filter: invert(80%) !important;
 }
 
-.drawToolMobileSelected img, .pixelDrawToolMobileSelected img  {
+.drawToolMobileSelected img,
+.pixelDrawToolMobileSelected img {
   width: 42px;
   height: 42px;
   -webkit-filter: invert(0%) !important;
@@ -338,35 +390,39 @@ input[type=checkbox] {
 
 
 
-.drawToolMobileSide, .pixelDrawToolMobileSide  {
-  display: inline-block; 
-  width: 36px; 
-  height: 36px; 
+.drawToolMobileSide,
+.pixelDrawToolMobileSide {
+  display: inline-block;
+  width: 36px;
+  height: 36px;
   padding: 2px;
   /*
-  background-color: #1b1b1b; 
+  background-color: #1b1b1b;
   border: 1px solid #444444;
   */
   text-align: center;
   margin-bottom: 8px;
-  transition: all 0.2s;    
+  transition: all 0.2s;
 }
 
-.drawToolMobileSideSelected, .pixelDrawToolMobileSideSelected {
+.drawToolMobileSideSelected,
+.pixelDrawToolMobileSideSelected {
   /*
-  background-color: #eeeeee; 
+  background-color: #eeeeee;
   border: 1px solid #444444;
   */
 }
 
 
-.drawToolMobileSide img, .pixelDrawToolMobileSide img {
+.drawToolMobileSide img,
+.pixelDrawToolMobileSide img {
   width: 36px;
   height: 36px;
   -webkit-filter: invert(80%) !important;
 }
 
-.drawToolMobileSideSelected img, .pixelDrawToolMobileSideSelected img  {
+.drawToolMobileSideSelected img,
+.pixelDrawToolMobileSideSelected img {
   width: 36px;
   height: 36px;
 
@@ -382,7 +438,7 @@ input[type=checkbox] {
 }
 
 #pixelToolLabel {
-  display: flex; 
+  display: flex;
   white-space: nowrap;
   width: 120px;
 }
@@ -404,14 +460,17 @@ input[type=checkbox] {
 
 #pixelDrawCellForegroundColor {
   width: 28px;
-  height: 28px;  
+  height: 28px;
 }
-#cellForegroundColor, #cellBackgroundColor {
+
+#cellForegroundColor,
+#cellBackgroundColor {
   width: 28px;
   height: 28px;
 }
 
-#chooseCharacterSetList, #chooseColorPaletteList {
+#chooseCharacterSetList,
+#chooseColorPaletteList {
   background-color: #222222;
   padding: 4px;
 }
@@ -492,18 +551,22 @@ input[type=checkbox] {
   min-width: 0;
 }
 
-.characterSetListCategory, .colorPaletteListCategory {
+.characterSetListCategory,
+.colorPaletteListCategory {
   font-weight: bold;
   padding: 4px;
   color: #ffffff;
 }
 
-.characterSetListEntry, .colorPaletteListEntry, .drummerPatternListEntry {
+.characterSetListEntry,
+.colorPaletteListEntry,
+.drummerPatternListEntry {
   padding: 4px 4px 4px 16px;
   color: #dddddd;
 }
 
-.characterSetListEntry, .characterSetListCategory {
+.characterSetListEntry,
+.characterSetListCategory {
   font-size: 12px;
   margin: 1px 0;
 }
@@ -514,12 +577,16 @@ input[type=checkbox] {
   line-height: 16px;
 }
 
-.characterSetListEntry:hover, .colorPaletteListEntry:hover, .drummerPatternListEntry:hover {
+.characterSetListEntry:hover,
+.colorPaletteListEntry:hover,
+.drummerPatternListEntry:hover {
   background-color: #777777;
 }
 
 
-.characterSetListEntrySelected, .colorPaletteListEntrySelected, .drummerPatternListEntrySelected {
+.characterSetListEntrySelected,
+.colorPaletteListEntrySelected,
+.drummerPatternListEntrySelected {
   background-color: #3254ee;
 }
 
@@ -532,7 +599,7 @@ input[type=checkbox] {
   width: 100px;
 }
 
-#chooseColorPaletteControls input  {
+#chooseColorPaletteControls input {
   margin-right: 6px
 }
 
@@ -548,22 +615,22 @@ input[type=checkbox] {
 
 
 #cellForegroundColor {
-  display: block; 
-  position: absolute; 
-  top: 20px; 
-  left: 8px; 
-  width: 28px; 
-  height: 28px; 
-  background-color: #000000; 
-  z-index: 10  
+  display: block;
+  position: absolute;
+  top: 20px;
+  left: 8px;
+  width: 28px;
+  height: 28px;
+  background-color: #000000;
+  z-index: 10
 }
 
 .colorSetting {
-  border: 1px solid #444444;   
+  border: 1px solid #444444;
 }
 
 .colorSetting:hover {
- border: 1px solid #dddddd;   
+  border: 1px solid #dddddd;
 }
 
 .textModeLayer {
@@ -588,8 +655,8 @@ input[type=checkbox] {
 }
 
 .layerLabelName {
-  font-weight: bold; 
-  font-size: 12px  
+  font-weight: bold;
+  font-size: 12px
 }
 
 .layerLabelProperties {
@@ -597,6 +664,7 @@ input[type=checkbox] {
   margin-top: 2px;
   padding-left: 0px;
 }
+
 .selectedTextModeLayer {
   background-color: #3377ff;
 
@@ -617,7 +685,7 @@ input[type=checkbox] {
 }
 
 .instrument {
-/*        margin: 4px; */
+  /*        margin: 4px; */
   padding: 4px;
   color: #eeeeee;
 }
@@ -655,18 +723,21 @@ input[type=checkbox] {
   padding: 8px;
   background-color: #444444;
 }
+
 .instrumentActiveTab {
   background-color: #666666;
 }
+
 .instrumentTable {
-  background-color: #666666;        
+  background-color: #666666;
 }
 
 .instrumentTable table {
   border-collapse: collapse;
 }
 
-.instrumentTable th, .instrumentTable td {
+.instrumentTable th,
+.instrumentTable td {
   padding: 6px;
   text-align: left;
 }
@@ -685,7 +756,7 @@ input[type=checkbox] {
 }
 
 ::-webkit-scrollbar-track {
-  -webkit-box-shadow: inset 0 0 6px rgba(0,0,0,0.3);
+  -webkit-box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.3);
 }
 
 ::-webkit-scrollbar-thumb {
@@ -693,9 +764,7 @@ input[type=checkbox] {
   outline: 1px solid slategrey;
 }
 
-.infoTable {
-
-}
+.infoTable {}
 
 .infoTable th {
   padding-left: 8px;
@@ -703,7 +772,8 @@ input[type=checkbox] {
   padding-right: 4px;
 }
 
-.infoTable td, .infoTable th {
+.infoTable td,
+.infoTable th {
   padding-bottom: 4px
 }
 
@@ -715,11 +785,11 @@ input[type=checkbox] {
 
 
 .startBlock {
-  display: inline-block; 
-  width: 100px; 
-  height: 100px; 
-  background-color: #555555; 
-  margin-right: 2px; 
+  display: inline-block;
+  width: 100px;
+  height: 100px;
+  background-color: #555555;
+  margin-right: 2px;
   padding: 2px;
   box-shadow: 2px 2px 2px #111111;
 
@@ -728,7 +798,7 @@ input[type=checkbox] {
 }
 
 .startBlock:hover {
-  transform: scale(1.02); 
+  transform: scale(1.02);
 }
 
 
@@ -764,7 +834,7 @@ input[type=checkbox] {
   width: 10px;
   height: 14px;
   line-height: 12px;
-  text-align: center;  
+  text-align: center;
   */
 }
 
@@ -776,6 +846,7 @@ input[type=checkbox] {
 .imageControlEffect_selector select {
   flex: 1;
 }
+
 .imageControlEffect .formRow {
   border-bottom: 0px;
   border-top: 1px solid #444444;
@@ -820,7 +891,8 @@ input[type=checkbox] {
 
 
 
-.colorPaletteNumber, .colorEditorNumber {
+.colorPaletteNumber,
+.colorEditorNumber {
   width: 34px;
 }
 
@@ -836,9 +908,7 @@ input[type=checkbox] {
   color: #888888;
 }
 
-.colorComponentSelector canvas {
-  
-}
+.colorComponentSelector canvas {}
 
 .colorComponentSelector input {
   margin: 0 0 4px 8px;
@@ -848,11 +918,11 @@ input[type=checkbox] {
 
 
 .tileEditorC64ColorType {
-  display: inline-block; 
-  width: 62px; 
-  height: 20px; 
+  display: inline-block;
+  width: 62px;
+  height: 20px;
   padding: 2px;
-  background-color: #222222; 
+  background-color: #222222;
   border: 1px solid #3e3e3e;
   font-size: 9px;
   line-height: 12px;
@@ -861,27 +931,27 @@ input[type=checkbox] {
 
 
 .tileEditorC64ColorType:hover {
-  background-color: #444444; 
+  background-color: #444444;
 }
 
 .tileEditorC64ColorTypeSelected {
-  background-color: #eeeeee; 
+  background-color: #eeeeee;
   border: 1px solid #999999;
   color: #222222;
 }
 
 
 .tileEditorC64ColorTypeSelected:hover {
-  background-color: #eeeeee; 
+  background-color: #eeeeee;
   border: 1px solid #999999;
 }
 
 .tileEditorC64Color {
-  display: inline-block; 
-  width: 16px; 
-  height: 16px; 
-  background-color: #000000; 
-/*  border: 1px solid #dddddd;  */
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  background-color: #000000;
+  /*  border: 1px solid #dddddd;  */
 }
 
 #characterEditorControls .ui-button {
@@ -896,7 +966,8 @@ input[type=checkbox] {
   width: 114px;
 }
 
-#currentDrawToolHolder #toolSettingsCurrentTool, #currentDrawToolHolder img {
+#currentDrawToolHolder #toolSettingsCurrentTool,
+#currentDrawToolHolder img {
   cursor: pointer;
 }
 
@@ -905,7 +976,7 @@ input[type=checkbox] {
 }
 
 #toolSettingsCurrentTileHolder {
-  display: flex; 
+  display: flex;
   align-items: center;
   align-content: center;
   padding: 2px;
@@ -920,12 +991,12 @@ input[type=checkbox] {
 
 #toolSettingsCurrentTile {
   cursor: pointer;
-  width: 24px; 
-  height: 24px; 
+  width: 24px;
+  height: 24px;
   margin: auto;
 }
 
-#pixelToolSettingsMobile-c64multicolor .tileEditorC64ColorType  {
+#pixelToolSettingsMobile-c64multicolor .tileEditorC64ColorType {
   display: flex;
   align-items: center;
   margin-right: 6px;
@@ -988,7 +1059,7 @@ input[type=checkbox] {
 .mobileRadio {
   display: inline-block;
   border: 1px solid #3a3a3a;
-  margin: 0 8px 0 0 ;
+  margin: 0 8px 0 0;
   padding: 6px;
   display: flex;
   align-items: center;
@@ -1010,7 +1081,7 @@ input[type=checkbox] {
 .mobileRadioSelected {
   color: #0a0a0a;
   background-color: #e0e0e0;
-  font-weight: bold;  
+  font-weight: bold;
 }
 
 .mobileRadioSelected img {
@@ -1021,6 +1092,7 @@ input[type=checkbox] {
 .c64ImportRow {
   margin-bottom: 8px;
 }
+
 .c64ImportHeading {
   font-size: 14px;
   font-weight: bold;
@@ -1061,9 +1133,10 @@ input[type=checkbox] {
   color: #999999;
   margin: 6px 0 6px 0;
 }
+
 .mos6502OpcodeLink:hover {
   color: #e2e2e2;
-  
+
 }
 
 .mos6502Name {
@@ -1089,6 +1162,7 @@ input[type=checkbox] {
 .mos6502FlagInfo {
   margin: 0 0 16px 0;
 }
+
 .mos6502FlagList {
   margin: 2px 0 6px 0;
   letter-spacing: 4px;
@@ -1103,11 +1177,13 @@ input[type=checkbox] {
   padding: 8px 4px;
 
 }
+
 #mos6502OpcodeDictionary {
   background-color: #111111;
 }
+
 .assemblerDocsInfo h2 {
-  color: #eeeeee;  
+  color: #eeeeee;
   margin: 2px 0 2px 0;
   font-size: 24px;
 }
@@ -1140,16 +1216,18 @@ input[type=checkbox] {
 
 
 .assemblerDocsInfo table td {
-/*  border: 1px solid #333333; */
+  /*  border: 1px solid #333333; */
   padding: 6px;
   font-size: 12px;
   background-color: #1a1a1a;
   color: #bbbbbb;
 }
 
-.assemblerDocsInfo table tr:hover td, .assemblerDocsInfo table tr:hover th {
+.assemblerDocsInfo table tr:hover td,
+.assemblerDocsInfo table tr:hover th {
   background-color: #333333;
 }
+
 /*
 #mos6502OpcodeInfo table tr:nth-child(even) td {
   background-color: #222222 !important;
@@ -1157,27 +1235,28 @@ input[type=checkbox] {
 */
 
 .colorSubPalette {
-  position: relative; 
-  height: 40px; 
-  background-color: #111111; 
+  position: relative;
+  height: 40px;
+  background-color: #111111;
   border-bottom: 1px solid #333333;
 }
+
 .colorSubPalette:hover {
   background-color: #1e1e1e;
 }
 
 
 #switchColors {
-  opacity: 0.5; 
-  position: absolute; 
-  left: 40px; 
-  top: 20px; 
-  width: 12px; 
+  opacity: 0.5;
+  position: absolute;
+  left: 40px;
+  top: 20px;
+  width: 12px;
   height: 12px;
 }
 
 #switchColors:hover {
-  opacity: 0.93; 
+  opacity: 0.93;
 }
 
 
@@ -1194,9 +1273,11 @@ input[type=checkbox] {
 .assemblerOutputLine:hover {
   background-color: #222222;
 }
+
 .assemblerOutputLine.error {
   /* color: #cc2222; */
 }
+
 .assemblerOutputLine.selected {
   background-color: #1a4b8e;
   color: #cccccc;
@@ -1228,6 +1309,7 @@ input[type=checkbox] {
 .colorPalettePanelSubPaletteHolder {
   display: flex;
 }
+
 .colorPalettePanelSubPaletteLabel {
   display: inline-block;
   width: 16px;
@@ -1271,6 +1353,7 @@ input[type=checkbox] {
 .githubChangedFile {
   padding: 4px;
 }
+
 .githubChangedFile img {
   margin-right: 8px;
 }
@@ -1286,6 +1369,7 @@ input[type=checkbox] {
   display: flex;
   margin-bottom: 10px;
 }
+
 .colorPalettePanelSubPaletteLabelMobile {
   display: inline-block;
   width: 16px;
@@ -1354,10 +1438,10 @@ input[type=checkbox] {
   background-color: #333333 !important;
 }
 
-.ace_gutter-cell.ace_breakpoint{ 
+.ace_gutter-cell.ace_breakpoint {
   /*
   border-radius: 20px 0px 0px 20px;
-  box-shadow: 0px 0px 1px 1px #248c46 inset; 
+  box-shadow: 0px 0px 1px 1px #248c46 inset;
   */
 }
 
@@ -1372,39 +1456,38 @@ input[type=checkbox] {
   background-color: #cc0000;
   position: absolute;
   left: 5px;
-  top: 5px;  
+  top: 5px;
   z-index: 1000;
 }
+
 .ace_gutter-cell.ace_pc::after {
   content: '';
   display: inline-block;
-  content:"\25BA";
-  font-family: Arial,Helvetica,sans-serif;
+  content: "\25BA";
+  font-family: Arial, Helvetica, sans-serif;
 
   color: #cccccc;
   position: absolute;
   left: 5px;
-  top: 0px;  
+  top: 0px;
   z-index: 1001;
 
 }
 
 
-.c64-play-button {
-
-}
+.c64-play-button {}
 
 .c64-play-button:hover {
   color: white;
-  
+
 }
 
 .c64-overlay {
-  position: absolute; 
-  left: 0; 
-  top: 0;  
-  opacity: 0.2; 
-  background-color: black; 
+  position: absolute;
+  left: 0;
+  top: 0;
+  opacity: 0.2;
+  background-color: black;
   border: 2px solid black;
 }
 
@@ -1440,6 +1523,7 @@ input[type=checkbox] {
   white-space: nowrap;
   overflow: hidden;
 }
+
 #lineSegmentToolSettings label {
   margin-bottom: 0 !important;
   margin-right: 8px !important;
@@ -1684,7 +1768,7 @@ body.zen-mode .zen-mode-panel-stacked-bottom {
   gap: 8px;
 }
 
-.keyboard-shortcuts-toolbar > .ui-button {
+.keyboard-shortcuts-toolbar>.ui-button {
   align-items: center;
   display: inline-flex;
   height: 28px;
@@ -1699,7 +1783,7 @@ body.zen-mode .zen-mode-panel-stacked-bottom {
   min-width: 220px;
 }
 
-.keyboard-shortcuts-search-label > span,
+.keyboard-shortcuts-search-label>span,
 .keyboard-shortcuts-command-id,
 .keyboard-shortcuts-context,
 .keyboard-shortcuts-source,
@@ -1761,12 +1845,30 @@ body.zen-mode .zen-mode-panel-stacked-bottom {
   z-index: 3;
 }
 
-.keyboard-shortcuts-table thead th:nth-child(1) { width: 25%; }
-.keyboard-shortcuts-table thead th:nth-child(2) { text-align: center; width: 22%; }
-.keyboard-shortcuts-table thead th:nth-child(3) { width: 27%; }
-.keyboard-shortcuts-table thead th:nth-child(4) { width: 8%; }
-.keyboard-shortcuts-table thead th:nth-child(5) { width: 4%; }
-.keyboard-shortcuts-table thead th:nth-child(6) { width: 14%; }
+.keyboard-shortcuts-table thead th:nth-child(1) {
+  width: 25%;
+}
+
+.keyboard-shortcuts-table thead th:nth-child(2) {
+  text-align: center;
+  width: 22%;
+}
+
+.keyboard-shortcuts-table thead th:nth-child(3) {
+  width: 27%;
+}
+
+.keyboard-shortcuts-table thead th:nth-child(4) {
+  width: 8%;
+}
+
+.keyboard-shortcuts-table thead th:nth-child(5) {
+  width: 4%;
+}
+
+.keyboard-shortcuts-table thead th:nth-child(6) {
+  width: 14%;
+}
 
 .keyboard-shortcuts-table td,
 .keyboard-shortcuts-table tbody th {
@@ -1783,8 +1885,8 @@ body.zen-mode .zen-mode-panel-stacked-bottom {
 }
 
 .keyboard-shortcuts-group-heading {
-  background: #252a2f;
-  border-top: 1px solid #52606d !important;
+  background: #2b2b2b;
+  border-top: 1px solid #737373 !important;
   color: #eeeeee;
   padding: 8px !important;
   position: sticky;
@@ -1973,8 +2075,13 @@ body.zen-mode .zen-mode-panel-stacked-bottom {
   padding-top: 5px;
 }
 
-.keyboard-shortcuts-status[data-kind="warning"] { color: #f0bd68; }
-.keyboard-shortcuts-status[data-kind="error"] { color: #ff8585; }
+.keyboard-shortcuts-status[data-kind="warning"] {
+  color: #f0bd68;
+}
+
+.keyboard-shortcuts-status[data-kind="error"] {
+  color: #ff8585;
+}
 
 .visually-hidden {
   clip: rect(0 0 0 0);
