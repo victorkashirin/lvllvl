@@ -154,11 +154,11 @@ UI.Dialog = function(args) {
     this.closeButton = UI.create("UI.Button", 
       {"imageSrc": "icons/svg/glyphicons-basic-599-menu-close.svg", "imageAlt": "Close", "text": "", "style": "padding: 1px 4px", "cssclass": "ui-button ui-dialog-close-button ui-button-danger" });
 
-    this.element = this.getElement();
-    document.body.append(this.element);
+    this.isOpen = false;
+    this.mount();
 
     //TODO: do this better..
-    $('.ui-mouseevents').on('mouseenter', function(event) {
+    $(this.element).find('.ui-mouseevents').on('mouseenter', function(event) {
       var id = $(this).attr('id');
 
       // remove the -content from id
@@ -174,7 +174,7 @@ UI.Dialog = function(args) {
       }
     });
 
-    $('.ui-mouseevents').on('mouseleave', function(event) {
+    $(this.element).find('.ui-mouseevents').on('mouseleave', function(event) {
       var id = $(this).attr('id');
 
       id = id.replace('-content', '');
@@ -192,14 +192,24 @@ UI.Dialog = function(args) {
 
   }
 
+  // Dialog owners construct on first use. Closed dialogs wait in the hidden
+  // store (not as direct body children) so canvases, form values and
+  // directly bound event handlers survive reopening.
+  this.mount = function() {
+    this.getElement();
+    if(this.element.parentNode !== document.body) {
+      document.body.append(this.backgroundElement, this.element);
+    }
+  }
+
   this.add = function(component) {
     this.components.push(component);
 
-    document.getElementById(this.id + '-content').append(component.getElement());
+    this.element.querySelector('#' + this.id + '-content').append(component.getElement());
   }
 
   this.addButton = function(button) {
-    var buttonsElement = document.getElementById(this.id + '-buttons');
+    var buttonsElement = this.element.querySelector('#' + this.id + '-buttons');
     if( (UI.os == 'Mac OS' || UI.isMobile.any()) && typeof buttonsElement.prepend != 'undefined') {
       this.buttons.unshift(button);
       buttonsElement.prepend(button.getElement());
@@ -495,12 +505,16 @@ UI.Dialog = function(args) {
     this.backgroundElement.setAttribute('id', this.id + '-background');
 //    this.backgroundElement.setAttribute('style', 'display: none;  position: absolute; top: 0; left: 0; bottom: 0; right: 0');
     this.backgroundElement.setAttribute('class', 'ui-dialog-background');
-    document.body.append(this.backgroundElement);
+    this.backgroundElement.setAttribute('aria-hidden', 'true');
 
     this.element = document.createElement('div');
     this.element.setAttribute('id', this.id);
     this.element.setAttribute('data-ui-event-token', UI.markupEventToken);
     this.element.setAttribute('class', 'ui-dialog');
+    this.element.setAttribute('role', 'dialog');
+    this.element.setAttribute('aria-modal', 'true');
+    this.element.setAttribute('aria-labelledby', this.id + 'titleheading');
+    this.element.setAttribute('tabindex', '-1');
     this.element.setAttribute('style', 'display: none; width: ' + this.width + 'px; height: ' + this.height + 'px; top: ' + this.top + 'px; left: ' + this.left + 'px; z-index: 1000');
 
     SafeHTML.setHTML(this.element, this.getInnerHTML());
@@ -531,11 +545,10 @@ UI.Dialog = function(args) {
 
     html += '  <div id="' + this.id + 'titlebar" class="ui-dialog-titlebar">';
     html += '    <div id="' + this.id + 'titlebaricon" class="ui-dialog-titlebar-icon">o</div>'; 
-    html += '    <div id="' + this.id + 'titleheading" class="ui-dialog-titlebar-heading" data-ui-dialog-title="' + this.id + '" >';
+    html += '    <h2 id="' + this.id + 'titleheading" class="ui-dialog-titlebar-heading" data-ui-dialog-title="' + this.id + '" >';
     html += SafeHTML.escape(this.title);
-    html += '    </div>';
+    html += '    </h2>';
     html += '    <div id="' + this.id + 'titlebarclose" data-ui-dialog-close="' + this.id + '" class="ui-dialog-titlebar-close">';
-//    html += 'x';
 
     if(this.showCloseButton) {
       html += this.closeButton.getHTML();
@@ -566,7 +579,7 @@ UI.Dialog = function(args) {
     var html = '';
 
     html += '<div id="' + this.id + '-background" class="ui-dialog-background"></div>';
-    html += '<div id="' + this.id + '"' + UI.getMarkupEventAttribute() + ' class="ui-dialog" style="display: none; width: ' + this.width + 'px; height: ' + this.height + 'px; top: ' + this.top + 'px; left: ' + this.left + 'px; z-index: 1000">';
+    html += '<div id="' + this.id + '"' + UI.getMarkupEventAttribute() + ' class="ui-dialog" role="dialog" aria-modal="true" aria-labelledby="' + this.id + 'titleheading" tabindex="-1" style="display: none; width: ' + this.width + 'px; height: ' + this.height + 'px; top: ' + this.top + 'px; left: ' + this.left + 'px; z-index: 1000">';
 
     var resizeSize = 4;
 
@@ -588,11 +601,10 @@ UI.Dialog = function(args) {
 
     html += '  <div id="' + this.id + 'titlebar" class="ui-dialog-titlebar">';
     html += '    <div id="' + this.id + 'titlebaricon" class="ui-dialog-titlebar-icon">o</div>'; 
-    html += '    <div id="' + this.id + 'titleheading" class="ui-dialog-titlebar-heading" data-ui-dialog-title="' + this.id + '" >';
+    html += '    <h2 id="' + this.id + 'titleheading" class="ui-dialog-titlebar-heading" data-ui-dialog-title="' + this.id + '" >';
     html += SafeHTML.escape(this.title);
-    html += '    </div>';
+    html += '    </h2>';
     html += '    <div id="' + this.id + 'titlebarclose" data-ui-dialog-close="' + this.id + '" class="ui-dialog-titlebar-close">';
-//    html += 'x';
 
     if(this.showCloseButton) {
       html += this.closeButton.getHTML();
@@ -632,7 +644,7 @@ UI.Dialog = function(args) {
    */
   this.setTitle = function(title) {
     this.title = title;
-    $('#' + this.id + 'titleheading').text(title);
+    $(this.element).find('.ui-dialog-titlebar-heading').text(title);
   }
 
   /**
@@ -641,7 +653,10 @@ UI.Dialog = function(args) {
    * @method show
    */
   this.show = function() {
-
+    if(this.isOpen) return;
+    this.previousFocus = document.activeElement;
+    this.mount();
+    this.isOpen = true;
     this.resizeToViewport(false);
 
     $('#' + this.id  + '-background').css('z-index', g_dialogZIndex);
@@ -660,6 +675,7 @@ UI.Dialog = function(args) {
     
     // TODO: doing this also in UI ??
     g_dialogStack.push(this);
+    this.element.focus({ preventScroll: true });
     
   }
 
@@ -671,10 +687,14 @@ UI.Dialog = function(args) {
   this.close = function() {
     this.trigger('close');
 
-    //$('#' + this.id + '-background').hide();
-    $('#' + this.id + '-background').fadeOut(200);
-    //$('#' + this.id).hide();
-    $('#' + this.id).fadeOut(100);
+    this.isOpen = false;
+    var store = UI.hiddenStore();
+    $(this.backgroundElement).stop(true, true).hide();
+    $(this.element).stop(true, true).hide();
+    store.append(this.backgroundElement, this.element);
+    if(this.previousFocus && this.previousFocus.isConnected) {
+      this.previousFocus.focus({ preventScroll: true });
+    }
 
     g_dialogZIndex -= 2;
     g_dialogStack.pop();

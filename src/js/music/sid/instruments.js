@@ -108,7 +108,7 @@ C64Instruments.prototype = {
   buildInterface: function(parentPanel) {
 
     var html = '<div id="sidInstruments" class="panelFill" style="background-color: #444444;">';
-    html += '<h4 style="margin-left: 10px; margin-bottom: 4px; margin-top: 6px">Instruments</h4>';
+    html += '<h2 style="margin-left: 10px; margin-bottom: 4px; margin-top: 6px">Instruments</h2>';
     html += '<div id="instrumentsHolder" style="background-color: #333333; margin: 10px; position: absolute; top: 14px; bottom: 24px; left:0; right: 0px; overflow-y: auto; overflow-x: hidden"></div>';
     html += '  <div style="position: absolute; bottom: 6px" class="instrumentButtons">';
     html += '    <button type="button" id="editInstrumentButton">Edit</button>';

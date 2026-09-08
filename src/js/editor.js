@@ -1341,8 +1341,8 @@ Editor.prototype = {
 
         this.menuBar.showOnly('ui-menu-tilemode');
 
-        $('.ui-menu-screen').show();
-        $('.ui-menu-sprite').hide();          
+        this.menuBar.setClassVisible('ui-menu-screen', true);
+        this.menuBar.setClassVisible('ui-menu-sprite', false);          
         this.textModeEditor.currentTile.setSouthPanelSize();
 
         this.menuBar.showOnly('ui-menu-3d');
@@ -1381,11 +1381,11 @@ Editor.prototype = {
         this.menuBar.showOnly('ui-menu-tilemode');
 
         if(this.textModeEditor.graphic && this.textModeEditor.graphic.getType() == 'sprite') {
-          $('.ui-menu-screen').hide();
-          $('.ui-menu-sprite').show();
+          this.menuBar.setClassVisible('ui-menu-screen', false);
+          this.menuBar.setClassVisible('ui-menu-sprite', true);
         } else {
-          $('.ui-menu-screen').show();
-          $('.ui-menu-sprite').hide();          
+          this.menuBar.setClassVisible('ui-menu-screen', true);
+          this.menuBar.setClassVisible('ui-menu-sprite', false);          
         }
         this.textModeEditor.tools.drawTools.tilePalette.drawTilePalette();
         this.textModeEditor.frames.updateFrameInfo();

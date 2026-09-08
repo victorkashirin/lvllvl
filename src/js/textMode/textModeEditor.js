@@ -1886,8 +1886,8 @@ TextModeEditor.prototype = {
       UI('import-spriteimage').setVisible(true);
 
       // screen menu
-      $('.ui-menu-screen').hide();
-      $('.ui-menu-sprite').show();
+      g_app.menuBar.setClassVisible('ui-menu-screen', false);
+      g_app.menuBar.setClassVisible('ui-menu-sprite', true);
     } else {
       UI('edit-replaceCharacter').setVisible(true);
 
@@ -1907,8 +1907,8 @@ TextModeEditor.prototype = {
       UI('import-spriteimage').setVisible(false);
 
       // screen menu
-      $('.ui-menu-screen').show();
-      $('.ui-menu-sprite').hide();
+      g_app.menuBar.setClassVisible('ui-menu-screen', true);
+      g_app.menuBar.setClassVisible('ui-menu-sprite', false);
     }
 
   },

@@ -57,7 +57,7 @@ ColorSubPalettePickerMobile.prototype = {
       var html = '';
 
 
-      html += '<h2 style="margin: 0 0 14px 0" id="">Color Palette</h2>';
+      html += '<h2 style="margin: 0 0 14px 0">Color Palette</h2>';
 
       /*
       html += '<div style="margin-bottom: 14px">';

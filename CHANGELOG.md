@@ -17,6 +17,19 @@
 - Add a visible focus indicator for buttons and raise disabled-control
   and placeholder text contrast.
 - Guard the pixel mobile tool scroll indicator against hidden panels.
+- Give dialog titles a real heading level with dialog semantics and stable
+  ids, move closed dialogs and menus out of the body flow into a hidden
+  staging area, and give menus menubar/menu/menuitem roles with arrow-key
+  navigation. Menus now detach when inactive instead of lingering hidden,
+  and mode switches filter menubar entries instead of hiding clones.
+- Promote the orphaned Filters/Instruments headings to top-level sections,
+  remove an empty id attribute, and add a visually hidden application title.
+- Keep diagnostics out of the default DOM (debug log only with ?debug=1,
+  performance stats only while enabled) while always mounting the 3D
+  surface in 3D mode.
+- Expose the tile-palette control rows with a thin scroll affordance instead
+  of clipping overflow, and scope the selection-blocking and cursor resets
+  to the app surfaces so buttons and text behave normally.
 
 ## 0.498.0 - 2026-09-08
 

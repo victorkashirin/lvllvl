@@ -50,6 +50,7 @@ UI.getMarkupEventAttribute = function() {
 
 UI.isMobile = false;
 
+UI.debugEnabled = new URLSearchParams(window.location.search).get('debug') === '1';
 UI.statsEnabled = false;
 UI.isFullscreen = false;
 UI.renderer = null;
@@ -162,6 +163,35 @@ UI.getID = function() {
   return "ui" + UI.componentCount;
 }
 
+// Human-readable DOM ids; keep caller-facing component ids in UI.ids.
+UI.semanticIDs = new Set();
+UI.getSemanticID = function(kind, name) {
+  var base = kind + '-' + String(name || kind).replace(/([a-z0-9])([A-Z])/g, '$1-$2')
+    .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  var id = base;
+  var suffix = 2;
+  while(UI.semanticIDs.has(id) || document.getElementById(id)) {
+    id = base + '-' + suffix++;
+  }
+  UI.semanticIDs.add(id);
+  return id;
+}
+
+// Staging area for closed dialogs and menus. Nodes stay in the document so
+// legacy document-scoped selectors keep working, but `hidden` removes the
+// whole subtree (including never-opened dialogs) from the accessibility tree.
+UI.hiddenStore = function() {
+  var store = document.getElementById('ui-hidden-store');
+  if(!store) {
+    store = document.createElement('div');
+    store.setAttribute('id', 'ui-hidden-store');
+    store.setAttribute('hidden', '');
+    store.setAttribute('aria-hidden', 'true');
+    document.body.append(store);
+  }
+  return store;
+}
+
 UI.on = function(eventName, f) {
   eventName = eventName.toLowerCase();
 
@@ -202,9 +232,18 @@ UI.on = function(eventName, f) {
 UI.setStatsEnabled = function(enabled) {
   UI.statsEnabled = enabled;
   if(enabled) {
-    $('#Stats-output').show();
-  } else {
-    $('#Stats-output').hide();
+    if(!UI.stats) {
+      UI.stats = new Stats();
+      UI.stats.setMode(0);
+      UI.statsElement = document.createElement('div');
+      UI.statsElement.id = 'Stats-output';
+      UI.statsElement.setAttribute('aria-label', 'Performance statistics');
+      UI.statsElement.style.cssText = 'position: absolute; top: 0; right: 0; z-index: 10000';
+      UI.statsElement.append(UI.stats.domElement);
+    }
+    document.body.append(UI.statsElement);
+  } else if(UI.statsElement) {
+    UI.statsElement.remove();
   }
 }
 
@@ -278,7 +317,9 @@ UI.create = function(componentType, args) {
   var component = null;
   if(this.componentTypes.hasOwnProperty(componentType)) {
     component = new this.componentTypes[componentType](args);
-    component.id = UI.getID();
+    component.id = componentType === 'UI.Dialog'
+      ? UI.getSemanticID('dialog', args.id || args.title)
+      : UI.getID();
     component.ui_type = componentType;
     UI.components[component.id] = component;
 
@@ -566,11 +607,10 @@ var scene = null;
 
 UI.setWebGLEnabled = function(enabled) {
   UI.webGLEnabled = Boolean(enabled && UI.renderer);
-  if(!UI.webGLEnabled) {
-    $('#WebGL-output').hide();
-  } else {
-    $('#WebGL-output').show();
-
+  if(UI.webGLEnabled) {
+    document.body.prepend(UI.webGLElement);
+  } else if(UI.webGLElement) {
+    UI.webGLElement.remove();
   }
 }
 
@@ -588,15 +628,10 @@ UI.init3d = function() {
   UI.renderer.shadowMap.enabled = false;
   UI.renderer.shadowMap.type = THREE.PCFShadowMap;
 
-  $('#WebGL-output').append(UI.renderer.domElement);
-  UI.setWebGLEnabled(true);
-
-  UI.stats = new Stats();
-  UI.stats.setMode(0);
-  UI.stats.domElement.style.position = 'absolute';
-  UI.stats.domElement.style.right = '0px';
-  UI.stats.domElement.style.top = '0px';
-  $('#Stats-output').append(UI.stats.domElement);
+  // This is the actual 3D surface, not a diagnostic node. Mount only in 3D mode.
+  UI.webGLElement = document.createElement('div');
+  UI.webGLElement.id = 'WebGL-output';
+  UI.webGLElement.append(UI.renderer.domElement);
 
   return true;
 }
@@ -1512,8 +1547,12 @@ $(document).ready(function() {
   
   var html = '';
   html += '<div id="ui-menu-background" style="display: none; position: absolute; top: 30px; left: 0; right: 0; bottom: 0; background-color: black; z-index: 300; opacity: 0;"></div>';
-  html += '<div id="Stats-output" style="display: none; position: absolute; top: 0; right: 0; z-index: 10000"></div><div id="WebGL-output"></div><div id="ui" style="position: absolute; left: 0; right: 0; top: 0; bottom: 0; overflow: visible" ></div>';
-  html += '<textarea id="debugBox" style="display: none; position: absolute; width: 100%; bottom: 0; left: 0; right: 0; height: 400px; z-index: 4000"></textarea>';
+  html += '<h1 class="ui-visually-hidden">lvllvl plus</h1>';
+  html += '<div id="ui" style="position: absolute; left: 0; right: 0; top: 0; bottom: 0; overflow: visible" ></div>';
+  html += '<div id="ui-hidden-store" hidden aria-hidden="true"></div>';
+  if(UI.debugEnabled) {
+    html += '<textarea id="debugBox" aria-label="Debug log" style="display: none; position: absolute; width: 100%; bottom: 0; left: 0; right: 0; height: 400px; z-index: 4000"></textarea>';
+  }
 //  html += '<canvas style="background-color: black; position: absolute; top: 20px; left: 80px; border: 2px solid red; z-index: 3000" id="debugCanvas"></canvas>';
   $('body').html(html);
   UI.init3d();
@@ -1593,6 +1632,18 @@ $(document).ready(function() {
     });
 
     UI.runReadyFunctions();
+
+    // Park never-opened dialogs in the hidden store so the startup DOM
+    // holds no direct-body dialog children. Nodes stay queryable and are
+    // mounted back to the body on first open.
+    for(var componentId in UI.components) {
+      var staged = UI.components[componentId];
+      if(staged && staged.ui_type === 'UI.Dialog' && !staged.isOpen && staged.element) {
+        $(staged.backgroundElement).hide();
+        $(staged.element).hide();
+        UI.hiddenStore().append(staged.backgroundElement, staged.element);
+      }
+    }
 
     UI.vrMode = false;
 

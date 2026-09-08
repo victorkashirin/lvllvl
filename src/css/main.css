@@ -42,12 +42,18 @@ a {
   overflow-x: auto;
   overflow-y: hidden;
   overscroll-behavior-x: contain;
-  scrollbar-width: none;
+  scrollbar-width: thin;
+  scrollbar-color: #555555 transparent;
   white-space: nowrap;
 }
 
 .tile-palette-control-row::-webkit-scrollbar {
-  display: none;
+  height: 6px;
+}
+
+.tile-palette-control-row::-webkit-scrollbar-thumb {
+  background: #555555;
+  border-radius: 3px;
 }
 
 .tile-palette-control-row>* {

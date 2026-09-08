@@ -81,7 +81,7 @@ SidFilters.prototype = {
 //    var html = '<div id="filtersHolder" style="background-color: white;overflow-y: auto; overflow-x: hidden" class="panelFill"></div>';
     var html = '<div id="sidFilters" class="panelFill" style="background-color: #444444;">';
 
-    html += ' <h4 style="margin-left: 10px; margin-bottom: 4px; margin-top: 6px">Filters</h4>';
+    html += ' <h2 style="margin-left: 10px; margin-bottom: 4px; margin-top: 6px">Filters</h2>';
     html += '  <div style="background-color: #333333; margin: 10px; position: absolute; top: 14px; bottom: 24px; left:0; right: 0; overflow-y: auto; overflow-x: hidden" id="filtersHolder">';
     html += '  </div>';
     html += '  <div style="" class="instrumentButtons">';
