@@ -244,7 +244,7 @@ UI.MobilePanel = function(args) {
     this.element.setAttribute('id', this.id);
     this.element.setAttribute('data-ui-event-token', UI.markupEventToken);
     this.element.setAttribute('class', 'ui-mobilepanel');
-    this.element.setAttribute('style', 'display: none; width: ' + this.width + 'px; height: ' + this.height + 'px; top: ' + this.top + 'px; left: ' + this.left + 'px; z-index: 1000');
+    this.element.setAttribute('style', 'display: none; width: ' + this.width + 'px; height: ' + this.height + 'px; top: ' + this.top + 'px; left: ' + this.left + 'px');
 
     SafeHTML.setHTML(this.element, this.getInnerHTML());
 
@@ -256,7 +256,7 @@ UI.MobilePanel = function(args) {
 
     html += '  <div id="' + this.id + 'titlebar" class="ui-mobilepanel-titlebar">';
 
-    html += '  <div id="' + this.id + 'mobileclose" class="ui-mobile-button" style="width: 48px; height: 48px; display: inline-block" data-ui-mobile-close="' + this.id + '"><img style="; width: 42px; height: 42px" src="icons/material/ic_arrow_back_48px.svg"/></div>'
+    html += '  <div id="' + this.id + 'mobileclose" class="ui-mobile-button ui-mobilepanel-back" data-ui-mobile-close="' + this.id + '"><img src="icons/material/ic_arrow_back_48px.svg"/></div>'
     html += '  <div id="' + this.id + 'titleheading" class="ui-mobilepanel-titlebar-heading">' + SafeHTML.escape(this.title) + '</div>';
 
     html += '  <div id="' + this.id + '-buttons" class="ui-mobilepanel-titlebar-buttons">';
@@ -284,25 +284,13 @@ UI.MobilePanel = function(args) {
     var html = '';
 
     html += '<div id="' + this.id + '-background" class="ui-dialog-background"></div>';
-    html += '<div id="' + this.id + '"' + UI.getMarkupEventAttribute() + ' class="ui-dialog" style="display: none; width: ' + this.width + 'px; height: ' + this.height + 'px; top: ' + this.top + 'px; left: ' + this.left + 'px; z-index: 1000">';
+    html += '<div id="' + this.id + '"' + UI.getMarkupEventAttribute() + ' class="ui-dialog" style="display: none; width: ' + this.width + 'px; height: ' + this.height + 'px; top: ' + this.top + 'px; left: ' + this.left + 'px">';
 
-    var resizeSize = 4;
-
-    html += '  <div id="' + this.id + 'northresize" data-ui-dialog-edge="northresize" data-ui-component-id="' + this.id + '" style=" position: absolute; top: 0; left: ' + resizeSize+ 'px; right: ' + resizeSize + 'px; height: ' + resizeSize + 'px; cursor: n-resize"></div>';
-
-    html += '  <div id="' + this.id + 'northeastresize" data-ui-dialog-edge="northeastresize" data-ui-component-id="' + this.id + '" style="position: absolute; top: 0; right: 0; width: ' + resizeSize + 'px; height: ' + resizeSize + 'px; cursor: ne-resize"></div>';
-
-    html += '  <div id="' + this.id + 'eastresize" data-ui-dialog-edge="eastresize" data-ui-component-id="' + this.id + '" style=" position: absolute; top: ' + resizeSize + 'px; bottom: ' + resizeSize + 'px; right: 0px; width: ' + resizeSize + 'px; cursor: e-resize"></div>';
-
-    html += '  <div id="' + this.id + 'southeastresize" data-ui-dialog-edge="southeastresize" data-ui-component-id="' + this.id + '" style="position: absolute; bottom: 0; right: 0; width: ' + resizeSize + 'px; height: ' + resizeSize + 'px; cursor: se-resize"></div>';
-
-    html += '  <div id="' + this.id + 'southresize" data-ui-dialog-edge="southresize" data-ui-component-id="' + this.id + '" style="position: absolute; bottom: 0; left: ' + resizeSize + 'px; right: ' + resizeSize + 'px; height: ' + resizeSize + 'px; cursor: s-resize"></div>';
-
-    html += '  <div id="' + this.id + 'southwestresize" data-ui-dialog-edge="southwestresize" data-ui-component-id="' + this.id + '" style="position: absolute; bottom: 0; left: 0; width: ' + resizeSize + 'px; height: ' + resizeSize + 'px; cursor: sw-resize"></div>';
-
-    html += '  <div id="' + this.id + 'westresize" data-ui-dialog-edge="westresize" data-ui-component-id="' + this.id + '" style="position: absolute; top: ' + resizeSize + 'px; bottom: ' + resizeSize + 'px; left: 0px; width: ' + resizeSize + 'px; cursor: w-resize"></div>';
-
-    html += '  <div id="' + this.id + 'northwestresize" data-ui-dialog-edge="northwestresize" data-ui-component-id="' + this.id + '" style=" position: absolute; top: 0; left: 0; width: ' + resizeSize + 'px; height: ' + resizeSize + 'px; cursor: nw-resize"></div>';
+    var edges = ['north', 'northeast', 'east', 'southeast', 'south', 'southwest', 'west', 'northwest'];
+    for(var edgeIndex = 0; edgeIndex < edges.length; edgeIndex++) {
+      var edge = edges[edgeIndex];
+      html += '  <div id="' + this.id + edge + 'resize" class="ui-dialog-resize-handle ui-dialog-resize-' + edge + '" data-ui-dialog-edge="' + edge + 'resize" data-ui-component-id="' + this.id + '"></div>';
+    }
 
     html += '  <div id="' + this.id + 'titlebar" class="ui-dialog-titlebar">';
     html += '    <div id="' + this.id + 'titlebaricon" class="ui-dialog-titlebar-icon">o</div>'; 
@@ -324,8 +312,7 @@ UI.MobilePanel = function(args) {
 
     html += '  </div>';
 
-    html += '  <div id="' + this.id + 'buttons" class="ui-dialog-buttons" style="position: absolute; bottom:0; height: 0">';
-//    html += '<div style="padding-bottom: 5px; padding-right: 30px; right: 0px; bottom: 0px; position: absolute">';
+    html += '  <div id="' + this.id + 'buttons" class="ui-dialog-buttons ui-mobilepanel-dialog-buttons">';
     for(var i = 0; i < this.buttons.length; i++) {
       html += '&nbsp;&nbsp;' + this.buttons[i].getHTML();
     }

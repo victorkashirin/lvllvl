@@ -1,21 +1,21 @@
-<div id="editFilter" class="panelFill" style="background-color: #444444;">
+<div id="editFilter" class="panelFill music-panel-muted">
 
 
-  <div id="editFilterHolder" style="position: absolute; background-color: #333333; top: 0; bottom: 100px; left: 0px; right: 8px; overflow-y: auto">
+  <div id="editFilterHolder" class="music-editor-scroll">
 
 
     <h3>Edit filter</h3>
 
 
 
-    <div class="content" style="padding: 8px">
+    <div class="content music-content">
       <div class="editInstrumentRow">
         <label class="editInstrumentLabel" for="filterName">Name:</label>
         <input id="filterName" name="filterName"/>
       </div>
     </div>
 
-    <div class="content" style="padding: 8px">
+    <div class="content music-content">
       <div class="editInstrumentRow">
         <label class="editInstrumentLabel" for="filterType">Type:</label>
 
@@ -88,14 +88,14 @@
     </div>
   </div>
 
-  <div class="buttons" style="position: absolute; bottom: 80px; left: 10px">
+  <div class="buttons music-dialog-buttons music-filter-buttons">
     <button id="editFilterOK">OK</button>
     <button id="editFilterApply">Apply</button> 
     <button id="editFilterCancel">Cancel</button>
   </div>
 
 
-  <canvas id="editFilterKeyboard" width="1200" height="60" style="background-color: white; position: absolute; bottom: 0px"></canvas>
+  <canvas id="editFilterKeyboard" class="music-keyboard music-filter-keyboard" width="1200" height="60"></canvas>
 
 
 </div>

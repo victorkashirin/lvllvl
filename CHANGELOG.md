@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- Keep the active tool cursor visible while dragging across the canvas.
 - Reload build configuration for every development rebuild so changes to the
   legacy source graph take effect without restarting the dev command.
 - Remove stale project color palette and tile set menu entries when creating a
@@ -65,6 +66,10 @@
   adopting border-box button sizing.
 - Restore the background-color remove glyph's alignment and the dimmer inactive
   icon tone in the left drawing toolbar.
+- Remove obsolete stylesheets and dead commented CSS, move dialog resize handles
+  and music-template presentation into reusable classes, centralize UI stacking
+  levels, scope legacy element selectors, and replace opaque generated `uiNNN`
+  ids with component-qualified ids.
 
 ## 0.498.0 - 2026-09-08
 

@@ -11,8 +11,8 @@
       "sha256": "e38ba82b59cf0fcad6108f875456acda57d26bcf3458f154468159e41d6f78a2"
     },
     "css/style.css": {
-      "bytes": 151027,
-      "sha256": "327e360e78f8c68610d79b613a8c458380fc38fd089046f7a3072ad75d94235d"
+      "bytes": 133295,
+      "sha256": "b1dde05c11409a8c6925ddf4ab6df6289c274393054e663e400b1fdb7c9bf48a"
     },
     "fonts/glyphicons-halflings-regular.woff2": {
       "bytes": 20188,
@@ -27,12 +27,12 @@
       "sha256": "f6e20ce93d4c5e5a0fe109bd3a07dc51e482ba8700c4ef7468bbc0839d2872b8"
     },
     "js/main.js": {
-      "bytes": 3417333,
-      "sha256": "787c67c1ff05042ce19feb165ac2a65adcd9aa9fcc17b8d84b8467d75021d4f2"
+      "bytes": 3412171,
+      "sha256": "801cd8c5646bd9a52ef378b92de3e4a5d7283ede5dfc01e6129403e6e9fba3c7"
     },
     "js/main.js.map": {
-      "bytes": 10828256,
-      "sha256": "d8d8d02e161856735c828712a5ae2683b8cec4e532ea574ead75363a4504f00c"
+      "bytes": 10817304,
+      "sha256": "269cac3818b692b0985350df1ab77a8fac4539bf04c4ddb3bc0dfbfd40da67f5"
     },
     "js/bootstrap.mjs": {
       "bytes": 8022,
@@ -131,8 +131,8 @@
       "sha256": "2ab71fe16867ae034937a337627924ef72c1aec9e19facc172c38e2a84a11d86"
     },
     "js/html/htmlcache.js": {
-      "bytes": 380599,
-      "sha256": "082befae62ad9caf968c857c20cc782a277a7d6490e8796160b3ee601eb76dfd"
+      "bytes": 379540,
+      "sha256": "77848fd086b3d3e6712c5d033eb6db7a7f9b1ec3153a583d0e83ffb4bcce095f"
     }
   }
 }

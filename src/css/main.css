@@ -13,10 +13,9 @@ a {
   padding: 10px;
 }
 
-
 .activeBackground {
   background-color: #171717;
-  /* #191919; */
+
 }
 
 .panelFill {
@@ -98,8 +97,6 @@ a {
   -webkit-text-fill-color: currentColor;
 }
 
-/*** forms ***/
-
 .formGroup {
   margin-bottom: 10px;
 }
@@ -121,9 +118,7 @@ a {
   color: #dddddd;
 }
 
-
-
-table {
+:where(#ui, .ui-dialog, .ui-mobilepanel, .ui-popup) table {
   border-collapse: collapse;
 }
 
@@ -135,9 +130,6 @@ table {
   font-weight: 300;
   color: #eeeeee;
 }
-
-.formControl {}
-
 
 .shaderEffectParamName {
   margin: 10px 0px 6px 0;
@@ -209,13 +201,7 @@ input[type=checkbox] {
   padding: 3px;
   margin: 1px;
 
-  /*
-  background-color: #222222;
-  border: 1px solid #999999;
-*/
 }
-
-
 
 .drawTool:hover,
 .pixelDrawTool:hover,
@@ -240,9 +226,8 @@ input[type=checkbox] {
 .colorPaletteToolSelected,
 .blockEditToolSelected {
   background-color: #dddddd;
-  /*  border: 1px solid #999999; */
-}
 
+}
 
 .drawToolSelected:hover,
 .musicToolSelected:hover,
@@ -254,14 +239,11 @@ input[type=checkbox] {
 .blockEditToolSelected:hover {
   background-color: #eeeeee;
 
-  /*  border: 1px solid #999999; */
 }
-
 
 .cellBackgroundColor i {
   font-size: 26px;
 }
-
 
 #drawToolSettings-cellBackgroundColor i {
   font-size: 16px;
@@ -286,14 +268,12 @@ input[type=checkbox] {
   margin-left: 8px;
 }
 
-
 .mobile-popup-tool {
   padding: 8px;
   cursor: pointer;
   display: flex;
   align-content: center;
 }
-
 
 .mobile-popup-tool-label {
   font-size: 20px;
@@ -305,7 +285,6 @@ input[type=checkbox] {
   width: 32px;
   height: 32px;
 }
-
 
 .drawTool img,
 .popup-tool img,
@@ -337,11 +316,9 @@ input[type=checkbox] {
   filter: var(--icon-selected) !important;
 }
 
-
 .musicTool:hover img {
   filter: var(--icon-hover) !important;
 }
-
 
 .mobileMenuItem {
   display: inline-block;
@@ -363,14 +340,11 @@ input[type=checkbox] {
   text-align: center;
 }
 
-
 .mobileMenuBarItem img {
   width: 42px;
   height: 42px;
   -webkit-filter: var(--icon-normal) !important;
 }
-
-
 
 .drawToolMobile,
 .pixelDrawToolMobile {
@@ -384,14 +358,6 @@ input[type=checkbox] {
 }
 
 .drawToolMobileSelected,
-.pixelDrawToolMobileSelected {
-  /*
-  background-color: #eeeeee;
-  border: 1px solid #999999;
-  */
-}
-
-
 .drawToolMobile img,
 .pixelDrawToolMobile img {
   width: 42px;
@@ -414,33 +380,19 @@ input[type=checkbox] {
   background-color: var(--bg-0);
 }
 
-
-
-
 .drawToolMobileSide,
 .pixelDrawToolMobileSide {
   display: inline-block;
   width: 36px;
   height: 36px;
   padding: 2px;
-  /*
-  background-color: #1b1b1b;
-  border: 1px solid #444444;
-  */
+
   text-align: center;
   margin-bottom: 8px;
   transition: all 0.2s;
 }
 
 .drawToolMobileSideSelected,
-.pixelDrawToolMobileSideSelected {
-  /*
-  background-color: #eeeeee;
-  border: 1px solid #444444;
-  */
-}
-
-
 .drawToolMobileSide img,
 .pixelDrawToolMobileSide img {
   width: 36px;
@@ -454,11 +406,8 @@ input[type=checkbox] {
   height: 36px;
 
   filter: var(--icon-selected) !important;
-  /*
-  -webkit-filter: invert(0%) !important;
-  */
-}
 
+}
 
 .pixelTool {
   margin-right: 8px;
@@ -476,8 +425,6 @@ input[type=checkbox] {
   height: 16px;
   border: 1px solid #999999;
 }
-
-/* TODO: use class instead of id */
 
 #cellForegroundColorMobile,
 #pixelCellForegroundColorMobile {
@@ -599,7 +546,6 @@ input[type=checkbox] {
   margin: 1px 0;
 }
 
-
 #chooseCharacterSetOptions label {
   font-size: 12px;
   line-height: 16px;
@@ -610,7 +556,6 @@ input[type=checkbox] {
 .drummerPatternListEntry:hover {
   background-color: #777777;
 }
-
 
 .characterSetListEntrySelected,
 .colorPaletteListEntrySelected,
@@ -641,7 +586,6 @@ input[type=checkbox] {
   border: 1px solid #111111;
 }
 
-
 #cellForegroundColor {
   display: block;
   position: absolute;
@@ -650,7 +594,7 @@ input[type=checkbox] {
   width: 28px;
   height: 28px;
   background-color: #000000;
-  z-index: 10
+  z-index: var(--z-toolbar)
 }
 
 .colorSetting {
@@ -698,11 +642,6 @@ input[type=checkbox] {
 
 }
 
-
-
-/** instruments ***/
-
-
 .filter {
   padding: 4px;
   color: #eeeeee;
@@ -713,7 +652,7 @@ input[type=checkbox] {
 }
 
 .instrument {
-  /*        margin: 4px; */
+
   padding: 4px;
   color: #eeeeee;
 }
@@ -731,21 +670,17 @@ input[type=checkbox] {
   margin: 4px 0 4px 0;
 }
 
-
 .instrumentButtons {
   margin: 2px 1px 0px 10px;
   bottom: 6px;
   position: absolute;
 }
 
-
 .instrumentButtons button {
   margin: 1px;
   font-size: 10px;
 
 }
-
-
 
 .instrumentTab {
   padding: 8px;
@@ -774,9 +709,80 @@ input[type=checkbox] {
   border-top: 1px solid #444444;
 }
 
+.music-panel-muted { background-color: #444444; }
+.music-panel-dark { background-color: #222222; }
+.music-panel-darker { background-color: #111111; }
+.music-panel-fill-padded { padding: 2px; }
+.music-content { padding: 8px; }
+.music-content-compact { padding: 4px; }
+.music-inline { display: inline-block; }
+.music-section-gap { margin-bottom: 8px; }
+.music-control-gap { margin-left: 10px; }
+.music-option-gap { margin-right: 4px; }
+.music-edit-controls { align-items: center; display: flex; }
 
-/*** scrollbars ***/
+.music-dialog-list {
+  bottom: 0;
+  left: 10px;
+  overflow: auto;
+  position: absolute;
+  top: 10px;
+  width: 180px;
+}
 
+.music-dialog-detail {
+  bottom: 0;
+  left: 200px;
+  overflow: auto;
+  position: absolute;
+  right: 0;
+  top: 0;
+}
+
+.music-dialog-detail-inner { margin: 10px; }
+
+.music-editor-scroll {
+  background-color: #333333;
+  bottom: 100px;
+  left: 0;
+  overflow-y: auto;
+  position: absolute;
+  right: 8px;
+  top: 0;
+}
+
+.music-editor-effect-controls { margin-left: 90px; }
+
+.music-editor-effect-card {
+  background-color: #888888;
+  display: inline-block;
+  padding: 8px;
+}
+
+.music-editor-advanced { padding: 0 10px; }
+.music-instrument-tab { display: inline-block; width: 100px; }
+.music-keyboard { background-color: white; position: absolute; }
+.music-instrument-keyboard { bottom: 40px; }
+.music-filter-keyboard { bottom: 0; }
+.music-dialog-buttons { position: absolute; }
+
+.music-instrument-buttons {
+  bottom: 10px;
+  right: 10px;
+  text-align: right;
+  width: 300px;
+}
+
+.music-filter-buttons { bottom: 80px; left: 10px; }
+.music-hidden { display: none; }
+.music-effect-description { margin-bottom: 4px; }
+.music-vibrato-controls { display: inline-block; margin-left: 20px; }
+.music-popup { width: 200px; }
+.music-popup-content { margin: 8px; }
+.music-popup-check { display: inline-block; width: 14px; }
+.music-playhead-position { width: 200px; }
+.music-effects-chooser { background-color: #222222; padding: 8px; }
+.music-effect-graph { background-color: black; }
 
 ::-webkit-scrollbar {
   width: 6px;
@@ -792,8 +798,6 @@ input[type=checkbox] {
   outline: 1px solid var(--scrollbar-thumb-outline);
 }
 
-.infoTable {}
-
 .infoTable th {
   padding-left: 8px;
   text-align: right;
@@ -805,12 +809,9 @@ input[type=checkbox] {
   padding-bottom: 4px
 }
 
-/** assembler **/
-
 .assemblerOutputLine {
   padding: 2px 0 2px 2px;
 }
-
 
 .startBlock {
   display: inline-block;
@@ -829,16 +830,13 @@ input[type=checkbox] {
   transform: scale(1.02);
 }
 
-
 .startBlock img {
   cursor: pointer;
 }
 
-
 .frameControlSeparator {
   margin: 0 6px 0 6px;
 }
-
 
 .imageControlEffect {
   margin: 2px 0 8px 0;
@@ -856,13 +854,7 @@ input[type=checkbox] {
   border-top-left-radius: 0;
   height: var(--control-height-small);
   width: 9px;
-  /*
-  float: right;
-  width: 10px;
-  height: 14px;
-  line-height: 12px;
-  text-align: center;
-  */
+
 }
 
 .imageControlEffect_selector {
@@ -883,8 +875,6 @@ input[type=checkbox] {
   min-height: 24px;
 }
 
-
-
 #colorEditorTabPanel {
   border-bottom: 1px solid #222222;
   margin-top: 4px;
@@ -900,11 +890,9 @@ input[type=checkbox] {
   background-color: #111111;
 }
 
-
 .colorEditorTab:hover {
   background-color: #333333;
 }
-
 
 .colorEditorTabActive {
   background-color: #222222;
@@ -915,9 +903,6 @@ input[type=checkbox] {
 .colorEditorTabActive:hover {
   background-color: #222222;
 }
-
-
-
 
 .colorPaletteNumber,
 .colorEditorNumber {
@@ -936,14 +921,9 @@ input[type=checkbox] {
   color: #888888;
 }
 
-.colorComponentSelector canvas {}
-
 .colorComponentSelector input {
   margin: 0 0 4px 8px;
 }
-
-
-
 
 .tileEditorC64ColorType {
   display: inline-block;
@@ -958,7 +938,6 @@ input[type=checkbox] {
   vertical-align: center;
 }
 
-
 .tileEditorC64ColorType:hover {
   background-color: #444444;
 }
@@ -968,7 +947,6 @@ input[type=checkbox] {
   border: 1px solid #999999;
   color: #222222;
 }
-
 
 .tileEditorC64ColorTypeSelected:hover {
   background-color: #eeeeee;
@@ -980,13 +958,12 @@ input[type=checkbox] {
   width: 16px;
   height: 16px;
   background-color: #000000;
-  /*  border: 1px solid #dddddd;  */
+
 }
 
 #characterEditorControls .ui-button {
   margin-top: 6px;
 }
-
 
 #currentDrawToolHolder {
   display: flex;
@@ -1012,11 +989,9 @@ input[type=checkbox] {
   width: 30px;
 }
 
-
 #toolSettingsCurrentTileHolder:hover {
   background-color: #222222;
 }
-
 
 #toolSettingsCurrentTile {
   cursor: pointer;
@@ -1035,12 +1010,8 @@ input[type=checkbox] {
   flex-basis: 0;
 }
 
-/* -- mobile styles  -- */
-
-
-
 .colorPickerTypeMobile {
-  /*border: 1px solid #aaaaaa;*/
+
   border: 1px solid #3a3a3a;
   margin: 0 4px;
   display: inline-block;
@@ -1060,14 +1031,12 @@ input[type=checkbox] {
 }
 
 .colorPickerMobileColor {
-  /*border: 1px solid #aaaaaa;*/
+
   display: inline-block;
   width: 16px;
   height: 16px;
   margin-right: 5px;
 }
-
-
 
 #tileEditorMobileC64Colors .tileEditorC64ColorType {
   width: 22%;
@@ -1094,13 +1063,7 @@ input[type=checkbox] {
   align-items: center;
   background-color: #262626;
   font-size: 10px;
-  /*
-  border: 1px solid white;
-  color: white;
-  width: 50px;
-  height: 25px;
-  margin-right: 4px;
-  */
+
 }
 
 .mobileRadio img {
@@ -1116,7 +1079,6 @@ input[type=checkbox] {
 .mobileRadioSelected img {
   filter: var(--icon-selected);
 }
-
 
 .c64ImportRow {
   margin-bottom: 8px;
@@ -1135,9 +1097,7 @@ input[type=checkbox] {
   display: inline-block;
   font-weight: bold;
   line-height: 22px;
-  /*
-  text-decoration: underline;
-  */
+
 }
 
 .opcode-link {
@@ -1145,7 +1105,6 @@ input[type=checkbox] {
   cursor: pointer;
   color: #bababa;
 }
-
 
 .opcode-link:hover {
   color: #eeeeee;
@@ -1179,9 +1138,7 @@ input[type=checkbox] {
   color: #cccccc;
   padding: 4px;
   background-color: #1a1a1a;
-  /*
-  letter-spacing: 0.4px;
-  */
+
 }
 
 .mos6502Flags {
@@ -1243,9 +1200,8 @@ input[type=checkbox] {
   font-weight: bold;
 }
 
-
 .assemblerDocsInfo table td {
-  /*  border: 1px solid #333333; */
+
   padding: 6px;
   font-size: 12px;
   background-color: #1a1a1a;
@@ -1257,12 +1213,6 @@ input[type=checkbox] {
   background-color: #333333;
 }
 
-/*
-#mos6502OpcodeInfo table tr:nth-child(even) td {
-  background-color: #222222 !important;
-}
-*/
-
 .colorSubPalette {
   position: relative;
   height: 40px;
@@ -1273,7 +1223,6 @@ input[type=checkbox] {
 .colorSubPalette:hover {
   background-color: #1e1e1e;
 }
-
 
 #switchColors {
   opacity: 0.5;
@@ -1287,7 +1236,6 @@ input[type=checkbox] {
 #switchColors:hover {
   opacity: 0.93;
 }
-
 
 #buildOutputPanel {
   background-color: #111111;
@@ -1303,17 +1251,13 @@ input[type=checkbox] {
   background-color: #222222;
 }
 
-.assemblerOutputLine.error {
-  /* color: #cc2222; */
-}
-
 .assemblerOutputLine.selected {
   background-color: var(--selection);
   color: #cccccc;
 }
 
 .assemblerOutputErrorIcon {
-  /*padding: 1px; */
+
   height: 10px;
   line-height: 10px;
   display: inline-block;
@@ -1387,8 +1331,6 @@ input[type=checkbox] {
   margin-right: 8px;
 }
 
-
-
 .colorPalettePanelSubPaletteMobile {
   display: inline-block;
   margin: 8px 10px 0 8px;
@@ -1420,8 +1362,6 @@ input[type=checkbox] {
 .colorPalettePanelSubPaletteColorMobile-selected {
   border: 1px solid var(--text-3) !important;
 }
-
-
 
 #scriptingRunControls {
   padding: 4px;
@@ -1467,13 +1407,6 @@ input[type=checkbox] {
   background-color: #333333 !important;
 }
 
-.ace_gutter-cell.ace_breakpoint {
-  /*
-  border-radius: 20px 0px 0px 20px;
-  box-shadow: 0px 0px 1px 1px #248c46 inset;
-  */
-}
-
 .ace_gutter-cell.ace_breakpoint::before {
   content: '';
   display: inline-block;
@@ -1486,7 +1419,7 @@ input[type=checkbox] {
   position: absolute;
   left: 5px;
   top: 5px;
-  z-index: 1000;
+  z-index: var(--z-dialog);
 }
 
 .ace_gutter-cell.ace_pc::after {
@@ -1499,12 +1432,9 @@ input[type=checkbox] {
   position: absolute;
   left: 5px;
   top: 0px;
-  z-index: 1001;
+  z-index: calc(var(--z-dialog) + 1);
 
 }
-
-
-.c64-play-button {}
 
 .c64-play-button:hover {
   color: white;
@@ -1519,7 +1449,6 @@ input[type=checkbox] {
   background-color: black;
   border: 2px solid black;
 }
-
 
 .gridinfo-label {
   color: #888888;
@@ -1545,7 +1474,6 @@ input[type=checkbox] {
   width: 12px;
 }
 
-
 #lineSegmentToolSettings {
   display: flex;
   padding: 12px;
@@ -1557,7 +1485,6 @@ input[type=checkbox] {
   margin-bottom: 0 !important;
   margin-right: 8px !important;
 }
-
 
 .joystick-info-key {
   margin: 0 0 0 4px;
@@ -1588,7 +1515,6 @@ input[type=checkbox] {
   color: #ffffff;
 }
 
-
 .chooseCharacterSetOptions .rb-container {
   margin-bottom: 4px;
 }
@@ -1600,19 +1526,12 @@ input[type=checkbox] {
 
 }
 
-
-
-/*** new forms ****/
-
-/* Zen mode keeps the canvas clear while leaving narrow, discoverable reveal
-   targets at each edge. Existing editor panels are temporarily fixed over the
-   canvas so revealing them never changes the workspace dimensions. */
 #zenModeEdges {
   display: none;
   inset: 0;
   pointer-events: none;
   position: fixed;
-  z-index: 593;
+  z-index: var(--z-zen-edges);
 }
 
 body.zen-mode #zenModeEdges {
@@ -1629,7 +1548,7 @@ body.zen-mode .zen-mode-panel-overlay {
   display: block !important;
   pointer-events: auto;
   position: fixed !important;
-  z-index: 591;
+  z-index: var(--z-zen-panel);
 }
 
 body.zen-mode .zen-mode-panel-overlay-top {
@@ -1671,7 +1590,7 @@ body.zen-mode .zen-mode-panel-overlay-bottom {
 body.zen-mode .zen-mode-panel-stacked {
   pointer-events: auto;
   transform: translateY(var(--zen-mode-stack-offset));
-  z-index: 592;
+  z-index: var(--z-zen-stacked);
 }
 
 body.zen-mode .zen-mode-panel-stacked-bottom {
@@ -1871,7 +1790,7 @@ body.zen-mode .zen-mode-panel-stacked-bottom {
   position: sticky;
   text-align: left;
   top: 0;
-  z-index: 3;
+  z-index: var(--z-content-top);
 }
 
 .keyboard-shortcuts-table thead th:nth-child(1) {
@@ -1920,7 +1839,7 @@ body.zen-mode .zen-mode-panel-stacked-bottom {
   padding: 8px !important;
   position: sticky;
   top: calc(var(--keyboard-shortcuts-column-header-height) - 1px);
-  z-index: 2;
+  z-index: var(--z-content-raised);
 }
 
 .keyboard-shortcuts-group-function {
@@ -2056,7 +1975,7 @@ body.zen-mode .zen-mode-panel-stacked-bottom {
   padding: 10px;
   position: absolute;
   width: min(440px, calc(100% - 20px));
-  z-index: 10;
+  z-index: var(--z-toolbar);
 }
 
 .keyboard-shortcuts-recorder-heading {

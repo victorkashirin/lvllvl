@@ -272,6 +272,23 @@
   color: #dddddd;
 }
 
+.ui-mobilepanel-back {
+  display: inline-block;
+  height: 48px;
+  width: 48px;
+}
+
+.ui-mobilepanel-back img {
+  height: 42px;
+  width: 42px;
+}
+
+.ui-mobilepanel-dialog-buttons {
+  bottom: 0;
+  height: 0;
+  position: absolute;
+}
+
 .mobileMode .ui-mobilepanel-content {
   position: absolute;
   top: 50px;

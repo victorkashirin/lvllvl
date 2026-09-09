@@ -33,7 +33,7 @@ CodeEditor.prototype = {
   },
 
   buildInterface: function(parentPanel) {
-    this.id = UI.getID();
+    this.id = UI.getID('code-editor');
 
     var html = '<div class="panelFill" style="background-color:#333333;">';
 //    html += '  <textarea id="assemblyCodeEditor"  rows="20" cols="60"></textarea>';

@@ -25,7 +25,7 @@ UI.Popup = function() {
 
     this.backgroundElement = document.createElement('div');
     this.backgroundElement.setAttribute('id', this.id + '-background');
-    this.backgroundElement.setAttribute('style', 'display: none;  position: absolute; top: 0; left: 0; bottom: 0; right: 0');
+    this.backgroundElement.setAttribute('class', 'ui-popup-background');
 
     var _this = this;
     document.body.append(this.backgroundElement);
@@ -66,9 +66,10 @@ UI.Popup = function() {
     this.element.setAttribute('id', this.id);
 
     if(height === false || height == 'auto') {
-      this.element.setAttribute('style', 'display: none; position: absolute; top: 0; left: 0;  width: ' + width + 'px; ');
+      this.element.style.width = width + 'px';
     } else {
-      this.element.setAttribute('style', 'display: none; position: absolute; top: 0; left: 0;  width: ' + width + 'px; height: ' + height + 'px');
+      this.element.style.width = width + 'px';
+      this.element.style.height = height + 'px';
     }
     this.element.setAttribute('class', 'ui-popup');
     document.body.append(this.element);
@@ -114,12 +115,10 @@ UI.Popup = function() {
 
   this.show = function(x, y) {
     this.backgroundElement.style.display = 'block';
-    this.backgroundElement.style.zIndex = 1010;
     
     //this.element.style.display = 'block';
     this.element.style.left = x + 'px';
     this.element.style.top = y + 'px';
-    this.element.style.zIndex = 2000;
 
     this.fitOnScreen(x, y);
     $('#' + this.element.id).fadeIn(60);

@@ -515,33 +515,31 @@ UI.Dialog = function(args) {
     this.element.setAttribute('aria-modal', 'true');
     this.element.setAttribute('aria-labelledby', this.id + 'titleheading');
     this.element.setAttribute('tabindex', '-1');
-    this.element.setAttribute('style', 'display: none; width: ' + this.width + 'px; height: ' + this.height + 'px; top: ' + this.top + 'px; left: ' + this.left + 'px; z-index: 1000');
+    this.element.style.display = 'none';
+    this.element.style.width = this.width + 'px';
+    this.element.style.height = this.height + 'px';
+    this.element.style.top = this.top + 'px';
+    this.element.style.left = this.left + 'px';
 
     SafeHTML.setHTML(this.element, this.getInnerHTML());
 
     return this.element;
   }
 
+  this.getResizeHandlesHTML = function() {
+    var edges = ['north', 'northeast', 'east', 'southeast', 'south', 'southwest', 'west', 'northwest'];
+    var html = '';
+    for(var i = 0; i < edges.length; i++) {
+      var edge = edges[i];
+      html += '  <div id="' + this.id + edge + 'resize" class="ui-dialog-resize-handle ui-dialog-resize-' + edge + '" data-ui-dialog-edge="' + edge + 'resize" data-ui-component-id="' + this.id + '"></div>';
+    }
+    return html;
+  }
+
   this.getInnerHTML = function() {
     var html = '';
 
-    var resizeSize = 4;
-
-    html += '  <div id="' + this.id + 'northresize" data-ui-dialog-edge="northresize" data-ui-component-id="' + this.id + '" style=" position: absolute; top: 0; left: ' + resizeSize+ 'px; right: ' + resizeSize + 'px; height: ' + resizeSize + 'px; cursor: n-resize"></div>';
-
-    html += '  <div id="' + this.id + 'northeastresize" data-ui-dialog-edge="northeastresize" data-ui-component-id="' + this.id + '" style="position: absolute; top: 0; right: 0; width: ' + resizeSize + 'px; height: ' + resizeSize + 'px; cursor: ne-resize"></div>';
-
-    html += '  <div id="' + this.id + 'eastresize" data-ui-dialog-edge="eastresize" data-ui-component-id="' + this.id + '" style=" position: absolute; top: ' + resizeSize + 'px; bottom: ' + resizeSize + 'px; right: 0px; width: ' + resizeSize + 'px; cursor: e-resize"></div>';
-
-    html += '  <div id="' + this.id + 'southeastresize" data-ui-dialog-edge="southeastresize" data-ui-component-id="' + this.id + '" style="position: absolute; bottom: 0; right: 0; width: ' + resizeSize + 'px; height: ' + resizeSize + 'px; cursor: se-resize"></div>';
-
-    html += '  <div id="' + this.id + 'southresize" data-ui-dialog-edge="southresize" data-ui-component-id="' + this.id + '" style="position: absolute; bottom: 0; left: ' + resizeSize + 'px; right: ' + resizeSize + 'px; height: ' + resizeSize + 'px; cursor: s-resize"></div>';
-
-    html += '  <div id="' + this.id + 'southwestresize" data-ui-dialog-edge="southwestresize" data-ui-component-id="' + this.id + '" style="position: absolute; bottom: 0; left: 0; width: ' + resizeSize + 'px; height: ' + resizeSize + 'px; cursor: sw-resize"></div>';
-
-    html += '  <div id="' + this.id + 'westresize" data-ui-dialog-edge="westresize" data-ui-component-id="' + this.id + '" style="position: absolute; top: ' + resizeSize + 'px; bottom: ' + resizeSize + 'px; left: 0px; width: ' + resizeSize + 'px; cursor: w-resize"></div>';
-
-    html += '  <div id="' + this.id + 'northwestresize" data-ui-dialog-edge="northwestresize" data-ui-component-id="' + this.id + '" style=" position: absolute; top: 0; left: 0; width: ' + resizeSize + 'px; height: ' + resizeSize + 'px; cursor: nw-resize"></div>';
+    html += this.getResizeHandlesHTML();
 
     html += '  <div id="' + this.id + 'titlebar" class="ui-dialog-titlebar">';
     html += '    <div id="' + this.id + 'titlebaricon" class="ui-dialog-titlebar-icon">o</div>'; 
@@ -566,7 +564,6 @@ UI.Dialog = function(args) {
     html += '  </div>';
 
     html += '  <div id="' + this.id + '-buttons" class="ui-dialog-buttons" >';
-//    html += '<div style="padding-bottom: 5px; padding-right: 30px; right: 0px; bottom: 0px; position: absolute">';
     for(var i = 0; i < this.buttons.length; i++) {
       html += '&nbsp;&nbsp;' + this.buttons[i].getHTML();
     }
@@ -579,25 +576,9 @@ UI.Dialog = function(args) {
     var html = '';
 
     html += '<div id="' + this.id + '-background" class="ui-dialog-background"></div>';
-    html += '<div id="' + this.id + '"' + UI.getMarkupEventAttribute() + ' class="ui-dialog" role="dialog" aria-modal="true" aria-labelledby="' + this.id + 'titleheading" tabindex="-1" style="display: none; width: ' + this.width + 'px; height: ' + this.height + 'px; top: ' + this.top + 'px; left: ' + this.left + 'px; z-index: 1000">';
+    html += '<div id="' + this.id + '"' + UI.getMarkupEventAttribute() + ' class="ui-dialog" role="dialog" aria-modal="true" aria-labelledby="' + this.id + 'titleheading" tabindex="-1" style="display: none; width: ' + this.width + 'px; height: ' + this.height + 'px; top: ' + this.top + 'px; left: ' + this.left + 'px">';
 
-    var resizeSize = 4;
-
-    html += '  <div id="' + this.id + 'northresize" data-ui-dialog-edge="northresize" data-ui-component-id="' + this.id + '" style=" position: absolute; top: 0; left: ' + resizeSize+ 'px; right: ' + resizeSize + 'px; height: ' + resizeSize + 'px; cursor: n-resize"></div>';
-
-    html += '  <div id="' + this.id + 'northeastresize" data-ui-dialog-edge="northeastresize" data-ui-component-id="' + this.id + '" style="position: absolute; top: 0; right: 0; width: ' + resizeSize + 'px; height: ' + resizeSize + 'px; cursor: ne-resize"></div>';
-
-    html += '  <div id="' + this.id + 'eastresize" data-ui-dialog-edge="eastresize" data-ui-component-id="' + this.id + '" style=" position: absolute; top: ' + resizeSize + 'px; bottom: ' + resizeSize + 'px; right: 0px; width: ' + resizeSize + 'px; cursor: e-resize"></div>';
-
-    html += '  <div id="' + this.id + 'southeastresize" data-ui-dialog-edge="southeastresize" data-ui-component-id="' + this.id + '" style="position: absolute; bottom: 0; right: 0; width: ' + resizeSize + 'px; height: ' + resizeSize + 'px; cursor: se-resize"></div>';
-
-    html += '  <div id="' + this.id + 'southresize" data-ui-dialog-edge="southresize" data-ui-component-id="' + this.id + '" style="position: absolute; bottom: 0; left: ' + resizeSize + 'px; right: ' + resizeSize + 'px; height: ' + resizeSize + 'px; cursor: s-resize"></div>';
-
-    html += '  <div id="' + this.id + 'southwestresize" data-ui-dialog-edge="southwestresize" data-ui-component-id="' + this.id + '" style="position: absolute; bottom: 0; left: 0; width: ' + resizeSize + 'px; height: ' + resizeSize + 'px; cursor: sw-resize"></div>';
-
-    html += '  <div id="' + this.id + 'westresize" data-ui-dialog-edge="westresize" data-ui-component-id="' + this.id + '" style="position: absolute; top: ' + resizeSize + 'px; bottom: ' + resizeSize + 'px; left: 0px; width: ' + resizeSize + 'px; cursor: w-resize"></div>';
-
-    html += '  <div id="' + this.id + 'northwestresize" data-ui-dialog-edge="northwestresize" data-ui-component-id="' + this.id + '" style=" position: absolute; top: 0; left: 0; width: ' + resizeSize + 'px; height: ' + resizeSize + 'px; cursor: nw-resize"></div>';
+    html += this.getResizeHandlesHTML();
 
     html += '  <div id="' + this.id + 'titlebar" class="ui-dialog-titlebar">';
     html += '    <div id="' + this.id + 'titlebaricon" class="ui-dialog-titlebar-icon">o</div>'; 
@@ -622,7 +603,6 @@ UI.Dialog = function(args) {
     html += '  </div>';
 
     html += '  <div id="' + this.id + 'buttons" class="ui-dialog-buttons" >';
-//    html += '<div style="padding-bottom: 5px; padding-right: 30px; right: 0px; bottom: 0px; position: absolute">';
     for(var i = 0; i < this.buttons.length; i++) {
       html += '&nbsp;&nbsp;' + this.buttons[i].getHTML();
     }

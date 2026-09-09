@@ -79,6 +79,31 @@ test("source labels never declare an empty target", async () => {
   );
 });
 
+test("UI cleanup keeps obsolete CSS and structural inline styles out of source", async () => {
+  const cssDirectory = path.join(projectRoot, "src/css");
+  const cssFiles = await readdir(cssDirectory);
+  for (const obsolete of ["button-colors.css", "icons-halflings-old.css", "old.css"]) {
+    assert.ok(!cssFiles.includes(obsolete), `${obsolete} was restored`);
+  }
+
+  const dialogSource = await readFile(path.join(projectRoot, "src/js/ui/dialog.js"), "utf8");
+  assert.doesNotMatch(
+    dialogSource,
+    /data-ui-dialog-edge=[^\n]+style=/,
+    "dialog resize handles must stay class-based",
+  );
+
+  const musicRoot = path.join(projectRoot, "src/html/music");
+  const musicTemplates = (await readdir(musicRoot, { recursive: true }))
+    .filter((relativePath) => relativePath.endsWith(".html"));
+  const inlineStyles = [];
+  for (const relativePath of musicTemplates) {
+    const source = await readFile(path.join(musicRoot, relativePath), "utf8");
+    if (/\bstyle\s*=/.test(source)) inlineStyles.push(relativePath);
+  }
+  assert.deepEqual(inlineStyles, [], "music templates must use reusable CSS classes");
+});
+
 test("home and help links stay inside a repository deployment path", async () => {
   const menuBar = await readFile(path.join(projectRoot, "src/js/ui/menuBar.js"), "utf8");
   const editorMenuCommands = await readFile(

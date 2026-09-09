@@ -1,7 +1,7 @@
 UI.MenuItem = function() {
   this.init = function(args) {
 
-    this.id = UI.getID();
+    this.id = UI.getID('menu-item');
     this.enabled = true;
     this.visible = true;
 

@@ -1,9 +1,9 @@
-<div id="editInstrument" class="panelFill" style="background-color: #444444;">
+<div id="editInstrument" class="panelFill music-panel-muted">
 
-  <div id="editInstrumentHolder" style="position: absolute; background-color: #333333; top: 0; bottom: 100px; left: 0px; right: 8px; overflow-y: auto">
+  <div id="editInstrumentHolder" class="music-editor-scroll">
 
 
-    <div class="content" style="padding: 8px">
+    <div class="content music-content">
       <h3>Edit Instrument</h3>
 
       <div class="formGroup">
@@ -24,7 +24,7 @@
 
       <div class="formGroup">
         <label class="controlLabel">ADSR:</label>
-        <div class="" style="display: inline-block">
+        <div class="music-inline">
 
           <label for="editInstrumentAttack">Attack:&nbsp;</label>
           <select class="formControl" id="editInstrumentAttack">
@@ -116,8 +116,8 @@
           </select>
 
         </div>
-      </div>                        
-  
+      </div>
+
 
       <div class="formGroup">
         <label class="controlLabel">Vibrato:</label>
@@ -128,14 +128,14 @@
         </div>
       </div>
 
-      <div id="vibratoControls" style="display: none; "> 
+      <div id="vibratoControls" class="music-hidden">
 
         <div class="formGroup">
 
           <label class="controlLabel"></label>
-          
-          <div style="display: inline-block; margin-left: 20px">
-            <div style="margin-bottom: 8px">
+
+          <div class="music-vibrato-controls">
+            <div class="music-section-gap">
               Change pitch by depth, change direction every speed ticks
             </div>
 
@@ -174,12 +174,12 @@
           </div>
         </div>
 
-        <div id="pulseControls" style="display: none">
+        <div id="pulseControls" class="music-hidden">
           <div class="formGroup">
             <label class="controlLabel"></label>
-            <div style="display: inline-block">
+            <div class="music-inline">
               <label for="editInstrumentPMWidth">Initial Pulse Width:</label>
-              <div style="display: inline-block">
+              <div class="music-inline">
                 <label><input name="editInstrumentPMWidth" id="editInstrumentPMWidth" value="50" maxlength="3" size="4" class="number"> %</label>
               </div>
             </div>
@@ -187,9 +187,9 @@
 
           <div class="formGroup">
             <label class="controlLabel"></label>
-            <div style="display: inline-block">
-              <label style="margin-bottom: 4px">Pulse Modulation: </label><br/>
-              <div style="margin-bottom: 4px">For Time ticks, increase pulse width by Amount/tick, then decrease by Amount/tick for Time ticks</div>
+            <div class="music-inline">
+              <label class="music-effect-description">Pulse Modulation: </label><br/>
+              <div class="music-effect-description">For Time ticks, increase pulse width by Amount/tick, then decrease by Amount/tick for Time ticks</div>
               <label>Time <input name="editInstrumentPMSpeed" id="editInstrumentPMSpeed" maxlength="3" size="4" class="number" min="1" max="999" value="3"> ticks (1-999) </label>
               &nbsp;&nbsp;
               <label>Amount <input name="editInstrumentPMDepth" id="editInstrumentPMDepth" maxlength="3" size="4" class="number" value="3" min="0" max="127"> per tick (0-127)</label>
@@ -208,9 +208,9 @@
 
           </div>
 
-          <div class="editInstrumentBasicEffect" id="editInstrumentTremolo" style="margin-left: 90px;">
-            <div style="background-color: #888888; padding: 8px; display: inline-block">
-              <label>On For 
+          <div class="editInstrumentBasicEffect music-editor-effect-controls" id="editInstrumentTremolo">
+            <div class="music-editor-effect-card">
+              <label>On For
                 <select name="editInstrumentTremoloOnSpeed" id="editInstrumentTremoloOnSpeed">
                   <option value="1">1</option>
                   <option value="2">2</option>
@@ -233,7 +233,7 @@
               </label>
 
               &nbsp;&nbsp;
-              <label>Off For 
+              <label>Off For
                 <select name="editInstrumentTremoloOffSpeed" id="editInstrumentTremoloOffSpeed">
                   <option value="1">1</option>
                   <option value="2">2</option>
@@ -257,8 +257,8 @@
             </div>
           </div>
 
-          <div class="editInstrumentBasicEffect" id="editInstrumentArpeggio" style="margin-left: 90px;">
-            <div style="background-color: #888888; padding: 8px; display: inline-block">
+          <div class="editInstrumentBasicEffect music-editor-effect-controls" id="editInstrumentArpeggio">
+            <div class="music-editor-effect-card">
 
               <label>Ticks/note:
 
@@ -310,10 +310,10 @@
               <div id="editInstrumentsArpeggioSteps">
               </div>
 
-                
+
 <!--
 
-              <label>Type 
+              <label>Type
                 <label><input type="radio" name="editInstrumentArpeggioType"  name="editInstrumentArpeggioType_octave" value="octave" checked="checked"> Octave</label>
                 <label><input type="radio" name="editInstrumentArpeggioType"  name="editInstrumentArpeggioType_major"  value="major"> Major Triad</label>
                 <label><input type="radio" name="editInstrumentArpeggioType"  name="editInstrumentArpeggioType"  value="minor"> Minor Triad</label>
@@ -341,7 +341,7 @@
 -->
 
 <!--
-              <div id="editInstrumentArpeggioCustom" style="display: none">
+              <div id="editInstrumentArpeggioCustom" class="music-hidden">
                 <label>
                   Steps
                   <select id="editInstrumentArpeggioCustomSteps">
@@ -382,8 +382,8 @@
           </div>
 
 
-          <div class="editInstrumentBasicEffect" id="editInstrumentPitch" style="margin-left: 90px;">
-            <div style="background-color: #888888; padding: 8px; display: inline-block">
+          <div class="editInstrumentBasicEffect music-editor-effect-controls" id="editInstrumentPitch">
+            <div class="music-editor-effect-card">
 
               <label><input type="radio" id="editInstrumentPitchEffect_bendup" name="editInstrumentPitchEffect" value="bendup" checked="checked">Bend up to note</label>
               <label><input type="radio" id="editInstrumentPitchEffect_benddown" name="editInstrumentPitchEffect" value="benddown">Bend down to note</label>
@@ -425,12 +425,12 @@
 
     </div>
 
-    <div id="editInstrumentAdvanced" style="padding: 0 10px 0 10px">
+    <div id="editInstrumentAdvanced" class="music-editor-advanced">
 
       <div id="editInstrumentAdvancedTabs">
-        <div style="display: inline-block; width: 100px" class="instrumentTab instrumentActiveTab" id="wavetableTab">Wave Table</div>
-        <div style="display: inline-block; width: 100px" class="instrumentTab" id="pulsetableTab">Pulse Table</div>
-        <div style="display: inline-block; width: 100px" class="instrumentTab" id="filtertableTab">Filter Table</div>
+        <div class="instrumentTab instrumentActiveTab music-instrument-tab" id="wavetableTab">Wave Table</div>
+        <div class="instrumentTab music-instrument-tab" id="pulsetableTab">Pulse Table</div>
+        <div class="instrumentTab music-instrument-tab" id="filtertableTab">Filter Table</div>
       </div>
 
       <div id="editInstrumentWavetable" class="instrumentTable">
@@ -445,10 +445,10 @@
     </div>
   </div>
 
-  <canvas id="editInstrumentKeyboard" width="1126" height="60" style="background-color: white;position: absolute; bottom: 40px"></canvas>
+  <canvas id="editInstrumentKeyboard" class="music-keyboard music-instrument-keyboard" width="1126" height="60"></canvas>
 
 
-  <div class="buttons" style="position: absolute; bottom: 10px; right: 10px; width: 300px;  text-align: right; ">
+  <div class="buttons music-dialog-buttons music-instrument-buttons">
     <div class="ui-button ui-button-primary" id="editInstrumentOK">OK<div class="rippleJS"></div></div>
     <div class="ui-button" id="editInstrumentApply">Apply<div class="rippleJS"></div></div>
     <div class="ui-button" id="editInstrumentCancel">Cancel<div class="rippleJS"></div></div>

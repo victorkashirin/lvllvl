@@ -242,6 +242,42 @@ test("desktop canvas context clicks open tile and color palettes", async ({ page
   await expect.poll(() => page.evaluate(() => UI.popup?.uiID)).toBe("colorPickerPopup");
 });
 
+test("pen cursor remains active while drawing", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.metadata.deviceClass !== "desktop");
+  await open2DProject(page, testInfo);
+
+  const canvasId = await page.evaluate(() => g_app.textModeEditor.gridView2d.canvas.id);
+  const canvas = page.locator(`#${canvasId}`);
+  await expect(canvas).toBeVisible();
+  const bounds = await canvas.boundingBox();
+  expect(bounds).not.toBeNull();
+
+  await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
+  await expect.poll(() => page.evaluate(() => UI.currentCursor)).toBe("draw");
+  const penCursor = await page.evaluate(() => {
+    const canvas = g_app.textModeEditor.gridView2d.canvas;
+    return {
+      computed: getComputedStyle(canvas).cursor,
+      definition: UI.currentCursorDefinition,
+      inline: canvas.style.cursor,
+    };
+  });
+
+  await page.mouse.down();
+  await expect(page.locator("#uimousecapture")).toBeVisible();
+  expect(await page.evaluate(() => {
+    const capture = document.getElementById("uimousecapture");
+    return {
+      computed: getComputedStyle(capture).cursor,
+      inline: capture.style.cursor,
+    };
+  })).toEqual({ computed: penCursor.computed, inline: penCursor.inline });
+
+  await page.mouse.up();
+  await expect(page.locator("#uimousecapture")).toHaveCount(0);
+  expect(await page.evaluate(() => UI.currentCursorDefinition)).toBe(penCursor.definition);
+});
+
 test("new projects replace project palette and tile set menu entries", async ({ page }, testInfo) => {
   test.skip(!isDesktop2DRendererProject(testInfo));
   await open2DProject(page, testInfo);

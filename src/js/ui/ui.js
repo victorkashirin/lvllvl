@@ -158,9 +158,11 @@ UI.isMobile = {
   }
 };
 
-UI.getID = function() {
+UI.getID = function(kind) {
   UI.componentCount++;
-  return "ui" + UI.componentCount;
+  var prefix = String(kind || 'component').replace(/([a-z0-9])([A-Z])/g, '$1-$2')
+    .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  return 'ui-' + prefix + '-' + UI.componentCount;
 }
 
 // Human-readable DOM ids; keep caller-facing component ids in UI.ids.
@@ -237,8 +239,8 @@ UI.setStatsEnabled = function(enabled) {
       UI.stats.setMode(0);
       UI.statsElement = document.createElement('div');
       UI.statsElement.id = 'Stats-output';
+      UI.statsElement.className = 'ui-stats';
       UI.statsElement.setAttribute('aria-label', 'Performance statistics');
-      UI.statsElement.style.cssText = 'position: absolute; top: 0; right: 0; z-index: 10000';
       UI.statsElement.append(UI.stats.domElement);
     }
     document.body.append(UI.statsElement);
@@ -319,7 +321,7 @@ UI.create = function(componentType, args) {
     component = new this.componentTypes[componentType](args);
     component.id = componentType === 'UI.Dialog'
       ? UI.getSemanticID('dialog', args.id || args.title)
-      : UI.getID();
+      : UI.getID(componentType.replace(/^UI\./, ''));
     component.ui_type = componentType;
     UI.components[component.id] = component;
 
@@ -547,10 +549,11 @@ UI.captureMouse = function(component, args) {
   }
 
 
-//  if(args.addLayer) {
-//
-  $('#ui').append('<div id="uimousecapture" style=" position: absolute; top: 0; left: 0; bottom: 0; right: 0; z-index: 10000; cursor: ' + cursor + '"></div>');
-//  }
+  var mouseCapture = document.createElement('div');
+  mouseCapture.id = 'uimousecapture';
+  mouseCapture.className = 'ui-mouse-capture';
+  mouseCapture.style.cursor = cursor;
+  document.getElementById('ui').appendChild(mouseCapture);
 
   UI.capturedMouseComponent = component;
 
@@ -1546,14 +1549,13 @@ $(document).ready(function() {
 
   
   var html = '';
-  html += '<div id="ui-menu-background" style="display: none; position: absolute; top: 30px; left: 0; right: 0; bottom: 0; background-color: black; z-index: 300; opacity: 0;"></div>';
+  html += '<div id="ui-menu-background" class="ui-menu-background"></div>';
   html += '<h1 class="ui-visually-hidden">lvllvl plus</h1>';
-  html += '<div id="ui" style="position: absolute; left: 0; right: 0; top: 0; bottom: 0; overflow: visible" ></div>';
+  html += '<div id="ui" class="ui-root"></div>';
   html += '<div id="ui-hidden-store" hidden aria-hidden="true"></div>';
   if(UI.debugEnabled) {
-    html += '<textarea id="debugBox" aria-label="Debug log" style="display: none; position: absolute; width: 100%; bottom: 0; left: 0; right: 0; height: 400px; z-index: 4000"></textarea>';
+    html += '<textarea id="debugBox" class="ui-debug-box" aria-label="Debug log"></textarea>';
   }
-//  html += '<canvas style="background-color: black; position: absolute; top: 20px; left: 80px; border: 2px solid red; z-index: 3000" id="debugCanvas"></canvas>';
   $('body').html(html);
   UI.init3d();
   UI.initEvents();
@@ -1565,20 +1567,6 @@ $(document).ready(function() {
     for(var i = 0; i < UI.windows.length; i++) {
       html += UI.windows[i].getHTML();
     }
-
-/*
-    html += '<div id="ui_dragcomponent" style="display: none; position: absolute; top: 0; left: 0; z-index: 2000">&nbsp;&nbsp; drag</div>';
-
-    html += '<div id="gui-background"  class="wt-progress-background" style="text-align: center; z-index: 3000">';
-    html += '<div id="formprogress" style="background-color: black; padding: 10px; border-radius: 10px; color: #999; font-size: 20px; position: absolute; top: 50%;  left: 50%; margin-top: -40px; margin-left: -150px ">';
-    html += '<div id="formprogressspinner"><div id="formprogressspinnertext">Uploading...</div><img src="/wtv2/wtui/images/spinner.gif"/></div>';
-    html += '<div id="formprogressbar" style="display: none">';
-    var formprogress = WTUI.create("WTUI.ProgressBar", { "id": "formprogress" });
-    html += formprogress.getHTML();
-    html += '</div>';
-
-    html += '</div></div>';
-*/
 
     $('#ui').html(html);
 

@@ -1073,7 +1073,7 @@ UI.Tree = function(args) {
             this.m_dragTargetRow.style.border = '0px';
           }
 
-          $('#wtui').append('<div id="mousecapture" style=" position: absolute; top: 0; left: 0; bottom: 0; right: 0; z-index: 10000; "></div>');
+          $('#wtui').append('<div id="mousecapture" class="ui-mouse-capture"></div>');
           this.m_mouseInComponent = false;
         }
       }
