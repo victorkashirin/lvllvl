@@ -4,6 +4,10 @@
 
 ### Fixed
 
+- Make the Fill Bucket respect the selected Tile, FG Color, and BG Color
+  affect channels when matching and updating glyph cells, preserving tile
+  rotations and flips during color-only fills.
+- Make the Eyedropper retain a glyph's rotation and flips when picking it.
 - Fix duplicate element ids across simultaneously mounted tool panels
   (desktop/mobile, tile/pixel) by scoping mobile side-panel, sub-palette,
   tile-editor colour, and material-control ids and selecting frame colours

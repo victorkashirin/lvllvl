@@ -1066,7 +1066,7 @@ Shapes3d.prototype = {
     if(!drawTools.drawColor) {
       color = cell.fc;
     }
-    if(!drawTools.drawBGColor) {
+    if(!drawTools.drawBgColor) {
       bgColor = cell.bc;
     }                       
     this.addCharacter(character, x, y, z, color, bgColor, rx, ry, rz);          

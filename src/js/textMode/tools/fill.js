@@ -9,6 +9,37 @@ Fill.prototype = {
     this.editor = editor;
   },
 
+  getCellReplacementArgs: function(x, y, testCell, replacement, fc, bc) {
+    var drawTools = this.editor.tools.drawTools;
+    var args = {
+      x: x,
+      y: y,
+      t: replacement,
+      fc: fc,
+      bc: bc,
+      update: false
+    };
+
+    if(!drawTools.drawCharacter) {
+      args.t = testCell.t;
+      args.rx = testCell.rx;
+      args.ry = testCell.ry;
+      args.rz = testCell.rz;
+      args.fh = testCell.fh;
+      args.fv = testCell.fv;
+    }
+
+    if(!drawTools.drawColor) {
+      args.fc = testCell.fc;
+    }
+
+    if(!drawTools.drawBgColor) {
+      args.bc = testCell.bc;
+    }
+
+    return args;
+  },
+
 
   nonContiguousFill: function(x,y) {
 
@@ -18,6 +49,9 @@ Fill.prototype = {
     }
 
     var drawTools = this.editor.tools.drawTools;
+    if(!drawTools.drawCharacter && !drawTools.drawColor && !drawTools.drawBgColor) {
+      return;
+    }
 
     this.gridWidth = layer.getGridWidth();
     this.gridHeight = layer.getGridHeight();
@@ -43,28 +77,7 @@ Fill.prototype = {
       for(var x = 0; x < this.gridWidth; x++) {
         var testCell = layer.getCell({ x: x, y: y });
         if(this.cellsAreEqual(target, testCell)) {
-          var args = {
-            x: x,
-            y: y,
-            t: replacement,
-            fc: fc,
-            bc: bc,
-            update: false
-          };
-  
-          if(!drawTools.drawCharacter) {
-            args.t = testCell.t;
-          }
-  
-          if(!drawTools.drawColor) {
-            args.fc = testCell.fc;
-          }
-  
-          if(!drawTools.drawBGColor) {
-            args.bc = cellData.bc;
-          }
-  
-  
+          var args = this.getCellReplacementArgs(x, y, testCell, replacement, fc, bc);
           layer.setCell(args);
   
         }
@@ -123,10 +136,10 @@ Flood-fill (node, target-color, replacement-color):
     var fc = this.editor.currentTile.getColor();
     var bc = this.editor.currentTile.getBGColor();
 
-    // If target-color is equal to replacement-color, return.
-    if(target.t === replacement.t
-       && target.fc === fc
-       && target.bc === bc) {
+    // If every enabled channel already has its replacement value, return.
+    if((!drawTools.drawCharacter || target.t === replacement)
+       && (!drawTools.drawColor || target.fc === fc)
+       && (!drawTools.drawBgColor || target.bc === bc)) {
       return;
     }
 
@@ -158,28 +171,7 @@ Flood-fill (node, target-color, replacement-color):
           break;
         }
 
-        var args = {
-          x: w.x,
-          y: w.y,
-          t: replacement,
-          fc: fc,
-          bc: bc,
-          update: false
-        };
-
-        if(!drawTools.drawCharacter) {
-          args.t = testCell.t;
-        }
-
-        if(!drawTools.drawColor) {
-          args.fc = testCell.fc;
-        }
-
-        if(!drawTools.drawBGColor) {
-          args.bc = cellData.bc;
-        }
-
-
+        var args = this.getCellReplacementArgs(w.x, w.y, testCell, replacement, fc, bc);
         layer.setCell(args);
 
 //         If the color of the node to the north of n is target-color, add that node to Q.
@@ -205,28 +197,7 @@ Flood-fill (node, target-color, replacement-color):
           break;
         }
 
-        var args = {
-          x: e.x,
-          y: e.y,
-          t: replacement,
-          fc: fc,
-          bc: bc,
-          update: false
-        };
-
-        if(!drawTools.drawCharacter) {
-          args.t = testCell.t;
-        }
-
-        if(!drawTools.drawColor) {
-          args.fc = testCell.fc;
-        }
-
-        if(!drawTools.drawBGColor) {
-          args.bc = cellData.bc;
-        }
-
-
+        var args = this.getCellReplacementArgs(e.x, e.y, testCell, replacement, fc, bc);
         layer.setCell(args);
 
 //         If the color of the node to the north of n is target-color, add that node to Q.
@@ -260,22 +231,16 @@ Flood-fill (node, target-color, replacement-color):
   cellsAreEqual: function(target, testCell) {
     var drawTools = this.editor.tools.drawTools;
 
-    if(drawTools.drawCharacter) {
-      if(target.t !== testCell.t) {
-        return false;
-      }
+    if(drawTools.drawCharacter && target.t !== testCell.t) {
+      return false;
     }
 
-    if(drawTools.drawColor) {
-      if( target.fc !== testCell.fc) {
-        return false;
-      }
+    if(drawTools.drawColor && target.fc !== testCell.fc) {
+      return false;
     }
 
-    if(drawTools.drawBGColor) {
-      if(target.bc !== testCell.bc) {
-        return false;
-      }
+    if(drawTools.drawBgColor && target.bc !== testCell.bc) {
+      return false;
     }
 
     return true;
@@ -394,7 +359,7 @@ Flood-fill (node, target-color, replacement-color):
         if(!this.editor.tools.drawTools.drawColor) {
           color = gridData[pos.z][pos.y][pos.x].fc;
         }
-        if(!this.editor.tools.drawTools.drawBGColor) {
+        if(!this.editor.tools.drawTools.drawBgColor) {
           bgColor = gridData[pos.z][pos.y][pos.x].bc;
         }
 

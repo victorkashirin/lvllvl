@@ -1889,6 +1889,97 @@ test("2D renderer invalidates the right cache when stationary controls change", 
   });
 });
 
+test("Fill Bucket maps each visible affect checkbox to its cell channel", async ({ page }, testInfo) => {
+  test.skip(!isDesktop2DRendererProject(testInfo));
+
+  await open2DProject(page, testInfo);
+  const cases = [
+    { checked: [], expected: { t: 1, fc: 2, bc: 3 } },
+    { checked: ["#drawChangesCharacter"], expected: { t: 4, fc: 2, bc: 3 } },
+    { checked: ["#drawChangesBGColor"], expected: { t: 1, fc: 2, bc: 6 } },
+    { checked: ["#drawChangesColor", "#drawChangesBGColor"], expected: { t: 1, fc: 5, bc: 6 } },
+  ];
+
+  for (const entry of cases) {
+    for (const selector of [
+      "#drawChangesCharacter",
+      "#drawChangesColor",
+      "#drawChangesBGColor",
+    ]) {
+      const input = page.locator(selector);
+      if (await input.isChecked() !== entry.checked.includes(selector)) {
+        await page.locator(`label:has(${selector})`).click();
+      }
+    }
+    const result = await page.evaluate(() => {
+      const editor = g_app.textModeEditor;
+      const layer = editor.layers.getSelectedLayerObject();
+      layer.setCell({ x: 0, y: 0, t: 1, fc: 2, bc: 3, rz: 3, fh: 1, fv: 1 });
+      editor.currentTile.setCharacters([[4]]);
+      editor.currentTile.setColor(5);
+      editor.currentTile.setBGColor(6);
+      editor.tools.drawTools.fill.floodFill(0, 0);
+      const cell = layer.getCell({ x: 0, y: 0 });
+      const { t, fc, bc } = cell;
+      return {
+        cell: { t, fc, bc },
+        shape: { rz: cell.rz, fh: cell.fh, fv: cell.fv },
+        flags: {
+          tile: editor.tools.drawTools.drawCharacter,
+          fg: editor.tools.drawTools.drawColor,
+          bg: editor.tools.drawTools.drawBgColor,
+        },
+      };
+    });
+    expect(result.cell).toEqual(entry.expected);
+    if (!entry.checked.includes("#drawChangesCharacter")) {
+      expect(result.shape).toEqual({ rz: 3, fh: 1, fv: 1 });
+    }
+    expect(result.flags).toEqual({
+      tile: entry.checked.includes("#drawChangesCharacter"),
+      fg: entry.checked.includes("#drawChangesColor"),
+      bg: entry.checked.includes("#drawChangesBGColor"),
+    });
+  }
+});
+
+test("Eyedropper picks glyph rotation and flips with the Tile channel", async ({ page }, testInfo) => {
+  test.skip(!isDesktop2DRendererProject(testInfo));
+
+  await open2DProject(page, testInfo);
+  const picked = await page.evaluate(() => {
+    const editor = g_app.textModeEditor;
+    const layer = editor.layers.getSelectedLayerObject();
+    const grid2d = editor.grid.grid2d;
+    const currentTile = editor.currentTile;
+    layer.setCell({ x: 0, y: 0, t: 4, fc: 2, bc: 3, rz: 3, fh: 1, fv: 1 });
+    grid2d.setCursorPosition(0, 0);
+    currentTile.flipH = false;
+    currentTile.flipV = false;
+    currentTile.rotZ = 0;
+    grid2d.eyedropperCursorCell();
+    return {
+      tile: currentTile.getCharacters()[0][0],
+      rz: currentTile.rotZ,
+      fh: currentTile.flipH,
+      fv: currentTile.flipV,
+    };
+  });
+  expect(picked).toEqual({ tile: 4, rz: 3, fh: true, fv: true });
+
+  await page.locator("label:has(#drawChangesCharacter)").click();
+  const preserved = await page.evaluate(() => {
+    const editor = g_app.textModeEditor;
+    const currentTile = editor.currentTile;
+    currentTile.flipH = true;
+    currentTile.flipV = false;
+    currentTile.rotZ = 2;
+    editor.grid.grid2d.eyedropperCursorCell();
+    return { rz: currentTile.rotZ, fh: currentTile.flipH, fv: currentTile.flipV };
+  });
+  expect(preserved).toEqual({ rz: 2, fh: true, fv: false });
+});
+
 test("Escape finishes typing and restores editor shortcuts", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "chromium-desktop");
 

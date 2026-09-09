@@ -150,13 +150,14 @@ Grid2d.prototype = {
     if(drawTools.drawCharacter) {
 //      currentTile.setCharacter(cellData.t);
       this.editor.setSelectedTiles([[cellData.t]]);
+      currentTile.setOrientation2d(cellData.fh, cellData.fv, cellData.rz);
     }
 
     if(drawTools.drawColor) {
       currentTile.setColor(cellData.fc);
     }
 
-    if(drawTools.drawBGColor) {
+    if(drawTools.drawBgColor) {
       currentTile.setBGColor(cellData.bc);
     }
 

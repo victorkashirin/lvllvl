@@ -994,7 +994,7 @@ Grid3dLayer.prototype = {
       if(!drawTools.drawColor) {
         args.fc = cell.fc;
       }
-      if(!drawTools.drawBGColor) {
+      if(!drawTools.drawBgColor) {
         args.bc = cell.bc;
       }
     }

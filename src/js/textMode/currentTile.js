@@ -394,6 +394,22 @@ currentTileSplitPanel
 
   },
 
+  setOrientation2d: function(flipH, flipV, rotZ) {
+    this.flipH = !!flipH;
+    this.flipV = !!flipV;
+    this.rotZ = typeof rotZ == 'undefined' ? 0 : rotZ;
+    this.canvasDrawCharacters();
+    this.update2dOrientationInfo();
+
+    if(this.editor.sideTilePalette) {
+      this.editor.sideTilePalette.drawTilePalette({ redrawTiles: true });
+    }
+
+    if(this.editor.tools.drawTools.tilePalette) {
+      this.editor.tools.drawTools.tilePalette.drawTilePalette({ redrawTiles: true });
+    }
+  },
+
   resetOrientation2d: function() {
     this.flipH = false;
     this.flipV = false;

@@ -1066,7 +1066,7 @@ Grid.prototype = {
       this.editor.currentTile.setColor(color);
     }
 
-    if(this.editor.tools.drawTools.drawBGColor) {
+    if(this.editor.tools.drawTools.drawBgColor) {
       var bgColor = this.gridData[z][y][x].bc;
       this.editor.currentTile.setBGColor(bgColor);
     }
@@ -1105,7 +1105,7 @@ Grid.prototype = {
     } 
 
     args.bc = this.gridData[z][y][x].bc;
-    if(this.editor.tools.drawTools.drawBGColor) {
+    if(this.editor.tools.drawTools.drawBgColor) {
       args.bc = this.editor.colorPaletteManager.noColor;
     }     
 

@@ -20,7 +20,7 @@ var DrawTools = function() {
   // what the tools affect
   this.drawCharacter = true;
   this.drawColor = true;
-  this.drawBGColor = true;
+  this.drawBgColor = true;
 
   this.drawToolsPopup = null;
 

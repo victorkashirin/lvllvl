@@ -337,7 +337,7 @@ GridView3d.prototype = {
       this.editor.currentTile.setColor(cell.fc);
     }
 
-    if(drawTools.drawBGColor) {
+    if(drawTools.drawBgColor) {
       this.editor.currentTile.setBGColor(cell.bc);
     }
   },
