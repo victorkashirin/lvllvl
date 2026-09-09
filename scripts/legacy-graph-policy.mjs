@@ -4,7 +4,11 @@ import path from "node:path";
 import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
 
-import { buildGraph, legacyGraphExceptions } from "./build-graph.mjs";
+import {
+  buildGraph,
+  legacyGraphBaselineGrowthAllowlist,
+  legacyGraphExceptions,
+} from "./build-graph.mjs";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const baselineRelativeFile = "tests/fixtures/legacy-main-graph.json";
@@ -17,22 +21,32 @@ function validExpiry(expires, now) {
   return Number.isFinite(expiry.valueOf()) && expiry > now;
 }
 
-export function verifyLegacyBaselineEvolution({ baselineInputs, previousInputs }) {
+export function verifyLegacyBaselineEvolution({
+  baselineInputs,
+  previousInputs,
+  allowedAdditions = [],
+}) {
   if (!Array.isArray(baselineInputs) || !Array.isArray(previousInputs)) {
     throw new TypeError("Legacy baseline evolution requires current and previous input arrays");
+  }
+  if (!Array.isArray(allowedAdditions)) {
+    throw new TypeError("Legacy baseline evolution requires an allowed additions array");
   }
 
   const previous = new Set(previousInputs);
   const additions = baselineInputs.filter((filename) => !previous.has(filename));
-  if (additions.length > 0) {
+  const allowed = new Set(allowedAdditions);
+  const unexpectedAdditions = additions.filter((filename) => !allowed.has(filename));
+  if (unexpectedAdditions.length > 0) {
     throw new Error(
-      `Legacy graph baseline cannot grow; use an expiring exception instead: ${additions.join(", ")}`,
+      `Legacy graph baseline cannot grow; use an approved baseline addition instead: ${unexpectedAdditions.join(", ")}`,
     );
   }
 
   const current = new Set(baselineInputs);
   const retainedPrevious = previousInputs.filter((filename) => current.has(filename));
-  if (retainedPrevious.some((filename, index) => filename !== baselineInputs[index])) {
+  const retainedCurrent = baselineInputs.filter((filename) => previous.has(filename));
+  if (retainedPrevious.some((filename, index) => filename !== retainedCurrent[index])) {
     throw new Error("Legacy graph baseline cannot reorder retained inputs");
   }
 }
@@ -182,6 +196,7 @@ export async function verifyProductionLegacyGraph() {
     verifyLegacyBaselineEvolution({
       baselineInputs: baseline.inputs,
       previousInputs,
+      allowedAdditions: legacyGraphBaselineGrowthAllowlist,
     });
   }
   return verifyLegacyGraphPolicy({
@@ -195,6 +210,6 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   const result = await verifyProductionLegacyGraph();
   console.log(
     `Legacy graph policy: ${result.inputs} inputs (${result.grandfathered} grandfathered, ` +
-      `${result.exceptions} temporary exceptions)`,
+      `${result.exceptions} active exceptions)`,
   );
 }

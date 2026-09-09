@@ -1,5 +1,7 @@
 var TileSetChoosePreset = function() {
   this.editor = null;
+  this.projectDocument = null;
+  this.projectGeneration = undefined;
   this.uiComponent = null;
   this.callback = false;
   this.type = false; //'character';
@@ -21,8 +23,39 @@ TileSetChoosePreset.prototype = {
 
   },
 
+  captureProjectContext: function() {
+    this.projectDocument = g_app.doc;
+    this.projectGeneration = g_app.projectGeneration;
+  },
+
+  isCurrentProject: function() {
+    return !!this.projectDocument && (!g_app.isCurrentProject ||
+      g_app.isCurrentProject(this.projectDocument, this.projectGeneration));
+  },
+
+  resetProjectState: function() {
+    if(this.img && this.img.onload) {
+      this.img.onload = null;
+    }
+    this.projectDocument = null;
+    this.projectGeneration = undefined;
+    this.callback = false;
+    this.tileSet = null;
+    this.previewCharset = null;
+    this.previewCharsetId = false;
+    this.previewCharsetDescription = '';
+    this.visible = false;
+    if(this.tileSetImport && typeof this.tileSetImport.resetProjectState == 'function') {
+      this.tileSetImport.resetProjectState();
+    }
+    if(this.tilePaletteDisplay && typeof this.tilePaletteDisplay.resetProjectState == 'function') {
+      this.tilePaletteDisplay.resetProjectState();
+    }
+  },
+
   show: function(args) {
     var _this = this;
+    this.captureProjectContext();
 
     this.createTileSetOnLoad = false;
 
@@ -76,6 +109,9 @@ TileSetChoosePreset.prototype = {
 
 
       this.htmlComponent.load('html/textMode/tileSetChoosePreset.html', function() {
+        if(!_this.isCurrentProject()) {
+          return;
+        }
         _this.initContent(args);
         _this.initEvents();
       });
@@ -84,9 +120,15 @@ TileSetChoosePreset.prototype = {
       this.uiComponent.addButton(this.okButton);
       this.okButton.on('click', function(event) {
 
+        if(!_this.isCurrentProject()) {
+          return;
+        }
+
     
         if(_this.activeTab == 'load') {
-          _this.tileSetImport.importTileSet({ callback: _this.callback, createTileSet: _this.createTileSetOnLoad});
+          if(_this.tileSetImport) {
+            _this.tileSetImport.importTileSet({ callback: _this.callback, createTileSet: _this.createTileSetOnLoad});
+          }
         } else {
           if(_this.callback !== false) {          
             _this.callback({
@@ -106,6 +148,9 @@ TileSetChoosePreset.prototype = {
       this.linkButton = UI.create('UI.Button', { "imageSrc": "icons/svg/glyphicons-basic-351-link.svg", "text": "Create A Template Link", "color": "other" });
       this.uiComponent.addButton(this.linkButton);
       this.linkButton.on('click', function(event) {
+        if(!_this.isCurrentProject()) {
+          return;
+        }
         _this.createTemplateLink();
       });
 
@@ -586,12 +631,22 @@ TileSetChoosePreset.prototype = {
   },
 
   dropFile: function(file) {
+    if(!this.isCurrentProject()) {
+      return;
+    }
     var _this = this;
+    var projectContext = {
+      document: this.projectDocument,
+      generation: this.projectGeneration
+    };
     
     this.tileSetChoosePanel.showOnly('tileSetImportPanel');
     this.activeTab = 'load';    
     this.startLoadTileset({ 'dialogReadyCallback': function() {
-      _this.tileSetImport.chooseTileSetFile(file);
+      if(_this.isCurrentProject() && (!g_app.isCurrentProject ||
+          g_app.isCurrentProject(projectContext.document, projectContext.generation))) {
+        _this.tileSetImport.chooseTileSetFile(file);
+      }
     }});
 
     
@@ -600,6 +655,9 @@ TileSetChoosePreset.prototype = {
 
   // preview charset for choose preset
   setPreviewCharacterset: function(charsetId) {
+    if(!this.isCurrentProject()) {
+      return;
+    }
     
 
     this.previewCharsetId = charsetId;
@@ -618,6 +676,9 @@ TileSetChoosePreset.prototype = {
     if(!this.img) {
       this.img = new Image();
       this.img.onload = function() {
+        if(!_this.isCurrentProject()) {
+          return;
+        }
         var args = {};
 
         args["img"] = _this.img;

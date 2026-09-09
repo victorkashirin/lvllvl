@@ -13,6 +13,7 @@ var Document = function(dependencies) {
   this.data = {};
 
   this.documentSession = dependencies && dependencies.documentSession ? dependencies.documentSession : null;
+  this.projectGuard = null;
 
 
   this.savingToBrowserStorage = false;
@@ -29,6 +30,10 @@ var Document = function(dependencies) {
 }
 
 Document.prototype = {
+  isCurrentProject: function() {
+    return !this.projectGuard || this.projectGuard();
+  },
+
 /*
   initData: function() {
     alert('is this used???');
@@ -573,21 +578,27 @@ Document.prototype = {
 
       this.checkFormat(data);
       this.data = data;
-      if(callback != 'undefined') {
+      if(this.isCurrentProject() && typeof callback != 'undefined') {
         callback();
       }
     } else {
       var _this = this;
       var zip = new JSZip();
       zip.loadAsync(contents, { base64: true }).then(function(zip) {
+        if(!_this.isCurrentProject()) {
+          return;
+        }
         zip.file("data.json").async("string").then(function(data) {
+          if(!_this.isCurrentProject()) {
+            return;
+          }
           
           var data =  $.parseJSON(data);
 
           _this.checkFormat(data);
 
           _this.data = data;
-          if(callback != 'undefined') {
+          if(typeof callback != 'undefined') {
             callback();
           }
         });
@@ -696,7 +707,8 @@ Document.prototype = {
             // need to create record
             var colorPaletteId = g_app.textModeEditor.colorPaletteManager.createColorPalette({
               id: id,
-              name: name
+              name: name,
+              document: this
             });
             record = this.getDocRecordById(colorPaletteId, '/color palettes');
           } else {
@@ -705,7 +717,7 @@ Document.prototype = {
             }
           }
 
-          var colorPalette = g_app.textModeEditor.colorPaletteManager.getColorPalette(record.id);
+          var colorPalette = g_app.textModeEditor.colorPaletteManager.getColorPalette(record.id, this);
           colorPalette.loadFromJSON(data);      
         break;
         case 'tile sets':
@@ -721,7 +733,8 @@ Document.prototype = {
               // need to create the record
               var tileSetId = g_app.textModeEditor.tileSetManager.createTileSet({
                 id: id,
-                name: name
+                name: name,
+                document: this
               });
 
               record = this.getDocRecordById(tileSetId, '/tile sets');
@@ -731,7 +744,7 @@ Document.prototype = {
               }
             }
 
-            var tileSet = g_app.textModeEditor.tileSetManager.getTileSet(record.id);
+            var tileSet = g_app.textModeEditor.tileSetManager.getTileSet(record.id, this);
             tileSet.readJsonDataV1({ jsonData: data });      
           } else {
             console.error('tileset data is NULL!!!!!!');
@@ -831,6 +844,13 @@ Document.prototype = {
 
 
   processZipContents: function(files, fileIndex, zip, callback) {
+    if(!this.isCurrentProject()) {
+      return;
+    }
+    if(fileIndex >= files.length) {
+      callback();
+      return;
+    }
     var _this = this;
     var zipEntry = files[fileIndex].zipEntry;
     var relativePath = files[fileIndex].relativePath;
@@ -850,6 +870,9 @@ Document.prototype = {
     }
 
     zip.file(filename).async(type).then(function(data) {
+      if(!_this.isCurrentProject()) {
+        return;
+      }
       if(extension == 'json') {
         data = $.parseJSON(data);
       }
@@ -875,6 +898,9 @@ Document.prototype = {
     var _this = this;
     JSZip.loadAsync(file)                                   
     .then(function(zip) {
+      if(!_this.isCurrentProject()) {
+        return;
+      }
       try {
         var fileCount = 0;
         var files = [];
@@ -891,6 +917,9 @@ Document.prototype = {
         var filesProcessed = 0;
 
         _this.processZipContents(files, 0, zip, function() {
+          if(!_this.isCurrentProject()) {
+            return;
+          }
           _this.openDoc();
 
           if(typeof callback != 'undefined') {
@@ -994,6 +1023,9 @@ Document.prototype = {
   openDoc: function(args) {
 
     try {
+      if(!this.isCurrentProject()) {
+        return false;
+      }
       g_app.doc = this;
 
       var view = false;
@@ -1054,7 +1086,7 @@ Document.prototype = {
     }
 
 
-    var doc = g_app.doc;
+    var doc = this;
     var docRecords = doc.dir(parentFolder);
     for(var i = 0; i < docRecords.length; i++) {
       if(docRecords[i].type != 'hiddenfile') {
@@ -1120,7 +1152,7 @@ Document.prototype = {
     }
 
     
-    var doc = g_app.doc;
+    var doc = this;
     var docRecords = doc.dir(parentFolder);
     for(var i = 0; i < docRecords.length; i++) {
       if(docRecords[i].type != 'hiddenfile') {
@@ -1172,7 +1204,7 @@ Document.prototype = {
             break;
           case 'tile set':
             
-            var tileset = g_app.textModeEditor.tileSetManager.getTileSet(id);
+            var tileset = g_app.textModeEditor.tileSetManager.getTileSet(id, doc);
             if(tileset) {
               var tilesetJson = tileset.getJSON();
               var filename = name + '.json';
@@ -1194,7 +1226,7 @@ Document.prototype = {
 
             break;
           case 'color palette':
-            var colorPalette = g_app.textModeEditor.colorPaletteManager.getColorPalette(id);
+            var colorPalette = g_app.textModeEditor.colorPaletteManager.getColorPalette(id, doc);
             if(colorPalette) {
               var colorPaletteJson = colorPalette.getJSON();
               //var path = repositoryFolder + '/color palettes/' + name;
@@ -1297,6 +1329,11 @@ Document.prototype = {
 
   // save the project to browser storage...  
   saveToBrowserStorage: function(args, callback) {
+    if(!this.isCurrentProject()) {
+      var staleResult = { success: false, stale: true };
+      if(typeof callback != 'undefined') callback(staleResult);
+      return Promise.resolve(staleResult);
+    }
     var _this = this;
     var thumbnailData = null;
     var currentEditor = this.editor.projectNavigator.getCurrentEditor();
@@ -1368,6 +1405,10 @@ Document.prototype = {
 
   // recursively called to open files in this.filesToOpen array
   openFilesFromBrowser: function(callback) {
+    if(!this.isCurrentProject()) {
+      callback({ success: false, stale: true });
+      return;
+    }
     if(this.filesToOpen.length == 0) {
       // no files to open...
       callback({});
@@ -1390,6 +1431,10 @@ Document.prototype = {
     }
 
     fileManager.getBrowserFile( { fileId: fileId }, function(result) {
+      if(!_this.isCurrentProject()) {
+        callback({ success: false, stale: true });
+        return;
+      }
       if(!result.success) {
         callback(result);
         return;
@@ -1421,6 +1466,15 @@ Document.prototype = {
   // open a project stored in browser storage.
   openBrowserStorageProject: function(args, callback) {
 
+    args = args || {};
+    if(typeof args.isCurrent == 'function') {
+      this.projectGuard = args.isCurrent;
+    }
+    if(!this.isCurrentProject()) {
+      callback({ success: false, stale: true });
+      return;
+    }
+
     var projectId = args.projectId;
     this.currentProjectId = projectId;
     var githubOwner = false;//args.githubOwner;
@@ -1441,6 +1495,10 @@ Document.prototype = {
      
     // get the list of files in the project
     fileManager.getProjectFiles({ projectId: projectId }, function(result) {
+      if(!_this.isCurrentProject()) {
+        callback({ success: false, stale: true });
+        return;
+      }
       if(!result.success) {
         fileManager.showBrowserStorageError('Opening project', result.error);
         callback(result);
@@ -1459,6 +1517,10 @@ Document.prototype = {
 
       
       _this.openFilesFromBrowser(function(result) {
+        if(!_this.isCurrentProject()) {
+          callback({ success: false, stale: true });
+          return;
+        }
         // if there is a repository, check repository for updates..
         if(githubOwner && githubRepository && g_app.isRemoteProviderEnabled('github')) {
           g_app.github.setRepositoryDetails(githubOwner, githubRepository);
@@ -1466,19 +1528,19 @@ Document.prototype = {
           if(!g_app.isOnline()) {
             // not online, alert user..
             if(confirm('You do not seem to be online, do you want to load offline version?')) {
-              callback(result);
+              if(_this.isCurrentProject()) callback(result);
             }
           } else if(githubCheck) {
             // set the branch
             // check for updated files, prompt to update. 
             g_app.github.doCheckForUpdatedFiles(function() {
-              callback(result);
+              if(_this.isCurrentProject()) callback(result);
             });
           } else {
-            callback(result);
+            if(_this.isCurrentProject()) callback(result);
           }
         } else {
-          callback(result);
+          if(_this.isCurrentProject()) callback(result);
         }
       });
     });

@@ -1,4 +1,6 @@
 var TileEditorMobile = function() {
+  this.projectDocument = null;
+  this.projectGeneration = undefined;
   this.character = false;
 
   this.characters = [];
@@ -21,12 +23,38 @@ var TileEditorMobile = function() {
 }
 
 TileEditorMobile.prototype = {
+  captureProjectContext: function() {
+    this.projectDocument = g_app.doc || null;
+    this.projectGeneration = g_app.projectGeneration;
+  },
+
+  isCurrentProject: function() {
+    return !!this.projectDocument && (!g_app.isCurrentProject ||
+      g_app.isCurrentProject(this.projectDocument, this.projectGeneration));
+  },
+
+  resetProjectState: function() {
+    this.projectDocument = null;
+    this.projectGeneration = undefined;
+    this.character = false;
+    this.characters = [];
+    this.frame = 0;
+    this.frameCount = 1;
+    this.mixedAnimation = false;
+    this.visible = false;
+    this.tileSet = null;
+    if(this.tileEditorMobileGrid && typeof this.tileEditorMobileGrid.resetProjectState == 'function') {
+      this.tileEditorMobileGrid.resetProjectState();
+    }
+  },
+
   init: function(editor) {
     this.editor = editor;
   },
 
 
   show: function(args) {
+    this.captureProjectContext();
     if(this.uiComponent == null) {
 
       var width = 500;
@@ -62,6 +90,10 @@ TileEditorMobile.prototype = {
         var htmlPanel = UI.create("UI.HTMLPanel", { "id": "tileEditorMobileHTML" });
         this.uiComponent.add(htmlPanel);
         htmlPanel.load('html/textMode/tileEditorMobile.html', function() {
+
+          if(!_this.isCurrentProject()) {
+            return;
+          }
 
 
           _this.c64MulticolorTypeControl = new C64MulticolorTypeControl();
@@ -391,6 +423,9 @@ TileEditorMobile.prototype = {
   // set the characters to be edited, 
   // pass in 2d array of characters
   setCharacters: function(characters) {
+    if(!this.isCurrentProject() || !this.editor || !this.editor.tileSetManager) {
+      return;
+    }
     var changed = false;
 
 
@@ -421,7 +456,10 @@ TileEditorMobile.prototype = {
 
 
 
-    this.tileSet = this.editor.tileSetManager.getCurrentTileSet();    
+    this.tileSet = this.editor.tileSetManager.getCurrentTileSet();
+    if(!this.tileSet) {
+      return;
+    }
     this.setupTileEditor();
 
     this.characters = [];

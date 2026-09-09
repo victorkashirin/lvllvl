@@ -5,6 +5,8 @@ var AssemblerEditor = function() {
 
   this.doc = null;
   this.path = false;
+  this.projectDocument = null;
+  this.projectGeneration = undefined;
 
   this.acmeAssembler = null;
   this.acmeWorker = null;
@@ -36,13 +38,61 @@ var AssemblerEditor = function() {
 
 
 AssemblerEditor.prototype = {
+  projectContext: function() {
+    return { document: g_app.doc, generation: g_app.projectGeneration };
+  },
+
+  isCurrentProject: function(context) {
+    return !context || !g_app.isCurrentProject ||
+      g_app.isCurrentProject(context.document, context.generation);
+  },
+
+  resetProjectState: function() {
+    if(this.acmeWorker && typeof this.acmeWorker.terminate == 'function') {
+      try { this.acmeWorker.terminate(); } catch(error) {}
+    }
+    if(this.exomizerWorker && typeof this.exomizerWorker.terminate == 'function') {
+      try { this.exomizerWorker.terminate(); } catch(error) {}
+    }
+    if(this.ca65Assembler && typeof this.ca65Assembler.resetProjectState == 'function') {
+      this.ca65Assembler.resetProjectState();
+    }
+    this.acmeWorker = null;
+    this.exomizerWorker = null;
+    this.assembleCallback = null;
+    this.assembleContext = null;
+    this.projectDocument = null;
+    this.projectGeneration = undefined;
+    this.assemblerReport = null;
+    this.assemblerMemoryMap = [];
+    this.breakpoints = {};
+    if(this.files && typeof this.files.resetProjectState == 'function') {
+      this.files.resetProjectState();
+    }
+    if(this.assemblerOutput && typeof this.assemblerOutput.resetProjectState == 'function') {
+      this.assemblerOutput.resetProjectState();
+    }
+    if(this.preprocessor) {
+      if(this.preprocessor.scriptProcessor &&
+          typeof this.preprocessor.scriptProcessor.resetProjectState == 'function') {
+        this.preprocessor.scriptProcessor.resetProjectState();
+      }
+      this.preprocessor.output = '';
+      this.preprocessor.lineMap = [];
+      this.preprocessor.currentLine = 0;
+    }
+    this.doc = null;
+    this.path = false;
+  },
+
   init: function() {
     this.preprocessor = new AssemblerPreprocessor();
     this.preprocessor.init(this);
   },
 
   modified: function() {
-    if(g_app.openingProject) {
+    if(g_app.openingProject || !this.doc ||
+        (this.projectDocument && this.projectDocument !== g_app.doc)) {
       return;
     }
     g_app.doc.recordModified(this.doc, this.path);
@@ -578,10 +628,22 @@ AssemblerEditor.prototype = {
 
 
     
+    var projectDocument = g_app.doc;
+    var projectGeneration = g_app.projectGeneration;
+    var projectContext = {
+      document: projectDocument,
+      generation: projectGeneration
+    };
+    if(!projectDocument || !this.isCurrentProject(projectContext)) {
+      return;
+    }
+
+    this.projectDocument = projectDocument;
+    this.projectGeneration = projectGeneration;
     this.doc = null;
 
     this.path = path;
-    var record = g_app.doc.getDocRecord(path);
+    var record = projectDocument.getDocRecord(path);
     
     if(record != null) {
 
@@ -595,6 +657,9 @@ AssemblerEditor.prototype = {
         var editSession = ace.createEditSession(record.data, 'ace/mode/assembly_6502');
 
         editSession.on('changeBreakpoint', function(event) {
+          if(!_this.isCurrentProject(projectContext)) {
+            return;
+          }
           _this.updateBreakpoints();
         });
 
@@ -773,6 +838,13 @@ AssemblerEditor.prototype = {
   assemble: function(callback, sourceFiles) {
 
     var _this = this;
+    var projectContext = this.projectContext();
+    if(!this.isCurrentProject(projectContext)) {
+      return;
+    }
+    this.projectDocument = projectContext.document;
+    this.projectGeneration = projectContext.generation;
+    this.assembleContext = projectContext;
     this.assembleCallback = callback;
 
     var config = this.readConfig();
@@ -831,7 +903,9 @@ AssemblerEditor.prototype = {
       var result = _this.preprocessor.preprocessSourceFiles(files);
 
       if(result.success === false) {
-        this.processAssemblerResponse(result, callback);
+        if(this.isCurrentProject(projectContext)) {
+          this.processAssemblerResponse(result, callback);
+        }
         return;
 
       }
@@ -848,13 +922,16 @@ AssemblerEditor.prototype = {
         _this.ca65Assembler.init(_this);
       }
       _this.ca65Assembler.assemble(files, config, function(result) {
+        if(!_this.isCurrentProject(projectContext)) {
+          return;
+        }
         _this.assemblerOutput.addOutputLine({
           text: "Done"
         });       
         _this.assemblerOutput.showOutput();
         callback(result);
 
-      });
+      }, projectContext);
     } else {
 
       if(false && this.acmeWorker) {
@@ -869,6 +946,11 @@ AssemblerEditor.prototype = {
 
         _this.acmeWorker.onmessage = function(e)  {
 //          console.log(e);
+
+            if(!_this.assembleContext || !_this.isCurrentProject(_this.assembleContext) ||
+                typeof _this.assembleCallback != 'function') {
+              return;
+            }
 
             console.log('assembler response:');
             console.log(e);
@@ -940,6 +1022,10 @@ AssemblerEditor.prototype = {
   
   run: function() {
     var _this = this;
+    var projectContext = this.projectContext();
+    if(!this.isCurrentProject(projectContext)) {
+      return;
+    }
 
     // read in the json config file
     var config = this.readConfig();
@@ -975,6 +1061,9 @@ AssemblerEditor.prototype = {
     }
 
     this.build(function(result, path) {
+      if(!_this.isCurrentProject(projectContext)) {
+        return;
+      }
       if(target != 'c64') {
         return;
       }
@@ -1067,7 +1156,15 @@ AssemblerEditor.prototype = {
   },
 
   build: function(callback) {
+    var _this = this;
+    var projectContext = this.projectContext();
+    if(!this.isCurrentProject(projectContext)) {
+      return;
+    }
     this.assemble(function(result) {
+      if(!_this.isCurrentProject(projectContext)) {
+        return;
+      }
 
 
       var prg = bufferToBase64(result.prg);
@@ -1093,7 +1190,15 @@ AssemblerEditor.prototype = {
   },
 
   buildAndDownload: function() {
+    var _this = this;
+    var projectContext = this.projectContext();
+    if(!this.isCurrentProject(projectContext)) {
+      return;
+    }
     this.assemble(function(result) {
+      if(!_this.isCurrentProject(projectContext)) {
+        return;
+      }
 
 console.log('build and download result');
 console.log(result);

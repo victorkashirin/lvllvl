@@ -12,6 +12,10 @@ var BackgroundImage = function() {
   this.drawWidth = 0;
   this.drawHeight = 0;
 
+  this.projectDocument = null;
+  this.projectGeneration = undefined;
+  this.objectURL = null;
+
 }
 
 
@@ -22,9 +26,39 @@ BackgroundImage.prototype = {
     this.editor = editor;
   },
 
+  captureProjectContext: function() {
+    this.projectDocument = g_app.doc;
+    this.projectGeneration = g_app.projectGeneration;
+  },
+
+  isCurrentProject: function() {
+    return !!this.projectDocument && (!g_app.isCurrentProject ||
+      g_app.isCurrentProject(this.projectDocument, this.projectGeneration));
+  },
+
+  resetProjectState: function() {
+    this.projectDocument = null;
+    this.projectGeneration = undefined;
+    if(this.objectURL && window.URL && typeof window.URL.revokeObjectURL == 'function') {
+      window.URL.revokeObjectURL(this.objectURL);
+    }
+    this.objectURL = null;
+    this.bgImage = null;
+    this.x = 0;
+    this.y = 0;
+    this.drawWidth = 0;
+    this.drawHeight = 0;
+    this.context = null;
+  },
+
 
   start: function() {
     var _this = this;
+    this.captureProjectContext();
+    var projectContext = {
+      document: this.projectDocument,
+      generation: this.projectGeneration
+    };
 
     if(this.uiComponent == null) {
       this.uiComponent = UI.create("UI.Dialog", { "id": "backgroundImageDialog", "title": "Background Image", "width": 640 });
@@ -32,7 +66,9 @@ BackgroundImage.prototype = {
       this.htmlComponent = UI.create("UI.HTMLPanel");
       this.uiComponent.add(this.htmlComponent);
       this.htmlComponent.load('html/textMode/backgroundImage.html', function() {
-        
+        if(!_this.isCurrentProject(projectContext)) {
+          return;
+        }
         _this.initContent();
         _this.initEvents();
       });
@@ -168,10 +204,17 @@ BackgroundImage.prototype = {
 
 
   setBackgroundImage: function() {
+    if(!this.isCurrentProject()) {
+      return;
+    }
     this.editor.grid.setBackgroundImage(this.bgImage, this.x, this.y, this.drawWidth, this.drawHeight);
   },
 
   chooseImage: function(file) {
+    if(!file) {
+      return;
+    }
+    this.captureProjectContext();
     if(!this.bgImage) {
       this.bgImage = new Image();
     }
@@ -181,16 +224,27 @@ BackgroundImage.prototype = {
 
     var url = window.URL || window.webkitURL;
     var src = url.createObjectURL(file);
+    if(this.objectURL && url.revokeObjectURL) {
+      url.revokeObjectURL(this.objectURL);
+    }
+    this.objectURL = src;
     this.bgImage.src = src;
 
     var _this = this;
     this.bgImage.onload = function() {
+      if(!_this.isCurrentProject()) {
+        return;
+      }
       _this.showImage();
     }
   },
 
 
   showImage: function() {
+
+    if(!this.isCurrentProject() || !this.bgImage || !this.context) {
+      return;
+    }
 
     var drawWidth = this.bgImage.naturalWidth;
     var drawHeight = this.bgImage.naturalHeight;

@@ -1,5 +1,7 @@
 var BlockEditor = function() {
   this.editor = null;
+  this.projectDocument = null;
+  this.projectGeneration = undefined;
 
   this.blockWidth = 2;
   this.blockHeight = 2;
@@ -28,6 +30,35 @@ var BlockEditor = function() {
 }
 
 BlockEditor.prototype = {
+  captureProjectContext: function() {
+    this.projectDocument = g_app.doc;
+    this.projectGeneration = g_app.projectGeneration;
+  },
+
+  isCurrentProject: function() {
+    return !!this.projectDocument && (!g_app.isCurrentProject ||
+      g_app.isCurrentProject(this.projectDocument, this.projectGeneration));
+  },
+
+  resetProjectState: function() {
+    this.projectDocument = null;
+    this.projectGeneration = undefined;
+    this.callback = null;
+    this.blockSet = null;
+    this.selectedBlock = false;
+    this.highlightCharacter = false;
+    this.selectedCharacter = false;
+    this.mouseDownCharacter = false;
+    this.visible = false;
+    if(this.tileEditorGrid && typeof this.tileEditorGrid.resetProjectState == 'function') {
+      this.tileEditorGrid.resetProjectState();
+      this.tileEditorGrid.setMode('characterEdit');
+    }
+    if(this.tilePaletteDisplay && typeof this.tilePaletteDisplay.resetProjectState == 'function') {
+      this.tilePaletteDisplay.resetProjectState();
+    }
+  },
+
   init: function(editor) {
     this.editor = editor;
   },
@@ -53,6 +84,9 @@ BlockEditor.prototype = {
 
 
   htmlComponentLoaded: function(args) {
+    if(!this.isCurrentProject()) {
+      return;
+    }
     this.htmlComponentsLoaded++;
     if(this.htmlComponentsLoaded == 2) {
       this.initContent(args);      
@@ -63,6 +97,8 @@ BlockEditor.prototype = {
 
   show: function(args) {
     var _this = this;
+
+    this.captureProjectContext();
 
     this.htmlComponentsLoaded = 0;
 
@@ -119,6 +155,10 @@ BlockEditor.prototype = {
       this.splitPanel.addWest(this.blockEditorTools, 240);
       this.blockEditorTools.load('html/textMode/blockEditorTools.html', function() {
 
+        if(!_this.isCurrentProject()) {
+          return;
+        }
+
         _this.c64MulticolorTypeControl = new C64MulticolorTypeControl();
         _this.c64MulticolorTypeControl.init(_this.editor, { "elementId": "blockEditorC64PixelColors" })
 
@@ -129,6 +169,9 @@ BlockEditor.prototype = {
       this.blockEditor = UI.create("UI.HTMLPanel");
       this.splitPanel.add(this.blockEditor);
       this.blockEditor.load('html/textMode/blockEditor.html', function() {
+        if(!_this.isCurrentProject()) {
+          return;
+        }
         _this.htmlComponentLoaded(args);
       });
 
@@ -140,6 +183,10 @@ BlockEditor.prototype = {
       this.okButton = UI.create('UI.Button', { "text": "OK", "color": "primary" });
       this.uiComponent.addButton(this.okButton);
       this.okButton.on('click', function(event) {
+        if(!_this.isCurrentProject()) {
+          UI.closeDialog();
+          return;
+        }
         if(_this.callback) {
           _this.callback(args, { "data": _this.tileEditorGrid.getCells(), "colorMode": _this.colorMode, "fc": _this.fgColor, "bc": _this.bgColor });
         }
@@ -285,6 +332,10 @@ BlockEditor.prototype = {
 
   initContent: function(args) {
     var _this = this;
+
+    if(!this.isCurrentProject()) {
+      return;
+    }
 
     if(!this.tileEditorGrid) {
       this.tileEditorGrid = new TileEditorGrid();

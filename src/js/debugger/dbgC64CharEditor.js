@@ -30,6 +30,30 @@ var DbgC64CharEditor = function () {
 
 
 DbgC64CharEditor.prototype = {
+  resetProjectState: function() {
+    this.charAddress = 0x1000;
+    this.multicolor = false;
+    this.buttons = 0;
+    this.drawMode = false;
+    this.isROMChar = false;
+    this.charColor = 1;
+    this.bgColor = 0;
+    this.mc1Color = 2;
+    this.mc2Color = 3;
+    this.lastPixelAddress = false;
+    this.lastPixelX = false;
+    this.historyPosition = 0;
+    this.history = [];
+    this.historyEntry = [];
+    this.cursorPixelX = false;
+    this.cursorPixelY = false;
+    this.gridXPos = 0;
+    this.gridYPos = 0;
+    if(this.context && this.canvas) {
+      this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    }
+  },
+
   init: function (dbgCharset, args) {
     this.dbgCharset = dbgCharset;
     this.debugger = args.debugger;

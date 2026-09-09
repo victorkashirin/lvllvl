@@ -15,6 +15,19 @@ var ChooseColorsDialog = function() {
 
 ChooseColorsDialog.prototype = {
 
+  resetProjectState: function() {
+    this.callback = null;
+    this.colorChosen = [];
+    this.highlightedColor = false;
+    this.message = false;
+    this.mouseMode = '';
+    this.canvas = null;
+    this.context = null;
+    if(this.colorPaletteDisplay && typeof this.colorPaletteDisplay.resetProjectState == 'function') {
+      this.colorPaletteDisplay.resetProjectState();
+    }
+  },
+
   init: function(editor) {
     this.editor = editor;
   },

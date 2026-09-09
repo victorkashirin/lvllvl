@@ -30,6 +30,21 @@ Shapes3d.prototype = {
     scene.add(this.holder);
   },
 
+  resetProjectState: function() {
+    if(this.holder && typeof this.clearMeshes == 'function') {
+      this.clearMeshes();
+    } else {
+      this.meshes = [];
+    }
+    if(this.grid) {
+      this.clearGrid();
+    }
+    this.shape = '';
+    this.fromX = false;
+    this.fromY = false;
+    this.fromZ = false;
+  },
+
   resizeGrid: function() {
     this.grid = [];
     for(var y = 0; y < this.height; y++) {

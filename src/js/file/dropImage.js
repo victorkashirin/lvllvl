@@ -6,6 +6,10 @@ var DropImage = function() {
 
 DropImage.prototype = {
 
+  resetProjectState: function() {
+    this.file = null;
+  },
+
   init: function(editor) {
     this.editor = editor;
   },
@@ -65,13 +69,30 @@ DropImage.prototype = {
     this.uiComponent.addButton(this.closeButton);
   },
 
-  processAction: function(action) {
-    var _this = this;
+  processAction: function(action, file, projectDocument, projectGeneration) {
+    // Project creation resets the long-lived helper. Keep the file selected by
+    // this action in a local closure so the first-project callback can still
+    // finish importing it without reopening stale helper state.
+    var actionFile = typeof file != 'undefined' ? file : this.file;
+    if(typeof projectDocument == 'undefined') {
+      projectDocument = g_app.doc;
+      projectGeneration = g_app.projectGeneration;
+    }
+    var isCurrentProject = function() {
+      return !!projectDocument && (!g_app.isCurrentProject ||
+        g_app.isCurrentProject(projectDocument, projectGeneration));
+    };
+
+    if(!isCurrentProject()) {
+      return;
+    }
 
     if(action == 'import') {
       g_app.openImageImport({
         dialogReadyCallback: function(importer) {
-          importer.setImportImage(_this.file);
+          if(isCurrentProject()) {
+            importer.setImportImage(actionFile);
+          }
         }
       }, 'drag-and-drop');
     }
@@ -79,7 +100,9 @@ DropImage.prototype = {
     if(action == 'background') {
       g_app.textModeEditor.showReferenceImageDialog({
         dialogReadyCallback: function() {
-          g_app.textModeEditor.referenceImageDialog.chooseImage(_this.file);
+          if(isCurrentProject()) {
+            g_app.textModeEditor.referenceImageDialog.chooseImage(actionFile);
+          }
         }
       });
     }    
@@ -87,8 +110,9 @@ DropImage.prototype = {
     if(action == 'charset') {
       g_app.textModeEditor.tileSetManager.showImport({
         dialogReadyCallback: function() {
-
-          g_app.textModeEditor.tileSetManager.tileSetChoosePreset.tileSetImport.chooseTileSetFile(_this.file);        
+          if(isCurrentProject()) {
+            g_app.textModeEditor.tileSetManager.tileSetChoosePreset.tileSetImport.chooseTileSetFile(actionFile);
+          }
 
         }
       });
@@ -98,7 +122,9 @@ DropImage.prototype = {
       // show the load colour palette dialog
       g_app.textModeEditor.colorPaletteManager.showLoad({
         dialogReadyCallback: function() {
-          g_app.textModeEditor.colorPaletteManager.colorPaletteChoosePreset.dropFile(_this.file);
+          if(isCurrentProject()) {
+            g_app.textModeEditor.colorPaletteManager.colorPaletteChoosePreset.dropFile(actionFile);
+          }
 //          g_app.textModeEditor.colorPaletteManager.colorPaletteLoad.setImportFile(_this.file);
         }
       });      
@@ -108,6 +134,9 @@ DropImage.prototype = {
   doAction: function() {
     var action = $('input[name=dropImageAction]:checked').val();
     var _this = this;
+    var actionFile = this.file;
+    var projectDocument = g_app.doc;
+    var projectGeneration = g_app.projectGeneration;
 
     if(g_app.doc == null) {
       // need to create the doc
@@ -117,10 +146,10 @@ DropImage.prototype = {
       args.height = 25;
       
       g_app.newProject(args, function() {
-        _this.processAction(action);
+        _this.processAction(action, actionFile, g_app.doc, g_app.projectGeneration);
       });
     } else {
-      this.processAction(action);
+      this.processAction(action, actionFile, projectDocument, projectGeneration);
     }
   },
 

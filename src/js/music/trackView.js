@@ -77,6 +77,46 @@ var TrackView = function() {
 }
 
 TrackView.prototype = {
+  resetProjectState: function() {
+    this.patterns = [];
+    this.mode = 'draw';
+    this.mouseDragPlayhead = false;
+    this.mouseCaptured = false;
+    this.movingPlayhead = false;
+    this.selectedTrack = false;
+    this.selectedPosition = 0;
+    this.highlightedTrack = false;
+    this.highlightedPatternIndex = false;
+    this.selectedPatternIndex = false;
+    this.selectedPatternId = false;
+    this.selectedpatternId = 0;
+    this.scrollClick = false;
+    this.vScroll = false;
+    this.hScroll = false;
+    this.scrollX = 0;
+    this.scrollY = 0;
+    this.cursor = {
+      track: 0,
+      duration: 64,
+      position: 128,
+      type: 'add',
+      visible: false
+    };
+    this.context = null;
+    if(this.trackCanvas) {
+      this.trackCanvas.width = 0;
+      this.trackCanvas.height = 0;
+    }
+    if(this.trackInfoCanvas) {
+      this.trackInfoCanvas.width = 0;
+      this.trackInfoCanvas.height = 0;
+    }
+    if(this.rulerCanvas) {
+      this.rulerCanvas.width = 0;
+      this.rulerCanvas.height = 0;
+    }
+  },
+
   buildInterface: function(canvasPanel) {
 
     var _this = this;

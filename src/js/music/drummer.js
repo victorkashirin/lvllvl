@@ -392,6 +392,15 @@ Drummer.prototype = {
     this.music = music;
   },
 
+  resetProjectState: function() {
+    this.patternId = false;
+    this.savedPattern = null;
+    this.saveLoopCurrentPattern = false;
+    this.selectedDrumPatternIndex = false;
+    this.bars = 0;
+    this.keys = [];
+  },
+
   start: function() {
     var _this = this;
 

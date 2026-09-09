@@ -70,6 +70,27 @@ var DbgDisassembly = function() {
 
 DbgDisassembly.prototype = {
 
+  resetProjectState: function() {
+    this.lines = [];
+    this.paramCounts = [];
+    this.addressPositions = [];
+    this.disassemblyInfo = [];
+    this.cursorX = false;
+    this.cursorY = false;
+    this.cursorWidth = false;
+    this.cursorHeight = false;
+    this.mouseInCanvas = false;
+    this.followPC = true;
+    this.disassembleAddress = 0;
+    this.cmdEditAddress = false;
+    this.hexEditAddress = false;
+    this.lastWidth = false;
+    this.lastHeight = false;
+    if(this.context && this.canvas) {
+      this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    }
+  },
+
   initDisassembly: function(map) {
     this.disassemblyInfo = [];
     var prev = false;

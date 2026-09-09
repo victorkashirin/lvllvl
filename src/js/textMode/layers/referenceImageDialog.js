@@ -1,6 +1,12 @@
 var ReferenceImageDialog = function() {
   this.editor = null;
 
+  // The dialog can stay open while the active project changes. Bind delayed
+  // image work to the project that opened it so it cannot write into the next
+  // project.
+  this.projectDocument = null;
+  this.projectGeneration = undefined;
+
   this.prefix = '';
 
   this.scale = 1;
@@ -39,6 +45,7 @@ var ReferenceImageDialog = function() {
 
   // checkerboard pattern
   this.backgroundCanvas = null;
+  this.objectURL = null;
 
   this.layerType = 'grid';
   this.newLayer = false;
@@ -63,8 +70,64 @@ ReferenceImageDialog.prototype = {
   },
 
 
+  captureProjectContext: function() {
+    this.projectDocument = g_app.doc;
+    this.projectGeneration = g_app.projectGeneration;
+  },
+
+
+  isCurrentProject: function(context) {
+    context = context || {
+      document: this.projectDocument,
+      generation: this.projectGeneration
+    };
+    return !!context.document
+      && (!g_app.isCurrentProject
+        || g_app.isCurrentProject(context.document, context.generation));
+  },
+
+
+  resetProjectState: function() {
+    if(this.image && this.image.onload) {
+      this.image.onload = null;
+    }
+    this.dialogReadyCallback = false;
+    this.projectDocument = null;
+    this.projectGeneration = undefined;
+    if(this.objectURL) {
+      var url = window.URL || window.webkitURL;
+      if(url && typeof url.revokeObjectURL == 'function') {
+        url.revokeObjectURL(this.objectURL);
+      }
+    }
+    this.objectURL = null;
+    this.image = null;
+    this.imageDataURL = null;
+    this.customColorSet = [];
+    this.colors = [];
+    this.mouseIsDown = false;
+
+    // Drop rendered pixels from the previous project while keeping the
+    // lazily-created dialog DOM reusable.
+    if(this.canvas) {
+      this.canvas.width = 0;
+      this.canvas.height = 0;
+    }
+    if(this.previewCanvas) {
+      this.previewCanvas.width = 0;
+      this.previewCanvas.height = 0;
+    }
+  },
+
+
   show: function(args) {
     var _this = this;
+
+    this.captureProjectContext();
+    var projectContext = {
+      document: this.projectDocument,
+      generation: this.projectGeneration
+    };
 
     this.dialogReadyCallback = false;
 
@@ -98,7 +161,10 @@ ReferenceImageDialog.prototype = {
         this.htmlComponent = UI.create("UI.HTMLPanel");
         this.uiComponent.add(this.htmlComponent);
         this.htmlComponent.load('html/textMode/referenceImageDialogMobile.html', function() {
-          UI.number.initControls('#' + this.prefix + 'refLayer .number');;
+          if(!_this.isCurrentProject(projectContext)) {
+            return;
+          }
+          UI.number.initControls('#' + _this.prefix + 'refLayer .number');;
           _this.initContent();
           _this.initEvents();
         });
@@ -145,7 +211,10 @@ ReferenceImageDialog.prototype = {
         this.htmlComponent = UI.create("UI.HTMLPanel");
         this.uiComponent.add(this.htmlComponent);
         this.htmlComponent.load('html/textMode/referenceImageDialog.html', function() {
-          UI.number.initControls('#' + this.prefix + 'refLayer .number');;
+          if(!_this.isCurrentProject(projectContext)) {
+            return;
+          }
+          UI.number.initControls('#' + _this.prefix + 'refLayer .number');;
           _this.initContent();
           _this.initEvents();
 
@@ -168,8 +237,11 @@ ReferenceImageDialog.prototype = {
           UI.closeDialog();
         });
       } else {
+        if(!_this.isCurrentProject(projectContext)) {
+          return;
+        }
         this.initContent();
-        if(_this.dialogReadyCallback !== false) {
+        if(_this.dialogReadyCallback !== false && _this.isCurrentProject(projectContext)) {
           _this.dialogReadyCallback();
         }
 
@@ -216,6 +288,10 @@ ReferenceImageDialog.prototype = {
   initContent: function(args) {
 
     var _this = this;
+
+    if(!this.isCurrentProject()) {
+      return;
+    }
 
     if(g_app.isMobile()) {
       this.previewCanvasMaxWidth = 320;
@@ -443,6 +519,9 @@ ReferenceImageDialog.prototype = {
   },
 
   setLayerRefImage: function() {
+    if(!this.isCurrentProject()) {
+      return;
+    }
     /*
     this.editor.layers.setReferenceImage(this.canvas,
        { 
@@ -924,9 +1003,21 @@ ReferenceImageDialog.prototype = {
   },
 
   chooseImage: function(file) {
+    if(!file) {
+      return;
+    }
+
     var _this = this;
+    this.captureProjectContext();
+    var projectContext = {
+      document: this.projectDocument,
+      generation: this.projectGeneration
+    };
     var image = new Image();
     image.onload = function() {
+      if(!_this.isCurrentProject(projectContext)) {
+        return;
+      }
       _this.image = image;
       _this.scaleToFit();
       _this.showImage();
@@ -953,6 +1044,10 @@ ReferenceImageDialog.prototype = {
 
     var url = window.URL || window.webkitURL;
     var src = url.createObjectURL(file);
+    if(this.objectURL && typeof url.revokeObjectURL == 'function') {
+      url.revokeObjectURL(this.objectURL);
+    }
+    this.objectURL = src;
     image.src = src;
 
   },
@@ -960,6 +1055,9 @@ ReferenceImageDialog.prototype = {
 
 
   scaleToFit: function() {
+    if(!this.isCurrentProject() || !this.image) {
+      return;
+    }
     var drawWidth = 0;
     var drawHeight = 0;
     var scale = 1;
@@ -1001,12 +1099,18 @@ ReferenceImageDialog.prototype = {
 
 
   clearImage: function() {
+    if(!this.isCurrentProject()) {
+      return;
+    }
     this.image = null;
     this.showImage();
 
   },
 
   rotate90: function() {
+    if(!this.isCurrentProject()) {
+      return;
+    }
     this.rotation = parseInt($('#' + this.prefix + 'refImageRotation').val());
     if(isNaN(this.rotation)) {
       this.rotation = 0;
@@ -1020,6 +1124,9 @@ ReferenceImageDialog.prototype = {
   },
 
   showImage: function(args) {
+    if(!this.isCurrentProject() || !this.canvas || !this.previewCanvas || !this.context || !this.previewContext) {
+      return;
+    }
     var drawBackground = true;
     var ignoreColorReduction = false;
 

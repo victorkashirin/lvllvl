@@ -26,6 +26,20 @@ var DbgSprites = function () {
 }
 
 DbgSprites.prototype = {
+  resetProjectState: function() {
+    this.spritesLocation = false;
+    this.lastWidth = false;
+    this.lastHeight = false;
+    this.lastScrollY = false;
+    this.spritePositions = [];
+    this.rasterY = false;
+    this.showSprites = 'mouse';
+    this.exportSpriteData = null;
+    if(this.spriteEditor && typeof this.spriteEditor.resetProjectState == 'function') {
+      this.spriteEditor.resetProjectState();
+    }
+  },
+
   init: function (args) {
     this.machine = args.machine;
     this.debugger = args.debugger;

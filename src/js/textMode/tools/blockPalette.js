@@ -25,6 +25,24 @@ var BlockPalette = function() {
 }
 
 BlockPalette.prototype = {
+  resetProjectState: function() {
+    this.blockSet = null;
+    this.selectedBlock = false;
+    this.selectedBlockX = false;
+    this.selectedBlockY = false;
+    this.highlightBlock = false;
+    this.highlightBlockX = false;
+    this.highlightBlockY = false;
+    this.editBlockId = false;
+    this.mouseDownOnBlock = false;
+    this.blockPositions = [];
+    if(this.context && this.canvas) {
+      try {
+        this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+      } catch(error) {}
+    }
+  },
+
   init: function(editor, args) {
     this.editor = editor;
 

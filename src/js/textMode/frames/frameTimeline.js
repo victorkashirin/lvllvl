@@ -19,6 +19,15 @@ FrameTimeline.prototype = {
     this.editor = editor;
   },
 
+  resetProjectState: function() {
+    this.highlightFrame = false;
+    this.frameCount = 0;
+    this.buttons = 0;
+    this.mouseIsDown = false;
+    this.canvas = null;
+    this.context = null;
+  },
+
   buildInterface: function(parentComponent) {
     var _this = this;
 

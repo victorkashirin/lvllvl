@@ -242,6 +242,51 @@ test("desktop canvas context clicks open tile and color palettes", async ({ page
   await expect.poll(() => page.evaluate(() => UI.popup?.uiID)).toBe("colorPickerPopup");
 });
 
+test("new projects replace project palette and tile set menu entries", async ({ page }, testInfo) => {
+  test.skip(!isDesktop2DRendererProject(testInfo));
+  await open2DProject(page, testInfo);
+
+  const projectPaletteLabels = () => page.evaluate(() =>
+    g_app.colorPaletteMenu.getItems()
+      .filter((item) => typeof item.uiID === "string" &&
+        item.uiID.startsWith("colorpalette-select-"))
+      .map((item) => item.label),
+  );
+  const projectTileSetLabels = () => page.evaluate(() =>
+    g_app.tileSetMenu.getItems()
+      .filter((item) => typeof item.uiID === "string" &&
+        item.uiID.startsWith("tileset-select-"))
+      .map((item) => item.label),
+  );
+
+  await page.evaluate(() => {
+    const colorPaletteManager = g_app.textModeEditor.colorPaletteManager;
+    colorPaletteManager.createColorPalette({ name: "Previous Project Palette" });
+    colorPaletteManager.updateColorPaletteMenu();
+
+    const tileSetManager = g_app.textModeEditor.tileSetManager;
+    tileSetManager.createTileSet({ name: "Previous Project Tile Set", width: 8, height: 8 });
+    tileSetManager.updateTileSetMenu();
+  });
+  await expect.poll(projectPaletteLabels).toEqual([
+    "C64",
+    "Previous Project Palette",
+  ]);
+  await expect.poll(projectTileSetLabels).toEqual([
+    "C64 PETSCII",
+    "Previous Project Tile Set",
+  ]);
+
+  await page.evaluate(() =>
+    new Promise((resolve) => g_app.newProject({
+      colorPaletteName: "C64",
+      tileSetName: "C64 PETSCII",
+    }, resolve)),
+  );
+  await expect.poll(projectPaletteLabels).toEqual(["C64"]);
+  await expect.poll(projectTileSetLabels).toEqual(["C64 PETSCII"]);
+});
+
 test("handheld editor starts compact and exposes expanded controls on demand", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "chromium-handheld");
 

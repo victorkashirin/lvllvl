@@ -24,9 +24,44 @@ var Scripting = function() {
 
   this.eventHandlers = {};
 
+  this.projectDocument = null;
+  this.projectGeneration = undefined;
+
 }
 
 Scripting.prototype = {
+  resetProjectState: function() {
+    // A running interpreter can retain the old document through native API
+    // closures.  Stop it by invalidating the runtime directly; invoking the
+    // script's end handler here could write into the next project.
+    this.isRunning = false;
+    this.isProcessingEvents = false;
+    this.pendingEvents = [];
+    this.interpreter = null;
+    this.code = '';
+    this.scriptMap = [];
+    this.errors = [];
+    this.preScriptLineCount = 0;
+    this.errorHandler = null;
+    this.doc = null;
+    this.currentFile = null;
+    this.path = false;
+    this.projectDocument = null;
+    this.projectGeneration = undefined;
+    this.currentOutputLineId = 0;
+    this.eventHandlers = {};
+    if(typeof $ == 'function') {
+      this.clearOutputLines();
+    }
+    if(this.codeEditor && typeof this.codeEditor.setValue == 'function') {
+      this.codeEditor.setValue('');
+    }
+    this.visible = false;
+    if(typeof UI !== 'undefined' && UI.exists && UI.exists('mainSplitPanel')) {
+      try { UI('mainSplitPanel').setPanelVisible('west', false); } catch(error) {}
+    }
+  },
+
   init: function(args) {
     if(typeof args != 'undefined') {
       if(typeof args.outputElementId != 'undefined') {
@@ -156,7 +191,7 @@ Scripting.prototype = {
 
 
   codeEditorChange: function() {
-    if(this.doc != null) {
+    if(this.doc != null && (!this.projectDocument || this.projectDocument === g_app.doc)) {
       this.doc.data = this.codeEditor.getValue();
     } 
   },
@@ -187,11 +222,18 @@ Scripting.prototype = {
     this.currentFile = null;
     this.path = path;
 
-    var record = g_app.doc.getDocRecord(path);
+    if(!g_app.doc) {
+      return;
+    }
+    var projectDocument = g_app.doc;
+    var projectGeneration = g_app.projectGeneration;
+    var record = projectDocument.getDocRecord(path);
     if(record != null) {
 
       this.codeEditor.setValue(record.data);
       this.doc = record;
+      this.projectDocument = projectDocument;
+      this.projectGeneration = projectGeneration;
 
       if(typeof lineNumber != 'undefined') {
         this.codeEditor.gotoLine(lineNumber);

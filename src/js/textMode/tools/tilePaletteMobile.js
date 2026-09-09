@@ -42,6 +42,25 @@ var TilePaletteMobile = function() {
 
 TilePaletteMobile.prototype = {
 
+  resetProjectState: function() {
+    this.paletteTiles = [];
+    this.tileCount = 0;
+    this.xScroll = 0;
+    this.mouseIsDown = false;
+    this.mouseDidDrag = false;
+    this.touchOnTile = false;
+    this.highlightTouchOnTile = false;
+    if(this.velocityTween && typeof this.velocityTween.stop == 'function') {
+      this.velocityTween.stop();
+    }
+    this.velocityTween = null;
+    if(this.context && this.canvas) {
+      try {
+        this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+      } catch(error) {}
+    }
+  },
+
   setPaletteTiles: function() {
     var tileSet = this.editor.tileSetManager.getCurrentTileSet();
     if(!tileSet) {

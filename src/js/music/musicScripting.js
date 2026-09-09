@@ -27,11 +27,37 @@ var MusicScripting = function() {
   this.sandboxRequests = Object.create(null);
   this.nextSandboxRequestId = 1;
 
+  this.projectDocument = null;
+  this.projectGeneration = undefined;
+
 }
 
 
 
 MusicScripting.prototype = {
+
+  resetProjectState: function() {
+    var requests = this.sandboxRequests || {};
+    for(var id in requests) {
+      if(Object.prototype.hasOwnProperty.call(requests, id) && requests[id].timeout) {
+        clearTimeout(requests[id].timeout);
+      }
+    }
+    this.sandboxRequests = Object.create(null);
+    this.sandboxQueue = [];
+    this.sandboxReady = false;
+    this.currentTab = 0;
+    this.tabs = [ { tabName: 'Script', code: '' } ];
+    this.projectDocument = null;
+    this.projectGeneration = undefined;
+    if(this.scriptEditor && this.scriptEditor.getDoc) {
+      this.scriptEditor.getDoc().setValue('');
+    }
+    if(typeof $ == 'function') {
+      $('#musicScriptOutput').val('');
+      $('#musicScriptingTabs').html('');
+    }
+  },
 
   initExamples: function() {
 
@@ -103,6 +129,8 @@ MusicScripting.prototype = {
   init: function(music) {
     this.initExamples();
     this.music = music;
+    this.projectDocument = (typeof g_app != 'undefined') ? g_app.doc : null;
+    this.projectGeneration = (typeof g_app != 'undefined') ? g_app.projectGeneration : undefined;
     this.tabs = [
       { 'tabName': 'Script', 'code': '' }
     ];
@@ -771,7 +799,14 @@ MusicScripting.prototype = {
 
     if(content != '') {
       var musicScripting = this;
+      var projectDocument = this.projectDocument || (typeof g_app != 'undefined' ? g_app.doc : null);
+      var projectGeneration = this.projectGeneration;
       this.runInSandbox(content, function(result) {
+        if(!musicScripting.projectDocument ||
+            (typeof g_app != 'undefined' && g_app.isCurrentProject &&
+              !g_app.isCurrentProject(projectDocument, projectGeneration))) {
+          return;
+        }
         if(!result.success) {
           musicScripting.logError(result.error || 'Music script execution failed.');
           if(result.stack) {
@@ -850,7 +885,13 @@ InstrumentScripting.prototype = {
     this.music.sidPlayer.testInstrumentStart(pitch, false, this.instrumentID);
 
     var instruments = this;
+    var projectDocument = this.music.projectDocument;
+    var projectGeneration = this.music.projectGeneration;
     setTimeout(function() { 
+      if(projectDocument && typeof g_app != 'undefined' && g_app.isCurrentProject &&
+          !g_app.isCurrentProject(projectDocument, projectGeneration)) {
+        return;
+      }
       instruments.music.sidPlayer.testInstrumentStop();
     }, 600);
 

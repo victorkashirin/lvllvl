@@ -28,6 +28,27 @@ var TilePalette = function() {
 }
 
 TilePalette.prototype = {
+  resetProjectState: function() {
+    this.charRecentIndex = 0;
+    this.charPaletteMap = [];
+    this.tileInfoTile = false;
+    this.pendingTilePaletteRedraw = false;
+    this.pendingTilePaletteTiles = null;
+    this.tileWidth = false;
+    this.tileHeight = false;
+    if(this.tilePaletteDisplay && typeof this.tilePaletteDisplay.resetProjectState == 'function') {
+      this.tilePaletteDisplay.resetProjectState();
+    }
+    if(this.tileMaterials && this.tileMaterials.tileMaterialsContext &&
+        this.tileMaterials.tileMaterialsCanvas) {
+      try {
+        this.tileMaterials.tileMaterialsContext.clearRect(0, 0,
+          this.tileMaterials.tileMaterialsCanvas.width,
+          this.tileMaterials.tileMaterialsCanvas.height);
+      } catch(error) {}
+    }
+  },
+
   init: function(editor, args) {
     if(typeof args != 'undefined') {
       if(typeof args.prefix != 'undefined') {

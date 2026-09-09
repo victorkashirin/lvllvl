@@ -79,6 +79,56 @@ Grid.prototype = {
 //    this.createGrid();
   },
 
+  // Grid is a singleton shared by every screen.  Drop project-owned meshes,
+  // selections, and backing data when the document changes; the scene and UI
+  // objects are recreated by the next screen/3D document.
+  resetProjectState: function() {
+    var removeFromScene = function(object) {
+      if(object && typeof scene != 'undefined' && scene &&
+          typeof scene.remove == 'function') {
+        try {
+          scene.remove(object);
+        } catch(error) {
+          // A partially initialized object may not be attached to the scene.
+        }
+      }
+    };
+
+    removeFromScene(this.holder);
+    removeFromScene(this.ghostHolder);
+    removeFromScene(this.selection);
+    removeFromScene(this.selectionDragControls);
+    removeFromScene(this.typingCursor);
+
+    this.gridData = null;
+    this.holder = null;
+    this.ghostHolder = null;
+    this.changingGridData = false;
+    this.cursorCharacter = null;
+    this.typingCursor = null;
+    this.selection = null;
+    this.selectionActive = false;
+    this.selectionDragControls = null;
+    this.selectionDragArrows = null;
+    this.selectionDragMode = '';
+    this.selectionOffsetX = 0;
+    this.selectionOffsetY = 0;
+    this.backgroundImageSet = false;
+    this.backgroundImageTexture = null;
+    this.backgroundImageMaterial = null;
+
+    if(this.backgroundImageContext && this.backgroundImageCanvas) {
+      try {
+        this.backgroundImageContext.clearRect(0, 0,
+          this.backgroundImageCanvas.width, this.backgroundImageCanvas.height);
+      } catch(error) {}
+    }
+
+    if(this.grid2d && typeof this.grid2d.resetProjectState == 'function') {
+      this.grid2d.resetProjectState();
+    }
+  },
+
 
   initTypingCursor: function() {
     var geometry = new THREE.BoxGeometry( this.cellSizeX, this.cellSizeY, this.cellSizeZ );

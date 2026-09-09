@@ -73,6 +73,31 @@ DrawTools.prototype = {
     this.pixelSelect.init(editor);
   },
 
+  resetProjectState: function() {
+    this.tool = 'pen';
+    this.drawCharacter = true;
+    this.drawColor = true;
+    this.drawBgColor = true;
+    this.mirrorH = false;
+    this.mirrorHX = 20;
+    this.mirrorV = false;
+    this.mirrorVY = false;
+    this.saveCurrentTiles = false;
+    this.debugVisible = false;
+
+    var children = [
+      this.shapes, this.typing, this.pixelCharacterDraw, this.lineSegmentDraw,
+      this.pixelDraw, this.invertTool, this.cornersTool, this.fill,
+      this.select, this.pixelSelect, this.drawToolsPopup,
+      this.tilePalette, this.blockPalette
+    ];
+    for(var i = 0; i < children.length; i++) {
+      if(children[i] && typeof children[i].resetProjectState == 'function') {
+        children[i].resetProjectState();
+      }
+    }
+  },
+
   initToolSettingEvents: function() {
     var _this = this;
 

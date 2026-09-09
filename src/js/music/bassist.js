@@ -27,6 +27,14 @@ Bassist.prototype = {
     this.music = music;
   },
 
+  resetProjectState: function() {
+    this.pattern = null;
+    this.savedPattern = null;
+    this.patternDataBackup = [];
+    this.applyAccents = false;
+    this.saveLoopCurrentPattern = false;
+  },
+
   start: function() {
     var _this = this;
 

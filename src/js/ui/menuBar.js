@@ -282,7 +282,40 @@ UI.Menu = function() {
     return false;
   }
   this.removeItem = function(id) {
+    var itemIndex = -1;
+    for(var i = 0; i < this.menuItems.length; i++) {
+      if(this.menuItems[i].uiID == id || this.menuItems[i].id == id) {
+        itemIndex = i;
+        break;
+      }
+    }
 
+    if(itemIndex == -1) {
+      return false;
+    }
+
+    var menuItem = this.menuItems[itemIndex];
+    this.menuItems.splice(itemIndex, 1);
+
+    if(menuItem.element && menuItem.element.parentNode) {
+      menuItem.element.parentNode.removeChild(menuItem.element);
+    }
+
+    if(this.menuBar && this.menuBar.shortcuts) {
+      this.menuBar.shortcuts = this.menuBar.shortcuts.filter(function(shortcut) {
+        return shortcut.menuItem !== menuItem;
+      });
+    }
+
+    if(menuItem.uiID !== null && typeof menuItem.uiID != 'undefined' &&
+        UI.ids[menuItem.uiID] === menuItem) {
+      UI.removeID(menuItem.uiID);
+    }
+    if(menuItem.id && UI.components[menuItem.id] === menuItem) {
+      delete UI.components[menuItem.id];
+    }
+
+    return menuItem;
   }
 
   this.getItems = function(args) {

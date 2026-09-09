@@ -83,7 +83,22 @@ AssemblerOutput.prototype = {
   clear: function() {
     this.lines = [];
     $('#' + this.prefix + 'buildOutputPanel').html('');
-    this.editor.codeEditor.clearAnnotations();
+    if(this.editor && this.editor.codeEditor &&
+        typeof this.editor.codeEditor.clearAnnotations == 'function') {
+      this.editor.codeEditor.clearAnnotations();
+    }
+  },
+
+  resetProjectState: function() {
+    this.lines = [];
+    if(typeof $ != 'undefined') {
+      $('#' + this.prefix + 'buildOutputPanel').html('');
+      $('#' + this.prefix + 'assemblerOutputPanel').html('');
+    }
+    if(this.editor && this.editor.codeEditor &&
+        typeof this.editor.codeEditor.clearAnnotations == 'function') {
+      this.editor.codeEditor.clearAnnotations();
+    }
   },
 
   // maybe should be add error instead of add output line?

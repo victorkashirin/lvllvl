@@ -79,6 +79,19 @@ Assembler.prototype = {
     this.memory = new Uint8Array(65536);
   },
 
+  resetProjectState: function() {
+    if(this.memory) {
+      this.memory.fill(0);
+    }
+    this.pc = 0x1000;
+    this.labels = Object.create(null);
+    this.lines = [];
+    this.start = 0;
+    this.end = 0;
+    this.errors = [];
+    this.lineNumber = 0;
+  },
+
   getMemory: function() {
     return this.memory;
   },

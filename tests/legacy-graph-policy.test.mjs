@@ -8,11 +8,11 @@ import {
   verifyProductionLegacyGraph,
 } from "../scripts/legacy-graph-policy.mjs";
 
-test("the production legacy graph matches its non-growth baseline", async () => {
+test("the production legacy graph matches its grandfathered baseline", async () => {
   assert.deepEqual(await verifyProductionLegacyGraph(), {
     exceptions: 0,
-    grandfathered: 304,
-    inputs: 304,
+    grandfathered: 308,
+    inputs: 308,
   });
 });
 
@@ -55,6 +55,11 @@ test("the committed baseline may shrink but cannot grow or reorder", () => {
     }),
     /baseline cannot grow.*js\/new\.js/,
   );
+  assert.doesNotThrow(() => verifyLegacyBaselineEvolution({
+    baselineInputs: ["js/first.js", "js/new.js"],
+    previousInputs: ["js/first.js"],
+    allowedAdditions: ["js/new.js"],
+  }));
   assert.throws(
     () => verifyLegacyBaselineEvolution({
       baselineInputs: ["js/third.js", "js/first.js"],

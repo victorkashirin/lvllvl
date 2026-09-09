@@ -70,6 +70,36 @@ Select.prototype = {
     this.editor = editor;
   },
 
+  // Selection data is a clipboard as well as a view state.  Do not carry it
+  // across a project transition (it may contain cells from the old project).
+  resetProjectState: function() {
+    this.inSelect = false;
+    this.inDragSelect = false;
+    this.inDragSelectedCharacters = false;
+    this.mouseDownOnCell = { x: 0, y: 0, z: 0 };
+    this.mouseDownOnBlock = { x: 0, y: 0 };
+    this.selectSave = { minX: 0, maxX: 0, minY: 0, maxY: 0, minZ: 0, maxZ: 0 };
+    this.data = [];
+    this.lastSelection = { from: { x: 0, y: 0, z: 0 }, to: { x: 0, y: 0, z: 0 } };
+    this.selectionEnabled = false;
+    this.selection = { visible: false, minX: 0, minY: 0, minZ: 0, maxX: 0, maxY: 0, maxZ: 0 };
+    this.selectionOffsetX = 0;
+    this.selectionOffsetY = 0;
+    this.lastCell = { x: 0, y: 0 };
+    this.clipboardCanvas = null;
+    this.clipboardImageData = null;
+    this.clipboardContext = null;
+    this.clipboardImageWidth = 0;
+    this.clipboardImageHeight = 0;
+    this.inPasteMove = false;
+    this.inDragPastedContent = false;
+    this.pasteMoveArgs = null;
+    this.copiedFromFrame = false;
+    this.copiedFromLayer = false;
+    this.selectionChangedAfterCopy = false;
+    this.blockSet = null;
+  },
+
   show: function() {
     if(this.editor.type == '2d') {
       $('.selectZControl').hide();

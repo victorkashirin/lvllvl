@@ -45,6 +45,37 @@ Frames.prototype = {
     this.frameCount = 0;
   },
 
+  // Frames hold references to the active document's frame data and 3D mesh
+  // holders.  They are reused by the editor, so release that project-owned
+  // state explicitly when a project is closed.
+  resetProjectState: function() {
+    this.playFrames = false;
+    this.frames = [];
+    this.frameCount = 0;
+    this.currentFrame = false;
+    this.width = 40;
+    this.height = 25;
+    this.depth = 25;
+    this.blockWidth = 2;
+    this.blockHeight = 2;
+    this.updatedCellRanges = [];
+    this.showPrevFrame = false;
+    this.playDirection = 1;
+    this.playMode = 'loop';
+    this.tick = 0;
+    this.lastTickTime = 0;
+    this.lastFrameTime = 0;
+    this.tileSetId = false;
+    this.colorPaletteId = false;
+    this.blockMode = false;
+    this.framesCharWidth = 0;
+    this.framesCharHeight = 0;
+    this.framesCharDepth = 0;
+    if(this.frameTimeline && typeof this.frameTimeline.resetProjectState == 'function') {
+      this.frameTimeline.resetProjectState();
+    }
+  },
+
 
   // load the frame data from the current doc
   load: function() {

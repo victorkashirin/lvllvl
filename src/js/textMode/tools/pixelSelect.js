@@ -52,6 +52,33 @@ PixelSelect.prototype = {
     this.editor = editor;
   },
 
+  resetProjectState: function() {
+    this.active = false;
+    this.selection = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
+    this.selectSave = { minX: 0, maxX: 0, minY: 0, maxY: 0 };
+    this.mouseDownOnPixel = { x: 0, y: 0 };
+    this.selectionOffsetX = 0;
+    this.selectionOffsetY = 0;
+    this.copyAtX = false;
+    this.copyAtY = false;
+    this.pasteOffsetX = 0;
+    this.pasteOffsetY = 0;
+    this.lastSelection = { from: { x: 0, y: 0 }, to: { x: 0, y: 0 } };
+    this.inDragSelectedPixels = false;
+    this.inPasteMove = false;
+    this.inDragPaste = false;
+    this.data = [];
+    this.nudgeData = false;
+    this.selectionActive = false;
+    this.selectionEnabled = false;
+    this.selectionDragMode = '';
+    this.mouseDownX = false;
+    this.mouseDownY = false;
+    this.inSelect = false;
+    this.inDragSelect = false;
+    this.canvas = null;
+  },
+
 
   setActive: function(active) {
     this.active = active;

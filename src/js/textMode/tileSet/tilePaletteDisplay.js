@@ -148,6 +148,49 @@ TilePaletteDisplay.prototype = {
 
   },
 
+  // Tile palette displays are long-lived UI objects.  Clear all project
+  // derived maps/selections so a new project's tiles cannot be shown or
+  // selected through an old display instance.
+  resetProjectState: function() {
+    this.charPaletteMap = [];
+    this.charPaletteMapType = false;
+    this.selectedCharacters = [];
+    this.selectedCharactersGrid = [];
+    this.selectedGridCells = [];
+    this.tileLocations = [];
+    this.tilePaletteLayoutState = false;
+    this.gridMap = [];
+    this.highlightCharacter = false;
+    this.highlightGridX = false;
+    this.highlightGridY = false;
+    this.mouseDownOnCharacter = false;
+    this.charPaletteImageData = null;
+    this.sortDragTile = false;
+    this.sortDragTileX = 0;
+    this.sortDragTileY = 0;
+    this.sortDragOffsetX = 0;
+    this.sortDragOffsetY = 0;
+    this.page = 0;
+    this.scrollX = 0;
+    this.scrollY = 0;
+    this.xScrollSpeed = 0;
+    this.yScrollSpeed = 0;
+    this.vScrollBarPosition = null;
+    this.hScrollBarPosition = null;
+    this.mode = 'grid';
+
+    var contexts = [this.context, this.tileContext, this.singleTileContext];
+    for(var i = 0; i < contexts.length; i++) {
+      var context = contexts[i];
+      var canvas = context && context.canvas;
+      if(context && canvas) {
+        try {
+          context.clearRect(0, 0, canvas.width, canvas.height);
+        } catch(error) {}
+      }
+    }
+  },
+
   on: function(trigger, f) {
     if(trigger == 'selectedgridchanged') {
       this.selectedGridChanged = f;

@@ -20,6 +20,13 @@ ProjectNavigatorMobile.prototype = {
     this.currentEditor = g_app.textModeEditor;
   },
 
+  resetProjectState: function() {
+    this.treeMap = Object.create(null);
+    this.settings = {};
+    this.selectedId = false;
+    this.currentEditor = null;
+  },
+
   buildInterface: function() {
     var width = UI.getScreenWidth() - 30;
     if(width > 380) {

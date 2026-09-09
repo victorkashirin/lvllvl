@@ -800,6 +800,14 @@ var DbgC64Basic = function() {
 
 var sampleC64BasicScript = '10 print "hello"\n20 goto 10\n';
 DbgC64Basic.prototype = {
+  resetProjectState: function() {
+    this.doc = null;
+    this.path = false;
+    if(this.codeEditor && typeof this.codeEditor.setValue == 'function') {
+      this.codeEditor.setValue('');
+    }
+  },
+
   init: function(args) {
     if(typeof args.prefix) {
       this.prefix = args.prefix;
@@ -1088,7 +1096,13 @@ DbgC64Basic.prototype = {
 
   stop: function() {
     c64_keyPressed(C64_KEY_RUN_STOP);
+    var projectDocument = (typeof g_app != 'undefined') ? g_app.doc : null;
+    var projectGeneration = (typeof g_app != 'undefined') ? g_app.projectGeneration : undefined;
     setTimeout(function() {
+      if(projectDocument && typeof g_app != 'undefined' && g_app.isCurrentProject &&
+          !g_app.isCurrentProject(projectDocument, projectGeneration)) {
+        return;
+      }
       c64_keyReleased(C64_KEY_RUN_STOP);
     }, 100);
 

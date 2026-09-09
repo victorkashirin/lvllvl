@@ -33,6 +33,16 @@ async function loadClassic(relativePath, exportName, globals = {}) {
   return context.__exported;
 }
 
+async function loadEditor(globals = {}) {
+  const sources = await Promise.all([
+    "js/editor.js",
+    "js/editor/editorMenuCommands.js",
+  ].map((relativePath) => readFile(new URL(`../src/${relativePath}`, import.meta.url), "utf8")));
+  const context = vm.createContext({ ...globals });
+  vm.runInContext(`${sources.join("\n")}\n;globalThis.__exported = Editor;`, context);
+  return context.__exported;
+}
+
 function replayEditor(error) {
   return {
     tileSetManager: {
@@ -255,6 +265,7 @@ test("declared menu IDs dispatch once through real menu and editor handlers; uno
   let nextId = 0;
   const UI = (id) => elements.get(id);
   UI.getID = () => `menu-${nextId++}`;
+  UI.getSemanticID = UI.getID;
   UI.registerComponentType = (name, constructor) => componentTypes.set(name, constructor);
   UI.create = (name, args) => {
     const item = new (componentTypes.get(name))();
@@ -264,13 +275,25 @@ test("declared menu IDs dispatch once through real menu and editor handlers; uno
     elements.set(args.id, item);
     return item;
   };
-  const jquery = { addClass() {}, removeClass() {}, hide() {}, html() {}, text() {} };
+  const jquery = {
+    addClass() {},
+    attr() { return jquery; },
+    find() { return jquery; },
+    hide() {},
+    html() {},
+    removeClass() {},
+    text() {},
+    toggleClass() { return jquery; },
+  };
   await loadClassic("js/ui/menuBar.js", "UI", { UI, document, $: () => jquery, setTimeout() {} });
   const menuBar = new UI.MenuBar();
   menuBar.hideMenu = () => {};
   // Execute the actual menu declarations, including conditional entries, not
   // a second alias table that could drift from production construction.
-  const source = await readFile(new URL("../src/js/editor.js", import.meta.url), "utf8");
+  const source = await readFile(
+    new URL("../src/js/editor/editorInterface.js", import.meta.url),
+    "utf8",
+  );
   vm.runInNewContext(source.slice(source.indexOf("      var menu = null;"),
     source.indexOf("      _this.menuBar.on('itemclick'")), {
     _this: { menuBar }, UI, SHOWUNFINISHED: true, g_paramEditor: "", styles: { text: { blockName: "Meta Tile" } },
@@ -308,7 +331,7 @@ test("declared menu IDs dispatch once through real menu and editor handlers; uno
   let dispatches = 0;
   const execute = commands.execute.bind(commands);
   commands.execute = (...args) => { dispatches++; return execute(...args); };
-  const Editor = await loadClassic("js/editor.js", "Editor", {
+  const Editor = await loadEditor({
     UI, URLSearchParams, window: { location: { search: "" } }, TextModeEditor: { Mode: { TEXTMODE: "textmode" } },
   });
   const effects = [];

@@ -21,6 +21,8 @@ CharacterSetChoosePresetMobileCard = function() {
   this.type = 'character';
 
   this.editor = null;
+  this.projectDocument = null;
+  this.projectGeneration = undefined;
 
 }
 
@@ -156,6 +158,10 @@ CharacterSetChoosePresetMobileCard.prototype = {
 
     var _this = this;
     this.charsetImage.onload = function() {
+      if(_this.projectDocument && g_app.isCurrentProject &&
+          !g_app.isCurrentProject(_this.projectDocument, _this.projectGeneration)) {
+        return;
+      }
       _this.displaySelectedCharset();
     }
 
@@ -164,7 +170,15 @@ CharacterSetChoosePresetMobileCard.prototype = {
 
   displaySelectedCharset: function() {
 
+    if(this.projectDocument && g_app.isCurrentProject &&
+        !g_app.isCurrentProject(this.projectDocument, this.projectGeneration)) {
+      return;
+    }
+
     var tileSet = this.editor.tileSetManager.getCurrentTileSet();
+    if(!tileSet) {
+      return;
+    }
 
     var charset = this.charset;
 
@@ -210,6 +224,8 @@ CharacterSetChoosePresetMobileCard.prototype = {
 
 var CharacterSetChoosePresetMobile = function() {
   this.editor = null;
+  this.projectDocument = null;
+  this.projectGeneration = undefined;
   this.uiComponent = null;
 
   this.cardWidth = false;
@@ -227,11 +243,36 @@ var CharacterSetChoosePresetMobile = function() {
 
   this.preloadImages = [];
   this.preloadImageIndex = 0;
+  this.callback = false;
 
 
 }
 
 CharacterSetChoosePresetMobile.prototype = {
+  captureProjectContext: function() {
+    this.projectDocument = g_app.doc || null;
+    this.projectGeneration = g_app.projectGeneration;
+  },
+
+  isCurrentProject: function() {
+    return !!this.projectDocument && (!g_app.isCurrentProject ||
+      g_app.isCurrentProject(this.projectDocument, this.projectGeneration));
+  },
+
+  resetProjectState: function() {
+    this.projectDocument = null;
+    this.projectGeneration = undefined;
+    this.callback = false;
+    this.cardPosition = 0;
+    this.cardMoving = false;
+    this.charsetCardA = null;
+    this.charsetCardB = null;
+    this.nextPreloadImage = null;
+    this.prevPreloadImage = null;
+    this.preloadImages = [];
+    this.preloadImageIndex = 0;
+  },
+
   init: function(editor) {
     this.editor = editor;
     this.touchVelocity = new TouchVelocity();   
@@ -239,6 +280,7 @@ CharacterSetChoosePresetMobile.prototype = {
 
   show: function(args) {
     var _this = this;
+    this.captureProjectContext();
     var width = 500;
     var height = 100;
 
@@ -262,6 +304,9 @@ CharacterSetChoosePresetMobile.prototype = {
       this.htmlComponent = UI.create("UI.HTMLPanel");
       this.uiComponent.add(this.htmlComponent);
       this.htmlComponent.load('html/textMode/characterSetChoosePresetMobile.html', function() {
+        if(!_this.isCurrentProject()) {
+          return;
+        }
         _this.initContent();
         _this.initEvents();
       });
@@ -269,6 +314,9 @@ CharacterSetChoosePresetMobile.prototype = {
       this.okButton = UI.create('UI.Button', { "text": "Choose" });
       this.uiComponent.addButton(this.okButton);
       this.okButton.on('click', function(event) {
+        if(!_this.isCurrentProject() || !_this.charsetCardA) {
+          return;
+        }
         if(_this.callback !== false) {
           _this.callback({ 
             "type": _this.type, 
@@ -284,6 +332,9 @@ CharacterSetChoosePresetMobile.prototype = {
   },
 
   initContent: function() {
+    if(!this.isCurrentProject()) {
+      return;
+    }
 
     var listHTML = '';
 
@@ -319,11 +370,15 @@ CharacterSetChoosePresetMobile.prototype = {
 
     this.charsetCardA = new CharacterSetChoosePresetMobileCard();
     this.charsetCardA.init(this.editor, "A");
+    this.charsetCardA.projectDocument = this.projectDocument;
+    this.charsetCardA.projectGeneration = this.projectGeneration;
     this.charsetCardA.initContent();
     this.charsetCardA.setPosition(0, 0);
 
     this.charsetCardB = new CharacterSetChoosePresetMobileCard();
     this.charsetCardB.init(this.editor, "B");
+    this.charsetCardB.projectDocument = this.projectDocument;
+    this.charsetCardB.projectGeneration = this.projectGeneration;
     this.charsetCardB.initContent();
 
     this.charsetCardB.setPosition(10000, 0);
@@ -416,6 +471,9 @@ CharacterSetChoosePresetMobile.prototype = {
 
 
   hideNext: function(args) {
+    if(!this.isCurrentProject() || !this.charsetCardA || !this.charsetCardB) {
+      return;
+    }
     var _this = this;
     var duration = 2000 ;
     var moveTo = 0;
@@ -480,6 +538,9 @@ CharacterSetChoosePresetMobile.prototype = {
 
       //step: function(now, tween) {
       progress: function(animation, now, tween) {
+        if(!_this.isCurrentProject() || !_this.charsetCardA || !_this.charsetCardB) {
+          return;
+        }
         var position = _this.charsetCardA.holder.position();
         _this.cardPosition = position.left;
         var left = position.left;
@@ -495,6 +556,9 @@ CharacterSetChoosePresetMobile.prototype = {
       },
 
       complete: function() {
+        if(!_this.isCurrentProject() || !_this.charsetCardA || !_this.charsetCardB) {
+          return;
+        }
 
         _this.cardMoving = false;
         if(moveTo !== 0) {
@@ -596,6 +660,9 @@ CharacterSetChoosePresetMobile.prototype = {
   },
 
   setCardPosition: function(position) {
+    if(!this.isCurrentProject() || !this.charsetCardA || !this.charsetCardB) {
+      return;
+    }
 
 
     this.cardPosition = position;
@@ -668,6 +735,9 @@ CharacterSetChoosePresetMobile.prototype = {
 
 
   setCardBContent: function() {
+    if(!this.isCurrentProject() || !this.charsetCardA || !this.charsetCardB) {
+      return;
+    }
     if(this.cardPosition < 0) {
       var nextPresetId = this.getNextPresetId();
       if(nextPresetId !== false) {
@@ -684,6 +754,9 @@ CharacterSetChoosePresetMobile.prototype = {
   },
 
   selectCharsetPreset: function(presetId) {
+    if(!this.isCurrentProject() || !this.charsetCardA || !this.charsetCardB) {
+      return;
+    }
     this.presetId = presetId;
     $('#characterSetChoosePresetMobileList').val(this.presetId);
 
@@ -695,6 +768,9 @@ CharacterSetChoosePresetMobile.prototype = {
 
 
   touchStart: function(e) {
+    if(!this.isCurrentProject() || !this.charsetCardA || !this.charsetCardB) {
+      return;
+    }
     this.touchVelocity.touchStart(e);    
     var touches = e.touches;
 
@@ -712,6 +788,9 @@ CharacterSetChoosePresetMobile.prototype = {
   },
 
   touchMove: function(e) {
+    if(!this.isCurrentProject() || !this.charsetCardA || !this.charsetCardB) {
+      return;
+    }
     this.touchVelocity.touchMove(e);    
     var touches = e.touches;
 
@@ -763,6 +842,9 @@ CharacterSetChoosePresetMobile.prototype = {
   },
 
   touchEnd: function(e) {
+    if(!this.isCurrentProject() || !this.charsetCardA || !this.charsetCardB) {
+      return;
+    }
     this.touchVelocity.touchEnd(e);    
     var touches = e.touches;
     this.hideNext();  
@@ -773,6 +855,9 @@ CharacterSetChoosePresetMobile.prototype = {
 
 
   nextPreset: function() {
+    if(!this.isCurrentProject() || !this.charsetCardA || !this.charsetCardB) {
+      return;
+    }
     if(this.cardPosition === 0) {
       var nextPresetId = this.getNextPresetId();
       if(nextPresetId !== false) {
@@ -783,6 +868,9 @@ CharacterSetChoosePresetMobile.prototype = {
   },
 
   prevPreset: function() {
+    if(!this.isCurrentProject() || !this.charsetCardA || !this.charsetCardB) {
+      return;
+    }
     if(this.cardPosition === 0) {
       var prevPresetId = this.getPrevPresetId();
       if(prevPresetId !== false) {

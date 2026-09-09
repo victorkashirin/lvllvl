@@ -46,6 +46,12 @@ Patterns.prototype = {
     this.music = music;
   },
 
+  resetProjectState: function() {
+    this.clipboard = [];
+    this.noteId = 0;
+    this.paramId = 0;
+  },
+
   validPatternId: function(patternId) {
     if(patternId === false) {
       return false;

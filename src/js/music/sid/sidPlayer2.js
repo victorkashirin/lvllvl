@@ -29,6 +29,21 @@ SidPlayer2.prototype = {
 
   },
 
+  resetProjectState: function() {
+    if(this.musicPlayer && typeof this.musicPlayer.resetProjectState == 'function') {
+      this.musicPlayer.resetProjectState();
+    }
+    if(this.instrumentPlayer && typeof this.instrumentPlayer.resetProjectState == 'function') {
+      this.instrumentPlayer.resetProjectState();
+    }
+    if(this.songData) {
+      this.songData.patterns = [];
+      this.songData.tracks = [];
+      this.songData.instruments = [];
+      this.songData.filters = [];
+    }
+  },
+
   setupAudioContext: function() {
     if(audioContext != null) {
       return;

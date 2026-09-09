@@ -1,5 +1,7 @@
 var LayerRefImage = function() {
   this.editor = null;
+  this.projectDocument = null;
+  this.projectGeneration = undefined;
 
   this.doc = null;
 
@@ -24,8 +26,19 @@ var LayerRefImage = function() {
 
 
 LayerRefImage.prototype = {
+  captureProjectContext: function() {
+    this.projectDocument = g_app.doc || null;
+    this.projectGeneration = g_app.projectGeneration;
+  },
+
+  isCurrentProject: function() {
+    return !!this.projectDocument && (!g_app.isCurrentProject ||
+      g_app.isCurrentProject(this.projectDocument, this.projectGeneration));
+  },
+
   init: function(editor, layerId, layerRef) {
     this.editor = editor;
+    this.captureProjectContext();
     this.layerId = layerId;
     this.layerRef = layerRef;
     this.connectToDoc();
@@ -77,6 +90,7 @@ LayerRefImage.prototype = {
 
   loadFromDoc: function(editor, layerId, layerRef) {
     this.editor = editor;
+    this.captureProjectContext();
     this.layerId = layerId;
     this.layerRef = layerRef;
     this.connectToDoc();
@@ -87,6 +101,10 @@ LayerRefImage.prototype = {
 
     var _this = this;
     image.onload = function() {
+
+      if(!_this.isCurrentProject()) {
+        return;
+      }
 
 
 //      if(typeof _this.doc.width == 'undefined') {

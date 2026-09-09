@@ -95,6 +95,31 @@ Layers.prototype = {
     this.editor = editor;
   },
 
+  resetProjectState: function() {
+    this.cancelLayerPreviewUpdate();
+    this.layers = [];
+    this.layerObjects = Object.create(null);
+    this.layerRefs = [];
+    this.selectedLayerId = false;
+    this.refLayerId = false;
+    this.backgroundLayerPreview = null;
+    this.previewScratchCanvas = null;
+    this.nextLayerId = 0;
+    this.backgroundEnabled = true;
+    this.backgroundVisible = true;
+    this.backgroundCanvas = null;
+    this.layersFrames = null;
+    this.layerMerge = null;
+    this.layesFrames = null;
+    if(this.layerPropertiesDialog && typeof this.layerPropertiesDialog.resetProjectState == 'function') {
+      this.layerPropertiesDialog.resetProjectState();
+    }
+    if(typeof $ == 'function') {
+      $('#layersHolder').empty();
+      $('#layersHolderMobile').empty();
+    }
+  },
+
 
   initMobileLayersDialog: function() {
 

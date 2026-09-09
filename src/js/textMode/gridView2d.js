@@ -160,6 +160,52 @@ GridView2d.prototype = {
     this.previousScreen.init(this.editor);    
   },
 
+  resetProjectState: function() {
+    this.previousScreenFrame = false;
+    this.pointerCell = false;
+    this.mouseInCanvas = false;
+    this.pan = false;
+    this.shiftLineDirection = false;
+    this.mouseIsDown = false;
+    this.buttons = 0;
+    this.leftMouseUp = true;
+    this.cursorVisible = false;
+    this.typingCursorBlink = false;
+    this.zoomDownX = false;
+    this.zoomDownY = false;
+    this.zoomMouseX = false;
+    this.zoomMouseY = false;
+    this.touchMoved = false;
+    this.touchZoom = false;
+    this.touchCellDrawn = false;
+    this.mouseOverHControl1 = false;
+    this.mouseOverHControl2 = false;
+    this.mouseDownOnHControl = false;
+    this.mouseOverVControl1 = false;
+    this.mouseOverVControl2 = false;
+    this.mouseDownOnVControl = false;
+    this.rasterImageData = null;
+    this.backBufferNeedsRedraw = true;
+    this.gridNeedsRedraw = true;
+    this.overlayNeedsRedraw = true;
+
+    var contexts = [this.context, this.backBufferContext, this.baseContext,
+      this.overlayContext, this.rasterContext];
+    for(var i = 0; i < contexts.length; i++) {
+      var context = contexts[i];
+      var canvas = context && context.canvas;
+      if(context && canvas) {
+        try {
+          context.clearRect(0, 0, canvas.width, canvas.height);
+        } catch(error) {}
+      }
+    }
+
+    if(this.previousScreen && typeof this.previousScreen.resetProjectState == 'function') {
+      this.previousScreen.resetProjectState();
+    }
+  },
+
   setupEvents: function() {
     var _this = this;
 

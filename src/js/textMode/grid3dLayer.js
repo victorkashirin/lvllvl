@@ -5,6 +5,8 @@ function disposeArray() {
 
 var Grid3dLayer = function() {
   this.editor = null;
+  this.projectDocument = null;
+  this.projectGeneration = undefined;
   this.layerId = '';
   this.scene = null;
 
@@ -68,10 +70,16 @@ var Grid3dLayer = function() {
 }
 
 Grid3dLayer.prototype = {
-  init: function(editor, layerId, scene) {
+  init: function(editor, layerId, scene, projectDocument, projectGeneration) {
     this.editor = editor;
     this.scene = scene;
     this.layerId = layerId;
+    this.projectDocument = projectDocument ||
+      (editor && editor.projectDocument) ||
+      (typeof g_app != 'undefined' ? g_app.doc : null);
+    this.projectGeneration = typeof projectGeneration != 'undefined' ?
+      projectGeneration : (editor ? editor.projectGeneration :
+        (typeof g_app != 'undefined' ? g_app.projectGeneration : undefined));
 
 
     this.connectToDoc({
@@ -1047,7 +1055,9 @@ Grid3dLayer.prototype = {
   
   getTileSet: function() {
     if(this.doc.tileSetId) {
-      return this.editor.tileSetManager.getTileSet(this.doc.tileSetId);
+      return this.editor.tileSetManager.getTileSet(
+        this.doc.tileSetId,
+        this.projectDocument);
     } 
 
     return null;
@@ -1067,7 +1077,9 @@ Grid3dLayer.prototype = {
   getColorPalette: function() {
     var colorPalette = null;
     if(this.doc.colorPaletteId) {
-      return this.editor.colorPaletteManager.getColorPalette(this.doc.colorPaletteId);
+      return this.editor.colorPaletteManager.getColorPalette(
+        this.doc.colorPaletteId,
+        this.projectDocument);
     } else {
       return this.editor.colorPaletteManager.getCurrentColorPalette();
     }

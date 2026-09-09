@@ -36,6 +36,51 @@ Grid3d.prototype = {
     this.editor = editor;
   },
 
+  // 3D layers contain meshes and references into the active document.  The
+  // Grid3d instance survives project switches, so discard all project-owned
+  // frames/layers while retaining the renderer scene and UI wiring.
+  resetProjectState: function() {
+    for(var i = 0; i < this.layers.length; i++) {
+      if(this.layers[i] && typeof this.layers[i].remove == 'function') {
+        try {
+          this.layers[i].remove();
+        } catch(error) {
+          // A partially initialized layer may not have all render resources.
+        }
+      }
+    }
+    this.layers = [];
+    this.frames = [];
+    this.frameCount = 0;
+    this.currentFrame = false;
+    this.currentLayer = null;
+    this.doc = null;
+    this.lastCellSetX = false;
+    this.lastCellSetY = false;
+    this.lastCellSetZ = false;
+    this.backgroundColorIndex = 0;
+    this.backgroundColorRGB = 0x333333;
+    if(this.shapes) {
+      if(typeof this.shapes.resetProjectState == 'function') {
+        try { this.shapes.resetProjectState(); } catch(error) {}
+      } else {
+        if(typeof this.shapes.clearGrid == 'function') {
+          try { this.shapes.clearGrid(); } catch(error) {}
+        }
+        if(typeof this.shapes.clearMeshes == 'function') {
+          try { this.shapes.clearMeshes(); } catch(error) {}
+        }
+      }
+    }
+    if(this.selection) {
+      if(typeof this.selection.resetProjectState == 'function') {
+        try { this.selection.resetProjectState(); } catch(error) {}
+      } else if(typeof this.selection.unselectAll == 'function') {
+        try { this.selection.unselectAll(); } catch(error) {}
+      }
+    }
+  },
+
   initScene: function() {
     this.scene = new THREE.Scene();    
 
@@ -91,7 +136,15 @@ Grid3d.prototype = {
 
   createDoc: function(args, callback) {
 
-    var doc = g_app.doc;
+    args = args || {};
+    var doc = args.document || g_app.doc;
+    var projectGeneration = args.projectGeneration;
+    var isCurrent = function() {
+      return !g_app.isCurrentProject || g_app.isCurrentProject(doc, projectGeneration);
+    };
+    if(!doc || !isCurrent()) {
+      return;
+    }
     var name = args.name;
 
     var gridWidth = args.gridWidth;
@@ -131,6 +184,10 @@ Grid3d.prototype = {
     if(typeof args.colorPaletteId != 'undefined' && args.colorPaletteId != '') {
       colorPaletteArgs.colorPaletteId = args.colorPaletteId;
     }
+    tileSetArgs.document = doc;
+    tileSetArgs.projectGeneration = projectGeneration;
+    colorPaletteArgs.document = doc;
+    colorPaletteArgs.projectGeneration = projectGeneration;
 
     var screenMode = TextModeEditor.Mode.TEXTMODE;
     var cellWidth = 8;
@@ -138,7 +195,13 @@ Grid3d.prototype = {
     var cellDepth = 8;
 
     this.editor.colorPaletteManager.addColorPaletteToDoc(colorPaletteArgs, function(colorPaletteId) {
+      if(!isCurrent()) {
+        return;
+      }
       _this.editor.tileSetManager.addTileSetToDoc(tileSetArgs, function(tileSetId) {
+        if(!isCurrent()) {
+          return;
+        }
 
 
         // a layer as default
@@ -171,7 +234,7 @@ Grid3d.prototype = {
 
         // need to add at least one frame.
         
-        if(typeof callback != 'undefined') {
+        if(typeof callback != 'undefined' && isCurrent()) {
           callback(record);
         }
       });
@@ -217,7 +280,12 @@ Grid3d.prototype = {
       var layers = this.doc.data.layers;
       for(var i = 0; i < layers.length; i++) {
         var layer = new Grid3dLayer();
-        layer.init(this.editor, layers[i].layerId, this.scene);
+        layer.init(
+          this.editor,
+          layers[i].layerId,
+          this.scene,
+          this.editor.projectDocument || (typeof g_app != 'undefined' ? g_app.doc : null),
+          this.editor.projectGeneration);
         this.layers.push(layer);
       }
     }

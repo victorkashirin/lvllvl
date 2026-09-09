@@ -31,6 +31,17 @@ var ChooseCharactersDialog = function() {
 
 ChooseCharactersDialog.prototype = {
 
+  resetProjectState: function() {
+    this.callback = null;
+    this.charPaletteMap = null;
+    this.mouseMode = '';
+    this.tilePickerCanvas = null;
+    this.context = null;
+    if(this.tilePaletteDisplay && typeof this.tilePaletteDisplay.resetProjectState == 'function') {
+      this.tilePaletteDisplay.resetProjectState();
+    }
+  },
+
 
   init: function(editor) {
     this.editor = editor;

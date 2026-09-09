@@ -12,6 +12,28 @@ var DbgScripting = function() {
 }
 
 DbgScripting.prototype = {
+  resetProjectState: function() {
+    this.doc = null;
+    this.path = false;
+    if(this.scriptProcessor) {
+      if(typeof this.scriptProcessor.resetProjectState == 'function') {
+        this.scriptProcessor.resetProjectState();
+      } else {
+        if(typeof this.scriptProcessor.stopScript == 'function') {
+          this.scriptProcessor.stopScript();
+        }
+        this.scriptProcessor.pendingEvents = [];
+        this.scriptProcessor.interpreter = null;
+        this.scriptProcessor.isProcessingEvents = false;
+        this.scriptProcessor.eventHandlers = {};
+      }
+    }
+    this.clearConsole();
+    if(this.codeEditor && typeof this.codeEditor.setValue == 'function') {
+      this.codeEditor.setValue('');
+    }
+  },
+
   init: function(args) {
     if(typeof args.prefix) {
       this.prefix = args.prefix;

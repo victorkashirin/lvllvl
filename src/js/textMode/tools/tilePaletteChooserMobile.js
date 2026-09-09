@@ -23,6 +23,16 @@ var TilePaletteChooserMobile = function() {
 }
 
 TilePaletteChooserMobile.prototype = {
+  resetProjectState: function() {
+    this.charRecentIndex = 0;
+    this.highlightCharacter = false;
+    this.mapType = false;
+    this.closeHandler = false;
+    if(this.tilePaletteDisplay && typeof this.tilePaletteDisplay.resetProjectState == 'function') {
+      this.tilePaletteDisplay.resetProjectState();
+    }
+  },
+
   init: function(editor, args) {
     this.editor = editor;
 

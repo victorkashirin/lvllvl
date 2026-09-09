@@ -23,6 +23,18 @@ var TilePickerPopup = function() {
 }
 
 TilePickerPopup.prototype = {
+  resetProjectState: function() {
+    this.highlightedCharacter = false;
+    this.characterPickedCallback = null;
+    if(this.tilePaletteDisplay && typeof this.tilePaletteDisplay.resetProjectState == 'function') {
+      this.tilePaletteDisplay.resetProjectState();
+    }
+    if(this.visible) {
+      UI.hidePopup();
+    }
+    this.visible = false;
+  },
+
   init: function(editor, args) {
     var _this = this;
     this.editor = editor;

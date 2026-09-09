@@ -73,6 +73,31 @@ SpriteFrames.prototype = {
     }
   },
 
+  resetProjectState: function() {
+    this.visible = false;
+    this.spritePositions = [];
+    this.currentHighlightRect = false;
+    this.rangePositions = [];
+    this.buttons = [];
+    this.scrollX = 0;
+    this.scrollY = 0;
+    this.vScroll = false;
+    this.hScroll = false;
+    this.mouseDownAtScrollX = 0;
+    this.mouseDownAtScrollY = 0;
+    this.lastMouseX = 0;
+    this.lastMouseY = 0;
+    this.gridImageData = null;
+    this.canvas = null;
+    this.rulerCanvas = null;
+    this.rangeCanvas = null;
+    this.gridCanvas = null;
+    this.context = null;
+    this.rulerContext = null;
+    this.rangeContext = null;
+    this.gridContext = null;
+  },
+
   buildInterface: function(parentComponent) {
     var _this = this;
 

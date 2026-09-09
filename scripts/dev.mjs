@@ -1,13 +1,14 @@
+import { execFile } from "node:child_process";
 import { watch } from "node:fs";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
 
 import { createServer } from "vite";
 
-import { build } from "./build.mjs";
-
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const buildScriptPath = path.join(projectRoot, "scripts/build.mjs");
 const sourceRoot = path.join(projectRoot, "src");
 const buildRoot = path.join(projectRoot, "dist");
 const scriptsRoot = path.join(projectRoot, "scripts");
@@ -26,6 +27,19 @@ let servedPackageVersion;
 let developmentAssetVersion;
 let developmentRevision = 0;
 const inputWatchers = [];
+const runFile = promisify(execFile);
+
+async function buildFresh() {
+  // Build configuration is executable ESM and Node caches its imports for the
+  // lifetime of this process. Run each build in a child process so edits to the
+  // graph or configuration are reflected without restarting the dev command.
+  const { stdout, stderr } = await runFile(process.execPath, [buildScriptPath], {
+    cwd: projectRoot,
+    maxBuffer: 4 * 1024 * 1024,
+  });
+  if (stdout) process.stdout.write(stdout);
+  if (stderr) process.stderr.write(stderr);
+}
 
 function refreshDevelopmentAssetVersion(packageJsonContents) {
   const packageVersion = JSON.parse(packageJsonContents).version;
@@ -55,12 +69,13 @@ async function rebuild() {
   do {
     rebuildQueued = false;
     try {
-      await build();
+      await buildFresh();
       const packageJsonContents = await readFile(packageJsonPath, "utf8");
       refreshDevelopmentAssetVersion(packageJsonContents);
       // Restart Vite so its module graph and transformed HTML match the newly
       // published build before clients reload.
       await server.restart();
+      console.log("server restarted");
     } catch (error) {
       console.error("Rebuild failed");
       console.error(error);
@@ -74,7 +89,7 @@ function queueRebuild() {
   rebuildTimer = setTimeout(rebuild, 100);
 }
 
-await build();
+await buildFresh();
 let packageJsonContents = await readFile(packageJsonPath, "utf8");
 refreshDevelopmentAssetVersion(packageJsonContents);
 

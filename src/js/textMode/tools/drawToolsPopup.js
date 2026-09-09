@@ -28,6 +28,17 @@ var DrawToolsPopup = function() {
 
 DrawToolsPopup.prototype = {
 
+  resetProjectState: function() {
+    this.character = 0;
+    this.color = 0;
+    this.highlightX = 0;
+    this.highlightY = 0;
+    this.shiftDown = false;
+    this.callback = null;
+    this.drawPopupGrid = [];
+    this.relatedCharacters = [];
+  },
+
   getHTML: function() {
     var tools = this.editor.tools.drawTools.getTools();
     var html = '<div style="background-color: #111111">';

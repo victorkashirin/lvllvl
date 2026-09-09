@@ -23,6 +23,24 @@ ColorEditor.prototype = {
     this.editor = editor;
   },
 
+  resetProjectState: function() {
+    if(this.visible && typeof UI !== 'undefined' && UI.exists && UI.exists('colorSplitPanel')) {
+      try { this.setVisible(false); } catch(error) {}
+    }
+    this.visible = false;
+    this.colorIndex = false;
+    this.colorType = 'hsv';
+    this.saveSouthSize = false;
+    this.r = 0;
+    this.g = 0;
+    this.b = 0;
+    this.h = 0;
+    this.s = 0;
+    this.v = 0;
+    this.rgb = 0;
+    this.buttons = 0;
+  },
+
   getVisible: function() {
     return this.visible;
   },
@@ -756,4 +774,4 @@ ColorEditor.prototype = {
     this.updateRGBSliders();
     this.updateHSVSliders();
   },
-}  
+}

@@ -9,6 +9,13 @@ Fill.prototype = {
     this.editor = editor;
   },
 
+  resetProjectState: function() {
+    this.stack = [];
+    this.fillStack = [];
+    this.gridWidth = 0;
+    this.gridHeight = 0;
+  },
+
   getCellReplacementArgs: function(x, y, testCell, replacement, fc, bc) {
     var drawTools = this.editor.tools.drawTools;
     var args = {

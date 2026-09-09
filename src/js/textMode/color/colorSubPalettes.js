@@ -132,6 +132,33 @@ ColorSubPalettes.prototype = {
 
   },
 
+  // Sub-palettes are project data (especially for NES mode).  This singleton
+  // survives project switches, so discard the previous project's selections
+  // and restore the default shape before the next palette is loaded.
+  resetProjectState: function() {
+    this.closePicker();
+    this.currentColorSubPalette = 0;
+    this.currentColor = 1;
+    this.colorSubPaletteCount = 4;
+    this.colorPerColorSubPalette = 4;
+    this.subPalettes = [
+      [33, 32, 41, 22],
+      [33, 12, 38, 26],
+      [33, 18, 44, 29],
+      [33, 48, 32, 16]
+    ];
+    this.checking = false;
+    this.initHTML();
+
+    if(this.colorSubPalettePickerMobile) {
+      this.colorSubPalettePickerMobile.callback = null;
+      if(this.colorSubPalettePickerMobile.colorPaletteDisplay &&
+          typeof this.colorSubPalettePickerMobile.colorPaletteDisplay.resetProjectState == 'function') {
+        this.colorSubPalettePickerMobile.colorPaletteDisplay.resetProjectState();
+      }
+    }
+  },
+
   initEvents: function() {
     var _this = this;
 

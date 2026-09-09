@@ -15,6 +15,14 @@ var ColorPickerMobile = function() {
 }
 
 ColorPickerMobile.prototype = {
+  resetProjectState: function() {
+    this.callback = null;
+    this.closeHandler = false;
+    if(this.colorPaletteDisplay && typeof this.colorPaletteDisplay.resetProjectState == 'function') {
+      this.colorPaletteDisplay.resetProjectState();
+    }
+  },
+
   on: function(eventName, f) {
     if(eventName == 'close') {
       this.closeHandler = f;
@@ -588,4 +596,3 @@ ColorPickerMobile.prototype = {
 
   },
 }
-

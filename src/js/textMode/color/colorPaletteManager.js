@@ -34,7 +34,8 @@ ColorPaletteManager.prototype = {
 
   clear: function() {
     //this.colorPalettes = [];
-    this.colorPaletteCache = [];
+    this.colorPaletteCache = {};
+    this.currentColorPalette = null;
   },
 
   showNewColorPaletteDialog: function() {
@@ -107,6 +108,33 @@ ColorPaletteManager.prototype = {
   updateColorPaletteMenu: function() {
     var colorPaletteMenu = g_app.colorPaletteMenu;
 
+    if(!colorPaletteMenu) {
+      return;
+    }
+
+    var colorPalettes = g_app.doc ? g_app.doc.dir('/color palettes') : [];
+    var activePaletteMenuItems = {};
+    for(var i = 0; i < colorPalettes.length; i++) {
+      activePaletteMenuItems['colorpalette-select-' + colorPalettes[i].id] = true;
+    }
+
+    // Menu instances live longer than a document. Remove project-owned
+    // entries before checking the selected layer, so a mode without a grid
+    // layer cannot leave the previous project's palettes behind.
+    var currentMenuItems = colorPaletteMenu.getItems();
+    for(var i = currentMenuItems.length - 1; i >= 0; i--) {
+      var menuItemId = currentMenuItems[i].uiID;
+      if(typeof menuItemId == 'string' &&
+          menuItemId.indexOf('colorpalette-select-') === 0 &&
+          !activePaletteMenuItems[menuItemId]) {
+        colorPaletteMenu.removeItem(menuItemId);
+      }
+    }
+
+    if(!g_app.doc) {
+      return;
+    }
+
     // get the current layer
     var layer = this.editor.layers.getSelectedLayerObject();
     if(layer == null || layer.getType() != 'grid') {
@@ -115,11 +143,6 @@ ColorPaletteManager.prototype = {
 
     var selectedColorPalette = layer.getColorPalette();
 
-    // get all matching tilesets..
-    var currentMenuItems = colorPaletteMenu.getItems();
-
-
-    var colorPalettes = g_app.doc.dir('/color palettes');
     for(var i = 0; i < colorPalettes.length; i++) {
 //      var tileSetData = tileSets[i].data;
       
@@ -137,7 +160,7 @@ ColorPaletteManager.prototype = {
           menuItem = colorPaletteMenu.addItem({ "label": name, "id": menuId });
         }
 
-        if(id == selectedColorPalette.getId()) {
+        if(selectedColorPalette && id == selectedColorPalette.getId()) {
           menuItem.setChecked(true);
         } else {
           menuItem.setChecked(false);
@@ -169,6 +192,12 @@ ColorPaletteManager.prototype = {
 
   createColorPalette: function(args) {
 
+    args = args || {};
+    var document = args.document || g_app.doc;
+    if(!document) {
+      return false;
+    }
+
     var name = 'color palette';
     if(typeof args.name != 'undefined') {
       name = args.name
@@ -182,14 +211,14 @@ ColorPaletteManager.prototype = {
     // make sure the name is unique
     var testName = name;
     var count = 0;
-    while(g_app.doc.getDocRecord('/color palettes/' + testName)) {
+    while(document.getDocRecord('/color palettes/' + testName)) {
       count++;
       testName = name + '_' + count
     }
     name = testName;
 
     //var colorPaletteId = g_app.getGuid();
-    var colorPalette = g_app.doc.createDocRecord(
+    var colorPalette = document.createDocRecord(
                 "/color palettes", 
                 name, 
                 "color palette", 
@@ -218,7 +247,44 @@ return;
     }
 
     this.colorPalettes = [];
-    this.colorPaletteCache = {};    
+    this.colorPaletteCache = {};
+    this.currentColorPalette = null;
+
+    if(this.colorSubPalettes && typeof this.colorSubPalettes.resetProjectState == 'function') {
+      this.colorSubPalettes.resetProjectState();
+    }
+    if(this.colorPaletteLoad && typeof this.colorPaletteLoad.resetProjectState == 'function') {
+      this.colorPaletteLoad.resetProjectState();
+    }
+    if(this.colorPaletteSave && typeof this.colorPaletteSave.resetProjectState == 'function') {
+      this.colorPaletteSave.resetProjectState();
+    }
+    if(this.colorPaletteChoosePreset && typeof this.colorPaletteChoosePreset.resetProjectState == 'function') {
+      this.colorPaletteChoosePreset.resetProjectState();
+    }
+    if(this.colorPaletteChoosePresetMobile && typeof this.colorPaletteChoosePresetMobile.resetProjectState == 'function') {
+      this.colorPaletteChoosePresetMobile.resetProjectState();
+    }
+    if(this.colorPicker && typeof this.colorPicker.resetProjectState == 'function') {
+      this.colorPicker.resetProjectState();
+    }
+    if(this.colorPickerMobile && typeof this.colorPickerMobile.resetProjectState == 'function') {
+      this.colorPickerMobile.resetProjectState();
+    }
+  },
+
+  clearProjectMenu: function() {
+    var colorPaletteMenu = g_app.colorPaletteMenu;
+    if(!colorPaletteMenu) {
+      return;
+    }
+    var currentMenuItems = colorPaletteMenu.getItems();
+    for(var i = currentMenuItems.length - 1; i >= 0; i--) {
+      var menuItemId = currentMenuItems[i].uiID;
+      if(typeof menuItemId == 'string' && menuItemId.indexOf('colorpalette-select-') === 0) {
+        colorPaletteMenu.removeItem(menuItemId);
+      }
+    }
   },
 /*
   useDefaultColorPalette: function() {
@@ -234,20 +300,30 @@ return;
 */
 
 
-  getColorPalette: function(colorPaletteId) {
-    if(this.colorPaletteCache.hasOwnProperty(colorPaletteId)) {
-
-      return this.colorPaletteCache[colorPaletteId];
+  getColorPalette: function(colorPaletteId, document) {
+    document = document || g_app.doc;
+    if(!document) {
+      return null;
     }
 
+    if(this.colorPaletteCache.hasOwnProperty(colorPaletteId)) {
+      var cachedPalette = this.colorPaletteCache[colorPaletteId];
+      // Legacy palette objects without an owner cannot safely be reused after
+      // a project transition, even if their id happens to match.
+      if(cachedPalette.document === document) {
+        return cachedPalette;
+      }
+      delete this.colorPaletteCache[colorPaletteId];
+    }
 
-    var colorPaletteRecord = g_app.doc.getDocRecordById(colorPaletteId, "/color palettes");
+    var colorPaletteRecord = document.getDocRecordById(colorPaletteId, "/color palettes");
 
     var colorPalette = null;
 
     if(colorPaletteRecord) {
       var colorPalette = new ColorPalette();
-      colorPalette.init(this.editor, colorPaletteRecord.name, colorPaletteId);
+      colorPalette.init(this.editor, colorPaletteRecord.name, colorPaletteId, document,
+        document === g_app.doc ? g_app.projectGeneration : undefined);
       colorPalette.setColorsFromDoc();
 
       this.colorPaletteCache[colorPaletteId] = colorPalette;
@@ -259,11 +335,19 @@ return;
 
   addColorPaletteToDoc: function(args, callback) {
 
-  
-    
+    args = args || {};
+    var document = args.document || g_app.doc;
+    var generation = args.projectGeneration;
+    var isCurrent = function() {
+      return !g_app.isCurrentProject || g_app.isCurrentProject(document, generation);
+    };
+    if(!document || !isCurrent()) {
+      return;
+    }
+
     if(typeof args.colorPaletteId != 'undefined' && args.colorPaletteId != '') {
       // color already exists in doc, its doc id has been passed in..prob should check tho..
-      if(typeof callback != 'undefined') {
+      if(typeof callback != 'undefined' && isCurrent()) {
         callback(args.colorPaletteId);
       }
       return;
@@ -282,16 +366,19 @@ return;
       paletteName = args.colorPaletteName;
     }
 
-    var colorPaletteId = this.createColorPalette({ name: paletteName });
+    var colorPaletteId = this.createColorPalette({ name: paletteName, document: document });
 
-    colorPalette = new ColorPalette();
-    colorPalette.init(this.editor, paletteName, colorPaletteId);
+    var colorPalette = new ColorPalette();
+    colorPalette.init(this.editor, paletteName, colorPaletteId, document, generation);
+    colorPalette.projectGeneration = generation;
 
     if(typeof args.colorPalette != 'undefined') {
       colorPalette.copyPalette(args.colorPalette);
     }
     this.colorPaletteCache[colorPaletteId] = colorPalette;
-    callback(colorPaletteId);
+    if(typeof callback != 'undefined' && isCurrent()) {
+      callback(colorPaletteId);
+    }
 
     //callback(arg)
 
@@ -300,23 +387,40 @@ return;
 
 
   addColorPaletteFromPreset: function(args, callback) {
+    args = args || {};
+    var document = args.document || g_app.doc;
+    var generation = args.projectGeneration;
+    var isCurrent = function() {
+      return !g_app.isCurrentProject || g_app.isCurrentProject(document, generation);
+    };
+    if(!document || !isCurrent()) {
+      return;
+    }
     var preset = args.preset;
     var colorPaletteName = 'Color Palette';
     if(typeof args.colorPaletteName != 'undefined') {
       colorPaletteName = args.colorPaletteName;
     }
-    var colorPaletteId = this.createColorPalette({ name: colorPaletteName });
+    var colorPaletteId = this.createColorPalette({ name: colorPaletteName, document: document });
 
 
-    colorPalette = new ColorPalette();
-    colorPalette.init(this.editor, preset, colorPaletteId);
+    var colorPalette = new ColorPalette();
+    colorPalette.init(this.editor, preset, colorPaletteId, document, generation);
+    colorPalette.projectGeneration = generation;
 
     this.colorPaletteCache[colorPaletteId] = colorPalette;
 
 
-    this.choosePreset(preset, { colorPalette: colorPalette, callback: function() {
-      callback(colorPaletteId);
-    }});
+    this.choosePreset(preset, {
+      colorPalette: colorPalette,
+      document: document,
+      projectGeneration: generation,
+      callback: function() {
+        if(isCurrent() && typeof callback != 'undefined') {
+          callback(colorPaletteId);
+        }
+      }
+    });
 
 
   },
@@ -326,17 +430,34 @@ return;
 
     var colorPalette = this.currentColorPalette;
 
+    // A retained palette object may belong to the project that was just
+    // closed. Treat it as empty before applying a preset to the new project.
+    if(colorPalette &&
+        (!colorPalette.document || (g_app.isCurrentProject &&
+        !g_app.isCurrentProject(colorPalette.document, colorPalette.projectGeneration)))) {
+      colorPalette = null;
+      this.currentColorPalette = null;
+    }
+
     // if no colour palette, then create one
     if(colorPalette == null) {
-      var colorPaletteId = this.createColorPalette({ name: preset });
+      if(!g_app.doc) {
+        return;
+      }
+      var colorPaletteId = this.createColorPalette({ name: preset, document: g_app.doc });
       colorPalette = new ColorPalette();
-      colorPalette.init(this.editor, preset, colorPaletteId);
+      colorPalette.init(this.editor, preset, colorPaletteId, g_app.doc, g_app.projectGeneration);
       this.currentColorPalette = colorPalette;
 
       this.colorPaletteCache[colorPaletteId] = colorPalette;
     }
 
-    this.choosePreset(preset, { callback: callback });
+    this.choosePreset(preset, {
+      callback: callback,
+      colorPalette: colorPalette,
+      document: colorPalette.document,
+      projectGeneration: colorPalette.projectGeneration
+    });
 
   },
   showColorSubPalettePicker: function(x, y, args) {
@@ -370,14 +491,21 @@ return;
   },
 
   setCurrentColorPaletteFromId: function(colorPaletteId) {
-    if(this.currentColorPalette !== null && this.currentColorPalette.getId() == colorPaletteId) {
+    var currentBelongsToProject = !g_app.doc ||
+      (this.currentColorPalette && this.currentColorPalette.document === g_app.doc);
+    if(this.currentColorPalette !== null &&
+        currentBelongsToProject &&
+        this.currentColorPalette.getId() == colorPaletteId) {
       // already set..
       return;
     }
 
 
 
-    this.currentColorPalette = this.getColorPalette(colorPaletteId);
+    this.currentColorPalette = this.getColorPalette(colorPaletteId, g_app.doc);
+    if(!this.currentColorPalette) {
+      return;
+    }
     this.colorPaletteUpdated();
 
 
@@ -423,6 +551,16 @@ return;
 
   choosePreset: function(preset, args) {
     var _this = this;
+    args = args || {};
+    // Capture the project even for callers that only request the current
+    // palette. Otherwise a delayed image load can apply an old preset to the
+    // palette selected in a newly opened project.
+    var projectDocument = args.document ||
+      (args.colorPalette && args.colorPalette.document) || g_app.doc;
+    var projectGeneration = typeof args.projectGeneration !== 'undefined' ?
+      args.projectGeneration : g_app.projectGeneration;
+    args.document = projectDocument;
+    args.projectGeneration = projectGeneration;
     var url = 'palettes/' + preset + '.png';
 
 
@@ -430,6 +568,11 @@ return;
     if(url !== false) {
       var img = new Image();
       img.onload = function() {
+
+        if(projectDocument && g_app.isCurrentProject &&
+            !g_app.isCurrentProject(projectDocument, projectGeneration)) {
+          return;
+        }
 
         var colors = _this.colorPaletteFromPaletteImg(img, args);
 //            { brightness: _this.brightness, saturation: _this.saturation, contrast: _this.contrast});
@@ -446,6 +589,9 @@ return;
 
 //        colorPalette.setName(preset); 
     
+        if(!colorPalette) {
+          return;
+        }
         colorPalette.setColors(colors.colors, colorsAcross, colorsDown);
 
         if(colorPalette.name.indexOf('c64') != -1) {

@@ -25,6 +25,9 @@ var ColorPaletteLoad = function() {
   this.colorPaletteLoadFromURL = null;
 
   this.name = '';
+
+  this.projectDocument = null;
+  this.projectGeneration = undefined;
 }
 
 ColorPaletteLoad.prototype = {
@@ -36,7 +39,36 @@ ColorPaletteLoad.prototype = {
     }
   },
 
+  captureProjectContext: function() {
+    this.projectDocument = g_app.doc;
+    this.projectGeneration = g_app.projectGeneration;
+  },
+
+  isCurrentProject: function(context) {
+    context = context || {
+      document: this.projectDocument,
+      generation: this.projectGeneration
+    };
+    return !!context.document && (!g_app.isCurrentProject ||
+      g_app.isCurrentProject(context.document, context.generation));
+  },
+
+  resetProjectState: function() {
+    if(this.importImage && this.importImage.onload) {
+      this.importImage.onload = null;
+    }
+    this.dialogReadyCallback = false;
+    this.projectDocument = null;
+    this.projectGeneration = undefined;
+    this.visible = false;
+    this.callback = false;
+    this.colors = [];
+    this.colorMap = [];
+    this.loadMap = false;
+  },
+
   show: function(args) {
+    this.captureProjectContext();
     if(typeof args != 'undefined') {
       if(typeof args.dialogReadyCallback != 'undefined') {
         this.dialogReadyCallback = args.dialogReadyCallback;
@@ -56,6 +88,9 @@ ColorPaletteLoad.prototype = {
       this.colorPaletteLoadPanel = UI.create("UI.HTMLPanel");
       this.uiComponent.add(this.colorPaletteLoadPanel);
       this.colorPaletteLoadPanel.load('html/textMode/colorPaletteLoad.html', function() {
+        if(!_this.isCurrentProject()) {
+          return;
+        }
         _this.htmlComponentLoaded();
         _this.initContent();
         _this.initEvents();
@@ -69,6 +104,9 @@ ColorPaletteLoad.prototype = {
         this.okButton = UI.create('UI.Button', { "text": "OK", "color": "primary" });
         this.uiComponent.addButton(this.okButton);
         this.okButton.on('click', function(event) {
+          if(!_this.isCurrentProject()) {
+            return;
+          }
           _this.setPalette();
           UI.closeDialog();
         });
@@ -91,6 +129,9 @@ ColorPaletteLoad.prototype = {
       this.visible = true;
   
     } else {
+      if(!this.isCurrentProject()) {
+        return;
+      }
       this.initContent();
 
       if(this.parentComponent == null) {
@@ -99,7 +140,7 @@ ColorPaletteLoad.prototype = {
 
       this.visible = true;
   
-      if(_this.dialogReadyCallback != false) {
+      if(_this.dialogReadyCallback != false && _this.isCurrentProject()) {
         _this.dialogReadyCallback();
       }
     }
@@ -185,9 +226,12 @@ ColorPaletteLoad.prototype = {
 
 //    console.log('load palette from url' + url);
     var _this = this;
+    var context = { document: this.projectDocument, generation: this.projectGeneration };
     this.colorPaletteLoadFromURL.show({
       callback: function(response) {
-        _this.createPaletteFromLoSpec(response.response);
+        if(_this.isCurrentProject(context)) {
+          _this.createPaletteFromLoSpec(response.response);
+        }
       }
     });
 
@@ -200,16 +244,22 @@ ColorPaletteLoad.prototype = {
 
     console.log('load palette from url' + url);
     var _this = this;
+    var context = { document: this.projectDocument, generation: this.projectGeneration };
     this.colorPaletteLoadFromURL.loadURL({
       url: url,
       callback: function(response) {
-        _this.createPaletteFromLoSpec(response.response);
+        if(_this.isCurrentProject(context)) {
+          _this.createPaletteFromLoSpec(response.response);
+        }
       }
     });
 
   },
 
   createPaletteFromLoSpec: function(data) {
+    if(!this.isCurrentProject()) {
+      return;
+    }
     this.name = data.name;
     var author = data.author;
     var colors = [];
@@ -240,6 +290,9 @@ ColorPaletteLoad.prototype = {
 
 
   setPalette: function(args) {
+    if(!this.isCurrentProject()) {
+      return;
+    }
     var callback = false;
     
     if(typeof args != 'undefined') {
@@ -330,6 +383,8 @@ ColorPaletteLoad.prototype = {
       return;
     }
 
+    this.captureProjectContext();
+
     if(typeof callback != 'undefined') {
       this.callback = callback;
     }
@@ -381,8 +436,11 @@ ColorPaletteLoad.prototype = {
     }
 
     var _this = this;
+    var context = { document: this.projectDocument, generation: this.projectGeneration };
     this.importImage.onload = function() {
-      _this.createPaletteFromImage();      
+      if(_this.isCurrentProject(context)) {
+        _this.createPaletteFromImage();
+      }
     }
 
     var url = window.URL || window.webkitURL;
@@ -393,11 +451,14 @@ ColorPaletteLoad.prototype = {
 
   loadTXT: function(file) {
     var _this = this;
+    var context = { document: this.projectDocument, generation: this.projectGeneration };
 
     var fileReader = new FileReader();
     fileReader.onload = function(e) {
       var colorText = e.target.result;
-      _this.createPaletteFromPaintTxt(colorText);
+      if(_this.isCurrentProject(context)) {
+        _this.createPaletteFromPaintTxt(colorText);
+      }
 
     }
     fileReader.readAsText(file);
@@ -405,11 +466,14 @@ ColorPaletteLoad.prototype = {
 
   loadVPL: function(file) {
     var _this = this;
+    var context = { document: this.projectDocument, generation: this.projectGeneration };
 
     var fileReader = new FileReader();
     fileReader.onload = function(e) {
       var colorText = e.target.result;
-      _this.createPaletteFromVPL(colorText);
+      if(_this.isCurrentProject(context)) {
+        _this.createPaletteFromVPL(colorText);
+      }
 
     }
     fileReader.readAsText(file);
@@ -418,11 +482,14 @@ ColorPaletteLoad.prototype = {
 
   loadGPL: function(file) {
     var _this = this;
+    var context = { document: this.projectDocument, generation: this.projectGeneration };
 
     var fileReader = new FileReader();
     fileReader.onload = function(e) {
       var colorText = e.target.result;
-      _this.createPaletteFromGPL(colorText);
+      if(_this.isCurrentProject(context)) {
+        _this.createPaletteFromGPL(colorText);
+      }
 
     }
     fileReader.readAsText(file);
@@ -430,10 +497,13 @@ ColorPaletteLoad.prototype = {
 
   loadACO: function(file) {
     var _this = this;
+    var context = { document: this.projectDocument, generation: this.projectGeneration };
 
     var fileReader = new FileReader();
     fileReader.onload = function(e) {
-      _this.createPaletteFromACO(new Uint8Array(e.target.result));
+      if(_this.isCurrentProject(context)) {
+        _this.createPaletteFromACO(new Uint8Array(e.target.result));
+      }
     }
   //  fileReader.readAsText(file);
     fileReader.readAsArrayBuffer(file);
@@ -446,10 +516,13 @@ ColorPaletteLoad.prototype = {
     }
 
     var _this = this;
+    var context = { document: this.projectDocument, generation: this.projectGeneration };
 
     var fileReader = new FileReader();
     fileReader.onload = function(e) {
-      _this.createPaletteFromASE(new Uint8Array(e.target.result));
+      if(_this.isCurrentProject(context)) {
+        _this.createPaletteFromASE(new Uint8Array(e.target.result));
+      }
     }
   //  fileReader.readAsText(file);
     fileReader.readAsArrayBuffer(file);
@@ -457,10 +530,13 @@ ColorPaletteLoad.prototype = {
 
   loadBinary: function(file) {
     var _this = this;
+    var context = { document: this.projectDocument, generation: this.projectGeneration };
 
     var fileReader = new FileReader();
     fileReader.onload = function(e) {
-      _this.createPaletteFromBinary(new Uint8Array(e.target.result));
+      if(_this.isCurrentProject(context)) {
+        _this.createPaletteFromBinary(new Uint8Array(e.target.result));
+      }
     }
     fileReader.readAsArrayBuffer(file);    
   },
@@ -479,11 +555,14 @@ ColorPaletteLoad.prototype = {
 
   loadJSON: function(file) {
     var _this = this;
+    var context = { document: this.projectDocument, generation: this.projectGeneration };
 
     var fileReader = new FileReader();
     fileReader.onload = function(e) {
       var colorText = e.target.result;
-      _this.createPaletteFromJSON(colorText);
+      if(_this.isCurrentProject(context)) {
+        _this.createPaletteFromJSON(colorText);
+      }
 
     }
     fileReader.readAsText(file);

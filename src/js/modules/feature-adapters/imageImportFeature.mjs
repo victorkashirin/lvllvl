@@ -34,6 +34,7 @@ const imageImportCapabilities = Object.freeze([
   "colorPaletteManager", "colorPickerPopupMenu", "currentTile", "currentTileSetID", "frames",
   "getC64ECMColor", "getColorPerMode", "getHasTileFlip", "getHasTileRotate",
   "getScreenMode", "graphic", "grid", "history", "layers", "petscii",
+  "projectDocument", "projectGeneration",
   "setBackgroundColor", "setBorderColor", "setC64ECMColor", "setC64Multi1Color",
   "setC64Multi2Color", "setValue", "showTileEditor", "tileEditor", "tileEditorMobile",
   "tileSetManager", "tileSets", "tools", "updateBackgroundColorPicker",

@@ -4,11 +4,41 @@ var CA65Assembler = function() {
   this.output = '';
   this.report = '';
 
+  this.files = [];
   this.objectFiles = [];
-  
+  this.linkerOutput = null;
+  this.assembleContext = null;
 }
 
 CA65Assembler.prototype = {
+
+  projectContext: function() {
+    return {
+      document: typeof g_app != 'undefined' ? g_app.doc : null,
+      generation: typeof g_app != 'undefined' ? g_app.projectGeneration : undefined
+    };
+  },
+
+  isCurrentProject: function(context) {
+    if(!context || !context.document || typeof g_app == 'undefined') {
+      return false;
+    }
+    if(typeof g_app.isCurrentProject == 'function') {
+      return g_app.isCurrentProject(context.document, context.generation);
+    }
+    return g_app.doc === context.document;
+  },
+
+  resetProjectState: function() {
+    this.stdout = '';
+    this.stderr = '';
+    this.output = '';
+    this.report = '';
+    this.files = [];
+    this.objectFiles = [];
+    this.linkerOutput = null;
+    this.assembleContext = null;
+  },
 
   init: function(editor) {
     this.editor = editor;
@@ -17,9 +47,17 @@ CA65Assembler.prototype = {
   },
 
 
-  assemble: function(files, config, callback) {
+  assemble: function(files, config, callback, projectContext) {
 
     var _this = this;
+
+    if(typeof projectContext == 'undefined') {
+      projectContext = this.projectContext();
+    }
+    if(!this.isCurrentProject(projectContext)) {
+      return;
+    }
+    this.assembleContext = projectContext;
 
     this.files = files;
 
@@ -39,6 +77,10 @@ CA65Assembler.prototype = {
     options.preRun = [
       function() {
 
+        if(!_this.isCurrentProject(projectContext)) {
+          return;
+        }
+
         // set up stdin, stdout, stderr
         options.FS.init(
           // stdin
@@ -47,13 +89,15 @@ CA65Assembler.prototype = {
           },
           // stdout
           function(c) {
-            if(c !== null) {
+            if(c !== null && _this.isCurrentProject(projectContext)) {
               _this.stdout += String.fromCharCode(c);
             }
           },
           // std err
           function(c) {
-            _this.stderr += String.fromCharCode(c);
+            if(_this.isCurrentProject(projectContext)) {
+              _this.stderr += String.fromCharCode(c);
+            }
           }
         );
 
@@ -110,8 +154,11 @@ CA65Assembler.prototype = {
 
     options.postRun = [
       function() {
+        if(!_this.isCurrentProject(projectContext)) {
+          return;
+        }
         if(_this.stderr != '') {
-          _this.displayResult();
+          _this.displayResult(projectContext);
 
         } else {
           $('#buildOutputPanel').text(_this.stdout);
@@ -120,7 +167,7 @@ CA65Assembler.prototype = {
 
             _this.objectFiles.push({ filename: 'output.o', data: _this.output });
 
-            _this.linkObjectFiles(config, callback);
+            _this.linkObjectFiles(config, callback, projectContext);
 
             ca65 = null;
             options = null;
@@ -137,9 +184,16 @@ CA65Assembler.prototype = {
     var ca65 = CA65(options);
   },
 
-  linkObjectFiles: function(config, callback) {
+  linkObjectFiles: function(config, callback, projectContext) {
 
     var _this = this;
+
+    if(typeof projectContext == 'undefined') {
+      projectContext = this.assembleContext || this.projectContext();
+    }
+    if(!this.isCurrentProject(projectContext)) {
+      return;
+    }
 
 
     
@@ -153,7 +207,7 @@ CA65Assembler.prototype = {
 
 
     // get the config content
-    var doc = g_app.doc;
+    var doc = projectContext.document;
     var configDocRecord = null;
     var configFilename = false;
     var configContent = '';
@@ -178,6 +232,10 @@ CA65Assembler.prototype = {
     options.preRun = [
       function() {
 
+        if(!_this.isCurrentProject(projectContext)) {
+          return;
+        }
+
         // set up stdin, stdout, stderr
         options.FS.init(
           // stdin
@@ -186,20 +244,22 @@ CA65Assembler.prototype = {
           },
           // stdout
           function(c) {
-            if(c !== null) {
+            if(c !== null && _this.isCurrentProject(projectContext)) {
               _this.stdout += String.fromCharCode(c);
             }
           },
           // std err
           function(c) {
-            _this.stderr += String.fromCharCode(c);
+            if(_this.isCurrentProject(projectContext)) {
+              _this.stderr += String.fromCharCode(c);
+            }
           }
         );
 
 
         
 
-        var doc = g_app.doc;
+        var doc = projectContext.document;
 
         /*
         var configDocRecord = null;
@@ -291,8 +351,11 @@ CA65Assembler.prototype = {
 
     options.postRun = [
       function() {
+        if(!_this.isCurrentProject(projectContext)) {
+          return;
+        }
         if(_this.stderr != '') {
-          _this.displayResult();
+          _this.displayResult(projectContext);
         } else {
 //          $('#buildOutputPanel').html(_this.stdout);
           try {
@@ -321,7 +384,11 @@ CA65Assembler.prototype = {
 
 
   // display assembler output
-  displayResult: function() {
+  displayResult: function(projectContext) {
+
+    if(typeof projectContext != 'undefined' && !this.isCurrentProject(projectContext)) {
+      return;
+    }
 
     var assemblerOutput = this.editor.assemblerOutput;
 

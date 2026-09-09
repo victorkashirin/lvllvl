@@ -3,6 +3,7 @@ var BlockSet = function() {
   this.renderRevision = 0;
   this.name = '';
   this.editor = null;
+  this.document = null;
 
   this.defaultWidth = 2;
   this.defaultHeight = 2;
@@ -23,13 +24,15 @@ BlockSet.prototype = {
     }
   },
 */
-  init: function(editor, path) {
+  init: function(editor, path, document) {
     this.editor = editor;
     this.path = path;
+    this.document = document || g_app.doc;
   },
 
   getDocRecord: function() {
-    return g_app.doc.getDocRecord(this.path);
+    var document = this.document || g_app.doc;
+    return document && document.getDocRecord(this.path);
 
   },
 

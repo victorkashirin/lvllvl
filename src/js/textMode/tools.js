@@ -12,6 +12,16 @@ Tools.prototype = {
     this.editor = editor;
   },
 
+  resetProjectState: function() {
+    this.mode = 'draw';
+    if(this.drawTools && typeof this.drawTools.resetProjectState == 'function') {
+      this.drawTools.resetProjectState();
+    }
+    if(this.pixelDrawTools && typeof this.pixelDrawTools.resetProjectState == 'function') {
+      this.pixelDrawTools.resetProjectState();
+    }
+  },
+
   buildInterface: function(parentPanel) {
 
 //    var tabPanel = UI.create("UI.TabPanel");

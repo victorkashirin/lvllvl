@@ -1,5 +1,7 @@
 var ColorPaletteEditor = function() {
   this.doc = null;
+  this.projectDocument = null;
+  this.projectGeneration = undefined;
   this.uiComponent = null;
   this.colorPaletteEdit = null;
 }
@@ -7,6 +9,16 @@ var ColorPaletteEditor = function() {
 ColorPaletteEditor.prototype = {
   init: function() {
 
+  },
+
+  resetProjectState: function() {
+    this.doc = null;
+    this.path = false;
+    this.projectDocument = null;
+    this.projectGeneration = undefined;
+    if(this.colorPaletteEdit && typeof this.colorPaletteEdit.resetProjectState == 'function') {
+      this.colorPaletteEdit.resetProjectState();
+    }
   },
 
   buildInterface: function(parentPanel) {
@@ -36,6 +48,12 @@ ColorPaletteEditor.prototype = {
   
   load: function(path) {
     var colorPaletteManager = g_app.textModeEditor.colorPaletteManager;
+    this.projectDocument = g_app.doc;
+    this.projectGeneration = g_app.projectGeneration;
+    if(!this.projectDocument || (g_app.isCurrentProject &&
+        !g_app.isCurrentProject(this.projectDocument, this.projectGeneration))) {
+      return;
+    }
     this.path = path;
 
     var record = g_app.doc.getDocRecord(path);

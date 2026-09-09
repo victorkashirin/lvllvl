@@ -14,6 +14,13 @@ ColorPalettePanel.prototype = {
     this.editor = editor;
   },
 
+  resetProjectState: function() {
+    this.colorRecentIndex = 0;
+    if(this.colorPaletteDisplay && typeof this.colorPaletteDisplay.resetProjectState == 'function') {
+      this.colorPaletteDisplay.resetProjectState();
+    }
+  },
+
   buildInterface: function(parentComponent) {
     var _this = this;
     this.uiComponent = UI.create("UI.HTMLPanel", { "id": "colorPalettePanel" });

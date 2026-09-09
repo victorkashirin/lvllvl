@@ -1,5 +1,7 @@
 var TilePaletteEditor = function() {
   this.editor = null;
+  this.projectDocument = null;
+  this.projectGeneration = undefined;
   this.tilePaletteDisplay = null;
 
   this.uiComponent = null;
@@ -12,7 +14,27 @@ TilePaletteEditor.prototype = {
     this.editor = editor;
   },
 
+  captureProjectContext: function() {
+    this.projectDocument = g_app.doc;
+    this.projectGeneration = g_app.projectGeneration;
+  },
+
+  isCurrentProject: function() {
+    return !!this.projectDocument && (!g_app.isCurrentProject ||
+      g_app.isCurrentProject(this.projectDocument, this.projectGeneration));
+  },
+
+  resetProjectState: function() {
+    this.projectDocument = null;
+    this.projectGeneration = undefined;
+    this.tileSortMap = [];
+    if(this.tilePaletteDisplay && typeof this.tilePaletteDisplay.resetProjectState == 'function') {
+      this.tilePaletteDisplay.resetProjectState();
+    }
+  },
+
   show: function() {
+    this.captureProjectContext();
     var _this = this;
     var width = 600;
     var height = 600;
@@ -80,6 +102,9 @@ TilePaletteEditor.prototype = {
   },
 
   startSortTilePalette: function() {
+    if(!this.isCurrentProject()) {
+      return;
+    }
     var noTile = this.editor.tileSetManager.noTile;
 
     this.tilePaletteDisplay.setMode('sort');
@@ -179,6 +204,9 @@ TilePaletteEditor.prototype = {
   },
 
   endSortTilePalette: function(save) {
+    if(!this.isCurrentProject()) {
+      return;
+    }
     var noTile = this.editor.tileSetManager.noTile;
     if(save) {
       var tileSet = this.editor.tileSetManager.getCurrentTileSet();

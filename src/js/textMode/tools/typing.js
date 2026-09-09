@@ -30,6 +30,19 @@ var Typing = function() {
 
 Typing.prototype = {
 
+  resetProjectState: function() {
+    if(this.active) {
+      this.stop();
+    }
+    this.active = false;
+    this.keyCodeDown = -1;
+    this.shiftDown = false;
+    this.ctrlDown = false;
+    this.altDown = false;
+    this.cmdDown = false;
+    this.cursor = { x: 0, y: 0, z: 0 };
+  },
+
   isActive: function() {
     return this.active;
   },

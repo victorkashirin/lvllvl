@@ -57,6 +57,17 @@ var ColorPickerPopup = function() {
 }
 
 ColorPickerPopup.prototype = {
+  resetProjectState: function() {
+    this.highlightedColor = false;
+    this.currentColor = false;
+    this.colorPickedCallback = null;
+    this.c64ECMColorSetCallback = null;
+    if(this.colorPaletteDisplay && typeof this.colorPaletteDisplay.resetProjectState == 'function') {
+      this.colorPaletteDisplay.resetProjectState();
+    }
+    this.close();
+  },
+
   init: function(editor) {
     this.editor = editor;
 

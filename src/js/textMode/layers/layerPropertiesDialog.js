@@ -1,5 +1,7 @@
 var LayerPropertiesDialog = function() {
   this.editor = null;
+  this.projectDocument = null;
+  this.projectGeneration = undefined;
 /*
   this.scale = 1;
   this.brightness = 0;
@@ -55,6 +57,29 @@ var LayerPropertiesDialog = function() {
 
 
 LayerPropertiesDialog.prototype = {
+
+  captureProjectContext: function() {
+    this.projectDocument = g_app.doc || null;
+    this.projectGeneration = g_app.projectGeneration;
+  },
+
+  isCurrentProject: function() {
+    return !!this.projectDocument && (!g_app.isCurrentProject ||
+      g_app.isCurrentProject(this.projectDocument, this.projectGeneration));
+  },
+
+  resetProjectState: function() {
+    this.projectDocument = null;
+    this.projectGeneration = undefined;
+    this.newLayer = false;
+    this.layerObject = null;
+    if(this.image && this.image.onload) {
+      this.image.onload = null;
+    }
+    this.image = null;
+    this.imageDataURL = null;
+    this.callback = null;
+  },
 
 
   init: function(editor) {
@@ -123,6 +148,7 @@ LayerPropertiesDialog.prototype = {
 
   show: function(args) {
     var _this = this;
+    this.captureProjectContext();
 
     if(this.uiComponent == null) {
 
@@ -143,6 +169,9 @@ LayerPropertiesDialog.prototype = {
       this.htmlComponent = UI.create("UI.HTMLPanel");
       this.uiComponent.add(this.htmlComponent);
       this.htmlComponent.load('html/textMode/layerPropertiesDialog.html', function() {
+        if(!_this.isCurrentProject()) {
+          return;
+        }
         UI.number.initControls('#refLayer .number');;
         _this.initCompositeDropdown();
         _this.initContent(args);
@@ -153,6 +182,9 @@ LayerPropertiesDialog.prototype = {
       this.okButton = UI.create('UI.Button', { "text": "OK", "color": "primary" });
       this.uiComponent.addButton(this.okButton);
       this.okButton.on('click', function(event) {
+        if(!_this.isCurrentProject()) {
+          return;
+        }
         _this.setLayer();
         UI.closeDialog();
       });
@@ -163,6 +195,9 @@ LayerPropertiesDialog.prototype = {
         UI.closeDialog();
       });
     } else {
+      if(!this.isCurrentProject()) {
+        return;
+      }
       this.initContent(args);
     }
 
@@ -171,6 +206,10 @@ LayerPropertiesDialog.prototype = {
 
 
   setLayer: function() {
+
+    if(!this.isCurrentProject()) {
+      return;
+    }
 
     if(this.layerType == 'background') {
       this.editor.frames.setBackgroundColor(this.backgroundColor);
@@ -1094,6 +1133,9 @@ LayerPropertiesDialog.prototype = {
 
 
   setReferenceImage: function() {
+    if(!this.isCurrentProject()) {
+      return;
+    }
     this.showImage({ drawBackground: false });
     this.editor.layers.setReferenceImage(this.canvas,
        { 
@@ -1115,6 +1157,7 @@ LayerPropertiesDialog.prototype = {
   },
 
   chooseImage: function(file) {
+    this.captureProjectContext();
     if(!this.image) {
       this.image = new Image();
     }
@@ -1128,6 +1171,9 @@ LayerPropertiesDialog.prototype = {
 
     var _this = this;
     this.image.onload = function() {
+      if(!_this.isCurrentProject()) {
+        return;
+      }
       _this.showImage();
     }
   },
@@ -1176,6 +1222,9 @@ LayerPropertiesDialog.prototype = {
 
 
   showImage: function(args) {
+    if(!this.isCurrentProject()) {
+      return;
+    }
     if(!this.image) {
       return;
     }

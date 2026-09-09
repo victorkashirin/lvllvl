@@ -1,6 +1,12 @@
 var ImportSpriteImage = function() {
   this.editor = null;
 
+  // Image loading can outlive the project that opened the dialog. Keep the
+  // project context alongside the dialog state so late callbacks cannot
+  // populate a different project.
+  this.projectDocument = null;
+  this.projectGeneration = undefined;
+
   this.visible = false;
   this.loadImage = null;
   this.loadImageCanvas = null;
@@ -39,9 +45,42 @@ ImportSpriteImage.prototype = {
     this.editor = editor;
   },
 
+  captureProjectContext: function() {
+    this.projectDocument = g_app.doc;
+    this.projectGeneration = g_app.projectGeneration;
+  },
+
+  isCurrentProject: function(context) {
+    context = context || {
+      document: this.projectDocument,
+      generation: this.projectGeneration
+    };
+    return !!context.document
+      && (!g_app.isCurrentProject
+        || g_app.isCurrentProject(context.document, context.generation));
+  },
+
+  resetProjectState: function() {
+    this.projectDocument = null;
+    this.projectGeneration = undefined;
+    this.visible = false;
+    this.loadImage = null;
+    this.loadImageData = null;
+    this.spriteSource = null;
+    this.spriteRects = [];
+    this.spritePreviewIndex = 0;
+    this.importContext = null;
+    this.spritePreviewContext = null;
+    this.canvas = null;
+    this.loadImageCanvas = null;
+    this.spritePreview = null;
+  },
+
 
   start: function() {
     var _this = this;
+
+    this.captureProjectContext();
 
     if(this.uiComponent == null) {
       this.uiComponent = UI.create("UI.Dialog", { "id": "importSpriteImageDialog", "title": "Import", "width": 615, "height": 500 });
@@ -359,6 +398,11 @@ ImportSpriteImage.prototype = {
     }
 
     var _this = this;
+    this.captureProjectContext();
+    var projectContext = {
+      document: this.projectDocument,
+      generation: this.projectGeneration
+    };
     var filename = file.name;
     var dotPos = filename.lastIndexOf('.');
     var extension = filename.split('.').pop().toLowerCase();
@@ -388,6 +432,9 @@ ImportSpriteImage.prototype = {
       var src = url.createObjectURL(file);
 
       this.loadImage.onload = function() {
+        if(!_this.isCurrentProject(projectContext)) {
+          return;
+        }
         var imageWidth = _this.loadImage.naturalWidth;
         var imageHeight = _this.loadImage.naturalHeight;
 
@@ -413,6 +460,9 @@ ImportSpriteImage.prototype = {
   },
 
   setSpriteSource: function() {
+    if(!this.isCurrentProject()) {
+      return;
+    }
     console.log('set sprite source');
     if(this.spriteSource == null) {
       this.spriteSource = document.createElement('canvas');
@@ -492,7 +542,13 @@ ImportSpriteImage.prototype = {
   },
 
   drawSpritePreview: function() {
+    if(!this.isCurrentProject() || !this.spriteSource || !this.spritePreviewContext) {
+      return;
+    }
     var rect = this.spriteRects[this.spritePreviewIndex];
+    if(!rect) {
+      return;
+    }
     var scale = 1 / this.resizeSource;
 
     this.spritePreviewContext.clearRect(0, 0, this.spritePreview.width, this.spritePreview.height);
@@ -509,6 +565,10 @@ ImportSpriteImage.prototype = {
   },
 
   doImport: function() {
+
+    if(!this.isCurrentProject()) {
+      return;
+    }
 
     var layer = this.editor.layers.getSelectedLayerObject();
     if(!layer || layer.getType() !== 'grid') {

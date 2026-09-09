@@ -50,6 +50,36 @@ FileManager.prototype = {
     });
   },
 
+  resetProjectState: function() {
+    this.filename = 'Untitled';
+    this.saveTo = 'browserStorage';
+    this.googleDriveFileId = false;
+    this.saveInProgress = false;
+    this.gDriveSaveInProgress = false;
+    this.isNew = true;
+    // Import helpers cache parsed project data.  They are recreated for the
+    // next import so a canceled/late import cannot retain the old project.
+    this.importC = null;
+    this.importCharPad = null;
+    this.importSpritePad = null;
+    if(this.dropImage) {
+      if(typeof this.dropImage.resetProjectState == 'function') {
+        this.dropImage.resetProjectState();
+      } else {
+        this.dropImage.file = null;
+      }
+    }
+  },
+
+  clearAutosave: function() {
+    if(!this.persistence || typeof this.persistence.clearAutosave !== 'function') {
+      return Promise.resolve();
+    }
+    return this.persistence.clearAutosave().catch(function(error) {
+      console.warn('Unable to clear autosave during project transition', error);
+    });
+  },
+
   /*
   initNewDialog: function() {
     var _this = this;
@@ -283,6 +313,20 @@ FileManager.prototype = {
 
 
   openFile: function(file) {
+    if(!file) {
+      return;
+    }
+
+    // FileReader callbacks can outlive a project switch.  Keep the import
+    // attached to the project that was active when the user picked the file;
+    // otherwise a late callback could feed old-project data into the new one.
+    var projectDocument = g_app.doc;
+    var projectGeneration = g_app.projectGeneration;
+    var isCurrentProject = function() {
+      return !projectDocument || !g_app.isCurrentProject ||
+        g_app.isCurrentProject(projectDocument, projectGeneration);
+    };
+
     var filename = file.name;
     var extension = '';
     var dotPos = filename.lastIndexOf('.');
@@ -320,15 +364,23 @@ FileManager.prototype = {
         break;
     
       case 'zip':
-        g_app.doc = g_app.createDocument();
-        g_app.createDocumentStructure( g_app.doc);
+        var zipGeneration = g_app.beginProjectTransition();
+        var zipDoc = g_app.createDocument();
+        g_app.doc = zipDoc;
+        zipDoc.projectGuard = function() {
+          return g_app.isCurrentProject(zipDoc, zipGeneration);
+        };
+        g_app.createDocumentStructure(zipDoc);
 
-        g_app.doc.loadZipFile(file, function() {
+        zipDoc.loadZipFile(file, function() {
 
         });
         break;
       case 'json':
         fileReader.onload = function(e) {
+          if(!isCurrentProject()) {
+            return;
+          }
           _this.loadLocalFile(e.target.result);
           document.getElementById('loadDataForm').reset();  
         }
@@ -336,6 +388,9 @@ FileManager.prototype = {
         break;
       case 'ctm':
         fileReader.onload = function(e) {
+          if(!isCurrentProject()) {
+            return;
+          }
           var byteArray = new Uint8Array(e.target.result);
           _this.loadCTMFile(byteArray);
           document.getElementById('loadDataForm').reset();  
@@ -344,6 +399,9 @@ FileManager.prototype = {
         break;
       case 'c':
         fileReader.onload = function(e) {
+          if(!isCurrentProject()) {
+            return;
+          }
           _this.loadCFile(e.target.result);
           document.getElementById('loadDataForm').reset();  
         }
@@ -352,6 +410,9 @@ FileManager.prototype = {
     
       case 'spd':
         fileReader.onload = function(e) {
+          if(!isCurrentProject()) {
+            return;
+          }
           var byteArray = new Uint8Array(e.target.result);
 
           _this.loadSPDFile(byteArray);
@@ -378,6 +439,9 @@ FileManager.prototype = {
         break;
       case 'd64':
         fileReader.onload = function(e) {
+          if(!isCurrentProject()) {
+            return;
+          }
           var byteArray = new Uint8Array(e.target.result);
           _this.loadD64File(file.name, byteArray);
           document.getElementById('loadDataForm').reset();  
@@ -400,14 +464,25 @@ FileManager.prototype = {
 
   loadColorPalette: function(file) {
     console.log('load color palette!!');
+    var projectDocument = g_app.doc;
+    var projectGeneration = g_app.projectGeneration;
+    var isCurrentProject = function() {
+      return !projectDocument || !g_app.isCurrentProject ||
+        g_app.isCurrentProject(projectDocument, projectGeneration);
+    };
+
     if(g_app.doc !== null) {
       if(g_app.textModeEditor.colorPaletteManager.colorPaletteLoad && g_app.textModeEditor.colorPaletteManager.colorPaletteLoad.visible) {
-        g_app.textModeEditor.colorPaletteManager.colorPaletteLoad.setImportFile(file);
+        if(isCurrentProject()) {
+          g_app.textModeEditor.colorPaletteManager.colorPaletteLoad.setImportFile(file);
+        }
         return;
       }
 
       if(g_app.textModeEditor.colorPaletteEdit && g_app.textModeEditor.colorPaletteEdit.visible) {
-        g_app.textModeEditor.colorPaletteEdit.dropFile(file);
+        if(isCurrentProject()) {
+          g_app.textModeEditor.colorPaletteEdit.dropFile(file);
+        }
         return;
       }
 
@@ -415,7 +490,9 @@ FileManager.prototype = {
       // show the load colour palette dialog
       g_app.textModeEditor.colorPaletteManager.showLoad({
         dialogReadyCallback: function() {
-          g_app.textModeEditor.colorPaletteManager.colorPaletteLoad.setImportFile(file);
+          if(isCurrentProject()) {
+            g_app.textModeEditor.colorPaletteManager.colorPaletteLoad.setImportFile(file);
+          }
         }
       });
     } else {
@@ -427,9 +504,17 @@ FileManager.prototype = {
       
 
       g_app.newProject(args, function() {
+        var createdDocument = g_app.doc;
+        var createdGeneration = g_app.projectGeneration;
         // show the load colour palette dialog
         g_app.textModeEditor.colorPaletteManager.showLoad({
           dialogReadyCallback: function() {          
+            // The dialog can finish loading after another project becomes
+            // active. Do not attach the picked file to that new project.
+            if(g_app.isCurrentProject &&
+                !g_app.isCurrentProject(createdDocument, createdGeneration)) {
+              return;
+            }
             g_app.textModeEditor.colorPaletteManager.colorPaletteLoad.setImportFile(file);
           }
         });
@@ -563,14 +648,12 @@ FileManager.prototype = {
 
       
   loadCFile: function(content) {
-    if(this.importC == null) {
-      this.importC = new ImportC();
-      this.importC.init(g_app.textModeEditor);
-    }
-    g_app.doc = g_app.createDocument();
-
     var _this = this;
     g_app.newProject({}, function() {
+      // Project reset drops parser instances, so create the importer only
+      // after the new document has become active.
+      _this.importC = new ImportC();
+      _this.importC.init(g_app.textModeEditor);
       _this.importC.read(content);
 
       g_app.projectNavigator.refreshTree();
@@ -586,15 +669,12 @@ FileManager.prototype = {
   },
 
   loadCTMFile: function(byteArray) {
-
-    if(this.importCharPad == null) {
-      this.importCharPad = new ImportCharPad();
-      this.importCharPad.init(g_app.textModeEditor);
-    }
-    g_app.doc = g_app.createDocument();
-
     var _this = this;
     g_app.newProject({}, function() {
+      // Keep this parser scoped to the newly-created project.  The project
+      // reset intentionally clears cached import helpers.
+      _this.importCharPad = new ImportCharPad();
+      _this.importCharPad.init(g_app.textModeEditor);
       _this.importCharPad.readCharPad(byteArray);
 
       g_app.projectNavigator.refreshTree();
@@ -611,17 +691,14 @@ FileManager.prototype = {
   },
 
   loadSPDFile: function(byteArray) {
-
-    if(this.importSpritePad == null) {
-      this.importSpritePad = new ImportSpritePad();
-      this.importSpritePad.init(g_app.textModeEditor);
-    }
-    g_app.doc = g_app.createDocument();
-
     var _this = this;
     g_app.newProject({}, function() {
       
       g_app.projectNavigator.createSpriteRecord({}, function() {
+        // The importer belongs to the new project and must not be retained
+        // through closeProject's cache reset.
+        _this.importSpritePad = new ImportSpritePad();
+        _this.importSpritePad.init(g_app.textModeEditor);
         _this.importSpritePad.readSpritePad(byteArray);
 
         g_app.projectNavigator.refreshTree();
@@ -643,23 +720,33 @@ FileManager.prototype = {
 
 
   loadLocalFile: function(contents) {
-    //if(g_app.doc == null) {
-    g_app.doc = g_app.createDocument();
-    //}
+    var generation = g_app.beginProjectTransition();
+    var document = g_app.createDocument();
+    g_app.doc = document;
+    document.projectGuard = function() {
+      return g_app.isCurrentProject(document, generation);
+    };
     
-    g_app.doc.loadLocalFile(contents, function() {
+    document.loadLocalFile(contents, function() {
+      if(!document.projectGuard()) {
+        return;
+      }
 
       // get the last view from the settings.
 
       g_app.projectNavigator.refreshTree();
 
-      var dir = g_app.doc.dir('/screens');
+      var dir = document.dir('/screens');
+      if(!dir || dir.length === 0) {
+        g_app.openingProject = false;
+        return;
+      }
       var firstScreen = dir[0].name;
       g_app.textModeEditor.loadScreen('/screens/' + firstScreen);
 
 //      g_app.textModeEditor.loadScreen('/screens/Untitled Screen');
 
-      var settings = g_app.doc.getDocRecord('/settings');
+      var settings = document.getDocRecord('/settings');
       if(settings) {
         if(typeof settings.data.currentFGColor != 'undefined') {
           g_app.textModeEditor.currentTile.setColor(settings.data.currentFGColor);
@@ -676,6 +763,8 @@ FileManager.prototype = {
       g_app.setMode('2d');    
 
       g_app.textModeEditor.tools.drawTools.tilePalette.resize();
+
+      g_app.openingProject = false;
 
     });
     
@@ -851,7 +940,16 @@ FileManager.prototype = {
 
 
   autosave: function(callback) {
-    var doc = g_app.doc.data;
+    var projectDoc = g_app.doc;
+    var generation = g_app.projectGeneration;
+    if(!projectDoc || (g_app.isCurrentProject && !g_app.isCurrentProject(projectDoc, generation))) {
+      var skipped = { success: false, skipped: true };
+      if(typeof callback != 'undefined') {
+        callback(skipped);
+      }
+      return Promise.resolve(skipped);
+    }
+    var doc = projectDoc.data;
     var currentEditor = g_app.projectNavigator.getCurrentEditor();
     var thumbnailCanvas = null;
     var thumbnailData = null;
@@ -876,6 +974,13 @@ FileManager.prototype = {
     };
 
     return this.persistence.saveAutosave(snapshot).then(function() {
+      if(g_app.isCurrentProject && !g_app.isCurrentProject(projectDoc, generation)) {
+        var staleResult = { success: false, stale: true };
+        if(typeof callback != 'undefined') {
+          callback(staleResult);
+        }
+        return staleResult;
+      }
       _this.clearBrowserStorageError('Autosave');
       var result = { success: true };
       if(typeof callback != 'undefined') {
@@ -883,6 +988,13 @@ FileManager.prototype = {
       }
       return result;
     }).catch(function(error) {
+      if(g_app.isCurrentProject && !g_app.isCurrentProject(projectDoc, generation)) {
+        var staleResult = { success: false, stale: true, error: error };
+        if(typeof callback != 'undefined') {
+          callback(staleResult);
+        }
+        return staleResult;
+      }
       _this.showBrowserStorageError('Autosave', error);
       var result = { success: false, error: error };
       if(typeof callback != 'undefined') {
@@ -905,15 +1017,21 @@ FileManager.prototype = {
 
   // load a cached version
   loadCachedData: function(args, callback) {
-    g_app.doc = g_app.createDocument();
-    g_app.doc.data = args.data;
+    args = args || {};
+    var generation = g_app.beginProjectTransition();
+    var document = g_app.createDocument();
+    g_app.doc = document;
+    document.projectGuard = function() {
+      return g_app.isCurrentProject(document, generation);
+    };
+    document.data = args.data;
     var view = false;
     if(typeof args.view !== 'undefined') {
       view = args.view;
     }
 
     g_app.projectNavigator.refreshTree();
-    var dir = g_app.doc.dir('/screens');
+    var dir = document.dir('/screens');
 
     if(dir && dir.length > 0) {
       var firstScreen = dir[0].name;
@@ -928,7 +1046,7 @@ FileManager.prototype = {
       }
     }
 
-    var record = g_app.doc.getDocRecord(view);
+    var record = document.getDocRecord(view);
     if(!record) {
       // uh oh, the view doesn't exist...
       view = false;
@@ -943,24 +1061,41 @@ FileManager.prototype = {
     if(typeof callback != 'undefined') {
       callback();
     }
+    g_app.openingProject = false;
 
   },
 
   loadAutosave: function() {
+    var fileManager = this;
+    var requestedGeneration = g_app.projectGeneration;
     this.persistence.loadAutosaveSnapshot().then(function(snapshot) {
       var result = snapshot && snapshot.data ? snapshot.data : null;
       if(result !== null && typeof result != 'undefined') {
+        // Do not let a delayed recovery request replace a project opened
+        // while the snapshot was being read.
+        if(g_app.projectGeneration !== requestedGeneration) {
+          return;
+        }
 
-        g_app.doc = g_app.createDocument();
-        g_app.doc.data = result;
+        var generation = g_app.beginProjectTransition();
+        var document = g_app.createDocument();
+        g_app.doc = document;
+        document.projectGuard = function() {
+          return g_app.isCurrentProject(document, generation);
+        };
+        document.data = result;
 
         g_app.projectNavigator.refreshTree();
 
-        var dir = g_app.doc.dir('/screens');
+        var dir = document.dir('/screens');
+        if(!dir || dir.length === 0 || !document.projectGuard()) {
+          g_app.openingProject = false;
+          return;
+        }
         var firstScreen = dir[0].name;
         g_app.textModeEditor.loadScreen('/screens/' + firstScreen);
 
-        var settings = g_app.doc.getDocRecord('/settings');
+        var settings = document.getDocRecord('/settings');
         if(settings) {
           if(typeof settings.data.currentFGColor != 'undefined') {
             g_app.textModeEditor.currentTile.setColor(settings.data.currentFGColor);
@@ -975,9 +1110,12 @@ FileManager.prototype = {
           }
         }
         g_app.setMode('2d');    
+        g_app.openingProject = false;
       }
     }).catch(function(error) {
-      g_app.fileManager.showBrowserStorageError('Autosave recovery', error);
+      if(g_app.projectGeneration === requestedGeneration) {
+        fileManager.showBrowserStorageError('Autosave recovery', error);
+      }
     });
   },
 
@@ -1119,10 +1257,21 @@ FileManager.prototype = {
 
 
     var _this = this;
+    var projectDoc = g_app.doc;
+    var projectGeneration = g_app.projectGeneration;
+    var isCurrentProject = function() {
+      return !g_app.isCurrentProject || g_app.isCurrentProject(projectDoc, projectGeneration);
+    };
 
 
     if(method == 'browserStorage') {
       this.getProjectId({ name: filename, type: 'project', saveTo: method }, function(result) {
+        if(!isCurrentProject()) {
+          if(typeof callback != 'undefined') {
+            callback({ success: false, stale: true });
+          }
+          return;
+        }
         if(!result.success && result.error) {
           callback(result);
           return;
@@ -1154,6 +1303,12 @@ FileManager.prototype = {
 
       // check if already exists
       g_app.gdrive.listProjects({ name: filename }, function(projects) {
+        if(!isCurrentProject()) {
+          if(typeof callback != 'undefined') {
+            callback({ success: false, stale: true });
+          }
+          return;
+        }
         var foundId = false;
         _this.googleDriveFileId = false;
         for(var i = 0; i < projects.length; i++) {
@@ -1226,7 +1381,23 @@ FileManager.prototype = {
       }
 
       var _this = this;
-      return g_app.doc.saveToBrowserStorage({filename: filename }, function(result) {
+      var projectDoc = g_app.doc;
+      var projectGeneration = g_app.projectGeneration;
+      if(!projectDoc || (g_app.isCurrentProject &&
+          !g_app.isCurrentProject(projectDoc, projectGeneration))) {
+        var missingResult = { success: false, stale: true, error: new Error('No active project') };
+        if(typeof callback !== 'undefined') {
+          callback(missingResult);
+        }
+        return Promise.resolve(missingResult);
+      }
+      return projectDoc.saveToBrowserStorage({filename: filename }, function(result) {
+        if(g_app.isCurrentProject && !g_app.isCurrentProject(projectDoc, projectGeneration)) {
+          if(typeof callback !== 'undefined') {
+            callback({ success: false, stale: true });
+          }
+          return;
+        }
         if(result.success) {
           _this.filename = filename;
           _this.saveTo = saveTo;
@@ -1243,6 +1414,8 @@ FileManager.prototype = {
 
     if(saveTo == 'googleDrive') {
       var _this = this;
+      var projectDoc = g_app.doc;
+      var projectGeneration = g_app.projectGeneration;
 
       if(this.gDriveSaveInProgress) {
         if(typeof callback !== 'undefined') {
@@ -1257,6 +1430,13 @@ FileManager.prototype = {
           filename: filename,
           showProgress: showProgress
         }, function(result) {
+          if(g_app.isCurrentProject && !g_app.isCurrentProject(projectDoc, projectGeneration)) {
+            _this.gDriveSaveInProgress = false;
+            if(typeof callback !== 'undefined') {
+              callback({ success: false, stale: true });
+            }
+            return;
+          }
           _this.gDriveSaveInProgress = false;
           if(!result || result.success === false || typeof result.name != 'string') {
             if(typeof callback !== 'undefined') {

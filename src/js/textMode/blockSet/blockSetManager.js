@@ -1,14 +1,46 @@
 var BlockSetManager = function() {
   this.currentBlockSetId = false;
+  this.currentBlockSet = null;
   this.blockSets = {};
 
   this.blockSizeDialog = null;
+  this.blockSizeDialogDocument = null;
+  this.blockSizeDialogGeneration = undefined;
 }
 
 BlockSetManager.prototype = {
 
   init: function(editor) {
     this.editor = editor;
+  },
+
+  // Block sets are cached by path, but the same path is valid in every
+  // project. Drop both the cache and the selected object at the project
+  // boundary so a retained layer/tool cannot resolve records in the next
+  // document.
+  resetProjectState: function() {
+    this.currentBlockSetId = false;
+    this.currentBlockSet = null;
+    this.blockSets = {};
+    this.blockSet = null;
+    this.blockSizeDialogCallback = null;
+    this.blockSizeDialogDocument = null;
+    this.blockSizeDialogGeneration = undefined;
+  },
+
+  captureBlockSizeDialogProject: function() {
+    this.blockSizeDialogDocument = typeof g_app != 'undefined' ? g_app.doc : null;
+    this.blockSizeDialogGeneration = typeof g_app != 'undefined' ? g_app.projectGeneration : undefined;
+  },
+
+  isCurrentBlockSizeDialogProject: function() {
+    if(!this.blockSizeDialogDocument || typeof g_app == 'undefined') {
+      return false;
+    }
+    if(typeof g_app.isCurrentProject == 'function') {
+      return g_app.isCurrentProject(this.blockSizeDialogDocument, this.blockSizeDialogGeneration);
+    }
+    return g_app.doc === this.blockSizeDialogDocument;
   },
 
   initBlockSizeDialogContent: function() {
@@ -36,12 +68,19 @@ BlockSetManager.prototype = {
 
   initBlockSizeDialog: function() {
     var _this = this;
+    this.captureBlockSizeDialogProject();
+    var projectDocument = this.blockSizeDialogDocument;
+    var projectGeneration = this.blockSizeDialogGeneration;
 
     this.blockSizeDialog = UI.create("UI.Dialog", { "id": "blockSizeDialog", "title": styles.text.blockName + " Size", "width": 280, "height": 168 });
 
     this.blockSizeHTML = UI.create("UI.HTMLPanel");
     this.blockSizeDialog.add(this.blockSizeHTML);
     this.blockSizeHTML.load('html/textMode/blockSizeDialog.html', function() {
+      if(!projectDocument || (typeof g_app.isCurrentProject == 'function' &&
+          !g_app.isCurrentProject(projectDocument, projectGeneration))) {
+        return;
+      }
       _this.initBlockSizeDialogContent();
       UI.showDialog("blockSizeDialog");
 
@@ -50,6 +89,10 @@ BlockSetManager.prototype = {
     this.okButton = UI.create('UI.Button', { "text": "OK", "color": "primary" });
     this.blockSizeDialog.addButton(this.okButton);
     this.okButton.on('click', function(event) {
+      if(!_this.isCurrentBlockSizeDialogProject()) {
+        UI.closeDialog();
+        return;
+      }
       var width = $('#settingsBlockWidth').val();
       var height = $('#settingsBlockHeight').val();
       var colorMode = $('#settingsBlockColorMode').val();
@@ -71,10 +114,14 @@ BlockSetManager.prototype = {
 
 
   showBlockSizeDialog: function(callback) {
+    this.captureBlockSizeDialogProject();
     this.blockSizeDialogCallback = callback;
     if(this.blockSizeDialog == null) {
       this.initBlockSizeDialog();
     } else {
+      if(!this.isCurrentBlockSizeDialogProject()) {
+        return;
+      }
       this.initBlockSizeDialogContent();
       UI.showDialog("blockSizeDialog");
 
@@ -156,34 +203,41 @@ BlockSetManager.prototype = {
 
 
   createBlockSet: function(args) {
+    args = args || {};
+    var document = args.document || g_app.doc;
+    if(!document) {
+      return null;
+    }
     var width = 2;
     var height = 2;
     var name = 'Block Set';
     console.error("shoulnd't get here...");
 
-    if(typeof args != 'undefined') {
-      if(args.width != 'undefined') {
-        width = args.width;
-      }
+    if(typeof args.width != 'undefined') {
+      width = args.width;
+    }
 
-      if(args.height != 'undefined') {
-        height = args.height;
-      }
+    if(typeof args.height != 'undefined') {
+      height = args.height;
     }
 
     if(typeof args.name != 'undefined') {
       name = args.name;
     }
 
-    var blockSet = g_app.doc.createDocRecord("/block sets", name, "block set", { width: width, height: height, blocks: [] });
+    var blockSet = document.createDocRecord("/block sets", name, "block set", { width: width, height: height, blocks: [] });
     
     this.currentBlockSetId = blockSet.id;
     return blockSet;
   },
 
-  setCurrentBlockSetFromId: function(blockSetId) {
+  setCurrentBlockSetFromId: function(blockSetId, document) {
     console.error('set current block set from id!!!');
-    var blockSet = g_app.doc.getDocRecordById(blockSetId, "/block sets");
+    document = document || g_app.doc;
+    if(!document) {
+      return;
+    }
+    var blockSet = document.getDocRecordById(blockSetId, "/block sets");
     if(blockSet != null) {
 
       if(this.currentBlockSet == null) {
@@ -191,7 +245,7 @@ BlockSetManager.prototype = {
       }
       console.log('set current block size to ' + blockSetId);
       this.currentBlockSetId = blockSetId;
-      this.currentBlockSet.init(this.editor, blockSet.name, blockSet.id);
+      this.currentBlockSet.init(this.editor, '/block sets/' + blockSet.name, document);
     }
 
 
@@ -208,12 +262,16 @@ BlockSetManager.prototype = {
       return null;
     }
     var path = tileSet.getPath();
+    var document = tileSet.document || g_app.doc;
+    if(!document || (g_app.isCurrentProject && !g_app.isCurrentProject(document))) {
+      return null;
+    }
 
 
     var blockSetsPath = path + '/block sets';
-    var blockSets = g_app.doc.getDocRecord(blockSetsPath);    
+    var blockSets = document.getDocRecord(blockSetsPath);
     if(!blockSets) {
-      blockSets = g_app.doc.createDocRecord(path, 'block sets', 'folder', {});
+      blockSets = document.createDocRecord(path, 'block sets', 'folder', {});
     }
 
 
@@ -221,62 +279,76 @@ BlockSetManager.prototype = {
 
     var name = 'block set';
     var blockSetPath = blockSetsPath + '/' + name;
-    var blockSet = g_app.doc.getDocRecord(blockSetPath);
+    var blockSet = document.getDocRecord(blockSetPath);
     if(!blockSet) {
-      blockSet = g_app.doc.createDocRecord(blockSetsPath, name, "block set", {  blocks: [] })
+      blockSet = document.createDocRecord(blockSetsPath, name, "block set", {  blocks: [] })
     }
 
 //console.log(blockSet);
 
-    return this.getBlockSet(blockSetPath);
+    return this.getBlockSet(blockSetPath, document);
 
   },
 
 
-  getBlockSet: function(path) {
+  getBlockSet: function(path, document) {
 
     // should be id in case path changes??
 
+    document = document || g_app.doc;
+    if(!document) {
+      return null;
+    }
+
     if(this.blockSets.hasOwnProperty(path)) {
-      return this.blockSets[path];
+      var cachedBlockSet = this.blockSets[path];
+      if(cachedBlockSet.document === document) {
+        return cachedBlockSet;
+      }
+      delete this.blockSets[path];
     }
 
     // create it in the doc if not exists
-    var blockSet = g_app.doc.getDocRecord(path);
+    var blockSet = document.getDocRecord(path);
     if(!blockSet) {
       var lastSlash = path.lastIndexOf('/');
       var blockSetsPath = path.substring(0, lastSlash);
       var name = path.substring(lastSlash + 1);
       console.log('create ' + blockSetsPath + ' - ' + name);
 
-      var blockSets = g_app.doc.getDocRecord(blockSetsPath);    
+      var blockSets = document.getDocRecord(blockSetsPath);
       if(!blockSets) {
         var lastSlash = blockSetsPath.lastIndexOf('/');
         var tileSetPath = blockSetsPath.substring(0, lastSlash);
 
-        blockSets = g_app.doc.createDocRecord(tileSetPath, 'block sets', 'folder', {});
+        blockSets = document.createDocRecord(tileSetPath, 'block sets', 'folder', {});
       }
 
-      blockSet = g_app.doc.createDocRecord(blockSetsPath, name, "block set", {  blocks: [] })
+      blockSet = document.createDocRecord(blockSetsPath, name, "block set", {  blocks: [] })
     }
 
 
     var blockSet = new BlockSet();
-    blockSet.init(this.editor, path);
+    blockSet.init(this.editor, path, document);
     this.blockSets[path] = blockSet;
     return blockSet;
 
   },
 
 
-  getBlockSetOld: function(blockSetId) {
+  getBlockSetOld: function(blockSetId, document) {
 
     if(blockSetId === false) {
       return null;
     }
 
 
-    var blockSet = g_app.doc.getDocRecordById(blockSetId, "/block sets");
+    document = document || g_app.doc;
+    if(!document || (g_app.isCurrentProject && !g_app.isCurrentProject(document))) {
+      return null;
+    }
+
+    var blockSet = document.getDocRecordById(blockSetId, "/block sets");
     if(blockSet != null) {
 
       if(this.currentBlockSet == null) {
@@ -284,7 +356,7 @@ BlockSetManager.prototype = {
       }
 
       if(this.currentBlockSet.getId() != blockSetId) {
-        this.currentBlockSet.init(this.editor, blockSet.name, blockSet.id);
+        this.currentBlockSet.init(this.editor, '/block sets/' + blockSet.name, document);
       }
 
       return this.currentBlockSet;

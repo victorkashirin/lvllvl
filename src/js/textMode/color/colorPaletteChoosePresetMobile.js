@@ -30,6 +30,8 @@ ColorPaletteChoosePresetMobileCard = function() {
   this.saturation = 0;
 
   this.editor = null;
+  this.projectDocument = null;
+  this.projectGeneration = undefined;
 }
 
 ColorPaletteChoosePresetMobileCard.prototype = {
@@ -156,6 +158,10 @@ ColorPaletteChoosePresetMobileCard.prototype = {
 
     var _this = this;
     this.paletteImage.onload = function() {
+      if(_this.projectDocument && g_app.isCurrentProject &&
+          !g_app.isCurrentProject(_this.projectDocument, _this.projectGeneration)) {
+        return;
+      }
       _this.displaySelectedPalette();
     }
 
@@ -163,6 +169,11 @@ ColorPaletteChoosePresetMobileCard.prototype = {
   },
 
   displaySelectedPalette: function() {
+
+    if(this.projectDocument && g_app.isCurrentProject &&
+        !g_app.isCurrentProject(this.projectDocument, this.projectGeneration)) {
+      return;
+    }
 
     var charsetUtil = this.editor.tileSetManager.getCurrentTileSet();
 
@@ -213,6 +224,8 @@ console.log("DRAW  Palette!!");
 
 var ColorPaletteChoosePresetMobile = function() {
   this.editor = null;
+  this.projectDocument = null;
+  this.projectGeneration = undefined;
   this.uiComponent = null;
 
 
@@ -237,6 +250,32 @@ var ColorPaletteChoosePresetMobile = function() {
 }
 
 ColorPaletteChoosePresetMobile.prototype = {
+  captureProjectContext: function() {
+    this.projectDocument = g_app.doc || null;
+    this.projectGeneration = g_app.projectGeneration;
+  },
+
+  isCurrentProject: function() {
+    return !!this.projectDocument && (!g_app.isCurrentProject ||
+      g_app.isCurrentProject(this.projectDocument, this.projectGeneration));
+  },
+
+  resetProjectState: function() {
+    this.projectDocument = null;
+    this.projectGeneration = undefined;
+    this.callback = false;
+    this.cardPosition = 0;
+    this.cardMoving = false;
+    this.paletteCardA = null;
+    this.paletteCardB = null;
+    if(this.colorPaletteSampleImage) {
+      this.colorPaletteSampleImage.onload = null;
+      this.colorPaletteSampleImage.src = '';
+    }
+    this.nextPreloadImage = null;
+    this.prevPreloadImage = null;
+  },
+
   init: function(editor) {
     this.editor = editor;
 
@@ -253,6 +292,7 @@ ColorPaletteChoosePresetMobile.prototype = {
 
   show: function(args) {
     var _this = this;
+    this.captureProjectContext();
     var width = 500;
     var height = 100;
 
@@ -275,7 +315,13 @@ ColorPaletteChoosePresetMobile.prototype = {
       this.htmlComponent = UI.create("UI.HTMLPanel");
       this.uiComponent.add(this.htmlComponent);
       this.htmlComponent.load('html/textMode/colorPaletteChoosePresetMobile.html', function() {
+        if(!_this.isCurrentProject()) {
+          return;
+        }
         _this.setupSampleImage(function() {
+          if(!_this.isCurrentProject()) {
+            return;
+          }
           _this.initContent();
           _this.initEvents();
         });
@@ -284,6 +330,9 @@ ColorPaletteChoosePresetMobile.prototype = {
       this.okButton = UI.create('UI.Button', { "text": "Choose" });
       this.uiComponent.addButton(this.okButton);
       this.okButton.on('click', function(event) {
+        if(!_this.isCurrentProject() || !_this.paletteCardA) {
+          return;
+        }
         if(_this.callback) {
           _this.callback(_this.paletteCardA.paletteOptionId);
         }
@@ -296,6 +345,9 @@ ColorPaletteChoosePresetMobile.prototype = {
   },
 
   initContent: function() {
+    if(!this.isCurrentProject()) {
+      return;
+    }
     var listHTML = '';
 
 
@@ -328,11 +380,15 @@ ColorPaletteChoosePresetMobile.prototype = {
 
     this.paletteCardA = new ColorPaletteChoosePresetMobileCard();
     this.paletteCardA.init(this.editor, "A");
+    this.paletteCardA.projectDocument = this.projectDocument;
+    this.paletteCardA.projectGeneration = this.projectGeneration;
     this.paletteCardA.initContent();
     this.paletteCardA.setPosition(0, 0);
 
     this.paletteCardB = new ColorPaletteChoosePresetMobileCard();
     this.paletteCardB.init(this.editor, "B");
+    this.paletteCardB.projectDocument = this.projectDocument;
+    this.paletteCardB.projectGeneration = this.projectGeneration;
     this.paletteCardB.initContent();
 
     this.paletteCardB.setPosition(10000, 0);
@@ -418,6 +474,9 @@ ColorPaletteChoosePresetMobile.prototype = {
 
 
   touchStart: function(e) {
+    if(!this.isCurrentProject() || !this.paletteCardA || !this.paletteCardB) {
+      return;
+    }
     this.touchVelocity.touchStart(e);    
 
     var touches = e.touches;
@@ -438,6 +497,9 @@ ColorPaletteChoosePresetMobile.prototype = {
   },
 
   touchMove: function(e) {
+    if(!this.isCurrentProject() || !this.paletteCardA || !this.paletteCardB) {
+      return;
+    }
     this.touchVelocity.touchMove(e);    
 
     var touches = e.touches;
@@ -491,6 +553,9 @@ ColorPaletteChoosePresetMobile.prototype = {
   },
 
   touchEnd: function(e) {
+    if(!this.isCurrentProject() || !this.paletteCardA || !this.paletteCardB) {
+      return;
+    }
     this.touchVelocity.touchEnd(e);    
 
     var touches = e.touches;
@@ -502,6 +567,9 @@ ColorPaletteChoosePresetMobile.prototype = {
 
 
   hideNext: function(args) {
+    if(!this.isCurrentProject() || !this.paletteCardA || !this.paletteCardB) {
+      return;
+    }
     var _this = this;
 
     var duration = 2000 ;
@@ -570,6 +638,9 @@ ColorPaletteChoosePresetMobile.prototype = {
 
       duration: duration,
       progress: function(animation, now, tween) {
+        if(!_this.isCurrentProject() || !_this.paletteCardA || !_this.paletteCardB) {
+          return;
+        }
         var position = _this.paletteCardA.holder.position();
         _this.cardPosition = position.left;
         var left = position.left;
@@ -585,6 +656,9 @@ ColorPaletteChoosePresetMobile.prototype = {
       },
 
       complete: function() {
+        if(!_this.isCurrentProject() || !_this.paletteCardA || !_this.paletteCardB) {
+          return;
+        }
         _this.cardMoving = false;
 
         if(moveTo !== 0) {
@@ -603,6 +677,9 @@ ColorPaletteChoosePresetMobile.prototype = {
 
 
   setCardPosition: function(position) {
+    if(!this.isCurrentProject() || !this.paletteCardA || !this.paletteCardB) {
+      return;
+    }
 
 
     this.cardPosition = position;
@@ -676,6 +753,9 @@ ColorPaletteChoosePresetMobile.prototype = {
     return false; 
   },
   setCardBContent: function() {
+    if(!this.isCurrentProject() || !this.paletteCardA || !this.paletteCardB) {
+      return;
+    }
     if(this.cardPosition < 0) {
       var nextPresetId = this.getNextPresetId();
       if(nextPresetId !== false) {
@@ -738,6 +818,9 @@ ColorPaletteChoosePresetMobile.prototype = {
   },
 
   selectPalettePreset: function(presetId) {
+    if(!this.isCurrentProject()) {
+      return;
+    }
     this.presetId = presetId;
     $('#colorPaletteChoosePresetMobileList').val(this.presetId);
 
@@ -746,6 +829,9 @@ ColorPaletteChoosePresetMobile.prototype = {
   },
 
   nextPreset: function() {
+    if(!this.isCurrentProject() || !this.paletteCardA || !this.paletteCardB) {
+      return;
+    }
     console.log('next!' + this.cardPosition);
     if(this.cardPosition === 0) {
       var nextPresetId = this.getNextPresetId();
@@ -759,6 +845,9 @@ ColorPaletteChoosePresetMobile.prototype = {
   },
 
   prevPreset: function() {
+    if(!this.isCurrentProject() || !this.paletteCardA || !this.paletteCardB) {
+      return;
+    }
     console.log('prev');
     if(this.cardPosition === 0) {
       var prevPresetId = this.getPrevPresetId();

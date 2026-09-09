@@ -367,12 +367,34 @@ export class PersistenceService {
   }
 
   /** @param {{data: unknown, thumbnailData: unknown}} snapshot */
-  async saveAutosave(snapshot) {
+  saveAutosave(snapshot) {
+    return this.runExclusive(() => this.saveAutosaveUnlocked(snapshot));
+  }
+
+  /** @param {{data: unknown, thumbnailData: unknown}} snapshot */
+  async saveAutosaveUnlocked(snapshot) {
     const commit = await this.storage.commitVersioned(this.storage.autosaveKey, {
       ...snapshot,
       savedAt: this.clock(),
     });
     await this.storage.cleanupPreviousVersion(commit);
+  }
+
+  clearAutosave() {
+    return this.runExclusive(() => this.clearAutosaveUnlocked());
+  }
+
+  async clearAutosaveUnlocked() {
+    const pointer = await this.storage.get(this.storage.autosaveKey);
+    if (this.storage.isVersionPointer(pointer)) {
+      const activeVersion = /** @type {{activeVersion?: string}} */ (pointer).activeVersion;
+      if (activeVersion) {
+        await this.storage.remove(activeVersion);
+      }
+    }
+    await this.storage.remove(this.storage.autosaveKey);
+    await this.storage.remove(legacyAutosaveDataKey);
+    await this.storage.remove(legacyAutosaveThumbnailKey);
   }
 
   async loadAutosaveSnapshot() {

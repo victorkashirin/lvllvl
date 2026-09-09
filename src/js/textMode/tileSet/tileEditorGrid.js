@@ -79,6 +79,46 @@ var TileEditorGrid = function() {
 }
 
 TileEditorGrid.prototype = {
+  resetProjectState: function() {
+    this.character = false;
+    this.characters = [];
+    this.cells = [];
+    this.tileSet = null;
+    this.frame = 0;
+    this.frameCount = 1;
+    this.mixedAnimation = false;
+    this.drawCharacter = false;
+    this.drawFGColor = 0;
+    this.drawBGColor = 0;
+    this.colorIndex = 0;
+    this.cursorPositionX = -1;
+    this.cursorPositionY = -1;
+    this.lastPixelX = -1;
+    this.lastPixelY = -1;
+    this.characterCursorX = -1;
+    this.characterCursorY = -1;
+    this.mouseIsDown = false;
+    this.buttons = 0;
+    this.clipboard = [];
+    this.clipboardImageData = null;
+    this.charWidth = false;
+    this.charHeight = false;
+    this.charsAcross = 1;
+    this.charsDown = 1;
+
+    var contexts = [this.context, this.characterContext, this.characterCursorContext,
+      this.clipboardContext];
+    for(var i = 0; i < contexts.length; i++) {
+      var context = contexts[i];
+      var canvas = context && context.canvas;
+      if(context && canvas) {
+        try {
+          context.clearRect(0, 0, canvas.width, canvas.height);
+        } catch(error) {}
+      }
+    }
+  },
+
   init: function(editor, args) {
     this.editor = editor;
     this.canvasElementId = args.canvasElementId;

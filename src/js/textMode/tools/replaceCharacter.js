@@ -6,6 +6,8 @@ var ReplaceCharacterDialog = function() {
 
   this.replaceTileCanvas = null;
   this.replaceTileWithCanvas = null;
+  this.projectDocument = null;
+  this.projectGeneration = undefined;
 }
 
 ReplaceCharacterDialog.prototype = {
@@ -13,7 +15,34 @@ ReplaceCharacterDialog.prototype = {
     this.editor = editor;
   },
 
+  captureProjectContext: function() {
+    this.projectDocument = (typeof g_app != 'undefined') ? g_app.doc : null;
+    this.projectGeneration = (typeof g_app != 'undefined') ? g_app.projectGeneration : undefined;
+  },
+
+  isCurrentProject: function() {
+    if(!this.projectDocument || typeof g_app == 'undefined') {
+      return false;
+    }
+    if(typeof g_app.isCurrentProject == 'function') {
+      return g_app.isCurrentProject(this.projectDocument, this.projectGeneration);
+    }
+    return this.projectDocument === g_app.doc;
+  },
+
+  resetProjectState: function() {
+    this.replaceTile = false;
+    this.replaceWithTile = false;
+    this.replaceTileCanvas = null;
+    this.replaceTileWithCanvas = null;
+    this.replaceTileContext = null;
+    this.replaceTileWithContext = null;
+    this.projectDocument = null;
+    this.projectGeneration = undefined;
+  },
+
   show: function() {
+    this.captureProjectContext();
     if(this.uiComponent == null) {
 
       var _this = this;
@@ -22,6 +51,9 @@ ReplaceCharacterDialog.prototype = {
       this.htmlComponent = UI.create("UI.HTMLPanel");
       this.uiComponent.add(this.htmlComponent);
       this.htmlComponent.load('html/textMode/replaceCharacter.html', function() {
+        if(!_this.isCurrentProject()) {
+          return;
+        }
         _this.initContent();
         _this.initEvents();
       });
@@ -47,6 +79,9 @@ ReplaceCharacterDialog.prototype = {
   },
 
   initContent: function() {
+    if(!this.isCurrentProject()) {
+      return;
+    }
     if(this.replaceTileCanvas == null) {
       this.replaceTileCanvas = document.getElementById('replaceCharacterCanvas');
     }
@@ -94,17 +129,26 @@ ReplaceCharacterDialog.prototype = {
   },
 
   setReplaceTile: function(tile) {
+    if(!this.isCurrentProject()) {
+      return;
+    }
     this.replaceTile = tile;
     this.drawReplaceCharacter();
   },
 
   setReplaceWithTile: function(tile) {
+    if(!this.isCurrentProject()) {
+      return;
+    }
     this.replaceWithTile = tile;
     this.drawReplaceCharacter();
 
   },
 
   initEvents: function() {
+    if(!this.isCurrentProject()) {
+      return;
+    }
 
     var _this = this;
 
@@ -148,7 +192,13 @@ ReplaceCharacterDialog.prototype = {
 
 
   drawReplaceCharacter: function() {
+    if(!this.isCurrentProject()) {
+      return;
+    }
     var tileSet = this.editor.tileSetManager.getCurrentTileSet();
+    if(!tileSet) {
+      return;
+    }
     var charWidth = tileSet.getTileWidth();
     var charHeight = tileSet.getTileHeight();
     var scale = 2;
@@ -206,6 +256,9 @@ ReplaceCharacterDialog.prototype = {
   },
 
   doReplaceTile: function() {
+    if(!this.isCurrentProject()) {
+      return false;
+    }
     var layer = this.editor.layers.getSelectedLayerObject();
     if(!layer || layer.getType() != 'grid') {
       return false;

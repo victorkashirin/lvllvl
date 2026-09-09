@@ -1,5 +1,7 @@
 var ColorPaletteChoosePreset = function() {
   this.editor = null;
+  this.projectDocument = null;
+  this.projectGeneration = undefined;
   this.uiComponent = null;
 
   this.previewColorPalette = null;
@@ -37,6 +39,38 @@ ColorPaletteChoosePreset.prototype = {
     this.editor = editor;
   },
 
+  captureProjectContext: function() {
+    this.projectDocument = g_app.doc;
+    this.projectGeneration = g_app.projectGeneration;
+  },
+
+  isCurrentProject: function() {
+    return !!this.projectDocument && (!g_app.isCurrentProject ||
+      g_app.isCurrentProject(this.projectDocument, this.projectGeneration));
+  },
+
+  resetProjectState: function() {
+    if(this.img && this.img.onload) {
+      this.img.onload = null;
+    }
+    if(this.colorPaletteSampleImage && this.colorPaletteSampleImage.onload) {
+      this.colorPaletteSampleImage.onload = null;
+    }
+    this.projectDocument = null;
+    this.projectGeneration = undefined;
+    this.callback = false;
+    this.previewColorPalette = null;
+    this.previewColorPaletteId = false;
+    this.previewColorPaletteDescription = '';
+    this.visible = false;
+    if(this.colorPaletteLoad && typeof this.colorPaletteLoad.resetProjectState == 'function') {
+      this.colorPaletteLoad.resetProjectState();
+    }
+    if(this.colorPaletteDisplay && typeof this.colorPaletteDisplay.resetProjectState == 'function') {
+      this.colorPaletteDisplay.resetProjectState();
+    }
+  },
+
   setupSampleImage: function(callback) {
     this.colorPaletteSampleImage = new Image();
     this.colorPaletteSampleImage.onload = callback;
@@ -46,6 +80,7 @@ ColorPaletteChoosePreset.prototype = {
 
   show: function(args) {
     var _this = this;
+    this.captureProjectContext();
     this.visible = true;
 
     this.setColorPalette = true;
@@ -114,6 +149,9 @@ ColorPaletteChoosePreset.prototype = {
       //this.uiComponent.add(this.htmlComponent);
       this.htmlComponent.load('html/textMode/colorPaletteChoosePreset.html', function() {
         _this.setupSampleImage(function() {
+          if(!_this.isCurrentProject()) {
+            return;
+          }
           _this.initContent(args);
           _this.initEvents();
         });
@@ -122,11 +160,18 @@ ColorPaletteChoosePreset.prototype = {
       this.okButton = UI.create('UI.Button', { "text": "OK", "color": "primary" });
       this.uiComponent.addButton(this.okButton);
       this.okButton.on('click', function(event) {
-    
+        if(!_this.isCurrentProject()) {
+          return;
+        }
+
         if(_this.activeTab == 'load') {
-          _this.colorPaletteLoad.setPalette({ callback: _this.callback, createColorPalette: _this.createOnLoad});
+          if(_this.colorPaletteLoad) {
+            _this.colorPaletteLoad.setPalette({ callback: _this.callback, createColorPalette: _this.createOnLoad});
+          }
         } else {
-          _this.choosePreset(_this.previewColorPalette.selectedPaletteId);//,  { brightness: _this.brightness, saturation: _this.saturation, contrast: _this.contrast});
+          if(_this.previewColorPalette) {
+            _this.choosePreset(_this.previewColorPalette.selectedPaletteId);//,  { brightness: _this.brightness, saturation: _this.saturation, contrast: _this.contrast});
+          }
         }
         UI.closeDialog();
       });
@@ -134,6 +179,9 @@ ColorPaletteChoosePreset.prototype = {
       this.linkButton = UI.create('UI.Button', { "imageSrc": "icons/svg/glyphicons-basic-351-link.svg", "text": "Create A Template Link", "color": "other" });
       this.uiComponent.addButton(this.linkButton);
       this.linkButton.on('click', function(event) {
+        if(!_this.isCurrentProject()) {
+          return;
+        }
         _this.createTemplateLink();
       });
 
@@ -254,6 +302,9 @@ ColorPaletteChoosePreset.prototype = {
   },
 
   dropFile: function(file) {
+    if(!this.isCurrentProject()) {
+      return;
+    }
     console.log('drop file!');
     console.log(file);
     this.colorPaletteLoad.setImportFile(file);
@@ -538,12 +589,19 @@ ColorPaletteChoosePreset.prototype = {
 
   previewFromPaletteImage: function(url) {
 
+    if(!this.isCurrentProject()) {
+      return;
+    }
+
     if(this.img == null) {
       this.img = new Image();
     }
 
     var thisColorPalette = this;
     this.img.onload = function() {
+      if(!thisColorPalette.isCurrentProject()) {
+        return;
+      }
       thisColorPalette.paletteImage = thisColorPalette.img;
       thisColorPalette.previewPalette();      
     }
@@ -552,6 +610,10 @@ ColorPaletteChoosePreset.prototype = {
   },
 
   previewPalette: function() {
+
+    if(!this.isCurrentProject() || !this.paletteImage) {
+      return;
+    }
 
     var charsetUtil = this.editor.tileSetManager.getCurrentTileSet();
 
@@ -649,6 +711,9 @@ ColorPaletteChoosePreset.prototype = {
 
   // TODO: should this be in colorpalette.js?
   choosePreset: function(preset, callback) {
+    if(!this.isCurrentProject()) {
+      return;
+    }
     this.previewColorPaletteId = preset;
     this.previewColorPaletteDescription = this.getColorPaletteDescription(preset);
   
@@ -674,6 +739,9 @@ ColorPaletteChoosePreset.prototype = {
       var img = new Image();
       img.src = url;
       img.onload = function() {
+        if(!_this.isCurrentProject()) {
+          return;
+        }
 
         var colors = _this.editor.colorPaletteManager.colorPaletteFromPaletteImg(img, 
             { brightness: _this.brightness, saturation: _this.saturation, contrast: _this.contrast});//colorPaletteChoosePreset.colorPaletteFromPaletteImg(img);

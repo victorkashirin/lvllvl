@@ -81,7 +81,10 @@ test("source labels never declare an empty target", async () => {
 
 test("home and help links stay inside a repository deployment path", async () => {
   const menuBar = await readFile(path.join(projectRoot, "src/js/ui/menuBar.js"), "utf8");
-  const editor = await readFile(path.join(projectRoot, "src/js/editor.js"), "utf8");
+  const editorMenuCommands = await readFile(
+    path.join(projectRoot, "src/js/editor/editorMenuCommands.js"),
+    "utf8",
+  );
   const deploymentUrl = new URL("https://example.com/lvllvl/");
 
   assert.match(menuBar, /homeLink\.setAttribute\("href", "\.\/"\)/);
@@ -89,11 +92,33 @@ test("home and help links stay inside a repository deployment path", async () =>
 
   for (const filename of runtimeFeatureRequests.helpDocumentation) {
     const reference = `./${filename}`;
-    assert.ok(editor.includes(`window.open('${reference}'`), `${reference} is not linked`);
+    assert.ok(
+      editorMenuCommands.includes(`window.open('${reference}'`),
+      `${reference} is not linked`,
+    );
     assert.equal(new URL(reference, deploymentUrl).pathname, `/lvllvl/${filename}`);
   }
 
   assert.ok(assetDirectories.includes("docs"), "help documents are not published");
+});
+
+test("editor responsibilities stay decomposed", async () => {
+  const editorSource = await readFile(path.join(projectRoot, "src/js/editor.js"), "utf8");
+  assert.ok(
+    editorSource.split("\n").length < 1500,
+    "src/js/editor.js should remain a small composition shell",
+  );
+
+  const editorIndex = buildGraph["js/main.js"].inputs.indexOf("js/editor.js");
+  assert.deepEqual(
+    buildGraph["js/main.js"].inputs.slice(editorIndex + 1, editorIndex + 5),
+    [
+      "js/editor/editorModes.js",
+      "js/editor/editorInterface.js",
+      "js/editor/editorMenuCommands.js",
+      "js/editor/editorProjectLifecycle.js",
+    ],
+  );
 });
 
 test("first-party bundle sources contain no unreachable statements", async () => {
@@ -273,7 +298,9 @@ test("the first publish migrates a legacy physical output directory", async (con
   assert.deepEqual(await readdir(root), [".dist-build-new", "dist"]);
 });
 
-test("the development server rebuilds once and remains available", { timeout: 60_000 }, async () => {
+// A development rebuild invokes the full production build in a child process;
+// allow enough time for that serialized build on slower CI hosts.
+test("the development server rebuilds once and remains available", { timeout: 120_000 }, async () => {
   const child = spawn(process.execPath, ["scripts/dev.mjs"], {
     cwd: projectRoot,
     env: { ...process.env, LVLLVL_DEV_PORT: "0" },
@@ -346,7 +373,7 @@ test("the development server rebuilds once and remains available", { timeout: 60
     await writeFile(rebuildTrigger, "trigger a source watcher event\n");
     await waitForCondition(
       () => output.includes("server restarted"),
-      30_000,
+      60_000,
       () => `Development server did not finish its rebuild:\n${output}`,
     );
     await delay(2_000);

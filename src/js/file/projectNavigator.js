@@ -94,6 +94,20 @@ ProjectNavigator.prototype = {
     this.currentEditor = g_app.textModeEditor;
   },
 
+  resetProjectState: function() {
+    this.files = null;
+    this.currentEditor = null;
+    this.currentPath = false;
+    this.settings = {};
+    this.treeMap = Object.create(null);
+    if(this.treeRoot) {
+      this.treeRoot.deleteChildren();
+    }
+    if(g_app.tabPanel && typeof g_app.tabPanel.clearTabs == 'function') {
+      g_app.tabPanel.clearTabs({ notify: false });
+    }
+  },
+
   shareProject: function() {
     alert('share project');
   },
@@ -153,11 +167,14 @@ ProjectNavigator.prototype = {
     if(this.currentPath === false) {
       // ok, current path is not set, try to work out from editor
       var editor = this.currentEditor;
+      if(!editor || typeof editor.doc === 'undefined') {
+        return this.currentPath;
+      }
       if(typeof editor.doc !== 'undefined') {
 
         if(editor.doc == null) {
           // ok, give up..
-          return;
+          return this.currentPath;
         }
         if(editor.doc.type == 'graphic') {
           // ok its prob a screen
@@ -575,6 +592,16 @@ ProjectNavigator.prototype = {
 
 
   createSpriteRecord: function(args, callback) {
+    var projectDocument = g_app.doc;
+    var projectGeneration = g_app.projectGeneration;
+    var isCurrentProject = function() {
+      return !!projectDocument && (!g_app.isCurrentProject ||
+        g_app.isCurrentProject(projectDocument, projectGeneration));
+    };
+    if(!isCurrentProject()) {
+      return;
+    }
+
     var name = 'Sprite';
     var type = 'graphic';
 
@@ -613,9 +640,14 @@ ProjectNavigator.prototype = {
       cellWidth: 24,
       cellHeight: 21,
       tileSetArgs: { width: 24, height: 21, name: tileSetName },
-      screenMode: screenMode
+      screenMode: screenMode,
+      document: projectDocument,
+      projectGeneration: projectGeneration
 
     }, function(newDocRecord) {
+      if(!isCurrentProject()) {
+        return;
+      }
 
       _this.treeRoot.refreshChildren();
       _this.selectNodeWithId(newDocRecord.id);
@@ -632,6 +664,17 @@ ProjectNavigator.prototype = {
 
     console.log('new file');
     console.log(args);
+
+    args = args || {};
+    var projectDocument = g_app.doc;
+    var projectGeneration = g_app.projectGeneration;
+    var isCurrentProject = function() {
+      return !!projectDocument && (!g_app.isCurrentProject ||
+        g_app.isCurrentProject(projectDocument, projectGeneration));
+    };
+    if(!isCurrentProject()) {
+      return;
+    }
 
     
     var parentPath = this.parentPath;
@@ -702,7 +745,10 @@ ProjectNavigator.prototype = {
     }
     
     if(type == 'color palette') {
-      var colorPaletteId = g_app.textModeEditor.colorPaletteManager.createColorPalette({ name: "Color Palette" });
+      var colorPaletteId = g_app.textModeEditor.colorPaletteManager.createColorPalette({
+        name: "Color Palette",
+        document: projectDocument
+      });
 
       this.refreshTreeNode(parentDocRecord, parentNode);
       this.reloadTreeBranch('/color palettes');
@@ -717,9 +763,14 @@ ProjectNavigator.prototype = {
       var name = 'new tile set';//$('#newTileSetName').val();
       var tileCount = 256;//$('#newTileSetCount').val();
       
-      var newTileSetId = g_app.textModeEditor.tileSetManager.createTileSet({ name: name, width: 8, height: 8 }); 
+      var newTileSetId = g_app.textModeEditor.tileSetManager.createTileSet({
+        name: name,
+        width: 8,
+        height: 8,
+        document: projectDocument
+      });
   
-      var newTileSet = g_app.textModeEditor.tileSetManager.getTileSet(newTileSetId);
+      var newTileSet = g_app.textModeEditor.tileSetManager.getTileSet(newTileSetId, projectDocument);
       newTileSet.setTileCount(tileCount);
 
       this.refreshTreeNode(parentDocRecord, parentNode);
@@ -760,8 +811,13 @@ ProjectNavigator.prototype = {
         colorPaletteId: colorPaletteId,
         tileSet: '',
         tileSetId: newDocRecordTileSetId,
+        document: projectDocument,
+        projectGeneration: projectGeneration,
 
       }, function(newDocRecord) {
+        if(!isCurrentProject()) {
+          return;
+        }
 
 
         _this.refreshTreeNode(parentDocRecord, parentNode);
@@ -820,9 +876,14 @@ ProjectNavigator.prototype = {
         tileSet: null,
         tileSetId: newDocRecordTileSetId,
         tileSetArgs: { width: 24, height: 21, name: tileSetName },
-        screenMode: screenMode
+        screenMode: screenMode,
+        document: projectDocument,
+        projectGeneration: projectGeneration
 
       }, function(newDocRecord) {
+        if(!isCurrentProject()) {
+          return;
+        }
 
         _this.refreshTreeNode(parentDocRecord, parentNode);        
 
@@ -876,10 +937,13 @@ ProjectNavigator.prototype = {
   //      reader.onload = function(e) {
         var reader = new FileReader();
         reader.onload = function(e) {
+          if(!isCurrentProject()) {
+            return;
+          }
           var binData = new Uint8Array(e.target.result);
           var data = bufferToBase64(binData);
 
-          var newDocRecord = g_app.doc.createDocRecord(parentPath, name, type, data);
+          var newDocRecord = projectDocument.createDocRecord(parentPath, name, type, data);
           _this.refreshTreeNode(parentDocRecord, parentNode);
           _this.treeRoot.refreshChildren();
           _this.selectNodeWithId(newDocRecord.id);
@@ -938,9 +1002,14 @@ ProjectNavigator.prototype = {
         colorPalette: colorPalette,
         tileSet: tileSet,
         tileSetId: newDocRecordTileSetId,
-        colorPaletteId: colorPaletteId
+        colorPaletteId: colorPaletteId,
+        document: projectDocument,
+        projectGeneration: projectGeneration
 
       }, function(newDocRecord) {
+        if(!isCurrentProject()) {
+          return;
+        }
         _this.refreshTreeNode(parentDocRecord, parentNode);
 
         _this.treeRoot.refreshChildren();
@@ -1781,13 +1850,17 @@ ProjectNavigator.prototype = {
   },
 
   refreshTree: function(files) {
-    if(g_app.doc == null) {
+    this.files = files;
+    if(!this.treeRoot) {
       return;
     }
-
-    this.files = files;
     this.treeRoot.deleteChildren();
     this.treeMap = Object.create(null);
+
+    if(g_app.doc == null) {
+      this.treeRoot.refreshChildren();
+      return;
+    }
 
     var doc = g_app.doc;
     var children = doc.dir('/');

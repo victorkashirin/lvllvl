@@ -40,6 +40,20 @@ SidPatternPlayer.prototype = {
     this.initChannels();    
   },
 
+  resetProjectState: function() {
+    this.playing = false;
+    this.playheadPosition = 0;
+    this.newPlayheadPosition = 0;
+    this.framecnt = 0;
+    this.testInstrument = null;
+    this.testInstrumentChannel = false;
+    this.debugData = [];
+    this.initChannels();
+    if(this.sidMemory && typeof this.sidMemory.fill == 'function') {
+      this.sidMemory.fill(0);
+    }
+  },
+
   initChannels: function() {
     this.channels = [];
 

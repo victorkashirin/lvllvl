@@ -32,6 +32,29 @@ PixelDraw.prototype = {
     this.editor = editor;
   },
 
+  resetProjectState: function() {
+    this.mode = 'draw';
+    this.highlightCell = false;
+    this.highlightColor = false;
+    this.c64MultiColorType = 'cell';
+    this.alteredCharacters = [];
+    this.pendingCharacters = [];
+    this.restoredCharacters = [];
+    this.lastX = false;
+    this.lastY = false;
+    this.lastZ = false;
+    this.toolType = 'draw';
+    this.color = 0;
+    this.shiftLineDirection = false;
+    this.lastHighlightTile = false;
+    this.fillShape = false;
+    this.characterDataCopy = null;
+    this.subPaletteColorIndex = 0;
+    this.stack = [];
+    this.mouseDownAtX = false;
+    this.mouseDownAtY = false;
+  },
+
   show: function() {
     this.initC64MulticolorControl();
     var label = this.getToolLabel(this.toolType);

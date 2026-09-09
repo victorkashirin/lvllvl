@@ -9,6 +9,11 @@ InvertTool.prototype = {
     this.editor = editor;
   },
 
+  resetProjectState: function() {
+    this.lastSetX = false;
+    this.lastSetY = false;
+  },
+
   toolSelected: function() {
     console.log('invert tool selected');
   },

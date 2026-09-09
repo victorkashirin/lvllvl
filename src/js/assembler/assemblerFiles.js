@@ -52,6 +52,11 @@ AssemblerFiles.prototype = {
     this.editor = editor;
   },
 
+  resetProjectState: function() {
+    this.currentDirectory = '/';
+    this.root = new AssemblerFileRecord("/", "dir");
+  },
+
   getParentPath: function(path) {
     var lastSlashPosition = path.lastIndexOf('/');
     if(lastSlashPosition == -1) {

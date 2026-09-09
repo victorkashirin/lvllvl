@@ -300,6 +300,24 @@ UI.TabPanel = function(args) {
     return -1;
   }
 
+  this.clearTabs = function(args) {
+    var notify = !(args && args.notify === false);
+    for(var i = 0; i < this.components.length; i++) {
+      var tabId = this.components[i].tabId;
+      $('#' + this.id + 'tab-' + tabId).remove();
+    }
+    this.components = [];
+    this.tabMap = new Object();
+    this.tabHistory = [];
+    this.currentTab = 0;
+    if(notify) {
+      if(this.onNoTabs != null) {
+        this.onNoTabs(this);
+      }
+      this.trigger('notabs', this);
+    }
+  }
+
   this.setEnabled = function(key, enabled) {
     var index = this.getTabIndex(key);
     if(index == -1) {
@@ -356,7 +374,7 @@ UI.TabPanel = function(args) {
     }
 
     var tabId = this.components[index].tabId;
-    $('#' + this.id + 'tab-' +  + tabId).remove();
+    $('#' + this.id + 'tab-' + tabId).remove();
 
     this.components.splice(index, 1);
 

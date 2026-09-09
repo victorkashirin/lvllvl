@@ -20,6 +20,27 @@ LineSegmentDraw.prototype = {
   init: function(editor) {
     this.editor = editor;
   },
+  resetProjectState: function() {
+    this.mode = 'horizontal';
+    this.invert = false;
+    this.segments = [];
+    this.segmentType = [];
+    this.tileSet = null;
+    this.tileCount = 0;
+    this.tileWidth = 0;
+    this.tileHeight = 0;
+    this.charWidth = 0;
+    this.charHeight = 0;
+    this.hPixels = 0;
+    this.vPixels = 0;
+    this.pixelWidth = 0;
+    this.pixelHeight = 0;
+    this.pixelFill = [];
+    this.horizonalSegments = [];
+    this.verticalSegments = [];
+    this.fromLeftSegments = [];
+    this.fromRight = [];
+  },
   setMode: function(mode) {
     console.log('set mode to ' + mode);
     this.mode = mode;

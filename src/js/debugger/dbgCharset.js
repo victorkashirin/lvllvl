@@ -41,6 +41,30 @@ var DbgCharset = function() {
 }
 
 DbgCharset.prototype = {
+  resetProjectState: function() {
+    this.charsetAddress = false;
+    this.fgColor = 0x6;
+    this.bgColor = 0xe;
+    this.selectedChar = 0;
+    this.highlightChar = false;
+    this.selectedFgColor = 14;
+    this.selectedBgColor = 6;
+    this.selectedMode = 'standard';
+    this.highlightBgColor = false;
+    this.mouseRasterY = 0;
+    this.mouseRasterX = 0;
+    this.mouseAddress = false;
+    this.isROMCharset = false;
+    this.rasterY = false;
+    this.drawMode = false;
+    this.inDraw = false;
+    this.lastSetAddress = false;
+    this.lastSetByte = false;
+    if(this.charEditor && typeof this.charEditor.resetProjectState == 'function') {
+      this.charEditor.resetProjectState();
+    }
+  },
+
   init: function(args) {
 
     this.machine = args.machine;

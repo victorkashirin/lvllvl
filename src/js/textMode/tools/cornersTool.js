@@ -7,6 +7,8 @@ CornersTool.prototype = {
     this.editor = editor;
   },
 
+  resetProjectState: function() {},
+
   toolSelected: function() {
     console.log('corners tool selected');
   },

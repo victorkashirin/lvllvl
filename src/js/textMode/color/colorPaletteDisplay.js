@@ -130,6 +130,35 @@ ColorPaletteDisplay.prototype = {
 
   },
 
+  // Keep the display widget reusable, but never keep colors, maps, or
+  // selections from the document that was just closed.
+  resetProjectState: function() {
+    this.colors = [];
+    this.colorCount = 0;
+    this.colorMap = [];
+    this.selectedColors = this.canSelectMultiple ? [] : [this.noColor, this.noColor];
+    this.highlightColor = this.noColor;
+    this.lastGridX = false;
+    this.lastGridY = false;
+    this.highlightGridX = false;
+    this.highlightGridY = false;
+    this.inDragMarquee = false;
+    this.dragMarqueeContents = false;
+    this.inDragColor = false;
+    this.dragColorIndex = false;
+    this.marquee = false;
+    this.marqueeLeft = 0;
+    this.marqueeTop = 0;
+    this.marqueeWidth = 1;
+    this.marqueeHeight = 2;
+
+    if(this.context && this.canvas) {
+      try {
+        this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+      } catch(error) {}
+    }
+  },
+
   initEvents: function() {
     var _this = this;
     $('#' + this.canvasElementId).on('mousedown', function(event) {

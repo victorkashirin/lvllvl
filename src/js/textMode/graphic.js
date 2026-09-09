@@ -40,6 +40,28 @@ Graphic.prototype = {
     this.editor = editor;
   },
 
+  // Graphic is a long-lived editor object; its frame array and rendering
+  // canvases belong to the document currently being edited.
+  resetProjectState: function() {
+    this.doc = null;
+    this.frames = [];
+    this.frameCount = 0;
+    this.currentFrame = 0;
+    this.tileSetId = false;
+    this.colorPaletteId = false;
+    this.gridWidth = 40;
+    this.gridHeight = 25;
+    this.cellWidth = 8;
+    this.cellHeight = 8;
+    this.depth = 1;
+    this.type = 'screen';
+    this.onlyViewBoundsDrawn = true;
+    this.thumbnailCanvas = null;
+    this.tempCanvas = null;
+    this.shapesCanvas = null;
+    this.drawEnabled = true;
+  },
+
   connectToDoc: function() {
     var doc = this.editor.doc;
 

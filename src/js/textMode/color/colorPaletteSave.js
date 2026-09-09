@@ -14,6 +14,13 @@ ColorPaletteSave.prototype = {
     this.editor = editor;
   },
 
+  resetProjectState: function() {
+    this.colorPalette = null;
+    if(this.colorPaletteDisplay && typeof this.colorPaletteDisplay.resetProjectState == 'function') {
+      this.colorPaletteDisplay.resetProjectState();
+    }
+  },
+
   show: function(args) {
 
     var _this = this;

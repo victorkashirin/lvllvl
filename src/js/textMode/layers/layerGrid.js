@@ -1,5 +1,7 @@
 var LayerGrid = function() {
   this.editor = null;
+  this.projectDocument = null;
+  this.projectGeneration = undefined;
   this.frames = [];
   this.currentFrame = 0;
   this.frameCount = 0;
@@ -142,6 +144,16 @@ var LayerGrid = function() {
 
 LayerGrid.prototype = {
 
+  captureProjectContext: function() {
+    this.projectDocument = g_app.doc || null;
+    this.projectGeneration = g_app.projectGeneration;
+  },
+
+  isCurrentProject: function() {
+    return !!this.projectDocument && (!g_app.isCurrentProject ||
+      g_app.isCurrentProject(this.projectDocument, this.projectGeneration));
+  },
+
   setBlankTileId: function(blankTileId, updateTiles) {
 
     if(this.blankTileId === false) {
@@ -200,6 +212,7 @@ LayerGrid.prototype = {
   
   init: function(editor, layerId, layerRef, screenMode) {
     this.editor = editor;
+    this.captureProjectContext();
     this.layerId = layerId;
     this.layerRef = layerRef;
 
@@ -229,6 +242,7 @@ LayerGrid.prototype = {
 
   loadFromDoc: function(editor, layerId, layerRef) {
     this.editor = editor;
+    this.captureProjectContext();
     this.layerId = layerId;
     this.layerRef = layerRef;
 
@@ -247,6 +261,9 @@ LayerGrid.prototype = {
 
     var _this = this;
     this.refImage.onload = function() {
+      if(!_this.isCurrentProject()) {
+        return;
+      }
       var params = {
         originalImage: _this.refImage,
         x: 0,
@@ -1760,7 +1777,9 @@ LayerGrid.prototype = {
   getColorPalette: function() {
     var colorPalette = null;
     if(this.doc.colorPaletteId) {
-      return this.editor.colorPaletteManager.getColorPalette(this.doc.colorPaletteId);
+      return this.editor.colorPaletteManager.getColorPalette(
+        this.doc.colorPaletteId,
+        this.projectDocument);
     } else {
       return this.editor.colorPaletteManager.getCurrentColorPalette();
     }
@@ -1791,7 +1810,9 @@ LayerGrid.prototype = {
   
   getTileSet: function() {
     if(this.doc.tileSetId) {
-      return this.editor.tileSetManager.getTileSet(this.doc.tileSetId);
+      return this.editor.tileSetManager.getTileSet(
+        this.doc.tileSetId,
+        this.projectDocument);
     } else {
 
       return this.editor.tileSetManager.getCurrentTileSet();

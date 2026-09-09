@@ -62,6 +62,9 @@ var TileSetImport = function() {
   this.parentComponent = null;
 
   this.tileSet = null;
+
+  this.projectDocument = null;
+  this.projectGeneration = undefined;
 }
 
 TileSetImport.prototype = {
@@ -73,7 +76,40 @@ TileSetImport.prototype = {
     }
   },
 
+  captureProjectContext: function() {
+    this.projectDocument = g_app.doc;
+    this.projectGeneration = g_app.projectGeneration;
+  },
+
+  isCurrentProject: function(context) {
+    context = context || {
+      document: this.projectDocument,
+      generation: this.projectGeneration
+    };
+    return !!context.document && (!g_app.isCurrentProject ||
+      g_app.isCurrentProject(context.document, context.generation));
+  },
+
+  resetProjectState: function() {
+    if(this.loadImage && this.loadImage.onload) {
+      this.loadImage.onload = null;
+    }
+    this.dialogReadyCallback = false;
+    this.projectDocument = null;
+    this.projectGeneration = undefined;
+    this.loadImage = null;
+    this.loadImageData = null;
+    this.tileSet = null;
+    this.font = null;
+    this.uncd = null;
+    this.importArgs.tileData = null;
+    this.importArgs.jsonData = null;
+    this.importArgs.srcImageData = null;
+    this.importArgs.dstImageData = null;
+  },
+
   start: function(args) {
+    this.captureProjectContext();
     
     var _this = this;
 
@@ -99,6 +135,9 @@ TileSetImport.prototype = {
       this.htmlComponent = UI.create("UI.HTMLPanel");
       this.uiComponent.add(this.htmlComponent);
       this.htmlComponent.load('html/textMode/tileSetImport.html', function() {
+        if(!_this.isCurrentProject()) {
+          return;
+        }
         _this.initContent();
         _this.initEvents();
         if(_this.dialogReadyCallback !== false) {
@@ -112,6 +151,9 @@ TileSetImport.prototype = {
         this.okButton = UI.create('UI.Button', { "text": "OK", "color": "primary" });
         this.uiComponent.addButton(this.okButton);
         this.okButton.on('click', function(event) {
+          if(!_this.isCurrentProject()) {
+            return;
+          }
           _this.importTileSet();        
           UI.closeDialog();
         });
@@ -125,7 +167,7 @@ TileSetImport.prototype = {
       }
 
     } else {
-      if(this.dialogReadyCallback !== false) {
+      if(this.isCurrentProject() && this.dialogReadyCallback !== false) {
         this.dialogReadyCallback();
       }  
     }
@@ -359,6 +401,12 @@ TileSetImport.prototype = {
       return;
     }
 
+    this.captureProjectContext();
+    var projectContext = {
+      document: this.projectDocument,
+      generation: this.projectGeneration
+    };
+
     var _this = this;
     var filename = file.name;
     var dotPos = filename.lastIndexOf('.');
@@ -432,6 +480,9 @@ TileSetImport.prototype = {
       var _this = this;
 
       this.loadImage.onload = function() {
+        if(!_this.isCurrentProject(projectContext)) {
+          return;
+        }
         _this.resize = false;//parseInt($('input[name=loadTileSetResize]:checked').val(), 10);
 
         var imageWidth = _this.loadImage.naturalWidth;
@@ -470,6 +521,9 @@ TileSetImport.prototype = {
       var _this = this;
       var fileReader = new FileReader();
       fileReader.onload = function(e) {
+        if(!_this.isCurrentProject(projectContext)) {
+          return;
+        }
 //        var byteArray = new Uint8Array(e.target.result);
 //        _this.readCharPad(byteArray);
         _this.readFont(e.target.result);
@@ -491,6 +545,9 @@ TileSetImport.prototype = {
       // load as json
       var fileReader = new FileReader();
       fileReader.onload = function(e) {
+        if(!_this.isCurrentProject(projectContext)) {
+          return;
+        }
         _this.readJson(e.target.result);
 //        var colorText = e.target.result;
 //        _this.createPaletteFromJSON(colorText);
@@ -510,6 +567,9 @@ TileSetImport.prototype = {
       var _this = this;
       var fileReader = new FileReader();
       fileReader.onload = function(e) {
+        if(!_this.isCurrentProject(projectContext)) {
+          return;
+        }
         var byteArray = new Uint8Array(e.target.result);
         _this.readCharPad(byteArray);
         
@@ -539,6 +599,9 @@ TileSetImport.prototype = {
       var _this = this;      
       var fileReader = new FileReader();
       fileReader.onload = function(e) {
+        if(!_this.isCurrentProject(projectContext)) {
+          return;
+        }
         _this.importArgs.tileData = new Uint8Array(e.target.result);
         _this.previewTileSet();
       }
@@ -548,6 +611,9 @@ TileSetImport.prototype = {
 
 
   setLoadParameters: function(refreshPreview) {
+      if(!this.isCurrentProject()) {
+        return;
+      }
       if(typeof refreshPreview == 'undefined') {
         refreshPreview = true;
       }
@@ -745,6 +811,9 @@ TileSetImport.prototype = {
   },
  
   readCharPad: function(byteArray) {
+    if(!this.isCurrentProject()) {
+      return;
+    }
     if(this.importCharPad == null) {
       this.importCharPad = new ImportCharPad();
       this.importCharPad.init(this.editor);
@@ -759,6 +828,9 @@ TileSetImport.prototype = {
   },
 
   readFont: function(buffer) {
+    if(!this.isCurrentProject()) {
+      return;
+    }
     console.log("READ FONT!!!");
     this.font = Typr.parse(buffer)[0];
     console.log(this.font);
@@ -790,6 +862,9 @@ TileSetImport.prototype = {
   },
 
   getTileSet: function() {
+    if(!this.isCurrentProject()) {
+      return null;
+    }
     var tileSet = this.editor.tileSetManager.getCurrentTileSet();
     if(tileSet == null) {
       if(this.tileSet == null) {
@@ -850,6 +925,9 @@ TileSetImport.prototype = {
   },
 
   readJson: function(jsonString) {
+    if(!this.isCurrentProject()) {
+      return;
+    }
     var jsonData = {};
     try {
       jsonData = $.parseJSON(jsonString);
@@ -1117,7 +1195,13 @@ TileSetImport.prototype = {
   },
 
   previewImageTileSet: function() {
+    if(!this.isCurrentProject()) {
+      return;
+    }
     var tileSet = this.getTileSet();
+    if(!tileSet) {
+      return;
+    }
 
     var scale = this.resize / 100;
 
@@ -1577,7 +1661,13 @@ TileSetImport.prototype = {
   },
 
   previewTileSet: function() {
+    if(!this.isCurrentProject()) {
+      return;
+    }
     var tileSet = this.getTileSet();
+    if(!tileSet) {
+      return;
+    }
     
 
     if(this.loadFormat == 'image') {
@@ -1746,18 +1836,22 @@ TileSetImport.prototype = {
   },
 
   importTileSet: function(args) {
+    args = args || {};
+    if(!this.isCurrentProject()) {
+      return;
+    }
     var callback = false;
     var colorPalette = null;
-    
-    if(typeof args != 'undefined') {
-      callback = args.callback;
-    }
+
+    callback = args.callback;
 
     var tileSetCreated = false;
     var tileSet = this.editor.tileSetManager.getCurrentTileSet();
 
     if(tileSet == null || (typeof args.createTileSet != 'undefined' && args.createTileSet)) {
       tileSet = new TileSet();
+      tileSet.document = this.projectDocument;
+      tileSet.projectGeneration = this.projectGeneration;
       tileSetCreated = true;
     }
 

@@ -8,6 +8,19 @@ PixelCharacterDraw.prototype = {
     this.editor = editor;
   },
 
+  resetProjectState: function() {
+    this.mode = 'draw';
+    this.tileSet = null;
+    this.charWidth = 0;
+    this.charHeight = 0;
+    this.hPixels = 0;
+    this.vPixels = 0;
+    this.pixelWidth = 0;
+    this.pixelHeight = 0;
+    this.pixelCharacters = [];
+    this.characterPixelCharacter = [];
+  },
+
   setMode: function(mode) {
     this.mode = mode;
   },

@@ -671,7 +671,7 @@ await verifyBuildGraph();
 console.log(formatModuleDependencyReport(moduleVerification));
 console.log(
   `Legacy graph policy: ${legacyGraphVerification.inputs} inputs ` +
-    `(${legacyGraphVerification.exceptions} temporary exceptions)`,
+    `(${legacyGraphVerification.exceptions} active exceptions)`,
 );
 await verifySourceEntry();
 await verifySourceMaps();

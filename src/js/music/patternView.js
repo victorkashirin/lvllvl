@@ -114,6 +114,62 @@ var PatternView2 = function() {
 }
 
 PatternView2.prototype = {
+  resetProjectState: function() {
+    this.playheadPosition = 0;
+    this.pianoRollHighlightedNote = -1;
+    this.pianoRollSelectedNote = -1;
+    this.mouseDownAtX = 0;
+    this.mouseDownAtY = 0;
+    this.mouseDownAtGridX = 0;
+    this.mouseDownAtGridY = 0;
+    this.mouseDownAtScrollX = 0;
+    this.mouseDownAtScrollY = 0;
+    this.lastMouseX = 0;
+    this.lastMouseY = 0;
+    this.scrollX = 0;
+    this.scrollY = 1300;
+    this.xScrollSpeed = 0;
+    this.yScrollSpeed = 0;
+    this.channel = 0;
+    this.patternId = -1;
+    this.patternID = -1;
+    this.currentNotePosition = -1;
+    this.currentNoteId = false;
+    this.selectedFirstNotePosition = 0;
+    this.effectStart = -1;
+    this.dragOffsetX = 0;
+    this.dragOffsetY = 0;
+    this.inDrag = false;
+    this.resizeNote = false;
+    this.resizeDirection = false;
+    this.resizeAmount = 0;
+    this.inResize = false;
+    this.buttons = 0;
+    this.leftMouseUp = true;
+    this.vScroll = false;
+    this.hScroll = false;
+    this.mode = 'draw';
+    this.cursor = {
+      duration: 1,
+      position: 0,
+      pitch: 0,
+      visible: false
+    };
+    this.patternViewPopup = null;
+    this.effectsChooser = null;
+    if(this.gridCanvas) {
+      this.gridCanvas.width = 0;
+      this.gridCanvas.height = 0;
+    }
+    if(this.rulerCanvas) {
+      this.rulerCanvas.width = 0;
+      this.rulerCanvas.height = 0;
+    }
+    if(this.pianoRollCanvas) {
+      this.pianoRollCanvas.width = 0;
+      this.pianoRollCanvas.height = 0;
+    }
+  },
 
   setMode: function(mode) {
     this.mode = mode;

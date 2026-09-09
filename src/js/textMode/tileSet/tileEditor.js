@@ -23,6 +23,20 @@ var TileEditor = function() {
 }
 
 TileEditor.prototype = {
+  resetProjectState: function() {
+    this.character = false;
+    this.characters = [];
+    this.frame = 0;
+    this.frameCount = 1;
+    this.mixedAnimation = false;
+    this.visible = false;
+    this.tileSet = null;
+    this.tileIndex = false;
+    if(this.tileEditorGrid && typeof this.tileEditorGrid.resetProjectState == 'function') {
+      this.tileEditorGrid.resetProjectState();
+    }
+  },
+
   init: function(editor) {
     this.editor = editor;
     this.tileEditorGrid = new TileEditorGrid();

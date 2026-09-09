@@ -39,12 +39,50 @@ var ImportC64Formats = function() {
 
 
   this.joystickPort = 0;
+
+  this.projectDocument = null;
+  this.projectGeneration = undefined;
 }
 
 ImportC64Formats.prototype = {
 
   init: function(editor) {
     this.editor = editor;
+  },
+
+  captureProjectContext: function() {
+    this.projectDocument = g_app.doc;
+    this.projectGeneration = g_app.projectGeneration;
+  },
+
+  isCurrentProject: function(context) {
+    context = context || {
+      document: this.projectDocument,
+      generation: this.projectGeneration
+    };
+    return !!context.document && (!g_app.isCurrentProject ||
+      g_app.isCurrentProject(context.document, context.generation));
+  },
+
+  resetProjectState: function() {
+    this.projectDocument = null;
+    this.projectGeneration = undefined;
+    this.importType = '';
+    this.tileData = [];
+    this.screenData = [];
+    this.colorData = [];
+    this.crtData = null;
+    this.viceSnapshotReader = null;
+    this.importC = null;
+    this.importSeq = null;
+    this.importCharPad = null;
+    this.c64ImageData = null;
+    if(this.context && typeof this.context.clearRect == 'function' && this.canvas) {
+      this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    }
+    this.canvas = null;
+    this.context = null;
+    this.visible = false;
   },
 
   initCharacterData: function() {
@@ -112,6 +150,7 @@ ImportC64Formats.prototype = {
 
   start: function() {
     var _this = this;
+    this.captureProjectContext();
 
     if(this.uiComponent == null) {
       this.uiComponent = UI.create("UI.Dialog", { "id": "importC64FormatsDialog", "title": "Import", "width": 615, "height": 500 });
@@ -521,8 +560,12 @@ ImportC64Formats.prototype = {
 
 
     var _this = this;
+    var context = { document: this.projectDocument, generation: this.projectGeneration };
     var reader = new FileReader();
     reader.onload = function(e) {
+      if(!_this.isCurrentProject(context)) {
+        return;
+      }
       var byteArray = new Uint8Array(e.target.result);
       var result = _this.importSeq.readSeq(byteArray);
       _this.showSeq();
@@ -647,9 +690,13 @@ ImportC64Formats.prototype = {
     this.previewOffsetY = 0;
 
     var _this = this;
+    var context = { document: this.projectDocument, generation: this.projectGeneration };
 
     var fileReader = new FileReader();
     fileReader.onload = function(e) {
+      if(!_this.isCurrentProject(context)) {
+        return;
+      }
       var result = _this.importC.read(e.target.result);
       _this.frame = 0;
       _this.showC();
@@ -760,8 +807,12 @@ ImportC64Formats.prototype = {
     $('#importC64Settings').show();
 
     var _this = this;
+    var context = { document: this.projectDocument, generation: this.projectGeneration };
     var reader = new FileReader();
     reader.onload = function(e) {
+      if(!_this.isCurrentProject(context)) {
+        return;
+      }
       var data = new Uint8Array(reader.result);
 
       /*
@@ -793,8 +844,12 @@ ImportC64Formats.prototype = {
     $('#importC64Settings').show();
 
     var _this = this;
+    var context = { document: this.projectDocument, generation: this.projectGeneration };
     var reader = new FileReader();
     reader.onload = function(e) {
+      if(!_this.isCurrentProject(context)) {
+        return;
+      }
       var data = new Uint8Array(reader.result);
       _this.startCRT(data, false);
     };
@@ -820,6 +875,8 @@ ImportC64Formats.prototype = {
 
   
   startPRG: function(data, inject) {
+    var _this = this;
+    var context = { document: this.projectDocument, generation: this.projectGeneration };
     var loadAddress = data[0] + (data[1] << 8);
     console.log('load address = ' + loadAddress.toString(16));
     var endAddress = loadAddress - 2 + data.length;
@@ -833,6 +890,9 @@ ImportC64Formats.prototype = {
     delay = Math.random() * 100;
 
     setTimeout(function() {
+      if(!_this.isCurrentProject(context)) {
+        return;
+      }
       c64_loadPRG(data, data.length, inject ? 1:0);
 
       if(inject) {
@@ -844,6 +904,9 @@ ImportC64Formats.prototype = {
         
       } else {
         setTimeout(function() {
+          if(!_this.isCurrentProject(context)) {
+            return;
+          }
           c64.insertText('load "*",8,1\nrun\n');
         }, 2000);
       }
@@ -864,8 +927,13 @@ ImportC64Formats.prototype = {
 //    this.c64.c64.enableFloppyDiskDrives(true);
 //    this.c64.attachDisk(file);
 
+    var _this = this;
+    var context = { document: this.projectDocument, generation: this.projectGeneration };
     var reader = new FileReader();
     reader.onload = function(e) {
+      if(!_this.isCurrentProject(context)) {
+        return;
+      }
       var data = new Uint8Array(reader.result);
       c64_insertDisk(data, data.length);
     };
@@ -970,8 +1038,12 @@ ImportC64Formats.prototype = {
     this.previewOffsetY = 0;
 
     var _this = this;
+    var context = { document: this.projectDocument, generation: this.projectGeneration };
     var reader = new FileReader();
     reader.onload = function(e) {
+      if(!_this.isCurrentProject(context)) {
+        return;
+      }
       var byteArray = new Uint8Array(e.target.result);
       var result = _this.importCharPad.readCharPad(byteArray);
       _this.showCharPad();
@@ -1303,8 +1375,12 @@ ImportC64Formats.prototype = {
     this.screenHeight =25;
 
     var _this = this;
+    var context = { document: this.projectDocument, generation: this.projectGeneration };
     var reader = new FileReader();
     reader.onload = function(e) {
+      if(!_this.isCurrentProject(context)) {
+        return;
+      }
       var byteArray = new Uint8Array(e.target.result);
       var result = _this.viceSnapshotReader.readSnapshot(byteArray);
       _this.showVsf();
@@ -1425,6 +1501,10 @@ ImportC64Formats.prototype = {
   },
 
   setImportFile: function(file) {
+    if(typeof file == 'undefined') {
+      return;
+    }
+    this.captureProjectContext();
     this.filename = file.name;
     var extension = '';
     var dotPos = this.filename.lastIndexOf('.');
@@ -1655,6 +1735,9 @@ c64_cpuRead(address);
 
 
   doImport: function() {
+    if(!this.isCurrentProject()) {
+      return;
+    }
     if(this.importType == 'prg') {
       this.importPrg();
     }

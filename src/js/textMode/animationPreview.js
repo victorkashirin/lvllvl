@@ -26,6 +26,22 @@ AnimationPreview.prototype = {
     this.editor = editor;
   },
 
+  resetProjectState: function() {
+    this.visible = false;
+    this.frameCache = [];
+    this.currentFrame = 0;
+    this.frameRange = '';
+    this.fromFrame = 0;
+    this.toFrame = 0;
+    this.lastFrameTime = 0;
+    this.playDirection = 1;
+    this.canvas = null;
+    this.context = null;
+    this.screenCanvas = null;
+    this.screenContext = null;
+    this.currentCanvasElementId = '';
+  },
+
   buildInterface: function(parentPanel) {
     var _this = this;
 

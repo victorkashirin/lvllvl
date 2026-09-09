@@ -48,6 +48,9 @@ var Music = function() {
 
   this.histories = {};
 
+  this.projectDocument = null;
+  this.projectGeneration = undefined;
+
 }
 
 Music.prototype = {
@@ -328,6 +331,79 @@ Music.prototype = {
     this.filters.clearFilters();
   },
 
+  resetProjectState: function() {
+    // Audio players are global and keep references to the Music instance.
+    // Stop both song and preview playback before detaching the old document.
+    if(this.musicPlayer2) {
+      if(typeof this.musicPlayer2.stop == 'function') {
+        try { this.musicPlayer2.stop(); } catch(error) {}
+      }
+      if(typeof this.musicPlayer2.stopTestInstrument == 'function') {
+        try { this.musicPlayer2.stopTestInstrument(); } catch(error) {}
+      }
+      if(this.musicPlayer2.musicPlayer) {
+        this.musicPlayer2.musicPlayer.playing = false;
+        this.musicPlayer2.musicPlayer.testInstrument = null;
+      }
+      if(this.musicPlayer2.instrumentPlayer) {
+        this.musicPlayer2.instrumentPlayer.playing = false;
+        this.musicPlayer2.instrumentPlayer.testInstrument = null;
+      }
+      if(this.musicPlayer2.songData) {
+        this.musicPlayer2.songData.patterns = [];
+        this.musicPlayer2.songData.tracks = [];
+        this.musicPlayer2.songData.instruments = [];
+        this.musicPlayer2.songData.filters = [];
+      }
+      if(typeof this.musicPlayer2.resetProjectState == 'function') {
+        this.musicPlayer2.resetProjectState();
+      }
+    }
+
+    // Clear editor-side caches and modal working copies that may contain
+    // notes, instruments, filters, or pattern data from the old project.
+    var projectParts = [
+      this.musicScripting,
+      this.patternView,
+      this.trackView,
+      this.patterns,
+      this.instruments,
+      this.filters,
+      this.drummer,
+      this.bassist
+    ];
+    for(var i = 0; i < projectParts.length; i++) {
+      if(projectParts[i] && typeof projectParts[i].resetProjectState == 'function') {
+        projectParts[i].resetProjectState();
+      }
+    }
+
+    this.projectDocument = null;
+    this.projectGeneration = undefined;
+    this.doc = null;
+    this.path = false;
+    // Song metadata and playback settings are project-owned too. Reset them
+    // so a newly created project cannot inherit the previous song's identity
+    // or transport state before its first music document is loaded.
+    this.lastUpdate = 0;
+    this.name = 'Song Name';
+    this.author = 'Author Name';
+    this.copyright = 'Copyright';
+    this.view = 'edit';
+    this.sidSpeed = 1;
+    this.history = null;
+    this.histories = {};
+    this.playheadPosition = 0;
+    this.playheadPositionFraction = 0;
+    this.startTime = false;
+    this.endTime = false;
+    this.loopSelection = false;
+    this.selectFrom = 0;
+    this.selectTo = 16;
+    // Keep the helper object (it is created once with the UI), but detach all
+    // project data through the fields above.
+  },
+
   isPlaying: function() {
     return this.musicPlayer2.isPlaying();
   },
@@ -373,7 +449,8 @@ Music.prototype = {
 
   // doc has been modified
   modified: function() {
-    if(g_app.openingProject) {
+    if(g_app.openingProject || !this.doc ||
+        (this.projectDocument && this.projectDocument !== g_app.doc)) {
       return;
     }
     g_app.doc.recordModified(this.doc, this.path);
@@ -387,6 +464,12 @@ Music.prototype = {
     }
 
 
+    this.projectDocument = g_app.doc;
+    this.projectGeneration = g_app.projectGeneration;
+    if(this.musicScripting) {
+      this.musicScripting.projectDocument = this.projectDocument;
+      this.musicScripting.projectGeneration = this.projectGeneration;
+    }
     this.doc = g_app.doc.getDocRecord(path);
     this.path = path;
     this.setupHistory();
@@ -416,6 +499,12 @@ Music.prototype = {
       }
     }
 
+    this.projectDocument = g_app.doc;
+    this.projectGeneration = g_app.projectGeneration;
+    if(this.musicScripting) {
+      this.musicScripting.projectDocument = this.projectDocument;
+      this.musicScripting.projectGeneration = this.projectGeneration;
+    }
     var record = g_app.doc.createDocRecord('/music', name, 'music', {});
 
     this.doc = g_app.doc.getDocRecord('/music/' + name);

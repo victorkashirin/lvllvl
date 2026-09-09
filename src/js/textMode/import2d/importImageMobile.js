@@ -41,6 +41,11 @@ ImportImageMobile.prototype = {
     this.importer = importer;
   },
 
+  isCurrentProject: function() {
+    return this.importer && typeof this.importer.isCurrentProject == 'function' &&
+      this.importer.isCurrentProject();
+  },
+
   initEvents: function() {
     var _this = this;
     document.getElementById('importImageMobileSourceFile').addEventListener("change", function(e) {
@@ -504,6 +509,9 @@ ImportImageMobile.prototype = {
 
   show: function() {
     var _this = this;
+    if(!this.isCurrentProject()) {
+      return false;
+    }
     if(this.closePromise) {
       return this.closePromise.then(function() {
         return _this.show();
@@ -517,6 +525,9 @@ ImportImageMobile.prototype = {
       this.uiComponent.add(htmlPanel);
 
       htmlPanel.load('html/textMode/importImageMobile.html', function() {
+        if(!_this.isCurrentProject()) {
+          return;
+        }
         _this.importer.initRangeControl();
         _this.initEvents();
         _this.initContent();
@@ -552,7 +563,7 @@ ImportImageMobile.prototype = {
         if(closeCallback) {
           closeCallback();
         }
-        if(_this.doImport) {
+        if(_this.doImport && _this.isCurrentProject()) {
           _this.showProgress();
           setTimeout(function() {
             _this.startImport();
@@ -962,7 +973,9 @@ ImportImageMobile.prototype = {
   },
 
   parameterChanged: function() {
-
+    if(!this.isCurrentProject()) {
+      return;
+    }
 
     if(this.mirrorH || this.mirrorV) {
       this.importer.importImageAnimate = true;
@@ -993,6 +1006,9 @@ ImportImageMobile.prototype = {
   },
 
   setImportVideo: function(file) {
+    if(!this.isCurrentProject()) {
+      return;
+    }
 //    this.importer.resetCacheCanvas();
 //    this.importer.importSource = 'video';
     $('.importImageMobileVideoSetting').show();
@@ -1003,6 +1019,9 @@ ImportImageMobile.prototype = {
   },
 
   setImportImage: function(file) {
+    if(!this.isCurrentProject()) {
+      return;
+    }
     
     if(file.type.indexOf('video/') === 0) {
 //    if(file.type == 'video/mp4' || file.type == 'video/webm') {
@@ -1023,7 +1042,10 @@ ImportImageMobile.prototype = {
     var url = window.URL || window.webkitURL;
     var src = url.createObjectURL(file);
     var _this = this;
-    this.importer.importImage.onload = function() { 
+    this.importer.importImage.onload = function() {
+      if(!_this.isCurrentProject()) {
+        return;
+      }
 
       _this.importer.scaleImageToFit();
       _this.setScale(_this.importer.importImageScale);
@@ -1040,6 +1062,9 @@ ImportImageMobile.prototype = {
   },
   
   startImport: function() {
+    if(!this.isCurrentProject()) {
+      return false;
+    }
     this.importer.useChars = this.useChars;
     this.importer.useColors = this.useColors;
     this.importer.startImport();
@@ -1053,6 +1078,9 @@ ImportImageMobile.prototype = {
       this.tilePaletteChooserMobile.init(this.editor, { "mode": "multiple", "id": "Picker" });
 
       this.tilePaletteChooserMobile.on('close', function() {
+        if(!_this.isCurrentProject()) {
+          return;
+        }
         var selectedCharacters = _this.tilePaletteChooserMobile.getSelectedCharacters();
         _this.importer.customTileSet = [];
         for(var i = 0; i < selectedCharacters.length; i++) {
@@ -1077,6 +1105,9 @@ ImportImageMobile.prototype = {
       this.colorPickerMobile.init(this.editor, { "canSelectMultiple": true, "id": "Picker" });
 
       this.colorPickerMobile.on('close', function() {
+        if(!_this.isCurrentProject()) {
+          return;
+        }
         var selectedColors = _this.colorPickerMobile.getSelectedColors();
         _this.importer.customColorSet = [];
         for(var i = 0; i < selectedColors.length; i++) {

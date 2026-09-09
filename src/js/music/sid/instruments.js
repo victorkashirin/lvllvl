@@ -104,6 +104,13 @@ C64Instruments.prototype = {
     this.music = music;
   },
 
+  resetProjectState: function() {
+    this.instruments = [];
+    this.currentInstrumentId = 1;
+    this.colorIndex = 0;
+    this.recentInstruments = [5, 4, 3, 2, 1];
+  },
+
 
   buildInterface: function(parentPanel) {
 
@@ -234,7 +241,13 @@ C64Instruments.prototype = {
       this.music.musicPlayer2.playTestInstrument(pitch, this.music.doc.data.instruments[this.currentInstrumentId]);
 
       var _this = this;
+      var projectDocument = this.music.projectDocument;
+      var projectGeneration = this.music.projectGeneration;
       setTimeout(function() { 
+        if(projectDocument && typeof g_app != 'undefined' && g_app.isCurrentProject &&
+            !g_app.isCurrentProject(projectDocument, projectGeneration)) {
+          return;
+        }
         _this.music.musicPlayer2.stopTestInstrument();
       }, 600);
     }

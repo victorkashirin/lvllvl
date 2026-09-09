@@ -115,6 +115,8 @@ function rgb2hsv(r, g, b) {
 
 var ColorPaletteEdit = function() {
   this.editor = null;
+  this.projectDocument = null;
+  this.projectGeneration = undefined;
   this.uiComponent = null;
 
   this.prefix = 'colorPaletteEdit';
@@ -234,6 +236,39 @@ var ColorPaletteEdit = function() {
 ColorPaletteEdit.prototype = {
   init: function(editor) {
     this.editor = editor;
+  },
+
+  captureProjectContext: function() {
+    this.projectDocument = g_app.doc;
+    this.projectGeneration = g_app.projectGeneration;
+  },
+
+  isCurrentProject: function() {
+    return !!this.projectDocument && (!g_app.isCurrentProject ||
+      g_app.isCurrentProject(this.projectDocument, this.projectGeneration));
+  },
+
+  resetProjectState: function() {
+    if(this.importImage && this.importImage.onload) {
+      this.importImage.onload = null;
+    }
+    this.projectDocument = null;
+    this.projectGeneration = undefined;
+    this.visible = false;
+    this.autosave = false;
+    this.colors = [];
+    this.imageColors = [];
+    this.colorMap = [];
+    this.saveMap = [];
+    this.ramps = [];
+    this.history = [];
+    this.historyPosition = 0;
+    this.importImage = null;
+    this.imageData = null;
+    this.colorPalette = null;
+    if(this.colorPaletteDisplay && typeof this.colorPaletteDisplay.resetProjectState == 'function') {
+      this.colorPaletteDisplay.resetProjectState();
+    }
   },
 
   htmlComponentLoaded: function() {
@@ -432,6 +467,13 @@ ColorPaletteEdit.prototype = {
   },
 
   setToCurrentPalette: function() {
+
+    if(this.projectDocument && !this.isCurrentProject()) {
+      return;
+    }
+    if(!this.projectDocument) {
+      this.captureProjectContext();
+    }
 
     if(this.editor.colorPaletteManager == null) {
       return;
@@ -875,20 +917,33 @@ ColorPaletteEdit.prototype = {
 
 
   loadLospecPalette: function() {
+    if(!this.isCurrentProject()) {
+      return;
+    }
     if(this.colorPaletteLoadFromURL == null) {
       this.colorPaletteLoadFromURL = new ColorPaletteLoadFromURL();
     }
 
     var _this = this;
+    var projectContext = {
+      document: this.projectDocument,
+      generation: this.projectGeneration
+    };
     this.colorPaletteLoadFromURL.show({
       callback: function(response) {
-        _this.createPaletteFromLoSpec(response.response);
+        if(_this.isCurrentProject() && (!g_app.isCurrentProject ||
+            g_app.isCurrentProject(projectContext.document, projectContext.generation))) {
+          _this.createPaletteFromLoSpec(response.response);
+        }
       }
     });
   },  
 
 
   createPaletteFromLoSpec: function(data) {
+    if(!this.isCurrentProject()) {
+      return;
+    }
     this.name = data.name;
     var author = data.author;
     var colors = [];
@@ -926,18 +981,31 @@ ColorPaletteEdit.prototype = {
 
   choosePaletteFile: function(file) {
 
+    if(!this.isCurrentProject()) {
+      return;
+    }
+    var projectContext = {
+      document: this.projectDocument,
+      generation: this.projectGeneration
+    };
     var _this = this;
     this.clearPalette(false);
 
     var colorPaletteLoader = this.editor.colorPaletteManager.getColorPaletteLoader();
     colorPaletteLoader.setImportFile(file, function(result) {
-      _this.addColors(result);
+      if(_this.isCurrentProject() && (!g_app.isCurrentProject ||
+          g_app.isCurrentProject(projectContext.document, projectContext.generation))) {
+        _this.addColors(result);
+      }
 
     });
   },
 
 
   dropFile: function(file) {
+    if(!this.isCurrentProject()) {
+      return;
+    }
     this.choosePaletteFile(file);
   },
 
@@ -1453,9 +1521,14 @@ ColorPaletteEdit.prototype = {
   },
 
   saveColorPalette: function() {
+    if(!this.isCurrentProject()) {
+      return;
+    }
     if(this.colorPalette == null) {
       this.colorPalette = new ColorPalette();
       this.colorPalette.editor = this.editor;
+      this.colorPalette.document = this.projectDocument;
+      this.colorPalette.projectGeneration = this.projectGeneration;
     }
 
     this.setPalette(false);
@@ -1467,6 +1540,9 @@ ColorPaletteEdit.prototype = {
 
 
   setPalette: function(useCurrent) {
+    if(!this.isCurrentProject()) {
+      return;
+    }
     var colorPaletteManager = this.editor.colorPaletteManager;
     var colorPalette = this.colorPalette;
     
@@ -1539,12 +1615,21 @@ ColorPaletteEdit.prototype = {
 
 
   setImportFile: function(file) {
+    if(!this.isCurrentProject()) {
+      return;
+    }
+    var projectDocument = this.projectDocument;
+    var projectGeneration = this.projectGeneration;
     if(!this.importImage) {
       this.importImage = new Image();
     }
 
     var _this = this;
     this.importImage.onload = function() {
+      if(!_this.projectDocument || (g_app.isCurrentProject &&
+          !g_app.isCurrentProject(projectDocument, projectGeneration))) {
+        return;
+      }
       _this.imageScale = 1;
       _this.imageX = - _this.imageCanvas.width / 2;
       _this.imageY = - _this.imageCanvas.height / 2;
@@ -1747,6 +1832,7 @@ ColorPaletteEdit.prototype = {
   // show as dialog
   show: function() {
     var _this = this;
+    this.captureProjectContext();
     this.visible = true;
     this.autosave = false;
 
@@ -1785,6 +1871,9 @@ ColorPaletteEdit.prototype = {
       this.createPalettePanel = UI.create("UI.HTMLPanel");
       this.uiComponent.add(this.createPalettePanel);
       this.createPalettePanel.load('html/textMode/colorPaletteEdit.html', function() {
+        if(!_this.isCurrentProject()) {
+          return;
+        }
         _this.htmlComponentLoaded();
         _this.initContent();
         _this.setH(208);

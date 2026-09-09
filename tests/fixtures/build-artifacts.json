@@ -27,12 +27,12 @@
       "sha256": "f6e20ce93d4c5e5a0fe109bd3a07dc51e482ba8700c4ef7468bbc0839d2872b8"
     },
     "js/main.js": {
-      "bytes": 3331571,
-      "sha256": "c504a489947ad517035350db37c38addfb54e0cfe9994e4cd88256540bf50247"
+      "bytes": 3417333,
+      "sha256": "787c67c1ff05042ce19feb165ac2a65adcd9aa9fcc17b8d84b8467d75021d4f2"
     },
     "js/main.js.map": {
-      "bytes": 10607114,
-      "sha256": "d59bee102bbf22f256fd382cd47b089e82d931165909462691b6cbe872a6c22e"
+      "bytes": 10828256,
+      "sha256": "d8d8d02e161856735c828712a5ae2683b8cec4e532ea574ead75363a4504f00c"
     },
     "js/bootstrap.mjs": {
       "bytes": 8022,
@@ -51,8 +51,8 @@
       "sha256": "a228c0b438c7b40a8b6dc62b5632ae7316f3de101b58172cd53d45698d156baf"
     },
     "js/modules/application/persistenceService.mjs": {
-      "bytes": 15728,
-      "sha256": "54d9267a78ea64f682fcc3ff0b50f689f5ee2738fcbac8554cfd2efcbdde8299"
+      "bytes": 16512,
+      "sha256": "56fba1894aa9eb7effecfed2255b595be504536ce09ba30ed29f86b9d57794ed"
     },
     "js/modules/domain/documentRevisionState.mjs": {
       "bytes": 1677,
@@ -79,8 +79,8 @@
       "sha256": "dafae4a4d651d5f2f68df02eebfff023bcd4eec0965dae774424de93c0021e22"
     },
     "js/modules/feature-adapters/imageImportFeature.mjs": {
-      "bytes": 3935,
-      "sha256": "4eeb022bf8c3ea9970fd62a3ea2ab789a23af9e9399eb9339ab4d5bc8b50e4e3"
+      "bytes": 3977,
+      "sha256": "e27e67d1556ead205d749cd73c536e8dfda157a73ed846cc69363d02f294cedc"
     },
     "js/modules/feature-adapters/keyboardShortcutsDialog.mjs": {
       "bytes": 33481,
@@ -123,12 +123,12 @@
       "sha256": "39910d65b3eefeca62745b5e41651a3feb750b28cbe27edbde0a74c0c4ea6e20"
     },
     "js/features/image-import.js": {
-      "bytes": 147871,
-      "sha256": "eb95ef469d5845957753f6c7524f161e73c5e524e64f83665616e983c9bc2ee3"
+      "bytes": 150234,
+      "sha256": "1224a6e93b7e15c49fb4ac48f89454984953296e154e298dc59d5e9d1b076ecf"
     },
     "js/features/image-import.js.map": {
-      "bytes": 551243,
-      "sha256": "3d792eb2f37668ef7d0a3e116097ab6ab1663b7f4cf8a8aab3bba73babe5afcb"
+      "bytes": 557569,
+      "sha256": "2ab71fe16867ae034937a337627924ef72c1aec9e19facc172c38e2a84a11d86"
     },
     "js/html/htmlcache.js": {
       "bytes": 380599,

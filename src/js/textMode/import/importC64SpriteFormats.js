@@ -20,6 +20,9 @@ var ImportC64SpriteFormats = function() {
   this.sprMulticolor = true;
   this.c64Focus = true;
   this.joystickPort = 0;
+
+  this.projectDocument = null;
+  this.projectGeneration = undefined;
 }
 
 ImportC64SpriteFormats.prototype = {
@@ -27,9 +30,46 @@ ImportC64SpriteFormats.prototype = {
     this.editor = editor;
   },
 
+  captureProjectContext: function() {
+    this.projectDocument = g_app.doc;
+    this.projectGeneration = g_app.projectGeneration;
+  },
+
+  isCurrentProject: function(context) {
+    context = context || {
+      document: this.projectDocument,
+      generation: this.projectGeneration
+    };
+    return !!context.document && (!g_app.isCurrentProject ||
+      g_app.isCurrentProject(context.document, context.generation));
+  },
+
+  resetProjectState: function() {
+    this.projectDocument = null;
+    this.projectGeneration = undefined;
+    this.importType = false;
+    this.spriteFrames = [];
+    this.c64ImageData = null;
+    this.spriteImageData = null;
+    if(this.context && typeof this.context.clearRect == 'function' && this.canvas) {
+      this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    }
+    if(this.spriteContext && typeof this.spriteContext.clearRect == 'function' && this.spriteCanvas) {
+      this.spriteContext.clearRect(0, 0, this.spriteCanvas.width, this.spriteCanvas.height);
+    }
+    this.canvas = null;
+    this.context = null;
+    this.spriteCanvas = null;
+    this.spriteContext = null;
+    this.importSpritePad = null;
+    this.importSPR = null;
+    this.visible = false;
+  },
+
 
   start: function() {
     var _this = this;
+    this.captureProjectContext();
 
     if(this.uiComponent == null) {
       this.uiComponent = UI.create("UI.Dialog", { "id": "importC64SpriteFormatsDialog", "title": "Import", "width": 615, "height": 500 });
@@ -217,6 +257,9 @@ ImportC64SpriteFormats.prototype = {
   },
 
   doImport: function() {
+    if(!this.isCurrentProject()) {
+      return;
+    }
     if(this.importType == 'spritepad') {
       this.importSpritePad.doImport();
     }
@@ -295,6 +338,10 @@ ImportC64SpriteFormats.prototype = {
 
 
   setImportFile: function(file) {
+    if(typeof file == 'undefined') {
+      return;
+    }
+    this.captureProjectContext();
     this.filename = file.name;
     var extension = '';
     var dotPos = this.filename.lastIndexOf('.');
@@ -331,8 +378,12 @@ ImportC64SpriteFormats.prototype = {
 
 
     var _this = this;
+    var context = { document: this.projectDocument, generation: this.projectGeneration };
     var reader = new FileReader();
     reader.onload = function(e) {
+      if(!_this.isCurrentProject(context)) {
+        return;
+      }
       var byteArray = new Uint8Array(e.target.result);
 
       _this.importSpritePad.readSpritePad(byteArray);
@@ -439,8 +490,12 @@ ImportC64SpriteFormats.prototype = {
     this.importType = 'spr';
 
     var _this = this;
+    var context = { document: this.projectDocument, generation: this.projectGeneration };
     var reader = new FileReader();
     reader.onload = function(e) {
+      if(!_this.isCurrentProject(context)) {
+        return;
+      }
       var byteArray = new Uint8Array(e.target.result);
       _this.importSPR.readSPR(byteArray);
       _this.context.clearRect(0, 0, _this.canvas.width, _this.canvas.height);
@@ -499,8 +554,13 @@ ImportC64SpriteFormats.prototype = {
     $('.importC64SpriteSettings').hide();
     $('#importC64SpritePRGControls').show();
 
+    var _this = this;
+    var context = { document: this.projectDocument, generation: this.projectGeneration };
     var reader = new FileReader();
     reader.onload = function(e) {
+      if(!_this.isCurrentProject(context)) {
+        return;
+      }
       var data = new Uint8Array(reader.result);
 
       c64_reset();
@@ -519,8 +579,13 @@ ImportC64SpriteFormats.prototype = {
     $('#importC64SpriteD64Controls').show();
 
 
+    var _this = this;
+    var context = { document: this.projectDocument, generation: this.projectGeneration };
     var reader = new FileReader();
     reader.onload = function(e) {
+      if(!_this.isCurrentProject(context)) {
+        return;
+      }
       var data = new Uint8Array(reader.result);
       c64_insertDisk(data, data.length);
     };

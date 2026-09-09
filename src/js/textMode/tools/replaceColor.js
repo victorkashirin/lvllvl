@@ -9,6 +9,8 @@ var ReplaceColorDialog = function() {
 
 
   this.frames = 'current';
+  this.projectDocument = null;
+  this.projectGeneration = undefined;
 }
 
 ReplaceColorDialog.prototype = {
@@ -16,7 +18,33 @@ ReplaceColorDialog.prototype = {
     this.editor = editor;
   },
 
+  captureProjectContext: function() {
+    this.projectDocument = (typeof g_app != 'undefined') ? g_app.doc : null;
+    this.projectGeneration = (typeof g_app != 'undefined') ? g_app.projectGeneration : undefined;
+  },
+
+  isCurrentProject: function() {
+    if(!this.projectDocument || typeof g_app == 'undefined') {
+      return false;
+    }
+    if(typeof g_app.isCurrentProject == 'function') {
+      return g_app.isCurrentProject(this.projectDocument, this.projectGeneration);
+    }
+    return this.projectDocument === g_app.doc;
+  },
+
+  resetProjectState: function() {
+    this.replaceColor = false;
+    this.replaceWithColor = false;
+    this.replaceFG = true;
+    this.replaceBG = false;
+    this.frames = 'current';
+    this.projectDocument = null;
+    this.projectGeneration = undefined;
+  },
+
   show: function() {
+    this.captureProjectContext();
     if(this.uiComponent == null) {
 
       var _this = this;
@@ -29,6 +57,9 @@ ReplaceColorDialog.prototype = {
       this.htmlComponent = UI.create("UI.HTMLPanel");
       this.uiComponent.add(this.htmlComponent);
       this.htmlComponent.load('html/textMode/replaceColor.html', function() {        
+        if(!_this.isCurrentProject()) {
+          return;
+        }
         _this.initContent();
         _this.initEvents();
       });
@@ -54,14 +85,26 @@ ReplaceColorDialog.prototype = {
   },
 
   setReplaceColor: function(color) {
+    if(!this.isCurrentProject()) {
+      return;
+    }
     var colorPalette = this.editor.colorPaletteManager.getCurrentColorPalette();
+    if(!colorPalette) {
+      return;
+    }
     this.replaceColor = color;
 
     $('#replaceColor').css('background-color', '#' + colorPalette.getHexString(color));
   },
 
   setReplaceWithColor: function(color) {
+    if(!this.isCurrentProject()) {
+      return;
+    }
     var colorPalette = this.editor.colorPaletteManager.getCurrentColorPalette();
+    if(!colorPalette) {
+      return;
+    }
     this.replaceWithColor = color;
 
     $('#replaceWithColor').css('background-color', '#' + colorPalette.getHexString(color));
@@ -69,6 +112,9 @@ ReplaceColorDialog.prototype = {
   },
 
   initContent: function() {
+    if(!this.isCurrentProject()) {
+      return;
+    }
     var currentColor = this.editor.currentTile.getColor();
     this.setReplaceColor(currentColor);
     this.setReplaceWithColor(currentColor);
@@ -77,6 +123,9 @@ ReplaceColorDialog.prototype = {
 
 
   initEvents: function() {
+    if(!this.isCurrentProject()) {
+      return;
+    }
     var _this = this;
 
     $('#replaceColor').on('click', function(event) {
@@ -116,6 +165,9 @@ ReplaceColorDialog.prototype = {
   },
 
   doReplaceColor: function() {
+    if(!this.isCurrentProject()) {
+      return false;
+    }
     this.readSettings();
 
     var layer = this.editor.layers.getSelectedLayerObject();

@@ -3,6 +3,8 @@
 var ColorPalette = function() {
 
   this.editor = null;
+  this.document = null;
+  this.projectGeneration = undefined;
 
   this.colorPaletteId = null;
   this.docRecord = null;
@@ -38,11 +40,17 @@ ColorPalette.prototype = {
       return;
     }
     var path = '/color palettes/' + this.docRecord.name;
-    g_app.doc.recordModified(this.docRecord, path);
+    var document = this.getDocument();
+    if(document && document === g_app.doc) {
+      document.recordModified(this.docRecord, path);
+    }
   },
 
-  init: function(editor, name, id) {
+  init: function(editor, name, id, projectDocument, projectGeneration) {
     this.editor = editor;
+    this.document = projectDocument || g_app.doc;
+    this.projectGeneration = typeof projectGeneration !== 'undefined' ?
+      projectGeneration : g_app.projectGeneration;
 
     if(typeof name === 'undefined') {
       this.name = 'Color Palette';
@@ -54,7 +62,7 @@ ColorPalette.prototype = {
     this.version = 1;
 
 
-    this.docRecord = g_app.doc.getDocRecordById(id, '/color palettes');// g_app.doc.getDocRecord('/color palettes/' + this.name);
+    this.docRecord = this.document.getDocRecordById(id, '/color palettes');// g_app.doc.getDocRecord('/color palettes/' + this.name);
 
     this.name = this.docRecord.name;
 
@@ -102,6 +110,10 @@ ColorPalette.prototype = {
     this.name = this.docRecord.name;
   },
 
+  getDocument: function() {
+    return this.document || g_app.doc;
+  },
+
   setName: function(name) {
     this.name = name;
     this.docRecord.name = name;
@@ -113,12 +125,14 @@ ColorPalette.prototype = {
   },
 
   getName: function() {
-    var colorPalette = g_app.doc.getDocRecordById(this.colorPaletteId, '/color palettes');
-    return colorPalette.name;
+    var document = this.getDocument();
+    var colorPalette = document && document.getDocRecordById(this.colorPaletteId, '/color palettes');
+    return colorPalette ? colorPalette.name : this.name;
   },
 
   getPath: function() {
-    var colorPalette = g_app.doc.getDocRecordById(this.colorPaletteId, '/color palettes');
+    var document = this.getDocument();
+    var colorPalette = document && document.getDocRecordById(this.colorPaletteId, '/color palettes');
     if(!colorPalette) {
       return false;
     }
@@ -139,8 +153,9 @@ ColorPalette.prototype = {
     var path = this.getPath();
 
     var colorMapsPath = path + '/maps';
-    var colorMaps = g_app.doc.getDocRecord(colorMapsPath);    
-    
+    var document = this.getDocument();
+    var colorMaps = document && document.getDocRecord(colorMapsPath);
+
     if(!colorMaps) {
       return;
     }
@@ -160,16 +175,17 @@ ColorPalette.prototype = {
     if(this.docRecord) {    
       var path = this.getPath();
       var colorMapsPath = path + '/maps';
-      var colorMaps = g_app.doc.getDocRecord(colorMapsPath);    
-      
+      var document = this.getDocument();
+      var colorMaps = document && document.getDocRecord(colorMapsPath);
+
       if(!colorMaps) {
-        colorMaps = g_app.doc.createDocRecord(path, 'maps', 'folder', {});
+        colorMaps = document.createDocRecord(path, 'maps', 'folder', {});
       }
   
       var colorMapPath = colorMapsPath + '/' + name;
-      var colorMapRecord = g_app.doc.getDocRecord(colorMapPath);
+      var colorMapRecord = document.getDocRecord(colorMapPath);
       if(!colorMapRecord) {
-        colorMapRecord = g_app.doc.createDocRecord(colorMapsPath, name, "color map", {  map: colorMap })
+        colorMapRecord = document.createDocRecord(colorMapsPath, name, "color map", {  map: colorMap })
       } else {
         colorMapRecord.data.map = colorMap;
       }
@@ -190,7 +206,8 @@ ColorPalette.prototype = {
 
     var colorMapsPath = path + '/maps';
 
-    var colorMaps = g_app.doc.getDocRecord(colorMapsPath);    
+    var document = this.getDocument();
+    var colorMaps = document && document.getDocRecord(colorMapsPath);
     if(!colorMaps) {
       // no maps
       return [];
@@ -199,7 +216,7 @@ ColorPalette.prototype = {
     
 
     var names = [];
-    var dir = g_app.doc.dir(colorMapsPath);
+    var dir = document.dir(colorMapsPath);
     for(var i = 0; i < dir.length; i++) {
       names.push({ "id": dir[i].id, "name": dir[i].name});
     }
@@ -215,14 +232,15 @@ ColorPalette.prototype = {
     var path = this.getPath();
 
     var colorMapsPath = path + '/maps';
-    var colorMaps = g_app.doc.getDocRecord(colorMapsPath);    
+    var document = this.getDocument();
+    var colorMaps = document && document.getDocRecord(colorMapsPath);
     if(!colorMaps) {
       // no maps
       return false;
     }
 
     var names = [];
-    var dir = g_app.doc.dir(colorMapsPath);
+    var dir = document.dir(colorMapsPath);
     if(dir.length == 0) {
       return false;
     }
@@ -235,7 +253,8 @@ ColorPalette.prototype = {
 
     var path = this.getPath();
     var colorMapsPath = path + '/maps';
-    var mapRecord = g_app.doc.getDocRecordById(id, colorMapsPath);
+    var document = this.getDocument();
+    var mapRecord = document && document.getDocRecordById(id, colorMapsPath);
 
     if(!mapRecord) {
       return false;
@@ -757,6 +776,8 @@ ColorPalette.prototype = {
   setToPreset: function(presetId, callback) {
     g_app.textModeEditor.colorPaletteManager.choosePreset(presetId, {
       colorPalette: this,
+      document: this.document,
+      projectGeneration: this.projectGeneration,
       callback: callback
     });
 
@@ -927,8 +948,9 @@ ColorPalette.prototype = {
       var path = this.getPath();
 
       var colorMapsPath = path + '/maps';
-      var colorMaps = g_app.doc.getDocRecord(colorMapsPath);    
-      
+      var document = this.getDocument();
+      var colorMaps = document && document.getDocRecord(colorMapsPath);
+
       if(colorMaps) {
         for(var i = 0; i < colorMaps.children.length; i++) {
           json.maps.push({

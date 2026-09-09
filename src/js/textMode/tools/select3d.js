@@ -21,6 +21,39 @@ Select3d.prototype = {
 
   },
 
+  // Clear selection/clipboard state without writing a "Clear" entry into the
+  // active document.  The regular clear() command is destructive and must
+  // never be used while detaching a project.
+  resetProjectState: function() {
+    this.clipboardData = [];
+    this.selectionDragMode = '';
+    this.selectionOffsetX = 0;
+    this.selectionOffsetY = 0;
+    this.selectionStartX = 0;
+    this.selectionStartY = 0;
+    this.selectionStartZ = 0;
+    this.selectPositionX = 0;
+    this.selectPositionY = 0;
+    this.selectPositionZ = 0;
+    this.enabled = false;
+    if(this.selectionMesh) {
+      this.selectionMesh.visible = false;
+      this.selectionMesh.minX = 0;
+      this.selectionMesh.minY = 0;
+      this.selectionMesh.minZ = 0;
+      this.selectionMesh.maxX = 0;
+      this.selectionMesh.maxY = 0;
+      this.selectionMesh.maxZ = 0;
+      this.selectionMesh.offsetX = 0;
+      this.selectionMesh.offsetY = 0;
+      this.selectionMesh.offsetZ = 0;
+    }
+    if(this.selectionDragControls) {
+      this.selectionDragControls.visible = false;
+      this.selectionDragControls.originalPosition = null;
+    }
+  },
+
   createMesh: function() {
     var grid3d = this.editor.grid3d;
     var scene = grid3d.scene;

@@ -21,6 +21,8 @@ if (!HTMLCanvasElement.prototype.toBlob) {
 
 var TileSet = function() {
   this.tileSetId = null;
+  this.document = null;
+  this.projectGeneration = undefined;
   this.renderRevision = 0;
   // Selective animation/pixel updates deliberately leave renderRevision alone
   // so unrelated layers keep their caches. Consumers that know which glyphs a
@@ -203,9 +205,15 @@ TileSet.prototype = {
 
     // test code, load the font
     var _this = this;
+    var projectDocument = this.document;
+    var projectGeneration = this.projectGeneration;
 
     var path = 'vectorsets/' + vectorFile + '.json?3'; 
     $.get(path, function(response) {
+      if(projectDocument && g_app.isCurrentProject &&
+          !g_app.isCurrentProject(projectDocument, projectGeneration)) {
+        return;
+      }
       _this.blankCharacter = 0;
       _this.vectorPetscii = false;
       if(vectorFile == 'petscii' || vectorFile == 'petscii-thin') {
@@ -335,7 +343,8 @@ TileSet.prototype = {
 
 
   getDocRecord: function() {
-    return g_app.doc.getDocRecordById(this.tileSetId, '/tile sets');
+    var document = this.document || g_app.doc;
+    return document && document.getDocRecordById(this.tileSetId, '/tile sets');
   },
 
   getName: function() {
@@ -350,15 +359,18 @@ TileSet.prototype = {
       return;
     }
 
-    if(g_app.doc && this.docRecord && this.docRecord.name != null) {
+    var document = this.document || g_app.doc;
+    if(document && document === g_app.doc && this.docRecord && this.docRecord.name != null) {
       var path = '/tile sets/' + this.docRecord.name;
-      g_app.doc.recordModified(this.docRecord, path);
+      document.recordModified(this.docRecord, path);
     }
   },
 
 
-  init: function(editor, name, id, type) {
+  init: function(editor, name, id, type, projectDocument) {
     this.editor = editor;
+    this.document = projectDocument || g_app.doc;
+    this.projectGeneration = g_app.projectGeneration;
 
     if(typeof name === 'undefined') {
       this.name = 'Tile Set';
@@ -1031,6 +1043,10 @@ TileSet.prototype = {
     var url = "charsets/" + filename;
     var img = new Image();
     img.onload = function() {
+      if(_this.document && g_app.isCurrentProject &&
+          !g_app.isCurrentProject(_this.document, _this.projectGeneration)) {
+        return;
+      }
       _this.type = type;
 
       _this.customCharacterset = preset !== 'petscii';
@@ -1811,7 +1827,7 @@ TileSet.prototype = {
       if(typeof jsonData.blockSet != 'undefined') {
         
         var blockSetPath = '/tile sets/' + this.name + '/block sets/block set';
-        var blockSet = this.editor.blockSetManager.getBlockSet(blockSetPath);
+        var blockSet = this.editor.blockSetManager.getBlockSet(blockSetPath, this.document);
 
 //        var blockSet = this.editor.blockSetManager.getCurrentBlockSet();
         blockSet.clear();
@@ -1854,7 +1870,7 @@ TileSet.prototype = {
   
   getBlockSet: function() {
     var blockSetPath = '/tile sets/' + this.name + '/block sets/block set';
-    var blockSet = this.editor.blockSetManager.getBlockSet(blockSetPath);
+    var blockSet = this.editor.blockSetManager.getBlockSet(blockSetPath, this.document);
     return blockSet;
     
   },

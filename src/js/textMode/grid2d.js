@@ -52,6 +52,41 @@ Grid2d.prototype = {
 
   },
 
+  resetProjectState: function() {
+    this.imageData = null;
+    this.rasterImageData = null;
+    this.prevFrameCanvas = null;
+    this.prevFrameContext = null;
+    this.nextFrameCanvas = null;
+    this.nextFrameContext = null;
+    this.effectCanvas = null;
+    this.effectContext = null;
+    this.tempCanvas = null;
+    this.tempContext = null;
+    this.shapesCanvas = null;
+    this.selectionCanvas = null;
+
+    if(this.context && this.canvas) {
+      try {
+        this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+      } catch(error) {}
+    }
+
+    this.cursor = {
+      isOn: true,
+      position: { x: -1, y: -1 },
+      offset: { x: 0, y: 0 },
+      color: false,
+      bgColor: false,
+      character: false
+    };
+    this.typingCursor = {
+      isOn: false,
+      position: { x: -1, y: -1 },
+      color: false
+    };
+  },
+
   getCursorEnabled: function() {
     return this.cursor.isOn;
   },

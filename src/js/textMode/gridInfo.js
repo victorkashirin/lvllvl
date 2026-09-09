@@ -17,6 +17,24 @@ GridInfo.prototype = {
     this.editor = editor;
   },
 
+  resetProjectState: function() {
+    this.character = 0;
+    this.block = false;
+    this.tileIndex = 0;
+    this.fgColor = 0;
+    this.bgColor = 0;
+    this.fgColorHex = '';
+    this.bgColorHex = '';
+    this.x = 0;
+    this.y = 0;
+    this.z = 0;
+    if(typeof $ == 'function') {
+      $('#gridinfo-coordinates').html('');
+    }
+    this.characterCanvas = null;
+    this.characterContext = null;
+  },
+
   buildInterface: function(parentComponent) {
     var _this = this;
 

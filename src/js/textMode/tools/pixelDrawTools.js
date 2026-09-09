@@ -11,6 +11,11 @@ PixelDrawTools.prototype = {
     this.editor = editor;
   },
 
+  resetProjectState: function() {
+    this.tool = 'pen';
+    this.colorTypeSelectedHander = null;
+  },
+
 
   initEvents: function() {
     var _this = this;

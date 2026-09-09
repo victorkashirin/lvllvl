@@ -18,6 +18,8 @@ var TextModeEditor = function() {
   this.importSpriteImage = null;
   this.tools = null;
   this.doc  = null;
+  this.projectDocument = null;
+  this.projectGeneration = undefined;
 
   this.type = '2d';
   this.mode = 'draw';
@@ -393,7 +395,8 @@ TextModeEditor.prototype = {
 
 
   modified: function() {
-    if(g_app.openingProject) {
+    if(g_app.openingProject || !this.doc ||
+        (this.projectDocument && this.projectDocument !== g_app.doc)) {
       return;
     }
     g_app.doc.recordModified(this.doc, this.path);
@@ -401,7 +404,17 @@ TextModeEditor.prototype = {
 
 
   createDoc: function(args, callback) {
-    var doc = g_app.doc;
+    args = args || {};
+    var doc = args.document || g_app.doc;
+    var projectGeneration = args.projectGeneration;
+    var isCurrent = function() {
+      return !g_app.isCurrentProject || g_app.isCurrentProject(doc, projectGeneration);
+    };
+    if(!doc || !isCurrent()) {
+      return;
+    }
+    this.projectDocument = doc;
+    this.projectGeneration = projectGeneration;
 
     var parentPath = '/screens';
     if(typeof args.parentPath != 'undefined') {
@@ -475,11 +488,22 @@ TextModeEditor.prototype = {
       colorPaletteArgs.colorPaletteName = args.colorPaletteName;
     }
 
+    tileSetArgs.document = doc;
+    tileSetArgs.projectGeneration = projectGeneration;
+    colorPaletteArgs.document = doc;
+    colorPaletteArgs.projectGeneration = projectGeneration;
+
     
 
     this.colorPaletteManager.addColorPaletteToDoc(colorPaletteArgs, function(colorPaletteId) {
+      if(!isCurrent()) {
+        return;
+      }
       _this.tileSetManager.addTileSetToDoc(tileSetArgs, function(tileSetId) {
-        var tileSet = _this.tileSetManager.getTileSet(tileSetId);////g_app.doc.getDocRecordById(tileSetId, '/tile sets');
+        if(!isCurrent()) {
+          return;
+        }
+        var tileSet = _this.tileSetManager.getTileSet(tileSetId, doc);////g_app.doc.getDocRecordById(tileSetId, '/tile sets');
 
         if(parentPath == '/screens') {
           // make sure the tileset has a tile in it.
@@ -538,7 +562,7 @@ TextModeEditor.prototype = {
         }
 
         var record = doc.createDocRecord(parentPath, name, 'graphic', graphicData, id);
-        if(typeof callback !== 'undefined') {
+        if(typeof callback !== 'undefined' && isCurrent()) {
           callback(record);
         }
 
@@ -584,6 +608,8 @@ TextModeEditor.prototype = {
 
 
 
+    this.projectDocument = g_app.doc;
+    this.projectGeneration = g_app.projectGeneration;
     this.path = path;
     this.doc = g_app.doc.getDocRecord(path);
     this.setupHistory();
@@ -652,6 +678,8 @@ TextModeEditor.prototype = {
       }
 
       // this is used from open
+      this.projectDocument = g_app.doc;
+      this.projectGeneration = g_app.projectGeneration;
       this.path = screen;
 
       var isSprite = this.path.indexOf('/sprites/') === 0;

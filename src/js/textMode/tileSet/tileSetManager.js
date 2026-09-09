@@ -97,6 +97,32 @@ TileSetManager.prototype = {
     var tileSetMenu = g_app.tileSetMenu;
     var selectedTileset = null;
 
+    if(!tileSetMenu) {
+      return;
+    }
+
+    var tileSets = g_app.doc ? g_app.doc.dir('/tile sets') : [];
+    var activeTileSetMenuItems = {};
+    for(var i = 0; i < tileSets.length; i++) {
+      activeTileSetMenuItems['tileset-select-' + tileSets[i].id] = true;
+    }
+
+    // Menu instances outlive projects. Remove stale project entries before
+    // inspecting the selected layer or mode (which may not have a grid).
+    var currentMenuItems = tileSetMenu.getItems();
+    for(var i = currentMenuItems.length - 1; i >= 0; i--) {
+      var menuItemId = currentMenuItems[i].uiID;
+      if(typeof menuItemId == 'string' &&
+          menuItemId.indexOf('tileset-select-') === 0 &&
+          !activeTileSetMenuItems[menuItemId]) {
+        tileSetMenu.removeItem(menuItemId);
+      }
+    }
+
+    if(!g_app.doc) {
+      return;
+    }
+
     if(g_app.getMode() != '3d') {
       // get the current layer
       var layer = this.editor.layers.getSelectedLayerObject();
@@ -108,15 +134,14 @@ TileSetManager.prototype = {
       selectedTileset = this.editor.grid3d.getTileSet();
     }
 
+    if(!selectedTileset) {
+      return;
+    }
+
     var tileWidth = selectedTileset.getTileWidth();
     var tileHeight = selectedTileset.getTileHeight();
 
 
-    // get all matching tilesets..
-//    var currentMenuItems = tileSetMenu.getItems();
-
-
-    var tileSets = g_app.doc.dir('/tile sets');
     for(var i = 0; i < tileSets.length; i++) {
       var tileSetData = tileSets[i].data;
       
@@ -132,7 +157,7 @@ TileSetManager.prototype = {
           menuItem = tileSetMenu.addItem({ "label": name, "id": menuId });
         }
 
-        if(id == selectedTileset.getId()) {
+        if(selectedTileset && id == selectedTileset.getId()) {
           menuItem.setChecked(true);
         } else {
           menuItem.setChecked(false);
@@ -168,6 +193,11 @@ TileSetManager.prototype = {
   },
   
   createTileSet: function(args) {
+    args = args || {};
+    var document = args.document || g_app.doc;
+    if(!document) {
+      return false;
+    }
     var width = 8;
     var height = 8;
     var name = "Tile Set";
@@ -191,13 +221,13 @@ TileSetManager.prototype = {
     // make sure the name is unique
     var testName = name;
     var count = 0;
-    while(g_app.doc.getDocRecord('/tile sets/' + testName)) {
+    while(document.getDocRecord('/tile sets/' + testName)) {
       count++;
       testName = name + '_' + count
     }
     name = testName;
 
-    var tileSet = g_app.doc.createDocRecord(
+    var tileSet = document.createDocRecord(
                 "/tile sets", 
                 name, 
                 "tile set", 
@@ -213,6 +243,35 @@ TileSetManager.prototype = {
     }
     this.tileSets = [];
     this.tileSetCache = {};
+    this.currentTileSet = null;
+    this.blankCharacter = 32;
+
+    if(this.tileSetImport && typeof this.tileSetImport.resetProjectState == 'function') {
+      this.tileSetImport.resetProjectState();
+    }
+    if(this.tileSetSave && typeof this.tileSetSave.resetProjectState == 'function') {
+      this.tileSetSave.resetProjectState();
+    }
+    if(this.tileSetChoosePreset && typeof this.tileSetChoosePreset.resetProjectState == 'function') {
+      this.tileSetChoosePreset.resetProjectState();
+    }
+    if(this.tileSetChoosePresetMobile && typeof this.tileSetChoosePresetMobile.resetProjectState == 'function') {
+      this.tileSetChoosePresetMobile.resetProjectState();
+    }
+  },
+
+  clearProjectMenu: function() {
+    var tileSetMenu = g_app.tileSetMenu;
+    if(!tileSetMenu) {
+      return;
+    }
+    var currentMenuItems = tileSetMenu.getItems();
+    for(var i = currentMenuItems.length - 1; i >= 0; i--) {
+      var menuItemId = currentMenuItems[i].uiID;
+      if(typeof menuItemId == 'string' && menuItemId.indexOf('tileset-select-') === 0) {
+        tileSetMenu.removeItem(menuItemId);
+      }
+    }
   },
 
   getTileSetCount: function() {
@@ -474,10 +533,19 @@ TileSetManager.prototype = {
 
   addTileSetToDoc: function(args, callback) {
 
+    args = args || {};
+    var document = args.document || g_app.doc;
+    var generation = args.projectGeneration;
+    var isCurrent = function() {
+      return !g_app.isCurrentProject || g_app.isCurrentProject(document, generation);
+    };
+    if(!document || !isCurrent()) {
+      return;
+    }
 
     if(typeof args.tileSetId != 'undefined' && args.tileSetId != '') {
       // tile set already exists in doc..prob should check tho..
-      if(typeof callback != 'undefined') {
+      if(typeof callback != 'undefined' && isCurrent()) {
         callback(args.tileSetId);
       }
       return;
@@ -510,38 +578,49 @@ TileSetManager.prototype = {
       height = args.height;
     }
 
-    var tileSetId = this.createTileSet({ name: name, width: width, height: height });
+    var tileSetId = this.createTileSet({ name: name, width: width, height: height, document: document });
 
 
     var tileSet = new TileSet();
-    tileSet.init(this.editor, name, tileSetId, '');
+    tileSet.init(this.editor, name, tileSetId, '', document);
+    tileSet.projectGeneration = generation;
     this.tileSetCache[tileSetId] = tileSet;
 
     if(typeof args.tileSet != 'undefined' && args.tileSet != null) {
       tileSet.copyTileSet(args.tileSet);
     }
 
-    if(typeof callback != 'undefined') {
+    if(typeof callback != 'undefined' && isCurrent()) {
       callback(tileSetId);
     }
 
   },
 
   addTileSetFromPreset: function(args, callback) {
+    args = args || {};
+    var document = args.document || g_app.doc;
+    var generation = args.projectGeneration;
+    var isCurrent = function() {
+      return !g_app.isCurrentProject || g_app.isCurrentProject(document, generation);
+    };
+    if(!document || !isCurrent()) {
+      return;
+    }
     var preset = args.preset;
     var name = "Tile Set";
 
     if(typeof args.tileSetName != 'undefined') {
       name = args.tileSetName;
     }
-    var tileSetId = this.createTileSet({ name: name });
+    var tileSetId = this.createTileSet({ name: name, document: document });
 
     var tileSet = new TileSet();
-    tileSet.init(this.editor, preset, tileSetId);
+    tileSet.init(this.editor, preset, tileSetId, undefined, document);
+    tileSet.projectGeneration = generation;
     this.tileSetCache[tileSetId] = tileSet;
 
-    tileSet.setToPreset(preset, function() {    
-      if(typeof callback != 'undefined') {
+    tileSet.setToPreset(preset, function() {
+      if(isCurrent() && typeof callback != 'undefined') {
         callback(tileSetId);
       }
     });
@@ -552,10 +631,22 @@ TileSetManager.prototype = {
 
 
     var tileSet = this.currentTileSet;
+    if(tileSet &&
+        (!tileSet.document || (g_app.isCurrentProject &&
+        !g_app.isCurrentProject(tileSet.document, tileSet.projectGeneration)))) {
+      tileSet = null;
+      this.currentTileSet = null;
+    }
     if(tileSet == null) {
-      var tileSetId = this.createTileSet({ name: preset });
+      var projectDocument = g_app.doc;
+      if(!projectDocument) {
+        return;
+      }
+      var projectGeneration = g_app.projectGeneration;
+      var tileSetId = this.createTileSet({ name: preset, document: projectDocument });
       tileSet = new TileSet();
-      tileSet.init(this.editor, preset, tileSetId);
+      tileSet.init(this.editor, preset, tileSetId, undefined, projectDocument);
+      tileSet.projectGeneration = projectGeneration;
       this.currentTileSet = tileSet;
       this.tileSetCache[tileSetId] = tileSet;
 
@@ -619,16 +710,28 @@ TileSetManager.prototype = {
     
   },
 
-  getTileSet: function(tileSetId) {
+  getTileSet: function(tileSetId, document) {
 
-    if(this.tileSetCache.hasOwnProperty(tileSetId)) {
-      return this.tileSetCache[tileSetId];
+    document = document || g_app.doc;
+    if(!document) {
+      return null;
     }
 
-    var tileSetRecord = g_app.doc.getDocRecordById(tileSetId, "/tile sets");
+    if(this.tileSetCache.hasOwnProperty(tileSetId)) {
+      var cachedTileSet = this.tileSetCache[tileSetId];
+      // Legacy unbound objects may contain the previous project's glyph data;
+      // only reuse a cache entry owned by this exact document.
+      if(cachedTileSet.document === document) {
+        return cachedTileSet;
+      }
+      delete this.tileSetCache[tileSetId];
+    }
+
+    var tileSetRecord = document.getDocRecordById(tileSetId, "/tile sets");
     if(tileSetRecord) {
       var tileSet = new TileSet();
-      tileSet.init(this.editor, tileSetRecord.name, tileSetId);
+      tileSet.init(this.editor, tileSetRecord.name, tileSetId, undefined, document);
+      tileSet.projectGeneration = document === g_app.doc ? g_app.projectGeneration : undefined;
 
       this.tileSetCache[tileSetId] = tileSet;
 
@@ -644,10 +747,12 @@ TileSetManager.prototype = {
 
   setCurrentTileSetFromId: function(tileSetId) {
 
-    var tileSet = this.getTileSet(tileSetId);
+    var tileSet = this.getTileSet(tileSetId, g_app.doc);
 
     if(tileSet) {
-      if(this.currentTileSet && this.currentTileSet.tileSetId == tileSetId) {
+      if(this.currentTileSet &&
+          (!g_app.doc || this.currentTileSet.document === g_app.doc) &&
+          this.currentTileSet.tileSetId == tileSetId) {
 //        console.log('already set to this tileset!!!');
         // already set.
         return;

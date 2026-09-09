@@ -4,6 +4,16 @@
 
 ### Fixed
 
+- Reload build configuration for every development rebuild so changes to the
+  legacy source graph take effect without restarting the dev command.
+- Remove stale project color palette and tile set menu entries when creating a
+  new project, preventing resources from previous projects from being
+  duplicated.
+- Keep C64 machine reset scoped to the emulator so project debugger and source
+  state survives an ordinary reset.
+- Isolate project transitions so palettes, tile sets, editor buffers,
+  selections, imports, debugger/script runtimes, and autosave data from a
+  previous project cannot populate the newly opened project.
 - Make the Fill Bucket respect the selected Tile, FG Color, and BG Color
   affect channels when matching and updating glyph cells, preserving tile
   rotations and flips during color-only fills.

@@ -76,6 +76,11 @@ SidFilters.prototype = {
     this.music = music;
   },
 
+  resetProjectState: function() {
+    this.filters = [];
+    this.currentFilter = 1;
+  },
+
 
   buildInterface: function(parentPanel) {
 //    var html = '<div id="filtersHolder" style="background-color: white;overflow-y: auto; overflow-x: hidden" class="panelFill"></div>';

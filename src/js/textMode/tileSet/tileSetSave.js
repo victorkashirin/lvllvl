@@ -8,6 +8,10 @@ TileSetSave.prototype = {
     this.editor = editor;
   },
 
+  resetProjectState: function() {
+    this.tileSet = null;
+  },
+
   show: function() {
 
     var _this = this;

@@ -63,6 +63,39 @@ CurrentTile.prototype = {
     this.init3d();
   },
 
+  // CurrentTile is a long-lived UI singleton. Its selected characters,
+  // recent lists, and 3D meshes can otherwise keep content from the closed
+  // project reachable (and visible) until the next screen is loaded.
+  resetProjectState: function() {
+    this.character = false;
+    this.characters = [];
+    this.characterSelected = [];
+    this.cells = [];
+    this.blockId = false;
+    this.character3d = false;
+    this.color = 1;
+    this.bgColor = -1;
+    this.rotX = 0;
+    this.rotY = 0;
+    this.rotZ = 0;
+    this.flipH = false;
+    this.flipV = false;
+    this.useCells = false;
+    this.recentCharacters = [];
+    this.recentColors = [];
+    this.cursorImageData = null;
+    if(this.characterMesh && this.scene && typeof this.scene.remove == 'function') {
+      try {
+        this.scene.remove(this.characterMesh);
+      } catch(error) {
+        // The mesh may not have been attached yet.
+      }
+    }
+    this.characterMesh = null;
+    this.characterBGMesh = null;
+    this.tileMaterial = null;
+  },
+
   init3d: function() {
 
     this.noBGMaterial = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0});

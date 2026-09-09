@@ -169,6 +169,15 @@ var C64Debugger = function() {
 }
 
 C64Debugger.prototype = {
+  projectContext: function() {
+    return { document: g_app.doc, generation: g_app.projectGeneration };
+  },
+
+  isCurrentProject: function(context) {
+    return !context || !g_app.isCurrentProject ||
+      g_app.isCurrentProject(context.document, context.generation);
+  },
+
 
   init: function(args) {
 
@@ -2533,10 +2542,14 @@ C64Debugger.prototype = {
 
 
   loadBASFile: function(file) {
+    var context = this.projectContext();
     var _this = this;
     var fileReader = new FileReader();
 
     fileReader.onload = function(e) {
+      if(!_this.isCurrentProject(context)) {
+        return;
+      }
       _this.showPanel('c64-view-toggle-basic', true);
       _this.basic.setBAS(e.target.result);
       
@@ -2554,8 +2567,12 @@ C64Debugger.prototype = {
     this.removePCMarker();
 
     var _this = this;
+    var context = this.projectContext();
     var reader = new FileReader();
     reader.onload = function(e) {
+      if(!_this.isCurrentProject(context)) {
+        return;
+      }
       _this.prgData = new Uint8Array(reader.result);
       _this.prgName = file.name;
 
@@ -2603,6 +2620,8 @@ C64Debugger.prototype = {
   },
 
   autostartD64PRG: function(data) {
+    var context = this.projectContext();
+    var _this = this;
     var prgData = D64Util.getFirstPRG(data);
     this.prgData = prgData;//new Uint8Array(reader.result);
     this.prgName = 'd64prg';// file.name;
@@ -2613,8 +2632,10 @@ C64Debugger.prototype = {
     
   
     if(false && this.prgData) {
-      var _this = this;
       setTimeout(function() {
+        if(!_this.isCurrentProject(context)) {
+          return;
+        }
         c64_loadPRG(_this.prgData, _this.prgData.length, false);
         c64.insertText('run:\n');
       }, 2000);
@@ -2623,6 +2644,9 @@ C64Debugger.prototype = {
       
 //      alert("sorry, couldn;t find a prg");
       setTimeout(function() {
+        if(!_this.isCurrentProject(context)) {
+          return;
+        }
         c64.insertText('load "*",8,1\nrun\n');
       }, 2000);
     }
@@ -2636,8 +2660,12 @@ C64Debugger.prototype = {
     c64.sound.checkAudio();
 
     var _this = this;
+    var context = this.projectContext();
     var reader = new FileReader();
     reader.onload = function(e) {
+      if(!_this.isCurrentProject(context)) {
+        return;
+      }
       var data = new Uint8Array(reader.result);
       c64_insertDisk(data, data.length);
       _this.d64Data = data;
@@ -2664,8 +2692,12 @@ C64Debugger.prototype = {
     c64.sound.checkAudio();
 
     var _this = this;
+    var context = this.projectContext();
     var reader = new FileReader();
     reader.onload = function(e) {
+      if(!_this.isCurrentProject(context)) {
+        return;
+      }
       var data = new Uint8Array(reader.result);
 //      c64_insertDisk(data, data.length);
 
@@ -2854,10 +2886,57 @@ C64Debugger.prototype = {
     this.updateButtons();
   },
 
-  machineReset: function() {
-    //$('#c64DebuggerForm').reset();
+  resetProjectState: function() {
+    var hadCRT = this.crtData != null;
+    if(this.assemblerEditor && typeof this.assemblerEditor.resetProjectState == 'function') {
+      this.assemblerEditor.resetProjectState();
+    }
+    if(this.disassembly && typeof this.disassembly.resetProjectState == 'function') {
+      this.disassembly.resetProjectState();
+    }
+    if(this.c64Charset && typeof this.c64Charset.resetProjectState == 'function') {
+      this.c64Charset.resetProjectState();
+    }
+    if(this.c64Sprites && typeof this.c64Sprites.resetProjectState == 'function') {
+      this.c64Sprites.resetProjectState();
+    }
+    this.prgFile = null;
+    this.prgName = 'test.prg';
+    this.prgData = null;
+    this.d64Data = null;
+    this.d64Name = '';
+    this.crtData = null;
+    this.crtName = '';
+    this.prgToStart = null;
+    this.crtToStart = null;
+    this.d64ToStart = null;
+    this.snapshotToStart = null;
+    this.assemblerReport = false;
+    this.pcBreakpoints = [];
+    this.memoryBreakpoints = [];
+    this.rasterYBreakpoints = [];
+    if(this.scripting && typeof this.scripting.resetProjectState == 'function') {
+      this.scripting.resetProjectState();
+    }
+    if(this.basic && typeof this.basic.resetProjectState == 'function') {
+      this.basic.resetProjectState();
+    }
+    if(typeof debugger_pause == 'function') {
+      try { debugger_pause(); } catch(error) {}
+    }
     $('#c64DebuggerAttachedDisk').html('');
-    //this.c64.machineReset();
+    if(hadCRT && typeof c64_removeCartridge == 'function') {
+      c64_removeCartridge();
+    }
+    if(typeof c64_reset == 'function') {
+      c64_reset();
+    }
+  },
+
+  machineReset: function() {
+    // Reset the emulated machine without discarding the project's editor,
+    // debugger, and source state. Project cleanup belongs to closeProject.
+    $('#c64DebuggerAttachedDisk').html('');
 
     if(this.crtData != null) {
       this.crtData = null;
@@ -3227,8 +3306,12 @@ C64Debugger.prototype = {
     this.removePCMarker();
 
     var _this = this;
+    var context = this.projectContext();
     var reader = new FileReader();
     reader.onload = function(e) {
+      if(!_this.isCurrentProject(context)) {
+        return;
+      }
       var snapshotData = new Uint8Array(reader.result);
 
       c64_reset();
@@ -3241,6 +3324,7 @@ C64Debugger.prototype = {
   },
 
   startPRG: function(data, inject, randomDelay) {
+    var context = this.projectContext();
     var loadAddress = data[0] + (data[1] << 8);
     var endAddress = loadAddress - 2 + data.length;
 /*
@@ -3280,6 +3364,9 @@ C64Debugger.prototype = {
 //    delay = 0;
 //    delay = 0;
     setTimeout(function() {
+      if(!g_app.isCurrentProject || !g_app.isCurrentProject(context.document, context.generation)) {
+        return;
+      }
       c64_loadPRG(data, data.length, inject ? 1:0);
 
       if(inject) {
@@ -3291,6 +3378,9 @@ C64Debugger.prototype = {
         
       } else {
         setTimeout(function() {
+          if(!g_app.isCurrentProject || !g_app.isCurrentProject(context.document, context.generation)) {
+            return;
+          }
           c64.insertText('load "*",8,1\nrun\n');
         }, 2000);
       }

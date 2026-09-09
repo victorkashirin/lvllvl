@@ -43,6 +43,33 @@ Shapes.prototype = {
     });
   },
 
+  resetProjectState: function() {
+    if(this.previewRequest !== null && typeof cancelAnimationFrame == 'function') {
+      cancelAnimationFrame(this.previewRequest);
+    }
+    this.previewRequest = null;
+    if(this.holder && typeof this.clearMeshes == 'function') {
+      this.clearMeshes();
+    } else {
+      this.meshes = [];
+    }
+    this.grid = null;
+    this.touchedCells = [];
+    this.bounds = false;
+    this.dirtyBounds = false;
+    this.previewCanvas = null;
+    this.layer = null;
+    this.shape = false;
+    this.fromX = false;
+    this.fromY = false;
+    this.fromZ = false;
+    this.toX = -1;
+    this.toY = -1;
+    this.toZ = -1;
+    this.fill = false;
+    this.expandFromMiddle = false;
+  },
+
 
   setFill: function(fill) {
     this.fill = fill;

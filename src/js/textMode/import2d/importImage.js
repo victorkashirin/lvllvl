@@ -2,6 +2,11 @@ var ImportImage = function() {
 
   this.editor = null;
   this.host = null;
+  // The importer is lazy and can outlive the project that activated it.
+  // Keep an immutable ownership token so delayed image/video/worker work
+  // cannot write into a newly selected project's graphic.
+  this.projectDocument = null;
+  this.projectGeneration = undefined;
   this.closeCallback = null;
   this.importColorUtils = null;
 
@@ -406,6 +411,12 @@ ImportImage.prototype = {
   init: function(editor, host) {
     this.editor = editor;
     this.host = host;
+    this.projectDocument = editor && editor.projectDocument
+      ? editor.projectDocument
+      : (typeof g_app != 'undefined' ? g_app.doc : null);
+    this.projectGeneration = editor && typeof editor.projectGeneration != 'undefined'
+      ? editor.projectGeneration
+      : (typeof g_app != 'undefined' ? g_app.projectGeneration : undefined);
     this.importColorUtils = new ImportColorUtils();
     this.importColorUtils.init(this.editor);
 
@@ -413,7 +424,20 @@ ImportImage.prototype = {
 
   },
 
+  isCurrentProject: function() {
+    if(!this.projectDocument) {
+      return false;
+    }
+    if(typeof g_app != 'undefined' && typeof g_app.isCurrentProject == 'function') {
+      return g_app.isCurrentProject(this.projectDocument, this.projectGeneration);
+    }
+    return true;
+  },
+
   openShaderEditor: function() {
+    if(!this.isCurrentProject()) {
+      return;
+    }
     if(this.importShaderEditor == null) {
       this.importShaderEditor = new ImportShaderEditor();
       this.importShaderEditor.init(this.editor);
@@ -432,6 +456,19 @@ ImportImage.prototype = {
   },
 
   close: function() {
+    // Invalidate all delayed callbacks before closing the dialog. Mobile's
+    // close handler normally starts an import after the dialog closes; that
+    // must be cancelled when the close is caused by a project transition.
+    this.projectDocument = null;
+    this.projectGeneration = undefined;
+    this.importInProgress = false;
+    this.frameImportInProgress = false;
+    this.importingVideo = false;
+    this.videoFrameReady = false;
+    if(this.importImageMobile) {
+      this.importImageMobile.doImport = false;
+    }
+
     var routeDialog = null;
     var closePromise = this.importImageMobile
       ? this.importImageMobile.whenClosed()
@@ -800,6 +837,9 @@ ImportImage.prototype = {
 
 
   htmlComponentLoaded: function() {
+    if(!this.isCurrentProject()) {
+      return;
+    }
     this.componentsLoaded++;
     if(this.componentsLoaded == 4) {
       this.splitPanel.setPanelVisible('east', true);
@@ -1096,6 +1136,18 @@ ImportImage.prototype = {
 
   start: function(args) {
 
+    // Feature instances are reused by the context-scoped registry. Rebind the
+    // ownership token on every open so a previously closed importer can be
+    // used by the newly active project.
+    this.projectDocument = this.editor && this.editor.projectDocument
+      ? this.editor.projectDocument
+      : (typeof g_app != 'undefined' ? g_app.doc : null);
+    this.projectGeneration = this.editor && typeof this.editor.projectGeneration != 'undefined'
+      ? this.editor.projectGeneration
+      : (typeof g_app != 'undefined' ? g_app.projectGeneration : undefined);
+    if(!this.isCurrentProject()) {
+      return false;
+    }
 
     this.dialogReadyCallback = false;
 
@@ -1330,6 +1382,10 @@ ImportImage.prototype = {
   },
 
   initContent: function() {
+
+    if(!this.isCurrentProject()) {
+      return;
+    }
 
     var _this = this;
     this.mouseDownAtX = 0;
@@ -2499,6 +2555,9 @@ ImportImage.prototype = {
 
 
   parameterChanged: function() {
+    if(!this.isCurrentProject()) {
+      return;
+    }
     this.updateImportImage();
     this.drawPreview();
   },
@@ -2518,6 +2577,10 @@ ImportImage.prototype = {
 
   // called when importing the image, or updating preview animation
   updateImportImage: function() {
+
+    if(!this.isCurrentProject()) {
+      return;
+    }
 
     if(this.importSource == 'image' && this.importImage == null) {
       return;
@@ -3293,6 +3356,9 @@ ImportImage.prototype = {
   },
 
   setImportImageFromReferenceImage: function() {
+    if(!this.isCurrentProject()) {
+      return;
+    }
     var layer = this.editor.layers.getSelectedLayerObject();
     if(!layer || layer.getType() != 'grid') {
       return;
@@ -3310,6 +3376,9 @@ ImportImage.prototype = {
   },
 
   setImportImage: function(file) {
+    if(!this.isCurrentProject()) {
+      return;
+    }
     if(typeof file == 'undefined' || !file) {
       return;
     }
@@ -3331,6 +3400,9 @@ ImportImage.prototype = {
   },
 
   setImportImageFromSrc: function(src) {
+    if(!this.isCurrentProject()) {
+      return;
+    }
     this.importVideo = null;
 
     $('#importImageVideoControls').hide();
@@ -3350,7 +3422,14 @@ ImportImage.prototype = {
 //    this.initCanvas();
 
     var _this = this;
+    var projectDocument = this.projectDocument;
+    var projectGeneration = this.projectGeneration;
     this.importImage.onload = function() {
+      if(!_this.isCurrentProject() ||
+          (typeof g_app != 'undefined' && typeof g_app.isCurrentProject == 'function' &&
+          !g_app.isCurrentProject(projectDocument, projectGeneration))) {
+        return;
+      }
       $('#importImageScale').val(100);  
       _this.importImageScale = 100;
 
@@ -3656,6 +3735,9 @@ ImportImage.prototype = {
 
 
   endImport: function() {
+    if(!this.isCurrentProject()) {
+      return;
+    }
     this.importInProgress = false;
     this.frameImportInProgress = false;
     this.importingVideo = false;
@@ -3814,6 +3896,10 @@ ImportImage.prototype = {
 
 
   startImport: function() {
+
+    if(!this.isCurrentProject()) {
+      return false;
+    }
 
     var colorPalette = this.editor.colorPaletteManager.getCurrentColorPalette();    
     var noColor = this.editor.colorPaletteManager.noColor;
@@ -4025,6 +4111,9 @@ ImportImage.prototype = {
   },
 
   updateProgress: function() {
+    if(!this.isCurrentProject() || !this.progressContext || !this.progressCanvas || !this.srcCanvas) {
+      return;
+    }
     var imagesImported = this.frame + 1;
     $('#importImageProgressText').html('Frame ' + imagesImported + ' of ' + this.frameCount);
     $('#importImageProgress').show();  
@@ -4037,6 +4126,10 @@ ImportImage.prototype = {
 
 
   nextFrame: function() {
+
+    if(!this.isCurrentProject()) {
+      return;
+    }
 
     if(!this.insertFrames && this.editor.graphic.getCurrentFrame() < this.editor.graphic.getFrameCount() - 1) {
       this.editor.frames.nextFrame();
@@ -4058,6 +4151,9 @@ ImportImage.prototype = {
 
 
   frameReadyForImport: function() {
+    if(!this.isCurrentProject()) {
+      return;
+    }
     // update the import image
     this.parameterChanged();
 
@@ -4166,6 +4262,10 @@ ImportImage.prototype = {
   },
 
   update: function() {
+
+    if(!this.isCurrentProject()) {
+      return;
+    }
 
     if(!this.importInProgress && !this.visible) {
       return;
