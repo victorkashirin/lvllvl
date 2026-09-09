@@ -2,6 +2,7 @@ var FrameTimeline = function() {
   this.editor = null;
 
   this.canvas = null;
+  this.canvasSurface = null;
 
   this.highlightFrame = false;
 
@@ -17,6 +18,12 @@ var FrameTimeline = function() {
 FrameTimeline.prototype = {
   init: function(editor) {
     this.editor = editor;
+    var _this = this;
+    this.removeDevicePixelRatioListener = UI.onDevicePixelRatioChange(function() {
+      if(_this.canvas) {
+        _this.resize();
+      }
+    });
   },
 
   resetProjectState: function() {
@@ -26,6 +33,9 @@ FrameTimeline.prototype = {
     this.mouseIsDown = false;
     this.canvas = null;
     this.context = null;
+    if(this.canvasSurface) {
+      this.canvasSurface.setCanvas(null);
+    }
   },
 
   buildInterface: function(parentComponent) {
@@ -90,30 +100,27 @@ FrameTimeline.prototype = {
 
     if(this.canvas == null) {
       this.canvas = document.getElementById('frameTimeline');
-    }
-
-    if(this.width != this.canvas.style.width || this.height != this.canvas.style.height) {
-      if(this.width != 0 && this.height != 0) {
-        
-        this.canvas.style.width = this.width + 'px';
-        this.canvas.style.height = this.height + 'px';
-
-        this.canvas.width = this.width * UI.devicePixelRatio;
-        this.canvas.height = this.height * UI.devicePixelRatio;
-
-        this.scale = UI.devicePixelRatio;
-
+      if(this.canvasSurface) {
+        this.canvasSurface.setCanvas(this.canvas);
       }
     }
 
-    this.context = this.canvas.getContext('2d');
-    this.context.scale(this.scale, this.scale);
-
+    if(!this.canvas || this.width <= 0 || this.height <= 0) {
+      return false;
+    }
+    if(!this.canvasSurface) {
+      this.canvasSurface = new UI.CanvasSurface(this.canvas);
+    }
+    var metrics = this.canvasSurface.resize({ cssWidth: this.width, cssHeight: this.height });
+    this.scale = metrics.pixelRatio;
+    this.context = this.canvasSurface.getLogicalContext();
+    return true;
   },
 
   resize: function() {
-    this.sizeCanvas();
-    this.draw();
+    if(this.sizeCanvas()) {
+      this.draw();
+    }
   },
 
   mouseDown: function(event) {
@@ -151,6 +158,10 @@ FrameTimeline.prototype = {
 
   drawFrames: function() {
 
+    if(!this.context) {
+      return;
+    }
+
 
 //    this.rulerContext.beginPath();    
 //    this.rulerContext.strokeStyle = '#555555';    
@@ -168,7 +179,7 @@ FrameTimeline.prototype = {
 
     this.context.fillStyle = '#111111';
 
-    this.context.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    this.context.fillRect(0, 0, this.width, this.height);
 
     var frameWidth = this.frameWidth;
     var frameHeight = this.frameHeight;

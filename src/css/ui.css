@@ -622,8 +622,8 @@ input[type=radio] {
   border-radius: 5px 5px;
   padding: 4px;
 
-  border-style: solid;
-  border-color: black;
+  /* Do not rely on a global element reset for the dialog frame. */
+  border: 0;
   overflow: hidden;
 
   background-color: #2a2a2a;

@@ -7,6 +7,8 @@ var AnimationPreview = function() {
   this.canvasHolderElementId = '';
   this.screenCanvas = null;
   this.screenContext = null;
+  this.canvasSurface = null;
+  this.pixelArtBlitter = null;
   this.frameCache = [];
   this.frameCacheLimit = 3;
 
@@ -24,6 +26,14 @@ var AnimationPreview = function() {
 AnimationPreview.prototype = {
   init: function(editor) {
     this.editor = editor;
+    if(!this.removeDevicePixelRatioListener) {
+      var _this = this;
+      this.removeDevicePixelRatioListener = UI.onDevicePixelRatioChange(function() {
+        if(_this.canvasSurface && !_this.canvasSurface.isPixelRatioCurrent()) {
+          _this.resize();
+        }
+      });
+    }
   },
 
   resetProjectState: function() {
@@ -37,6 +47,8 @@ AnimationPreview.prototype = {
     this.playDirection = 1;
     this.canvas = null;
     this.context = null;
+    this.canvasSurface = null;
+    this.pixelArtBlitter = null;
     this.screenCanvas = null;
     this.screenContext = null;
     this.currentCanvasElementId = '';
@@ -213,6 +225,8 @@ AnimationPreview.prototype = {
     if(this.canvas == null || this.canvasElementId != this.currentCanvasElementId) {
       this.canvas = document.getElementById(this.canvasElementId);
       this.currentCanvasElementId = this.canvasElementId;
+      this.canvasSurface = new UI.CanvasSurface(this.canvas);
+      this.pixelArtBlitter = new UI.PixelArtBlitter();
     }
 
 
@@ -227,29 +241,18 @@ AnimationPreview.prototype = {
 
 
 
-    if(this.width != this.canvas.style.width || this.height != this.canvas.style.height) {
-      if(this.width != 0 && this.height != 0) {
-
-        this.canvasScale = Math.floor(UI.devicePixelRatio);
-        
-        this.canvas.style.width = this.width + 'px';
-        this.canvas.style.height = this.height + 'px';
-
-        this.canvas.width = this.width * this.canvasScale;
-        this.canvas.height = this.height * this.canvasScale;
-      }
+    if(this.width <= 0 || this.height <= 0) {
+      return false;
     }
 
-    this.context = this.canvas.getContext('2d');
-//    this.context.scale(this.scale, this.scale);
-
-    this.context.imageSmoothingEnabled = false;
-    this.context.webkitImageSmoothingEnabled = false;
-    this.context.mozImageSmoothingEnabled = false;
-    this.context.msImageSmoothingEnabled = false;
-    this.context.oImageSmoothingEnabled = false;
-
-
+    var metrics = this.canvasSurface.resize({
+      cssWidth: this.width,
+      cssHeight: this.height,
+      pixelRatio: UI.devicePixelRatio
+    });
+    this.canvasScale = metrics.pixelRatio;
+    this.context = this.canvasSurface.getLogicalContext({ noSmoothing: true });
+    return true;
   },
 
   resize: function() {
@@ -258,8 +261,9 @@ AnimationPreview.prototype = {
     }
 
 
-    this.sizeCanvas();
-    this.draw();
+    if(this.sizeCanvas() !== false) {
+      this.draw();
+    }
   },
 
   statesEqual: function(a, b) {
@@ -366,9 +370,18 @@ AnimationPreview.prototype = {
     if(!this.visible) {
       return;
     }
+    if(!this.pixelArtBlitter) {
+      this.pixelArtBlitter = new UI.PixelArtBlitter();
+    }
 
     var screenWidth =  this.editor.graphic.getGraphicWidth();
     var screenHeight = this.editor.graphic.getGraphicHeight();
+    var displayScale = isFinite(this.canvasScale) && this.canvasScale > 0
+      ? this.canvasScale : 1;
+    var displayWidth = isFinite(this.width) && this.width > 0
+      ? this.width : this.canvas.width / displayScale;
+    var displayHeight = isFinite(this.height) && this.height > 0
+      ? this.height : this.canvas.height / displayScale;
 
     var state = this.getFrameRenderState(this.currentFrame);
     var entry = this.getCachedFrame(state);
@@ -410,10 +423,10 @@ AnimationPreview.prototype = {
       this.screenContext = this.screenCanvas.getContext('2d');
     }
 
-    var scale = this.scale * this.canvasScale;
+    var scale = this.scale;
     if(scale === 0) {
-      var hScale = Math.floor((this.canvas.width - 10) / screenWidth);
-      var vScale = Math.floor((this.canvas.height - 10) / screenHeight);
+      var hScale = Math.floor((displayWidth - 10) / screenWidth);
+      var vScale = Math.floor((displayHeight - 10) / screenHeight);
       if(vScale > hScale) {
         scale = hScale;
       } else {
@@ -424,10 +437,10 @@ AnimationPreview.prototype = {
     var width = this.screenCanvas.width * scale;
     var height = this.screenCanvas.height * scale;
 
-    this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    this.context.drawImage(this.screenCanvas, (this.canvas.width - width) / 2, (this.canvas.height - height) / 2,  
-                           this.screenCanvas.width * scale, 
-                           this.screenCanvas.height * scale);
+    this.context.clearRect(0, 0, displayWidth, displayHeight);
+    this.pixelArtBlitter.draw(this.context, false, this.screenCanvas,
+      0, 0, this.screenCanvas.width, this.screenCanvas.height,
+      (displayWidth - width) / 2, (displayHeight - height) / 2, width, height);
 
 /*this.borderWidth * this.scale, this.borderHeight * this.scale, 
       this.screenCanvas.width * this.scale, this.screenCanvas.height * this.scale);

@@ -49,6 +49,11 @@ test("landing page and About show plus release information", async ({ page }) =>
   const aboutDialog = page.locator(".ui-dialog:visible").filter({
     hasText: "About lvllvl plus",
   }).last();
+  await expect.poll(() => aboutDialog.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return [style.borderTopWidth, style.borderRightWidth,
+      style.borderBottomWidth, style.borderLeftWidth];
+  })).toEqual(["0px", "0px", "0px", "0px"]);
   await expect(aboutDialog).toContainText(new RegExp(`Version\\s+${packageJson.version}`));
   await expect(aboutDialog).toContainText(new RegExp(`Build date\\s+${buildInfo.buildDate} UTC`));
   await expect(aboutDialog.getByRole("link", {
@@ -56,41 +61,51 @@ test("landing page and About show plus release information", async ({ page }) =>
   })).toHaveAttribute("href", "https://github.com/victorkashirin/lvllvl");
 });
 
-test("tile editor, keyboard, desktop menu, and mobile menu share classic history", async ({ page }) => {
+test("fractional-DPR tile input and every undo surface share classic history", async ({ page }) => {
   await open2DProject(page);
 
   const before = await page.evaluate(() => {
     const editor = g_app.textModeEditor;
     const tileEditor = editor.tileEditor.tileEditorGrid;
+    UI.setDevicePixelRatio(1.25);
     editor.tileEditor.setVisible(true);
     tileEditor.setCharacters([[0]]);
+    const target = { x: 5, y: 3 };
     return {
+      backingHeight: tileEditor.canvas.height,
+      backingWidth: tileEditor.canvas.width,
       canvasScale: tileEditor.canvasScale,
+      cssHeight: tileEditor.canvasHeight,
+      cssWidth: tileEditor.canvasWidth,
       historyLength: editor.history.historyLength,
       pixelHeight: tileEditor.pixelHeight,
       pixelWidth: tileEditor.pixelWidth,
       revision: g_app.doc.modifiedRevision,
-      value: tileEditor.getPixel(0, 0),
+      target,
+      value: tileEditor.getPixel(target.x, target.y),
     };
   });
+  expect(before.canvasScale).toBe(1.25);
+  expect(before.backingWidth).toBe(Math.round(before.cssWidth * 1.25));
+  expect(before.backingHeight).toBe(Math.round(before.cssHeight * 1.25));
 
   const canvas = page.locator("#tileEditorCanvas");
   await expect(canvas).toBeVisible();
   await canvas.click({
     position: {
-      x: before.pixelWidth / (before.canvasScale * 2),
-      y: before.pixelHeight / (before.canvasScale * 2),
+      x: (before.target.x + 0.5) * before.pixelWidth,
+      y: (before.target.y + 0.5) * before.pixelHeight,
     },
   });
 
-  const edit = await page.evaluate(() => {
+  const edit = await page.evaluate(({ target }) => {
     const editor = g_app.textModeEditor;
     return {
       dirtyRevision: g_app.doc.modifiedRevision,
       historyLength: editor.history.historyLength,
-      value: editor.tileEditor.tileEditorGrid.getPixel(0, 0),
+      value: editor.tileEditor.tileEditorGrid.getPixel(target.x, target.y),
     };
-  });
+  }, before);
   const expected = before.value === 1 ? 0 : 1;
   expect(edit.value).toBe(expected);
   expect(edit.dirtyRevision).toBeGreaterThan(before.revision);
@@ -98,19 +113,19 @@ test("tile editor, keyboard, desktop menu, and mobile menu share classic history
 
   const modifier = await page.evaluate(() => UI.os === "Mac OS" ? "Meta" : "Control");
   await page.keyboard.press(`${modifier}+z`);
-  await expect.poll(() => page.evaluate(() =>
-    g_app.textModeEditor.tileEditor.tileEditorGrid.getPixel(0, 0),
-  )).toBe(before.value);
+  await expect.poll(() => page.evaluate(({ target }) =>
+    g_app.textModeEditor.tileEditor.tileEditorGrid.getPixel(target.x, target.y),
+  before)).toBe(before.value);
 
   await page.evaluate(() => g_app.menuClick("edit-redo"));
-  await expect.poll(() => page.evaluate(() =>
-    g_app.textModeEditor.tileEditor.tileEditorGrid.getPixel(0, 0),
-  )).toBe(expected);
+  await expect.poll(() => page.evaluate(({ target }) =>
+    g_app.textModeEditor.tileEditor.tileEditorGrid.getPixel(target.x, target.y),
+  before)).toBe(expected);
 
   await page.locator("#mobileMenuBarUndo").evaluate((button) => button.click());
-  await expect.poll(() => page.evaluate(() =>
-    g_app.textModeEditor.tileEditor.tileEditorGrid.getPixel(0, 0),
-  )).toBe(before.value);
+  await expect.poll(() => page.evaluate(({ target }) =>
+    g_app.textModeEditor.tileEditor.tileEditorGrid.getPixel(target.x, target.y),
+  before)).toBe(before.value);
 });
 
 test("zen mode reveals edge controls, keeps shortcuts active, and restores the layout", async ({ page }) => {

@@ -11,8 +11,8 @@
       "sha256": "e38ba82b59cf0fcad6108f875456acda57d26bcf3458f154468159e41d6f78a2"
     },
     "css/style.css": {
-      "bytes": 133295,
-      "sha256": "b1dde05c11409a8c6925ddf4ab6df6289c274393054e663e400b1fdb7c9bf48a"
+      "bytes": 133330,
+      "sha256": "ef9878d76f5afa88b552cb6c60fcd04cabdcecd3e31bfe40fdaaababff4a84fd"
     },
     "fonts/glyphicons-halflings-regular.woff2": {
       "bytes": 20188,
@@ -27,12 +27,12 @@
       "sha256": "f6e20ce93d4c5e5a0fe109bd3a07dc51e482ba8700c4ef7468bbc0839d2872b8"
     },
     "js/main.js": {
-      "bytes": 3412171,
-      "sha256": "801cd8c5646bd9a52ef378b92de3e4a5d7283ede5dfc01e6129403e6e9fba3c7"
+      "bytes": 3424125,
+      "sha256": "53612b4e03951dde7809aabe939ec95086ce61690b9aeb6c754ae2bdb759809d"
     },
     "js/main.js.map": {
-      "bytes": 10817304,
-      "sha256": "269cac3818b692b0985350df1ab77a8fac4539bf04c4ddb3bc0dfbfd40da67f5"
+      "bytes": 10845938,
+      "sha256": "250ba1ef7c2c61f6a6e07ba46fb767a1a38ad32a0649ae3ec782062e92c3c4a0"
     },
     "js/bootstrap.mjs": {
       "bytes": 8022,

@@ -5,6 +5,7 @@ var TilePaletteEditor = function() {
   this.tilePaletteDisplay = null;
 
   this.uiComponent = null;
+  this.canvasSurface = null;
 
 }
 
@@ -12,6 +13,12 @@ var TilePaletteEditor = function() {
 TilePaletteEditor.prototype = {
   init: function(editor) {
     this.editor = editor;
+    var _this = this;
+    this.removeDevicePixelRatioListener = UI.onDevicePixelRatioChange(function() {
+      if(_this.canvas) {
+        _this.resize();
+      }
+    });
   },
 
   captureProjectContext: function() {
@@ -89,6 +96,7 @@ TilePaletteEditor.prototype = {
       });
 
       this.canvas = document.getElementById(this.canvasElementId);
+      this.canvasSurface = new UI.CanvasSurface(this.canvas);
 
     } else {      
       UI.showDialog("tilePaletteEditorDialog");      
@@ -249,15 +257,8 @@ TilePaletteEditor.prototype = {
     this.width = element.width();
     this.height = element.height();
 
-    if(this.width != this.canvas.style.width || this.height != this.canvas.style.height) {
-      if(this.width != 0 && this.height != 0) {
-        
-        this.canvas.style.width = this.width + 'px';
-        this.canvas.style.height = this.height + 'px';
-
-        this.canvas.width = this.width * UI.devicePixelRatio;
-        this.canvas.height = this.height * UI.devicePixelRatio;
-      }
+    if(this.width > 0 && this.height > 0) {
+      this.canvasSurface.resize({ cssWidth: this.width, cssHeight: this.height });
     }
     this.tilePaletteDisplay.draw();
   },

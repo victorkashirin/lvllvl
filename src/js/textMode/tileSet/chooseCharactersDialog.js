@@ -2,6 +2,7 @@ var ChooseCharactersDialog = function() {
   this.editor = null;
   this.tilePickerCanvas = null;
   this.context = null;
+  this.canvasSurface = null;
 
   this.charsets = {
     "none": [],
@@ -45,6 +46,12 @@ ChooseCharactersDialog.prototype = {
 
   init: function(editor) {
     this.editor = editor;
+    var _this = this;
+    this.removeDevicePixelRatioListener = UI.onDevicePixelRatioChange(function() {
+      if(_this.tilePickerCanvas) {
+        _this.resize();
+      }
+    });
   },
   show: function(args) {
 
@@ -138,7 +145,7 @@ ChooseCharactersDialog.prototype = {
 
     if(this.tilePaletteDisplay == null) {
       this.tilePaletteDisplay = new TilePaletteDisplay();
-      this.tilePaletteDisplay.init(this.editor, { "mode": "multiple", "canvasElementId": "chooseCharsCanvas", "colors": "monochrome" });
+      this.tilePaletteDisplay.init(this.editor, { "mode": "multiple", "canvasElementId": "chooseCharsCanvas", "colors": "monochrome", "resizeCanvas": false });
     }
 
     // need to call init in case character set has changed.
@@ -147,8 +154,9 @@ ChooseCharactersDialog.prototype = {
     this.tilePaletteDisplay.draw();
 
 
-    var tilePaletteDisplayWidth = this.tilePaletteDisplay.getWidth();
-    var tilePaletteDisplayHeight = this.tilePaletteDisplay.getHeight();
+    var paletteDimensions = this.tilePaletteDisplay.getContentDimensions();
+    var tilePaletteDisplayWidth = paletteDimensions.width;
+    var tilePaletteDisplayHeight = paletteDimensions.height;
 
     var dialogWidth = tilePaletteDisplayWidth + 80;
     var dialogHeight = tilePaletteDisplayHeight + 120;
@@ -164,22 +172,15 @@ ChooseCharactersDialog.prototype = {
   resize: function() {
     if(this.tilePickerCanvas == null) {
       this.tilePickerCanvas = document.getElementById('chooseCharsCanvas');
+      this.canvasSurface = new UI.CanvasSurface(this.tilePickerCanvas);
     }
     var element = $('#chooseCharsCanvasHolder');
     this.width = element.width();
     this.height = element.height();
 
 
-    if(this.width != this.tilePickerCanvas.style.width 
-      || this.height != this.tilePickerCanvas.style.height) {
-      if(this.width != 0 && this.height != 0) {
-        
-        this.tilePickerCanvas.style.width = this.width + 'px';
-        this.tilePickerCanvas.style.height = this.height + 'px';
-
-        this.tilePickerCanvas.width = this.width * UI.devicePixelRatio;
-        this.tilePickerCanvas.height = this.height * UI.devicePixelRatio;
-      }
+    if(this.width > 0 && this.height > 0) {
+      this.canvasSurface.resize({ cssWidth: this.width, cssHeight: this.height });
     }
 
     if(this.tilePaletteDisplay != null) {

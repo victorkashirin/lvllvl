@@ -84,7 +84,6 @@ DrawTools.prototype = {
     this.mirrorVY = false;
     this.saveCurrentTiles = false;
     this.debugVisible = false;
-
     var children = [
       this.shapes, this.typing, this.pixelCharacterDraw, this.lineSegmentDraw,
       this.pixelDraw, this.invertTool, this.cornersTool, this.fill,
@@ -367,13 +366,7 @@ DrawTools.prototype = {
 
     var width = 60;
     var height = 60;
-    var scale = Math.floor(UI.devicePixelRatio);
-
-    characterCanvas.width = width * scale;
-    characterCanvas.height = height * scale;
-
-    characterCanvas.style.width = width + 'px';
-    characterCanvas.style.height = height + 'px';
+    this.editor.currentTile.setCanvasGlyphPreviewCanvas(characterCanvas, width, height);
 
     var _this = this;
     characterCanvas.addEventListener("click", function(event){
@@ -1495,6 +1488,12 @@ DrawTools.prototype = {
 
       toolSettingsDesktop.load('html/textMode/toolSettings.html', function() {
         _this.initToolSettingEvents();
+        var tileSettingsCanvas = document.getElementById('toolSettingsCurrentTile');
+        if(tileSettingsCanvas) {
+          _this.editor.currentTile.setTileSettingsGlyphPreviewCanvas(
+            tileSettingsCanvas, 24, 24);
+          _this.editor.currentTile.canvasDrawCharacters();
+        }
       });
     });
     UI('toolSettingsPanel').add(toolSettingsDesktopPanel);

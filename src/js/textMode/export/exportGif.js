@@ -17,6 +17,7 @@ var ExportGif = function() {
 
   this.previewCanvas = null;
   this.previewContext = null;
+  this.previewDisplay = null;
   this.previewCanvasScale = null;
 
   /*
@@ -115,40 +116,26 @@ ExportGif.prototype = {
     if(this.previewCanvas == null) {
       return;
     }
-
-    var element = $('#exportGifPreviewHolder');
-
-    var position = element.offset();
-    if(position) {
-      this.left = position.left;
-      this.top = position.top;
-
-      this.width = element.width();
-      this.height = element.height();
+    if(!this.previewDisplay) {
+      var _this = this;
+      this.previewDisplay = new UI.CanvasPreview(
+        this.previewCanvas, '#exportGifPreviewHolder', function() {
+          if(_this.exportGifActive) {
+            _this.resizePreview();
+            _this.drawFrame({ redrawLayers: false, applyEffects: false });
+          }
+        });
     }
-
-    this.previewCanvasScale = UI.devicePixelRatio;
-
-
-    if(this.width != this.previewCanvas.style.width || this.height != this.previewCanvas.style.height) {
-      if(this.width != 0 && this.height != 0) {
-        
-        this.previewCanvas.style.width = this.width + 'px';
-        this.previewCanvas.style.height = this.height + 'px';
-
-        this.previewCanvas.width = this.width * this.previewCanvasScale;
-        this.previewCanvas.height = this.height * this.previewCanvasScale;
-
-
-      }
+    var layout = this.previewDisplay.resize();
+    if(!layout) {
+      return;
     }
-
-    this.previewContext = this.previewCanvas.getContext('2d');
-    this.previewContext.imageSmoothingEnabled = false;
-    this.previewContext.webkitImageSmoothingEnabled = false;
-    this.previewContext.mozImageSmoothingEnabled = false;
-    this.previewContext.msImageSmoothingEnabled = false;
-    this.previewContext.oImageSmoothingEnabled = false;
+    this.left = layout.left;
+    this.top = layout.top;
+    this.width = layout.width;
+    this.height = layout.height;
+    this.previewCanvasScale = layout.metrics.pixelRatio;
+    this.previewContext = this.previewDisplay.getBackingContext(true);
 
   },
 

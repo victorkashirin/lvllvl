@@ -805,6 +805,93 @@ test("tile palette backing stores follow fractional display pixel ratios", async
   expect(result.paletteBlit[3]).toBe(result.paletteBlit[7]);
 });
 
+test("mobile glyph previews follow a runtime fractional DPR change", async ({ page }) => {
+  await openDefaultProject(page);
+  await page.evaluate(() => g_app.setDeviceType("mobile"));
+  await page.evaluate(
+    () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+  );
+  await page.locator("#toolsMobileCurrentTile").click();
+  await expect(page.locator("#tilePaletteMobileCanvasChoose")).toBeVisible();
+
+  const result = await page.evaluate(() => {
+    const editor = g_app.textModeEditor;
+    const originalRatio = UI.devicePixelRatio;
+    try {
+      UI.setDevicePixelRatio(1.25);
+      const readCanvas = (id) => {
+        const canvas = document.getElementById(id);
+        return {
+          backingWidth: canvas.width,
+          backingHeight: canvas.height,
+          cssWidth: canvas.style.width,
+          cssHeight: canvas.style.height,
+        };
+      };
+      return {
+        chooser: readCanvas("tilePaletteMobileCanvasPreviewChoose"),
+        delegates: {
+          chooser: editor.currentTile.tilePaletteChooserMobile.glyphPreview.canvas.id,
+          palette: editor.currentTile.tilePaletteGlyphPreview.canvas.id,
+          tools: editor.currentTile.canvasGlyphPreview.canvas.id,
+        },
+        palette: readCanvas("tilePaletteMobileCurrentTile"),
+        settings: readCanvas("toolSettingsCurrentTile"),
+        tileInfo: Array.from(document.querySelectorAll('[id$="tilepalette-tileinfocanvas"]'))
+          .filter((canvas) => canvas.style.width)
+          .map((canvas) => ({
+            backingWidth: canvas.width,
+            backingHeight: canvas.height,
+            cssWidth: canvas.style.width,
+            cssHeight: canvas.style.height,
+          })),
+        tools: readCanvas("toolsMobileCurrentTile"),
+      };
+    } finally {
+      UI.setDevicePixelRatio(originalRatio);
+    }
+  });
+
+  expect(result.tools).toEqual({
+    backingWidth: 75,
+    backingHeight: 75,
+    cssWidth: "60px",
+    cssHeight: "60px",
+  });
+  expect(result.palette).toEqual({
+    backingWidth: 60,
+    backingHeight: 60,
+    cssWidth: "48px",
+    cssHeight: "48px",
+  });
+  expect(result.settings).toEqual({
+    backingWidth: 30,
+    backingHeight: 30,
+    cssWidth: "24px",
+    cssHeight: "24px",
+  });
+  expect(result.tileInfo.length).toBeGreaterThan(0);
+  for(const tileInfo of result.tileInfo) {
+    expect(tileInfo).toEqual({
+      backingWidth: 20,
+      backingHeight: 20,
+      cssWidth: "16px",
+      cssHeight: "16px",
+    });
+  }
+  expect(result.chooser).toEqual({
+    backingWidth: 125,
+    backingHeight: 125,
+    cssWidth: "100px",
+    cssHeight: "100px",
+  });
+  expect(result.delegates).toEqual({
+    chooser: "tilePaletteMobileCanvasPreviewChoose",
+    palette: "tilePaletteMobileCurrentTile",
+    tools: "toolsMobileCurrentTile",
+  });
+});
+
 test("a changed bitmap glyph reuses palette slots and uploads only its rectangles", async ({ page }) => {
   await openDefaultProject(page);
 

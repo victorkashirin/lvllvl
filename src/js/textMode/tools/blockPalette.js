@@ -1,6 +1,11 @@
 var BlockPalette = function() {
 
   this.canvas = null;
+  this.canvasSurface = null;
+  this.pixelArtBlitter = null;
+  this.renderCanvas = null;
+  this.renderContext = null;
+  this.displayContext = null;
 
   this.scale = 2;
   this.blocksAcross = 4;
@@ -36,15 +41,24 @@ BlockPalette.prototype = {
     this.editBlockId = false;
     this.mouseDownOnBlock = false;
     this.blockPositions = [];
-    if(this.context && this.canvas) {
+    if(this.displayContext && this.canvas) {
       try {
-        this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.displayContext.clearRect(0, 0, this.canvas.width, this.canvas.height);
       } catch(error) {}
     }
   },
 
   init: function(editor, args) {
     this.editor = editor;
+
+    if(!this.removeDevicePixelRatioListener) {
+      var _this = this;
+      this.removeDevicePixelRatioListener = UI.onDevicePixelRatioChange(function() {
+        if(_this.canvasSurface && !_this.canvasSurface.isPixelRatioCurrent()) {
+          _this.drawBlockPalette();
+        }
+      });
+    }
 
     if(typeof args != 'undefined') {
       if(typeof args.prefix != 'undefined') {
@@ -144,6 +158,9 @@ BlockPalette.prototype = {
 
 
     this.canvas = document.getElementById(this.prefix + 'blockPaletteCanvas');
+    this.canvasSurface = new UI.CanvasSurface(this.canvas);
+    this.pixelArtBlitter = new UI.PixelArtBlitter();
+    this.renderCanvas = document.createElement('canvas');
 
 
     this.canvas.addEventListener('dblclick', function(event) {
@@ -348,7 +365,7 @@ BlockPalette.prototype = {
     return this.selectedBlock;
   },
 
-  canvasDimensions: function(args) {
+  canvasDimensions: function(screenMode) {
     if(!this.editor.blockSetManager) {
       return;
     }
@@ -377,7 +394,7 @@ BlockPalette.prototype = {
       canvasWidth = 200;
     }
 
-    this.canvasScale = Math.floor(UI.devicePixelRatio);
+    this.canvasScale = UI.devicePixelRatio;
     var blockXPos = 0;
     var blockYPos = 0;
     var blockRowHeight = 0;
@@ -430,21 +447,27 @@ BlockPalette.prototype = {
       canvasHeight = 8;
     }
 
-    if(this.context == null 
-        || this.canvas.width != canvasWidth * this.canvasScale 
-        || this.canvas.height != canvasHeight * this.canvasScale) {
-
-      this.canvas.style.width = canvasWidth + 'px';
-      this.canvas.style.height = canvasHeight + 'px';
-
-      this.canvas.width = canvasWidth * this.canvasScale;
-      this.canvas.height = canvasHeight * this.canvasScale;
-
-
-      this.context = this.canvas.getContext('2d');
+    if(!this.canvasSurface) {
+      this.canvasSurface = new UI.CanvasSurface(this.canvas);
+      this.pixelArtBlitter = new UI.PixelArtBlitter();
+      this.renderCanvas = document.createElement('canvas');
     }
+    this.surfaceMetrics = this.canvasSurface.resize({
+      cssWidth: canvasWidth,
+      cssHeight: canvasHeight,
+      pixelRatio: UI.devicePixelRatio
+    });
+    this.canvasScale = this.surfaceMetrics.pixelRatio;
+    this.displayContext = this.canvasSurface.getLogicalContext({ noSmoothing: true });
 
-
+    if(this.renderCanvas.width !== canvasWidth || this.renderCanvas.height !== canvasHeight) {
+      this.renderCanvas.width = canvasWidth;
+      this.renderCanvas.height = canvasHeight;
+      this.renderContext = null;
+    }
+    if(this.renderContext === null) {
+      this.renderContext = UI.getContextNoSmoothing(this.renderCanvas);
+    }
   },
 
   moveSelection: function(dx, dy) { 
@@ -528,7 +551,7 @@ BlockPalette.prototype = {
 //      return;
     }
     // make sure canvas is the right size.
-    this.canvasDimensions();
+    this.canvasDimensions(screenMode);
 
     this.blockSet = this.editor.blockSetManager.getCurrentBlockSet();
 
@@ -546,14 +569,21 @@ BlockPalette.prototype = {
     var blocks = this.blockSet.getBlocks();
 
 
-    var canvasWidth = this.canvas.width;
-    var canvasHeight = this.canvas.height;
+    var canvasWidth = this.surfaceMetrics.cssWidth;
+    var canvasHeight = this.surfaceMetrics.cssHeight;
+    var drawContext = screenMode == TextModeEditor.Mode.VECTOR
+      ? this.displayContext : this.renderContext;
 
     if(canvasWidth === 0 || canvasHeight === 0) {
       return;
     }
-    this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);    
-    this.imageData = this.context.getImageData(0, 0, this.canvas.width, this.canvas.height);
+    if(drawContext !== this.displayContext) {
+      this.displayContext.clearRect(0, 0, canvasWidth, canvasHeight);
+    }
+    drawContext.clearRect(0, 0, canvasWidth, canvasHeight);
+    if(screenMode != TextModeEditor.Mode.VECTOR) {
+      this.imageData = drawContext.getImageData(0, 0, canvasWidth, canvasHeight);
+    }
 
     var colorPerMode = this.editor.getColorPerMode();
     var colorPalette = this.editor.colorPaletteManager.getCurrentColorPalette();
@@ -605,8 +635,8 @@ BlockPalette.prototype = {
 
       if(blockData.length > 0) {
 
-        var blockWidth = blockData[0].length * charWidth * this.scale * this.canvasScale;
-        var blockHeight = blockData.length * charHeight * this.scale * this.canvasScale;
+        var blockWidth = blockData[0].length * charWidth * this.scale;
+        var blockHeight = blockData.length * charHeight * this.scale;
 
         if(blockXPos + blockWidth > canvasWidth) {
           // next row
@@ -627,7 +657,9 @@ BlockPalette.prototype = {
           blockRowHeight = blockHeight;
         }
    
-        this.blockPositions.push({ gridX: blockGridX, gridY: blockGridY, top: blockYPos / this.canvasScale, left: blockXPos/this.canvasScale, bottom: (blockYPos + blockHeight) / this.canvasScale, right: (blockXPos + blockWidth) / this.canvasScale });
+        this.blockPositions.push({ gridX: blockGridX, gridY: blockGridY,
+          top: blockYPos, left: blockXPos,
+          bottom: blockYPos + blockHeight, right: blockXPos + blockWidth });
 
         for(var y = 0; y < blockData.length; y++) {
           for(var x = 0; x < blockData[y].length; x++) {
@@ -682,19 +714,19 @@ BlockPalette.prototype = {
               args['bgColorRGB'] = defaultBgColorRGB;
             }
             args['character'] = c;
-            args['x'] = blockXPos + (x * charWidth * this.scale) * this.canvasScale;
-            args['y'] = blockYPos + (y * charHeight * this.scale) * this.canvasScale;
-            args['scale'] = this.scale * this.canvasScale;
+            args['x'] = blockXPos + x * charWidth * this.scale;
+            args['y'] = blockYPos + y * charHeight * this.scale;
+            args['scale'] = this.scale;
   //          args['select'] = i === this.selectedBlock;
   //          args['highlight'] = (i === this.highlightBlock) && ( i !== this.selectedBlock);
 
             if(screenMode == TextModeEditor.Mode.VECTOR) {
-              args['context'] = this.context;
-              args['x'] = blockXPos / (this.canvasScale * this.scale) + (x * charWidth );// * this.canvasScale;
-              args['y'] = blockYPos / (this.canvasScale * this.scale) + (y * charHeight);// * this.canvasScale;
+              args['context'] = drawContext;
+              args['x'] = blockXPos / this.scale + x * charWidth;
+              args['y'] = blockYPos / this.scale + y * charHeight;
               } else {
-              args['x'] = blockXPos + (x * charWidth * this.scale) * this.canvasScale;
-              args['y'] = blockYPos + (y * charHeight * this.scale) * this.canvasScale;
+              args['x'] = blockXPos + x * charWidth * this.scale;
+              args['y'] = blockYPos + y * charHeight * this.scale;
                 
             }
             tileSet.drawCharacter(args);
@@ -708,7 +740,7 @@ BlockPalette.prototype = {
           blockXPos += blockData[0].length * charWidth + this.blockSpacing;
         } else {
           */
-          blockXPos += blockData[0].length * charWidth * this.scale * this.canvasScale + this.blockSpacing;
+          blockXPos += blockData[0].length * charWidth * this.scale + this.blockSpacing;
         //}
         blockYPos += 0;
 
@@ -717,37 +749,41 @@ BlockPalette.prototype = {
     }
 
     if(screenMode != TextModeEditor.Mode.VECTOR) {
-      this.context.putImageData(this.imageData, 0, 0);
+      drawContext.putImageData(this.imageData, 0, 0);
+      this.pixelArtBlitter.draw(this.displayContext, false, this.renderCanvas,
+        0, 0, canvasWidth, canvasHeight, 0, 0, canvasWidth, canvasHeight);
     }
 
 
     // draw the highlight/selected rects
 
     if(this.highlightBlock !== false) {
-      this.context.fillStyle = styles.tilePalette.highlightOutline;
-      this.context.strokeStyle = styles.tilePalette.highlightOutline;
+      this.displayContext.fillStyle = styles.tilePalette.highlightOutline;
+      this.displayContext.strokeStyle = styles.tilePalette.highlightOutline;
 
-      this.context.beginPath();
-      this.context.lineWidth = 3;
-      this.context.rect(this.blockPositions[this.highlightBlock].left * this.canvasScale, this.blockPositions[this.highlightBlock].top * this.canvasScale,
-        (this.blockPositions[this.highlightBlock].right - this.blockPositions[this.highlightBlock].left) * this.canvasScale,
-        (this.blockPositions[this.highlightBlock].bottom - this.blockPositions[this.highlightBlock].top) * this.canvasScale);
+      this.displayContext.beginPath();
+      this.displayContext.lineWidth = 3;
+      this.displayContext.rect(this.blockPositions[this.highlightBlock].left,
+        this.blockPositions[this.highlightBlock].top,
+        this.blockPositions[this.highlightBlock].right - this.blockPositions[this.highlightBlock].left,
+        this.blockPositions[this.highlightBlock].bottom - this.blockPositions[this.highlightBlock].top);
   
-      this.context.stroke();
+      this.displayContext.stroke();
     }
 
 
     if(this.selectedBlock !== false) {
 
-      this.context.fillStyle = styles.tilePalette.selectOutline;
-      this.context.strokeStyle = styles.tilePalette.selectOutline;
+      this.displayContext.fillStyle = styles.tilePalette.selectOutline;
+      this.displayContext.strokeStyle = styles.tilePalette.selectOutline;
 
-      this.context.beginPath();
-      this.context.lineWidth = 3;
-      this.context.rect(this.blockPositions[this.selectedBlock].left * this.canvasScale, this.blockPositions[this.selectedBlock].top * this.canvasScale,
-        (this.blockPositions[this.selectedBlock].right - this.blockPositions[this.selectedBlock].left) * this.canvasScale,
-        (this.blockPositions[this.selectedBlock].bottom - this.blockPositions[this.selectedBlock].top) * this.canvasScale);    
-      this.context.stroke();
+      this.displayContext.beginPath();
+      this.displayContext.lineWidth = 3;
+      this.displayContext.rect(this.blockPositions[this.selectedBlock].left,
+        this.blockPositions[this.selectedBlock].top,
+        this.blockPositions[this.selectedBlock].right - this.blockPositions[this.selectedBlock].left,
+        this.blockPositions[this.selectedBlock].bottom - this.blockPositions[this.selectedBlock].top);
+      this.displayContext.stroke();
     }
 
     this.updateBlockCountHTML();

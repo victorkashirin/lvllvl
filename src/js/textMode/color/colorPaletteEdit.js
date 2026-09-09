@@ -137,10 +137,11 @@ var ColorPaletteEdit = function() {
 
 
   this.imagePaletteCanvas = null;
+  this.imagePaletteSurface = null;
   this.importImage = null;
 
   this.imageCanvas = null;
-  this.imageCanvasScale = null;
+  this.imageSurface = null;
   this.imageScale = 1;
   this.imageX = 0;
   this.imageY = 0;
@@ -236,6 +237,44 @@ var ColorPaletteEdit = function() {
 ColorPaletteEdit.prototype = {
   init: function(editor) {
     this.editor = editor;
+    var _this = this;
+    this.removeDevicePixelRatioListener = UI.onDevicePixelRatioChange(function() {
+      if(!_this.imageCanvas || !_this.imagePaletteCanvas) {
+        return;
+      }
+      _this.resizeImageSurfaces();
+      if(_this.importImage && _this.importImage.naturalWidth) {
+        _this.updateImportImage();
+      }
+      _this.drawImageColors();
+    });
+  },
+
+  resizeImageSurfaces: function(paletteRows) {
+    this.imageCanvasCssWidth = 16 * (this.colorWidth + this.colorSpacing) + this.colorSpacing;
+    this.imageCanvasCssHeight = 12 * (this.colorHeight + this.colorSpacing) + this.colorSpacing;
+    if(!this.imageSurface) {
+      this.imageSurface = new UI.CanvasSurface(this.imageCanvas);
+    }
+    this.imageSurface.resize({
+      cssWidth: this.imageCanvasCssWidth,
+      cssHeight: this.imageCanvasCssHeight
+    });
+    this.imageContext = this.imageSurface.getLogicalContext();
+
+    if(typeof paletteRows == 'undefined') {
+      paletteRows = Math.max(1, Math.ceil(this.imageColors.length / 16));
+    }
+    this.imagePaletteCssWidth = this.imageCanvasCssWidth;
+    this.imagePaletteCssHeight = paletteRows * (this.colorHeight + this.colorSpacing) + this.colorSpacing;
+    if(!this.imagePaletteSurface) {
+      this.imagePaletteSurface = new UI.CanvasSurface(this.imagePaletteCanvas);
+    }
+    this.imagePaletteSurface.resize({
+      cssWidth: this.imagePaletteCssWidth,
+      cssHeight: this.imagePaletteCssHeight
+    });
+    this.imagePaletteContext = this.imagePaletteSurface.getLogicalContext();
   },
 
   captureProjectContext: function() {
@@ -347,29 +386,13 @@ ColorPaletteEdit.prototype = {
 */
 
     this.imageCanvas = document.getElementById(this.prefix + 'FromImageImage');
-    this.imageCanvas.style.width = 16 * (this.colorWidth + this.colorSpacing) + this.colorSpacing + 'px';
-    this.imageCanvas.style.height = 12 * (this.colorHeight + this.colorSpacing) + this.colorSpacing + 'px';
-
-    this.imageCanvas.width = 16 * (this.colorWidth + this.colorSpacing) + this.colorSpacing;
-    this.imageCanvas.height = 12 * (this.colorHeight + this.colorSpacing) + this.colorSpacing;
-
-    this.imageContext = this.imageCanvas.getContext('2d');
+    this.imagePaletteCanvas = document.getElementById(this.prefix + 'FromImagePalette');
+    this.resizeImageSurfaces(1);
     this.imageContext.imageSmoothingEnabled = false;
     this.imageContext.webkitImageSmoothingEnabled = false;
     this.imageContext.mozImageSmoothingEnabled = false;
     this.imageContext.msImageSmoothingEnabled = false;
     this.imageContext.oImageSmoothingEnabled = false;
-
-
-    this.imagePaletteCanvas = document.getElementById(this.prefix + 'FromImagePalette');
-
-    this.imagePaletteCanvas.style.width = 16 * (this.colorWidth + this.colorSpacing) + this.colorSpacing + 'px';
-    this.imagePaletteCanvas.style.height = 1 * (this.colorHeight + this.colorSpacing) + this.colorSpacing + 'px';
-
-    this.imagePaletteCanvas.width = 16 * (this.colorWidth + this.colorSpacing) + this.colorSpacing;
-    this.imagePaletteCanvas.height = 1 * (this.colorHeight + this.colorSpacing) + this.colorSpacing;
-
-
 
     this.rSliderCanvas = document.getElementById(this.prefix + 'RCanvas');
     this.gSliderCanvas = document.getElementById(this.prefix + 'GCanvas');
@@ -1631,8 +1654,8 @@ ColorPaletteEdit.prototype = {
         return;
       }
       _this.imageScale = 1;
-      _this.imageX = - _this.imageCanvas.width / 2;
-      _this.imageY = - _this.imageCanvas.height / 2;
+      _this.imageX = - _this.imageCanvasCssWidth / 2;
+      _this.imageY = - _this.imageCanvasCssHeight / 2;
       _this.updateImportImage();
       _this.createAutomaticPalette();      
     }
@@ -1677,8 +1700,8 @@ ColorPaletteEdit.prototype = {
     var drawWidth = this.importImage.naturalWidth;
     var drawHeight = this.importImage.naturalHeight;
 
-    var canvasWidth = this.imageCanvas.width;
-    var canvasHeight = this.imageCanvas.height;
+    var canvasWidth = this.imageCanvasCssWidth;
+    var canvasHeight = this.imageCanvasCssHeight;
 
     // scale to fit width first
     if(drawWidth > canvasWidth) {
@@ -1717,8 +1740,12 @@ ColorPaletteEdit.prototype = {
       return false;
     }
 
-    x = Math.floor(x);
-    y = Math.floor(y);
+    var metrics = this.imageSurface.getMetrics();
+    if(x < 0 || y < 0 || x >= metrics.cssWidth || y >= metrics.cssHeight) {
+      return false;
+    }
+    x = Math.floor(x * metrics.backingWidth / metrics.cssWidth);
+    y = Math.floor(y * metrics.backingHeight / metrics.cssHeight);
 
     var pos = x * 4 + (y * 4 * this.imageData.width);
     if(pos + 3 >= this.imageData.data.length) {
@@ -1740,14 +1767,14 @@ ColorPaletteEdit.prototype = {
     var drawHeight = this.importImage.naturalHeight;
 
 
-    this.imageContext.clearRect(0, 0, this.imageCanvas.width, this.imageCanvas.height);
+    this.imageContext.clearRect(0, 0, this.imageCanvasCssWidth, this.imageCanvasCssHeight);
 
     var offsetX = 0;
     var offsetY = 0;
 
     this.imageContext.save();
 
-    this.imageContext.translate(this.imageCanvas.width / 2, this.imageCanvas.height / 2); 
+    this.imageContext.translate(this.imageCanvasCssWidth / 2, this.imageCanvasCssHeight / 2);
     this.imageContext.scale(this.imageScale, this.imageScale);
 
 
@@ -1756,7 +1783,8 @@ ColorPaletteEdit.prototype = {
 
     this.imageContext.restore();
 
-    this.imageData = this.imageContext.getImageData(0, 0, this.imageCanvas.width, this.imageCanvas.height);   
+    var metrics = this.imageSurface.getMetrics();
+    this.imageData = this.imageContext.getImageData(0, 0, metrics.backingWidth, metrics.backingHeight);
 
 
     if(this.imageMouseDownX !== false && this.imageMouseDownY !== false) {
@@ -2444,8 +2472,8 @@ ColorPaletteEdit.prototype = {
     var newScale = this.imageScale - wheel.spinY  / 8;//12;
 
     if(this.imageMouseDownX !== false && this.imageMouseDownY !== false)  {
-      this.imageMouseDownX = this.imageCanvas.width / 2 + newScale * (this.imageMouseDownX - this.imageCanvas.width / 2) / this.imageScale;
-      this.imageMouseDownY = this.imageCanvas.height / 2 + newScale * (this.imageMouseDownY - this.imageCanvas.height / 2) / this.imageScale;
+      this.imageMouseDownX = this.imageCanvasCssWidth / 2 + newScale * (this.imageMouseDownX - this.imageCanvasCssWidth / 2) / this.imageScale;
+      this.imageMouseDownY = this.imageCanvasCssHeight / 2 + newScale * (this.imageMouseDownY - this.imageCanvasCssHeight / 2) / this.imageScale;
 
 /*
       this.imageMouseDownX = false;
@@ -2525,7 +2553,7 @@ ColorPaletteEdit.prototype = {
 
 
       this.imageMouseDownX = this.currentImageMouseDownX + diffX;
-      this.imageMouseDownY = this.currentImageMouseDownX + diffY;
+      this.imageMouseDownY = this.currentImageMouseDownY + diffY;
 
 
       this.updateImportImage();
@@ -3426,15 +3454,8 @@ ColorPaletteEdit.prototype = {
 
   drawImageColors: function() {
 
-    var rows = Math.ceil(this.imageColors.length / 16);
-    this.imagePaletteCanvas.style.width = 16 * (this.colorWidth + this.colorSpacing) + this.colorSpacing + 'px';
-    this.imagePaletteCanvas.style.height = rows * (this.colorHeight + this.colorSpacing) + this.colorSpacing + 'px';
-
-    this.imagePaletteCanvas.width = 16 * (this.colorWidth + this.colorSpacing) + this.colorSpacing;
-    this.imagePaletteCanvas.height = rows * (this.colorHeight + this.colorSpacing) + this.colorSpacing;
-
-
-    this.imagePaletteContext = this.imagePaletteCanvas.getContext('2d');
+    var rows = Math.max(1, Math.ceil(this.imageColors.length / 16));
+    this.resizeImageSurfaces(rows);
 
 
 

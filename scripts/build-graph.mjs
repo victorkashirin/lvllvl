@@ -94,6 +94,8 @@ export const buildGraph = {
       "js/security/jqueryHtmlPolicy.js",
       "js/utils/cssScrollbarSupport.js",
       "js/ui/ui.js",
+      "js/ui/devicePixelRatio.js",
+      "js/ui/canvasPrimitives.js",
       "js/ui/number.js",
       "js/ui/slider.js",
       "js/ui/menuBar.js",
@@ -492,6 +494,8 @@ export const moduleGraph = {
 // This is a scoped, one-time bypass: future baseline additions still require
 // an explicit review decision here.
 export const legacyGraphBaselineGrowthAllowlist = [
+  "js/ui/devicePixelRatio.js",
+  "js/ui/canvasPrimitives.js",
   "js/editor/editorModes.js",
   "js/editor/editorInterface.js",
   "js/editor/editorMenuCommands.js",

@@ -3,6 +3,7 @@ var ExportSpritePng = function() {
 
   this.previewCanvas = null;
   this.previewContext = null;
+  this.previewDisplay = null;
   this.previewCanvasScale = UI.devicePixelRatio;
 
 
@@ -174,35 +175,26 @@ ExportSpritePng.prototype = {
       });
 
     }
-
-    var element = $('#exportSpritePngPreviewHolder');
-    if(!element || element.length == 0) {
+    if(!this.previewCanvas) {
       return;
     }
-
-    var position = element.offset();
-    if(position) {
-      this.left = position.left;
-      this.top = position.top;
-
-      this.width = element.width();
-      this.height = element.height();
+    if(!this.previewDisplay) {
+      var _this = this;
+      this.previewDisplay = new UI.CanvasPreview(
+        this.previewCanvas, '#exportSpritePngPreviewHolder', function() {
+          _this.resizePreview();
+        });
     }
-
-    this.previewCanvasScale = UI.devicePixelRatio;
-
-    if(this.width != this.previewCanvas.style.width || this.height != this.previewCanvas.style.height) {
-      if(this.width != 0 && this.height != 0) {
-        
-        this.previewCanvas.style.width = this.width + 'px';
-        this.previewCanvas.style.height = this.height + 'px';
-
-        this.previewCanvas.width = this.width * this.previewCanvasScale;
-        this.previewCanvas.height = this.height * this.previewCanvasScale;
-      }
+    var layout = this.previewDisplay.resize();
+    if(!layout) {
+      return;
     }
-
-    this.previewContext = UI.getContextNoSmoothing(this.previewCanvas);
+    this.left = layout.left;
+    this.top = layout.top;
+    this.width = layout.width;
+    this.height = layout.height;
+    this.previewCanvasScale = layout.metrics.pixelRatio;
+    this.previewContext = this.previewDisplay.getBackingContext(true);
     
     this.drawPreview({ redrawLayers: false, applyEffects: false});
   },

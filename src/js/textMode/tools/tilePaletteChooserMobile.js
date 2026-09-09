@@ -9,7 +9,7 @@ var TilePaletteChooserMobile = function() {
   this.highlightCharacter = false;
 
   this.previewCanvas = null;
-  this.selectedCanvas = null;
+  this.glyphPreview = null;
 
   this.mapType = false;
 
@@ -30,6 +30,9 @@ TilePaletteChooserMobile.prototype = {
     this.closeHandler = false;
     if(this.tilePaletteDisplay && typeof this.tilePaletteDisplay.resetProjectState == 'function') {
       this.tilePaletteDisplay.resetProjectState();
+    }
+    if(this.glyphPreview) {
+      this.glyphPreview.clear();
     }
   },
 
@@ -135,10 +138,7 @@ TilePaletteChooserMobile.prototype = {
 
 
       this.previewCanvas = document.getElementById('tilePaletteMobileCanvasPreview' + this.id);
-      this.previewCanvasScale = Math.floor(UI.devicePixelRatio);
-
-
-      this.selectedCanvas = document.createElement('canvas');
+      this.glyphPreview = new UI.GlyphPreview(this.previewCanvas);
 
       this.tilePaletteDisplay = new TilePaletteDisplay();
       this.tilePaletteDisplay.init(this.editor, {canvasElementId: "tilePaletteMobileCanvas" + this.id, 
@@ -196,19 +196,10 @@ TilePaletteChooserMobile.prototype = {
     var tileWidth = tileSet.getTileWidth();
     var tileHeight = tileSet.getTileHeight();
 
-    // the offscreen canvas for the selected tile
-    this.selectedCanvas.width = tileWidth;
-    this.selectedCanvas.height = tileHeight;
-
-
     // the onscreen preview of the selected tile.
     this.previewWidth = 100;
     this.previewHeight = 100;
-
-    this.previewCanvas.width = this.previewWidth * this.previewCanvasScale;
-    this.previewCanvas.height = this.previewHeight * this.previewCanvasScale;
-    this.previewCanvas.style.width = this.previewWidth + 'px';
-    this.previewCanvas.style.height = this.previewHeight + 'px';
+    this.glyphPreview.resize(this.previewWidth, this.previewHeight);
 
 
 
@@ -437,150 +428,6 @@ TilePaletteChooserMobile.prototype = {
     this.tilePaletteDisplay.setCharPaletteMapType(this.mapType);
   },  
 
-  drawSelectedVector: function() {
-    var tileSet = this.editor.tileSetManager.getCurrentTileSet();
-    var colorPalette = this.editor.colorPaletteManager.getCurrentColorPalette();
-
-    var colorPerMode = this.editor.getColorPerMode();
-    var colorPalette = this.editor.colorPaletteManager.getCurrentColorPalette();
-
-    var tileWidth = tileSet.getTileWidth();
-    var tileHeight = tileSet.getTileHeight();
-
-    var scale = 1;
-    var hScale = 1;
-    var vScale = 1;
-    if(this.previewCanvas.width > tileWidth) {
-      hScale = this.previewCanvas.width / tileWidth;
-    }
-
-    // scale to fit height
-    var vScale = 1;
-    if(this.previewCanvas.height > tileHeight) {
-      vScale = this.previewCanvas.height / tileHeight;
-    }
-
-
-    if(hScale > vScale) {
-      scale = vScale;
-    } else {
-      scale = hScale;
-    }
-
-    var xPos = 0;
-    var yPos = 0;
-    var destWidth = Math.floor(tileWidth * scale);
-    var destHeight = Math.floor(tileHeight * scale);
-
-    xPos = Math.floor((this.previewCanvas.width - destWidth) / 2);
-    yPos = Math.floor((this.previewCanvas.height - destHeight) / 2);
-
-    var args = {};
-    args['character'] = this.highlightCharacter;
-
-    if(colorPerMode == 'character') {
-      var fgColor = tileSet.getTileColor(args['character']);
-      var bgColor = tileSet.getCharacterBGColor(args['character']);
-      args['colorRGB'] = colorPalette.getHex(fgColor);
-      args['color'] = fgColor;
-      if(bgColor != this.editor.colorPaletteManager.noColor) {
-        args['bgColorRGB'] = colorPalette.getHex(bgColor);
-      } else {
-      }
-
-    } else {
-      args['color'] = this.editor.currentTile.color;
-      args['bgColor'] = this.editor.currentTile.bgColor;
-    }
-
-    args['x'] = xPos;
-    args['y'] = yPos;
-    args['scale'] = scale;
-
-    if(this.editor.getHasTileFlip()) {
-      args['flipH'] = this.editor.currentTile.flipH;
-      args['flipV'] = this.editor.currentTile.flipV;
-    }
-
-    if(this.editor.getHasTileRotate()) {
-      args['rotZ'] = this.editor.currentTile.rotZ;
-    }
-    args['select'] = false;
-    args['highlight'] = false;
-    args['backgroundIsTransparent'] = true;
-    args['context'] = this.previewCanvas.getContext('2d');
-
-
-
-    tileSet.drawCharacter(args);
-
-
-    tileSet.drawCharacter({
-
-    });
-
-  },
-
-  // draw the selected tile(s) into an offscreen canvas
-  drawSelected: function() {
-    var tileSet = this.editor.tileSetManager.getCurrentTileSet();
-    var colorPalette = this.editor.colorPaletteManager.getCurrentColorPalette();
-
-    var colorPerMode = this.editor.getColorPerMode();
-    var colorPalette = this.editor.colorPaletteManager.getCurrentColorPalette();
-
-    this.selectedContext = this.selectedCanvas.getContext("2d");
-    this.selectedContext.clearRect(0, 0, this.selectedCanvas.width, this.selectedCanvas.height);
-
-    var args = {};
-    this.selectedImageData = this.selectedContext.getImageData(0, 0, this.selectedCanvas.width, this.selectedCanvas.height);
-
-    args['imageData'] = this.selectedImageData;
-
-    args['character'] = this.highlightCharacter;
-
-    if(colorPerMode == 'character') {
-      var fgColor = tileSet.getTileColor(args['character']);
-      var bgColor = tileSet.getCharacterBGColor(args['character']);
-      args['colorRGB'] = colorPalette.getHex(fgColor);
-      args['color'] = fgColor;
-      if(bgColor != this.editor.colorPaletteManager.noColor) {
-        args['bgColorRGB'] = colorPalette.getHex(bgColor);
-      } else {
-      }
-
-    } else {
-      args['color'] = this.editor.currentTile.color;
-      args['bgColor'] = this.editor.currentTile.bgColor;
-    }
-
-    args['x'] = 0;
-    args['y'] = 0;
-    args['scale'] = 1;
-
-    if(this.editor.getHasTileFlip()) {
-      args['flipH'] = this.editor.currentTile.flipH;
-      args['flipV'] = this.editor.currentTile.flipV;
-    }
-
-    if(this.editor.getHasTileRotate()) {
-      args['rotZ'] = this.editor.currentTile.rotZ;
-    }
-
-
-
-    args['select'] = false;
-    args['highlight'] = false;
-    args['backgroundIsTransparent'] = true;
-
-
-
-    tileSet.drawCharacter(args);
-
-    this.selectedContext.putImageData(this.selectedImageData, 0, 0);
-  },
-
-
   getSelectedCharacters: function() {
     return this.tilePaletteDisplay.getSelectedCharacters();
   },
@@ -589,62 +436,35 @@ TilePaletteChooserMobile.prototype = {
   // draw the offscreen selected tile canvas onto the onscreen tile preview
   drawSelectedTilePreview: function() {
     var tileSet = this.editor.tileSetManager.getCurrentTileSet();
-
-    if(tileSet.getType() == 'vector') {
-      this.drawSelectedVector();
+    if(!tileSet || !this.glyphPreview) {
       return;
     }
-
-    this.drawSelected();
-
-    var tileSet = this.editor.tileSetManager.getCurrentTileSet();
-    var tileWidth = tileSet.getTileWidth();
-    var tileHeight = tileSet.getTileHeight();
-
-    this.context = this.previewCanvas.getContext('2d');
-    this.context.imageSmoothingEnabled = false;
-    this.context.webkitImageSmoothingEnabled = false;
-    this.context.mozImageSmoothingEnabled = false;
-    this.context.msImageSmoothingEnabled = false;
-    this.context.oImageSmoothingEnabled = false;
-
-
-    this.context.fillStyle = '#222222';
-    this.context.fillRect(0, 0, this.previewCanvas.width, this.previewCanvas.height);
-
-    var scale = 1;
-    var hScale = 1;
-    var vScale = 1;
-    if(this.previewCanvas.width > tileWidth) {
-      hScale = this.previewCanvas.width / tileWidth;
-    }
-
-    // scale to fit height
-    var vScale = 1;
-    if(this.previewCanvas.height > tileHeight) {
-      vScale = this.previewCanvas.height / tileHeight;
-    }
-
-
-    if(hScale > vScale) {
-      scale = vScale;
+    var colorPalette = this.editor.colorPaletteManager.getCurrentColorPalette();
+    var args = {
+      tileSet: tileSet,
+      character: this.highlightCharacter,
+      backgroundColor: '#222222'
+    };
+    if(this.editor.getColorPerMode() == 'character') {
+      var fgColor = tileSet.getTileColor(this.highlightCharacter);
+      var bgColor = tileSet.getCharacterBGColor(this.highlightCharacter);
+      args.color = fgColor;
+      args.colorRGB = colorPalette.getHex(fgColor);
+      if(bgColor != this.editor.colorPaletteManager.noColor) {
+        args.bgColorRGB = colorPalette.getHex(bgColor);
+      }
     } else {
-      scale = hScale;
+      args.color = this.editor.currentTile.color;
+      args.bgColor = this.editor.currentTile.bgColor;
     }
-
-    var xPos = 0;
-    var yPos = 0;
-    var destWidth = Math.floor(tileWidth * scale);
-    var destHeight = Math.floor(tileHeight * scale);
-
-    xPos = Math.floor((this.previewCanvas.width - destWidth) / 2);
-    yPos = Math.floor((this.previewCanvas.height - destHeight) / 2);
-    this.context.drawImage(this.selectedCanvas,
-            0, 0, tileWidth, tileHeight,
-            xPos, yPos, destWidth, destHeight);
-
-
-
+    if(this.editor.getHasTileFlip()) {
+      args.flipH = this.editor.currentTile.flipH;
+      args.flipV = this.editor.currentTile.flipV;
+    }
+    if(this.editor.getHasTileRotate()) {
+      args.rotZ = this.editor.currentTile.rotZ;
+    }
+    this.glyphPreview.drawTile(args);
   },
 
   setCharacter: function(character) {

@@ -3,6 +3,8 @@ var TileMaterials = function() {
   
   this.prefix = '';
   this.tileMaterialsCanvas = null;
+  this.tileMaterialsSurface = null;
+  this.removeDevicePixelRatioListener = null;
 }
 
 TileMaterials.prototype = {
@@ -10,6 +12,14 @@ TileMaterials.prototype = {
     this.editor = editor;
     if(typeof prefix != 'undefined') {
       this.prefix = prefix;
+    }
+    if(!this.removeDevicePixelRatioListener) {
+      var _this = this;
+      this.removeDevicePixelRatioListener = UI.onDevicePixelRatioChange(function() {
+        if(_this.tileMaterialsCanvas) {
+          _this.drawTileMaterials();
+        }
+      });
     }
   },
 
@@ -89,7 +99,10 @@ TileMaterials.prototype = {
 
   drawTileMaterials: function() {
     if(this.tileMaterialsCanvas == null) {
-      this.tileMaterialsCanvas = document.getElementById(this.prefix + 'tileMaterialsCanvas')
+      this.tileMaterialsCanvas = document.getElementById(this.prefix + 'tileMaterialsCanvas');
+    }
+    if(!this.tileMaterialsCanvas) {
+      return false;
     }
 
     var tileSet = this.editor.tileSetManager.getCurrentTileSet();
@@ -101,16 +114,15 @@ TileMaterials.prototype = {
     var canvasHeight = 2 * (this.materialHeight + this.materialSpacing) + this.materialSpacing;
 
 
-    this.tileMaterialsCanvas.width = canvasWidth * UI.devicePixelRatio;
-    this.tileMaterialsCanvas.height = canvasHeight * UI.devicePixelRatio;
-    this.tileMaterialsCanvas.style.width = canvasWidth + 'px';
-    this.tileMaterialsCanvas.style.height = canvasHeight + 'px';
-
-    this.tileMaterialsContext = this.tileMaterialsCanvas.getContext('2d');
+    if(!this.tileMaterialsSurface) {
+      this.tileMaterialsSurface = new UI.CanvasSurface(this.tileMaterialsCanvas);
+    }
+    this.tileMaterialsSurface.resize({ cssWidth: canvasWidth, cssHeight: canvasHeight });
+    this.tileMaterialsContext = this.tileMaterialsSurface.getLogicalContext();
 
 
     this.tileMaterialsContext.fillStyle = '#222222';
-    this.tileMaterialsContext.fillRect(0, 0, this.tileMaterialsCanvas.width, this.tileMaterialsCanvas.height);
+    this.tileMaterialsContext.fillRect(0, 0, canvasWidth, canvasHeight);
 
     var currentTile = this.editor.currentTile;
 
@@ -118,10 +130,10 @@ TileMaterials.prototype = {
       for(var x = 0; x < 8; x++) {
         var material = x + y * 8;
 
-        var xPos = (this.materialSpacing + x * (this.materialWidth + this.materialSpacing)) * UI.devicePixelRatio;
-        var yPos = (this.materialSpacing + y * (this.materialHeight + this.materialSpacing)) * UI.devicePixelRatio;
-        var width = this.materialWidth * UI.devicePixelRatio;
-        var height = this.materialHeight * UI.devicePixelRatio;
+        var xPos = this.materialSpacing + x * (this.materialWidth + this.materialSpacing);
+        var yPos = this.materialSpacing + y * (this.materialHeight + this.materialSpacing);
+        var width = this.materialWidth;
+        var height = this.materialHeight;
 
         var selected = false;
         if(currentTile.useCells) {
@@ -158,7 +170,7 @@ TileMaterials.prototype = {
         }
         this.tileMaterialsContext.fillRect(xPos, yPos, width, height);
 
-        var fontPx = 16 * UI.devicePixelRatio;
+        var fontPx = 16;
         var font = fontPx + "px \"Courier New\", Courier, monospace";
     
         this.tileMaterialsContext.font = font;
@@ -174,11 +186,12 @@ TileMaterials.prototype = {
           var textMeasure = this.tileMaterialsContext.measureText(c);
 
           var textX = xPos + (width - textMeasure.width) / 2;
-          var textY = yPos + 12 * UI.devicePixelRatio;
+          var textY = yPos + 12;
           this.tileMaterialsContext.fillText(c, textX, textY);
         }
       }
     }
+    return true;
   }
 
 

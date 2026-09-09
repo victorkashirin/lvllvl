@@ -11,8 +11,8 @@ import {
 test("the production legacy graph matches its grandfathered baseline", async () => {
   assert.deepEqual(await verifyProductionLegacyGraph(), {
     exceptions: 0,
-    grandfathered: 308,
-    inputs: 308,
+    grandfathered: 310,
+    inputs: 310,
   });
 });
 

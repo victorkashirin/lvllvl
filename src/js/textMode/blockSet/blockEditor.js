@@ -25,8 +25,10 @@ var BlockEditor = function() {
   this.visible = false;
 
   this.canvas = null;
+  this.characterPreview = null;
 
   this.blockEditorTilePaletteCanvas = null;
+  this.blockEditorTilePaletteSurface = null;
 }
 
 BlockEditor.prototype = {
@@ -57,10 +59,19 @@ BlockEditor.prototype = {
     if(this.tilePaletteDisplay && typeof this.tilePaletteDisplay.resetProjectState == 'function') {
       this.tilePaletteDisplay.resetProjectState();
     }
+    if(this.characterPreview) {
+      this.characterPreview.clear();
+    }
   },
 
   init: function(editor) {
     this.editor = editor;
+    var _this = this;
+    this.removeDevicePixelRatioListener = UI.onDevicePixelRatioChange(function() {
+      if(_this.blockEditorTilePaletteCanvas) {
+        _this.resizeCharPalette();
+      }
+    });
   },
 
 
@@ -71,14 +82,10 @@ BlockEditor.prototype = {
     var tileSet = this.editor.tileSetManager.getCurrentTileSet();
     var charWidth = tileSet.getTileWidth();
     var charHeight = tileSet.getTileHeight();
-    this.characterCanvasScale =  Math.floor(UI.devicePixelRatio);
-    this.characterCanvas.width = 2 * charWidth * this.characterCanvasScale;
-    this.characterCanvas.height = 2 * charHeight * this.characterCanvasScale;
-    this.characterCanvas.style.width = 2 * charWidth + 'px';
-    this.characterCanvas.style.height = 2 * charHeight + 'px';
-
-    this.characterContext = this.characterCanvas.getContext('2d');
-    this.characterImageData = this.characterContext.getImageData(0, 0, this.characterCanvas.width, this.characterCanvas.height);    
+    if(!this.characterPreview) {
+      this.characterPreview = new UI.GlyphPreview(this.characterCanvas);
+    }
+    this.characterPreview.resize(2 * charWidth, 2 * charHeight);
 
   },
 
@@ -215,20 +222,14 @@ BlockEditor.prototype = {
   resizeCharPalette: function() {
     if(this.blockEditorTilePaletteCanvas == null) {
       this.blockEditorTilePaletteCanvas = document.getElementById('blockEditorTilePalette');
+      this.blockEditorTilePaletteSurface = new UI.CanvasSurface(this.blockEditorTilePaletteCanvas);
     }
     var element = $('#blockEditorTilePaletteHolder');
     this.width = element.width();
     this.height = element.height();
 
-    if(this.width != this.blockEditorTilePaletteCanvas.style.width || this.height != this.blockEditorTilePaletteCanvas.style.height) {
-      if(this.width != 0 && this.height != 0) {
-        
-        this.blockEditorTilePaletteCanvas.style.width = this.width + 'px';
-        this.blockEditorTilePaletteCanvas.style.height = this.height + 'px';
-
-        this.blockEditorTilePaletteCanvas.width = this.width * UI.devicePixelRatio;
-        this.blockEditorTilePaletteCanvas.height = this.height * UI.devicePixelRatio;
-      }
+    if(this.width > 0 && this.height > 0) {
+      this.blockEditorTilePaletteSurface.resize({ cssWidth: this.width, cssHeight: this.height });
     }
 
     if(this.tilePaletteDisplay != null) {
@@ -290,7 +291,6 @@ BlockEditor.prototype = {
       return;
     }
 
-    var layer = this.editor.layers.getSelectedLayerObject();
     var characterHex = ("00" + character.toString(16)).substr(-2);
     var html = '';
     html += character + " (0x" + characterHex + ")";
@@ -298,7 +298,6 @@ BlockEditor.prototype = {
     $('#blockEditorCharInfo').html(html);
 
 
-    var scale = 2 * this.characterCanvasScale;
     var tileSet = this.editor.tileSetManager.getCurrentTileSet();
 
     var characterIndex = parseInt(character);
@@ -306,20 +305,13 @@ BlockEditor.prototype = {
       return;
     }
 
-    tileSet.drawCharacter({
+    this.characterPreview.drawTile({
+      tileSet: tileSet,
       character: characterIndex, 
-      x: 0,
-      y: 0,
-      scale: scale,
-      imageData: this.characterImageData,
       colorRGB: 0xdddddd,
       bgColorRGB: 0x111111,
-      context: this.characterContext
-    })
-
-    if(layer && layer.getMode() != TextModeEditor.Mode.VECTOR) {
-      this.characterContext.putImageData(this.characterImageData, 0, 0);
-    }
+      backgroundColor: '#111111'
+    });
   },
 
   setBlockDimensions: function(width, height) {
@@ -362,7 +354,7 @@ BlockEditor.prototype = {
 
     if(!this.tilePaletteDisplay) {
       this.tilePaletteDisplay = new TilePaletteDisplay();
-      this.tilePaletteDisplay.init(this.editor, { "mode": "single", "canvasElementId": "blockEditorTilePalette" });
+      this.tilePaletteDisplay.init(this.editor, { "mode": "single", "canvasElementId": "blockEditorTilePalette", "resizeCanvas": false });
       this.tilePaletteDisplay.on('characterselected', function(character) {  
 
         _this.setHighlightCharacter(character);

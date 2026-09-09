@@ -4,6 +4,7 @@ UI.CanvasScrollPanel = function() {
 
 //    UI.canvasComponents.push(this);
     this.canvas = null;
+    this.canvasSurface = null;
 
     this.scale = 1;
     this.left = false;
@@ -106,6 +107,7 @@ UI.CanvasScrollPanel = function() {
     if(this.canvas == null) {
       this.canvas =  document.getElementById(this.id + '-canvas');
       if(this.canvas != null) {
+        this.canvasSurface = new UI.CanvasSurface(this.canvas);
         this.initEvents();
       }
     } 
@@ -307,7 +309,7 @@ UI.CanvasScrollPanel = function() {
 
 
     // is mouse over vertical scroll bar?
-    if(x > this.width - this.vScrollBarWidth && y < this.canvas.height ) {
+    if(x > this.width - this.vScrollBarWidth && y < this.height) {
       UI.setCursor('default');      
       return;
     }
@@ -490,7 +492,7 @@ UI.CanvasScrollPanel = function() {
     return this.scrollX;
   }
 
-  this.resize = function() {
+  this.resize = function(args) {
 
     if(this.canvas == null) {
       this.getCanvas();
@@ -510,19 +512,18 @@ UI.CanvasScrollPanel = function() {
       this.width = element.width();
       this.height = element.height();
     }
-    this.canvas.style.width = this.width + 'px';
-    this.canvas.style.height = this.height + 'px';
+    if(this.width <= 0 || this.height <= 0) {
+      this.trigger('resize');
+      return;
+    }
 
-    this.canvasScale = UI.devicePixelRatio;
-//    this.canvasScale = 1;
-
-    this.canvas.width = this.width * this.canvasScale;
-    this.canvas.height = this.height * this.canvasScale;
-
-
-
-    this.width = this.canvas.width / this.canvasScale;
-    this.height = this.canvas.height / this.canvasScale;
+    var metrics = this.canvasSurface.resize({
+      cssWidth: this.width,
+      cssHeight: this.height,
+      pixelRatio: UI.devicePixelRatio,
+      force: args && args.force === true
+    });
+    this.canvasScale = metrics.pixelRatio;
     this.viewWidth = this.width - this.vScrollBarWidth;
     this.viewHeight = this.height - this.hScrollBarHeight;
 
@@ -533,6 +534,10 @@ UI.CanvasScrollPanel = function() {
 
   this.getScale = function() {
     return this.canvasScale;
+  },
+
+  this.getSurfaceMetrics = function() {
+    return this.canvasSurface ? this.canvasSurface.getMetrics() : null;
   },
  
   this.getElementId = function() {
@@ -547,7 +552,7 @@ UI.CanvasScrollPanel = function() {
         return;
       }
     }
-    this.context = this.canvas.getContext('2d', { "alpha": false });
+    this.context = this.canvasSurface.getBackingContext({ "alpha": false });
 
     
     return this.context;
@@ -566,7 +571,7 @@ UI.CanvasScrollPanel = function() {
         return;
       }
     }
-    this.context = this.canvas.getContext('2d', { "alpha": false });
+    this.context = this.canvasSurface.getBackingContext({ "alpha": false });
 
     this.calculateScroll();
 

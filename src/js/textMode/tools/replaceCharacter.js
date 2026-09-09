@@ -6,6 +6,8 @@ var ReplaceCharacterDialog = function() {
 
   this.replaceTileCanvas = null;
   this.replaceTileWithCanvas = null;
+  this.replaceTilePreview = null;
+  this.replaceTileWithPreview = null;
   this.projectDocument = null;
   this.projectGeneration = undefined;
 }
@@ -33,6 +35,14 @@ ReplaceCharacterDialog.prototype = {
   resetProjectState: function() {
     this.replaceTile = false;
     this.replaceWithTile = false;
+    if(this.replaceTilePreview) {
+      this.replaceTilePreview.dispose();
+    }
+    if(this.replaceTileWithPreview) {
+      this.replaceTileWithPreview.dispose();
+    }
+    this.replaceTilePreview = null;
+    this.replaceTileWithPreview = null;
     this.replaceTileCanvas = null;
     this.replaceTileWithCanvas = null;
     this.replaceTileContext = null;
@@ -71,6 +81,8 @@ ReplaceCharacterDialog.prototype = {
       this.closeButton.on('click', function(event) {
         UI.closeDialog();
       });
+    } else {
+      this.initContent();
     }
 
     UI.showDialog("replaceCharacterDialog");
@@ -90,8 +102,6 @@ ReplaceCharacterDialog.prototype = {
       this.replaceTileWithCanvas = document.getElementById('replaceWithCharacterCanvas');
     }
 
-    this.canvasScale = Math.floor(UI.devicePixelRatio);
-
     var tileSet = this.editor.tileSetManager.getCurrentTileSet();
     var charWidth = tileSet.getTileWidth();
     var charHeight = tileSet.getTileHeight();
@@ -101,16 +111,14 @@ ReplaceCharacterDialog.prototype = {
     var canvasDisplayHeight = charHeight * this.characterScale;
 
 
-    this.replaceTileCanvas.height = canvasDisplayHeight * this.canvasScale;
-    this.replaceTileCanvas.width = canvasDisplayWidth * this.canvasScale;
-    this.replaceTileCanvas.style.height = canvasDisplayHeight + 'px';
-    this.replaceTileCanvas.style.width = canvasDisplayWidth + 'px';
-
-
-    this.replaceTileWithCanvas.height = canvasDisplayHeight * this.canvasScale;
-    this.replaceTileWithCanvas.width = canvasDisplayWidth * this.canvasScale;
-    this.replaceTileWithCanvas.style.height = canvasDisplayHeight + 'px';
-    this.replaceTileWithCanvas.style.width = canvasDisplayWidth + 'px';
+    if(!this.replaceTilePreview) {
+      this.replaceTilePreview = new UI.GlyphPreview(this.replaceTileCanvas);
+    }
+    if(!this.replaceTileWithPreview) {
+      this.replaceTileWithPreview = new UI.GlyphPreview(this.replaceTileWithCanvas);
+    }
+    this.replaceTilePreview.resize(canvasDisplayWidth, canvasDisplayHeight);
+    this.replaceTileWithPreview.resize(canvasDisplayWidth, canvasDisplayHeight);
 
     var currentCharacters = this.editor.currentTile.getCharacters();
     var currentTile = 0;
@@ -199,59 +207,20 @@ ReplaceCharacterDialog.prototype = {
     if(!tileSet) {
       return;
     }
-    var charWidth = tileSet.getTileWidth();
-    var charHeight = tileSet.getTileHeight();
-    var scale = 2;
-    if(charHeight > 10) {
-      scale = 1;      
-    }
-
-    console.log('scale = ' + scale);
-
-//    this.replaceCharacterCanvas.width = charWidth * scale;
-//    this.replaceCharacterCanvas.height = charHeight * scale;
-
-    
-    this.replaceTileContext = this.replaceTileCanvas.getContext('2d');
-
-    this.replaceTileContext.clearRect(0, 0, this.replaceTileCanvas.width, this.replaceTileCanvas.height);
-
-    var imageData = this.replaceTileContext.getImageData(0, 0, this.replaceTileCanvas.width, this.replaceTileCanvas.height);
-    var args = {};
-    args['scale'] = scale * this.canvasScale;
-    args['imageData'] = imageData;
-    args['character'] = this.replaceTile;
-    args['colorRGB'] = 0xffffff;
-    args['bgColorRGB'] = 0x333333;
-
-//      args['color'] = 2;
-    args['x'] = 0;
-    args['y'] = 0;
-
-    tileSet.drawCharacter(args);
-
-    this.replaceTileContext.putImageData(imageData, 0, 0);
-
-
-    this.replaceTileWithContext = this.replaceTileWithCanvas.getContext('2d');
-
-    this.replaceTileWithContext.clearRect(0, 0, this.replaceTileWithCanvas.width, this.replaceTileWithCanvas.height);
-
-    var imageData = this.replaceTileWithContext.getImageData(0, 0, this.replaceTileWithCanvas.width, this.replaceTileWithCanvas.height);
-    var args = {};
-    args['scale'] = scale * this.canvasScale;
-    args['imageData'] = imageData;
-    args['character'] = this.replaceWithTile;
-    args['colorRGB'] = 0xffffff;
-    args['bgColorRGB'] = 0x333333;
-
-//      args['color'] = 2;
-    args['x'] = 0;
-    args['y'] = 0;
-
-    tileSet.drawCharacter(args);
-
-    this.replaceTileWithContext.putImageData(imageData, 0, 0);
+    this.replaceTilePreview.drawTile({
+      tileSet: tileSet,
+      character: this.replaceTile,
+      colorRGB: 0xffffff,
+      bgColorRGB: 0x333333,
+      backgroundColor: '#333333'
+    });
+    this.replaceTileWithPreview.drawTile({
+      tileSet: tileSet,
+      character: this.replaceWithTile,
+      colorRGB: 0xffffff,
+      bgColorRGB: 0x333333,
+      backgroundColor: '#333333'
+    });
 
   },
 

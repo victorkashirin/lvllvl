@@ -3,7 +3,14 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import vm from "node:vm";
 
-const source = readFileSync(new URL("../src/js/ui/canvasPanel.js", import.meta.url), "utf8");
+import { loadUICanvasPrimitives } from "./helpers/load-ui-canvas-primitives.mjs";
+
+const surfaceSource = loadUICanvasPrimitives();
+const panelSource = readFileSync(
+  new URL("../src/js/ui/canvasPanel.js", import.meta.url),
+  "utf8",
+);
+const source = `${surfaceSource}\n${panelSource}`;
 
 test("canvas panels preserve fractional DPR and resize only when backing dimensions change", () => {
   let widthWrites = 0;
@@ -24,6 +31,8 @@ test("canvas panels preserve fractional DPR and resize only when backing dimensi
   const UI = {
     canvasComponents: [],
     devicePixelRatio: 1.25,
+    devicePixelRatioRevision: 0,
+    onDevicePixelRatioChange() { return () => {}; },
     registerComponentType() {},
   };
   const sandbox = vm.createContext({
@@ -50,8 +59,10 @@ test("canvas panels preserve fractional DPR and resize only when backing dimensi
   assert.equal(heightWrites, 1, "an unchanged resize must not reset canvas state");
 
   UI.devicePixelRatio = 1.5;
+  UI.devicePixelRatioRevision++;
   panel.resize();
   assert.equal(panel.getScale(), 1.5);
   assert.equal(canvas.width, 152);
   assert.equal(canvas.height, 77);
+  assert.equal(panel.getSurfaceMetrics().cacheInvalidated, true);
 });

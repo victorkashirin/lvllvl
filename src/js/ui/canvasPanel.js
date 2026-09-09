@@ -4,6 +4,7 @@ UI.CanvasPanel = function() {
 
     UI.canvasComponents.push(this);
     this.canvas = null;
+    this.canvasSurface = null;
 
     this.scale = 1;
     this.left = false;
@@ -39,6 +40,9 @@ UI.CanvasPanel = function() {
   this.getCanvas = function() {
     if(this.canvas == null) {
       this.canvas =  document.getElementById(this.id + '-canvas');
+      if(this.canvas !== null) {
+        this.canvasSurface = new UI.CanvasSurface(this.canvas);
+      }
     } 
     return this.canvas;
 
@@ -98,27 +102,14 @@ UI.CanvasPanel = function() {
 
 
     this.canvas = this.getCanvas();
-    var pixelRatio = UI.devicePixelRatio;
-    var canvasWidth = Math.round(this.width * pixelRatio);
-    var canvasHeight = Math.round(this.height * pixelRatio);
-    if(this.canvas.style.width != this.width + 'px'
-      || this.canvas.style.height != this.height + 'px'
-      || this.canvas.width != canvasWidth
-      || this.canvas.height != canvasHeight
-      || this.scale != pixelRatio
-      || force) {
-      if(this.width != 0 && this.height != 0) {
-        
-        this.canvas.style.width = this.width + 'px';
-        this.canvas.style.height = this.height + 'px';
-
-
-        this.canvas.width = canvasWidth;
-        this.canvas.height = canvasHeight;
-
-        this.scale = pixelRatio;
-
-      }
+    if(this.width > 0 && this.height > 0) {
+      var metrics = this.canvasSurface.resize({
+        cssWidth: this.width,
+        cssHeight: this.height,
+        pixelRatio: UI.devicePixelRatio,
+        force: force
+      });
+      this.scale = metrics.pixelRatio;
     }
 
 
@@ -128,6 +119,10 @@ UI.CanvasPanel = function() {
   this.getScale = function() {
     return this.scale;
 
+  }
+
+  this.getSurfaceMetrics = function() {
+    return this.canvasSurface ? this.canvasSurface.getMetrics() : null;
   }
   this.render = function() {
     return;

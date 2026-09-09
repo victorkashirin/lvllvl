@@ -38,6 +38,14 @@ function previewFixture({ frameCount = 5 } = {}) {
   let now = 100;
   let selectedRange = "";
   const sandbox = vm.createContext({
+    UI: {
+      onDevicePixelRatioChange() { return () => {}; },
+      PixelArtBlitter: function() {
+        this.draw = function(context, bounds, image, sx, sy, sw, sh, dx, dy, dw, dh) {
+          context.drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh);
+        };
+      },
+    },
     document: { createElement: createCanvas },
     getTimestamp: () => now,
     FRAMERATE: 20,
@@ -92,6 +100,9 @@ function previewFixture({ frameCount = 5 } = {}) {
   preview.canvas.width = 80;
   preview.canvas.height = 60;
   preview.context = preview.canvas.getContext("2d");
+  preview.pixelArtBlitter = new sandbox.UI.PixelArtBlitter();
+  preview.width = 80;
+  preview.height = 60;
   preview.canvasScale = 1;
   return {
     preview, frameRevisions, tileSet, layerData, sizeWrites, canvases,

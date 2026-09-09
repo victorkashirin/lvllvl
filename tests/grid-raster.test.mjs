@@ -3,11 +3,23 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import vm from "node:vm";
 
+import { loadUICanvasPrimitives } from "./helpers/load-ui-canvas-primitives.mjs";
+
 const graphicSource = readFileSync(new URL("../src/js/textMode/graphic.js", import.meta.url), "utf8");
 const source = readFileSync(new URL("../src/js/textMode/gridView2d.js", import.meta.url), "utf8");
+const blitterSource = loadUICanvasPrimitives();
 const pixelAt = (x, y) => (0xff000000 | ((y + 1) << 12) | (x + 1)) >>> 0;
 
-function fixture({ width = 37, height = 29, sourceWidth = 127, sourceHeight = 193, ratio = 1, tx = 0, ty = 0 } = {}) {
+function fixture({
+  width = 37,
+  height = 29,
+  sourceWidth = 127,
+  sourceHeight = 193,
+  ratio = 1,
+  tx = 0,
+  ty = 0,
+  sourcePixel = pixelAt,
+} = {}) {
   const reads = [];
   const writes = [];
   const backingWidth = Math.round(width * ratio);
@@ -27,6 +39,7 @@ function fixture({ width = 37, height = 29, sourceWidth = 127, sourceHeight = 19
     document: { createElement: makeCanvas },
     UI: { getContextNoSmoothing: (canvas) => canvas.getContext("2d") },
   });
+  vm.runInContext(blitterSource, sandbox);
   vm.runInContext(graphicSource, sandbox);
   vm.runInContext(source, sandbox);
   const view = new sandbox.GridView2d();
@@ -42,7 +55,7 @@ function fixture({ width = 37, height = 29, sourceWidth = 127, sourceHeight = 19
         reads.push({ x, y, width: w, height: h });
         const data = new Uint32Array(w * h);
         for (let row = 0; row < h; row++) {
-          for (let col = 0; col < w; col++) data[row * w + col] = pixelAt(x + col, y + row);
+          for (let col = 0; col < w; col++) data[row * w + col] = sourcePixel(x + col, y + row);
         }
         return { data: new Uint8ClampedArray(data.buffer) };
       },
@@ -101,9 +114,45 @@ function fixture({ width = 37, height = 29, sourceWidth = 127, sourceHeight = 19
     graphic: new sandbox.Graphic() };
 }
 
+test("fractional scaling matches a hand-authored pixel fixture", () => {
+  const [a, b, c, d, e, f] = [
+    0xff0000ff,
+    0xff00ff00,
+    0xffff0000,
+    0xff00ffff,
+    0xffff00ff,
+    0xffffff00,
+  ];
+  const input = [a, b, c, d, e, f];
+  const expected = [
+    a, a, b, c, c,
+    a, a, b, c, c,
+    d, d, e, f, f,
+    d, d, e, f, f,
+  ];
+  const scaled = fixture({
+    width: 4,
+    height: 3,
+    sourceWidth: 3,
+    sourceHeight: 2,
+    ratio: 1.25,
+    sourcePixel: (x, y) => input[y * 3 + x],
+  });
+
+  scaled.view.drawRasterImage(
+    scaled.context,
+    false,
+    scaled.image,
+    0, 0, 3, 2,
+    0, 0, 4, 3,
+  );
+
+  assert.deepEqual(Array.from(scaled.pixels), expected);
+});
+
 test("bitmap sampling matches the backing-pixel-centre oracle across clips, offsets and device ratios", () => {
   for (const scale of [0.1, 0.25, 0.5, 0.75, 1.25, 2.25, 2.5, 2.75, 3.5]) {
-    for (const ratio of [1, 1.25, 1.5, 2, 3]) {
+    for (const ratio of [1, 1.25, 1.5, 2, 2.5, 3]) {
       for (const bounds of [false, { x: 9, y: 7, width: 13, height: 11 }]) {
         const f = fixture({ ratio, tx: 5, ty: -3 });
         const denominator = scale === 0.1 ? 10 : 4;
@@ -174,21 +223,23 @@ test("reusing raster storage replaces transparent pixels rather than retaining t
   const draw = () => f.view.drawRasterImage(f.context, false, f.image, 0, 0, 8, 8, 0, 0, 18, 18);
   draw();
   const buffer = f.view.rasterImageData;
+  const columns = f.view.pixelArtBlitter.rasterColumns;
   assert.ok(f.pixels.some(Boolean));
   f.image.getContext = () => ({
     getImageData: (x, y, w, h) => ({ data: new Uint8ClampedArray(w * h * 4) }),
   });
   draw();
   assert.equal(f.view.rasterImageData, buffer);
+  assert.equal(f.view.pixelArtBlitter.rasterColumns, columns);
   assert.ok(f.pixels.every((pixel) => pixel === 0));
 });
 
 test("integer physical magnification avoids raster allocation and readback", () => {
   const f = fixture({ ratio: 2 });
-  f.view.drawRasterImage(f.context, false, f.image, 1, 2, 8, 9, 3.5, 7, 28, 31.5);
+  f.view.drawRasterImage(f.context, false, f.image, 1, 2, 8, 9, 3.5, 7, 28, 45);
   assert.equal(f.view.rasterCanvas, null);
   assert.equal(f.reads.length, 0);
-  assert.deepEqual(f.writes[0], [f.image, 1, 2, 8, 9, 3.5, 7, 28, 31.5]);
+  assert.deepEqual(f.writes[0], [f.image, 1, 2, 8, 9, 3.5, 7, 28, 45]);
 });
 
 test("offscreen images preserve native compositing without raster work; empty images are ignored", () => {

@@ -1,6 +1,7 @@
 var ColorPaletteDisplay = function() {
   this.canvas = null;
   this.context = null;
+  this.canvasSurface = null;
   this.canvasScale = 1;
 
   this.colorWidth = 20;
@@ -96,6 +97,14 @@ ColorPaletteDisplay.prototype = {
     this.selectedColors[0] =  this.editor.colorPaletteManager.noColor;
     this.selectedColors[1] =  this.editor.colorPaletteManager.noColor;
     this.highlightColor = this.editor.colorPaletteManager.noColor;
+
+    var _this = this;
+    this.removeDevicePixelRatioListener = UI.onDevicePixelRatioChange(function() {
+      if(_this.canvas) {
+        _this.setup();
+        _this.draw();
+      }
+    });
 
 
     if(typeof args != 'undefined') {
@@ -226,8 +235,6 @@ ColorPaletteDisplay.prototype = {
       this.initEvents();
     }
 
-    this.canvasScale = Math.floor(UI.devicePixelRatio);
-
     var colorsAcross = 1;
     var colorsDown = 1;
 
@@ -249,14 +256,12 @@ ColorPaletteDisplay.prototype = {
     }
 
 
-    this.canvas.width = width * this.canvasScale;
-    this.canvas.height = height * this.canvasScale;
-    this.canvas.style.width = width + 'px';
-    this.canvas.style.height = height + 'px';
-
-
-    this.context = this.canvas.getContext('2d');
-    this.context.scale(this.canvasScale, this.canvasScale);
+    if(!this.canvasSurface) {
+      this.canvasSurface = new UI.CanvasSurface(this.canvas);
+    }
+    var metrics = this.canvasSurface.resize({ cssWidth: width, cssHeight: height });
+    this.canvasScale = metrics.pixelRatio;
+    this.context = this.canvasSurface.getLogicalContext();
 
 
   },
@@ -321,11 +326,13 @@ ColorPaletteDisplay.prototype = {
   },
 
   getHeight: function() {
-    return Math.ceil(this.canvas.height / this.canvasScale);
+    var metrics = this.canvasSurface && this.canvasSurface.getMetrics();
+    return metrics ? metrics.cssHeight : Math.ceil(this.canvas.height / this.canvasScale);
   },
 
   getWidth: function() {
-    return Math.ceil(this.canvas.width / this.canvasScale);
+    var metrics = this.canvasSurface && this.canvasSurface.getMetrics();
+    return metrics ? metrics.cssWidth : Math.ceil(this.canvas.width / this.canvasScale);
   },
 
 
@@ -844,7 +851,7 @@ ColorPaletteDisplay.prototype = {
     var canvasWidth = 0;
     var canvasHeight = height;
     if(typeof width == 'undefined') {
-      canvasWidth = Math.floor(this.canvas.width / this.canvasScale);
+      canvasWidth = this.getWidth();
     } else {
       canvasWidth = width;
     }
@@ -856,8 +863,17 @@ ColorPaletteDisplay.prototype = {
       colorsDown = this.colorMap.length;
     }
 
-    this.colorWidth = Math.floor(((canvasWidth - this.colorSpacing) / colorsAcross) - this.colorSpacing);
-    this.colorHeight = Math.floor(((canvasHeight - this.colorSpacing) / colorsDown) - this.colorSpacing);
+    var colorWidth = Math.floor(((canvasWidth - this.colorSpacing) / colorsAcross) - this.colorSpacing);
+    var colorHeight = Math.floor(((canvasHeight - this.colorSpacing) / colorsDown) - this.colorSpacing);
+
+    // Hidden palette holders report zero width during layout and DPR changes.
+    // Keep the last valid surface until layout supplies a drawable cell size.
+    if(!isFinite(colorWidth) || colorWidth <= 0
+      || !isFinite(colorHeight) || colorHeight <= 0) {
+      return false;
+    }
+    this.colorWidth = colorWidth;
+    this.colorHeight = colorHeight;
 
 
     if(this.maxColorWidth !== false && this.colorWidth > this.maxColorWidth) {
@@ -873,6 +889,7 @@ ColorPaletteDisplay.prototype = {
 
     this.setup();
     this.draw();
+    return true;
 
   },
 
@@ -880,7 +897,7 @@ ColorPaletteDisplay.prototype = {
   fitToWidth: function(width) {
     var canvasWidth = 0;
     if(typeof width == 'undefined') {
-      canvasWidth = Math.floor(this.canvas.width / this.canvasScale);
+      canvasWidth = this.getWidth();
     } else {
       canvasWidth = width;
     }
@@ -892,7 +909,11 @@ ColorPaletteDisplay.prototype = {
       colorsDown = this.colorMap.length;
     }
 
-    this.colorWidth = Math.floor(((canvasWidth - this.colorSpacing) / colorsAcross) - this.colorSpacing);
+    var colorWidth = Math.floor(((canvasWidth - this.colorSpacing) / colorsAcross) - this.colorSpacing);
+    if(!isFinite(colorWidth) || colorWidth <= 0) {
+      return false;
+    }
+    this.colorWidth = colorWidth;
 
     if(this.maxColorWidth !== false && this.colorWidth > this.maxColorWidth) {
       this.colorWidth = this.maxColorWidth;
@@ -902,6 +923,7 @@ ColorPaletteDisplay.prototype = {
 
     this.setup();
     this.draw();
+    return true;
 
   },
 /*
@@ -1164,7 +1186,7 @@ ColorPaletteDisplay.prototype = {
 //      var xPosition = gridX;
 
       this.context.moveTo(xPos, 0);
-      this.context.lineTo(xPos, this.canvas.height);
+      this.context.lineTo(xPos, this.getHeight());
 
     }
 
@@ -1172,7 +1194,7 @@ ColorPaletteDisplay.prototype = {
     for(var y = 0; y < colorsDown; y++) {
       var yPos = this.colorSpacing + y * (this.colorHeight + this.colorSpacing); 
       this.context.moveTo(0, yPos + 0.5);
-      this.context.lineTo(this.canvas.width, yPos + 0.5);          
+      this.context.lineTo(this.getWidth(), yPos + 0.5);
     }
 
     this.context.strokeStyle = styles.textMode.gridView2dGridLine;
@@ -1217,7 +1239,7 @@ ColorPaletteDisplay.prototype = {
 
     for(var y = 0; y < this.canvas.height; y++) {
       for(var x = 0; x < this.canvas.width; x++) {
-        if( (x + y) % (2 * this.canvasScale))  {
+        if((Math.floor(x / this.canvasScale) + Math.floor(y / this.canvasScale)) % 2) {
           imageData.data[index++] = 30;
           imageData.data[index++] = 30;
           imageData.data[index++] = 30;

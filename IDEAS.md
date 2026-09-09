@@ -16,6 +16,9 @@
 - BUG: switch from text mode to vector mode is destructive and can't be rolled back
 - Fix color editor, add oklch mode
 - in shortcuts modal change highlight color of input field and remove
+- in text mode backspace/delete don't remove characters
+- double click on grid removes character (but smart - don't remove background if it's not on affects)
+- command-drag eraser - draw selection rectangle and clean
 
 + improve mobile mode
 + tab for preview mode

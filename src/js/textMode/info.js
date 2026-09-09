@@ -8,12 +8,21 @@ var Info = function() {
   this.z = 0;
   this.characterCanvas = null;
   this.characterContext = null;
+  this.characterPreview = null;
 
 }
 
 Info.prototype = {
   init: function(editor) {
     this.editor = editor;
+  },
+
+  resetProjectState: function() {
+    this.character = false;
+    this.block = false;
+    if(this.characterPreview) {
+      this.characterPreview.clear();
+    }
   },
 
   buildInterface: function(parentComponent) {
@@ -41,17 +50,10 @@ Info.prototype = {
 
 
   initContent: function() {
-    var tileSet = this.editor.tileSetManager.getCurrentTileSet();
-    var charWidth = 8;//tileSet.getTileWidth();
-    var charHeight = 8;//tileSet.getTileHeight();
-    this.characterCanvasScale =  Math.floor(UI.devicePixelRatio);
-    this.characterCanvas.width = 2 * charWidth * this.characterCanvasScale;
-    this.characterCanvas.height = 2 * charHeight * this.characterCanvasScale;
-    this.characterCanvas.style.width = 2 * charWidth + 'px';
-    this.characterCanvas.style.height = 2 * charHeight + 'px';
-
-    this.characterContext = this.characterCanvas.getContext('2d');
-    this.characterImageData = this.characterContext.getImageData(0, 0, this.characterCanvas.width, this.characterCanvas.height);    
+    if(!this.characterPreview) {
+      this.characterPreview = new UI.GlyphPreview(this.characterCanvas);
+    }
+    this.characterPreview.resize(16, 16);
   },
 
   leaveGrid: function() {
@@ -146,7 +148,6 @@ Info.prototype = {
 
     $('#info-character').html(html);
 
-    var scale = 2 * this.characterCanvasScale;
     var tileSet = this.editor.tileSetManager.getCurrentTileSet();
 
     var characterIndex = parseInt(character);
@@ -154,16 +155,13 @@ Info.prototype = {
       return;
     }
 
-    tileSet.drawCharacter({
+    this.characterPreview.drawTile({
+      tileSet: tileSet,
       character: characterIndex, 
-      x: 0,
-      y: 0,
-      scale: scale,
-      imageData: this.characterImageData,
       colorRGB: 0xdddddd,
-      bgColorRGB: 0x111111
-    })
-    this.characterContext.putImageData(this.characterImageData, 0, 0);
+      bgColorRGB: 0x111111,
+      backgroundColor: '#111111'
+    });
 
   },
 

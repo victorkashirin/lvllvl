@@ -14,6 +14,7 @@ var TilePickerPopup = function() {
   this.characterPickedCallback = null;
 
   this.tilePickerCanvas = null;
+  this.canvasSurface = null;
 
 
   this.layout = 'vertical';
@@ -38,6 +39,11 @@ TilePickerPopup.prototype = {
   init: function(editor, args) {
     var _this = this;
     this.editor = editor;
+    this.removeDevicePixelRatioListener = UI.onDevicePixelRatioChange(function() {
+      if(_this.tilePickerCanvas) {
+        _this.resize();
+      }
+    });
 
     this.uiComponent = UI.create("UI.Popup", { "id": "tilePickerPopup", "width": 300, "height": 300 });
     
@@ -79,21 +85,14 @@ TilePickerPopup.prototype = {
   resize: function() {
     if(this.tilePickerCanvas == null) {
       this.tilePickerCanvas = document.getElementById('characterPickerCanvas');
+      this.canvasSurface = new UI.CanvasSurface(this.tilePickerCanvas);
     }
     var element = $('#charactePickerCanvasHolder');
     this.width = element.width();
     this.height = element.height();
 
-    if(this.width != this.tilePickerCanvas.style.width 
-      || this.height != this.tilePickerCanvas.style.height) {
-      if(this.width != 0 && this.height != 0) {
-        
-        this.tilePickerCanvas.style.width = this.width + 'px';
-        this.tilePickerCanvas.style.height = this.height + 'px';
-
-        this.tilePickerCanvas.width = this.width * UI.devicePixelRatio;
-        this.tilePickerCanvas.height = this.height * UI.devicePixelRatio;
-      }
+    if(this.width > 0 && this.height > 0) {
+      this.canvasSurface.resize({ cssWidth: this.width, cssHeight: this.height });
     }
 
     if(this.tilePaletteDisplay != null) {
@@ -122,7 +121,7 @@ TilePickerPopup.prototype = {
 
     if(this.tilePaletteDisplay == null) {
       this.tilePaletteDisplay = new TilePaletteDisplay();
-      this.tilePaletteDisplay.init(this.editor, { "mode": this.mode, "canvasElementId": "characterPickerCanvas", "blockStacking": "vertical" });
+      this.tilePaletteDisplay.init(this.editor, { "mode": this.mode, "canvasElementId": "characterPickerCanvas", "blockStacking": "vertical", "resizeCanvas": false });
       this.tilePaletteDisplay.on('characterselected', function(character) {
         if(character !== false) { 
           _this.characterPickedCallback(character);
@@ -163,8 +162,9 @@ TilePickerPopup.prototype = {
     this.tilePaletteDisplay.initCharPalette({ "mapType": mapType });
     this.tilePaletteDisplay.draw({ "redrawTiles": true });
 
-    var tilePaletteDisplayWidth = this.tilePaletteDisplay.getWidth();
-    var tilePaletteDisplayHeight = this.tilePaletteDisplay.getHeight();
+    var paletteDimensions = this.tilePaletteDisplay.getContentDimensions();
+    var tilePaletteDisplayWidth = paletteDimensions.width;
+    var tilePaletteDisplayHeight = paletteDimensions.height;
 
     var popupWidth = tilePaletteDisplayWidth ;//+ 84;
     var popupHeight = tilePaletteDisplayHeight + 30;// 58;

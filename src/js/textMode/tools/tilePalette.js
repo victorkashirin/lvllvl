@@ -5,6 +5,8 @@ var TilePalette = function() {
   this.charRecentIndex = 0;
 
   this.canvas = null;
+  this.canvasSurface = null;
+  this.characterCanvasSurface = null;
 
   this.width = 0;
   this.height = 0;
@@ -61,6 +63,22 @@ TilePalette.prototype = {
     }
 
     this.editor = editor;
+    if(!this.removeDevicePixelRatioListener) {
+      var _this = this;
+      this.removeDevicePixelRatioListener = UI.onDevicePixelRatioChange(function() {
+        if(_this.canvas) {
+          _this.resize();
+        }
+        if(_this.characterCanvas) {
+          _this.initCharInfoCanvas();
+          if(_this.tileInfoTile === false) {
+            _this.setCharacterInfoToCurrent();
+          } else {
+            _this.setCharacterInfo(_this.tileInfoTile);
+          }
+        }
+      });
+    }
   },
 
 
@@ -229,6 +247,7 @@ TilePalette.prototype = {
     UI.on('ready', function() {
 
       _this.canvas = document.getElementById(_this.prefix + 'charPaletteCanvas');
+      _this.canvasSurface = new UI.CanvasSurface(_this.canvas);
       if(g_app.services && g_app.services.shortcutCatalog) {
         g_app.services.shortcutCatalog.updateLabels();
       }
@@ -793,17 +812,11 @@ TilePalette.prototype = {
     this.width = element.width();
     this.height = element.height();
 
-    var styleWidth = this.width + 'px';
-    var styleHeight = this.height + 'px';
-    var backingWidth = Math.round(this.width * UI.devicePixelRatio);
-    var backingHeight = Math.round(this.height * UI.devicePixelRatio);
-    if(this.width != 0 && this.height != 0
-        && (this.canvas.style.width != styleWidth || this.canvas.style.height != styleHeight
-          || this.canvas.width != backingWidth || this.canvas.height != backingHeight)) {
-      this.canvas.style.width = styleWidth;
-      this.canvas.style.height = styleHeight;
-      this.canvas.width = backingWidth;
-      this.canvas.height = backingHeight;
+    if(this.width > 0 && this.height > 0) {
+      if(!this.canvasSurface) {
+        this.canvasSurface = new UI.CanvasSurface(this.canvas);
+      }
+      this.canvasSurface.resize({ cssWidth: this.width, cssHeight: this.height });
     }
     if(!this.updateFitToWidthScale()) {
       this.drawTilePalette();
@@ -1126,10 +1139,10 @@ TilePalette.prototype = {
     }
 
     
-    this.characterCanvas.width = Math.round(16 * UI.devicePixelRatio);
-    this.characterCanvas.height = Math.round(16 * UI.devicePixelRatio);
-    this.characterCanvas.style.width = '16px';
-    this.characterCanvas.style.height = '16px';
+    if(!this.characterCanvasSurface) {
+      this.characterCanvasSurface = new UI.CanvasSurface(this.characterCanvas);
+    }
+    this.characterCanvasSurface.resize({ cssWidth: 16, cssHeight: 16 });
 
     /*
     this.characterCanvas.width = charScale * charWidth * this.characterCanvasScale;

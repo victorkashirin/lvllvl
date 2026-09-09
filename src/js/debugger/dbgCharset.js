@@ -5,6 +5,12 @@ var DbgCharset = function() {
 
   this.canvas = null;
   this.context = null;
+  this.canvasSurface = null;
+  this.canvasWidth = 0;
+  this.canvasHeight = 0;
+  this.colorPaletteSurface = null;
+  this.colorPaletteWidth = 0;
+  this.colorPaletteHeight = 0;
   this.offscreenCanvas = null;
   this.offscreenContext = null;
   this.offscreenImageData = null;
@@ -75,6 +81,16 @@ DbgCharset.prototype = {
 
     this.charEditor = new DbgC64CharEditor();
     this.charEditor.init(this, args);
+
+    var _this = this;
+    this.removeDevicePixelRatioListener = UI.onDevicePixelRatioChange(function() {
+      if(_this.canvas && _this.colorPaletteCanvas) {
+        _this.resizeCanvas();
+        if(_this.visible) {
+          _this.draw();
+        }
+      }
+    });
   },
 
   setVisible: function(visible) {
@@ -247,31 +263,43 @@ DbgCharset.prototype = {
     var scale = 2;
     var width = 8 * 16 * scale;
     var height = 8 * 16 * scale;
-    this.canvas.width = width * UI.devicePixelRatio;
-    this.canvas.height = height * UI.devicePixelRatio;
-    this.canvas.style.width = width + 'px';
-    this.canvas.style.height = height + 'px';
     if(this.canvas) {
-      this.context = UI.getContextNoSmoothing(this.canvas); 
+      if(!this.canvasSurface) {
+        this.canvasSurface = new UI.CanvasSurface(this.canvas);
+      } else {
+        this.canvasSurface.setCanvas(this.canvas);
+      }
+      var metrics = this.canvasSurface.resize({ cssWidth: width, cssHeight: height });
+      this.canvasWidth = metrics.cssWidth;
+      this.canvasHeight = metrics.cssHeight;
+      this.context = this.canvasSurface.getLogicalContext({ noSmoothing: true });
     }
     
 
     this.colorSize = 16 * scale;
     width = 8 * this.colorSize;
     height = 2 * this.colorSize;
-    this.colorPaletteCanvas.width = width * UI.devicePixelRatio;
-    this.colorPaletteCanvas.height = height * UI.devicePixelRatio;
-    this.colorPaletteCanvas.style.width = width + 'px';
-    this.colorPaletteCanvas.style.height = height + 'px';
     if(this.colorPaletteCanvas) {
-      this.colorPaletteContext = UI.getContextNoSmoothing(this.colorPaletteCanvas); 
+      if(!this.colorPaletteSurface) {
+        this.colorPaletteSurface = new UI.CanvasSurface(this.colorPaletteCanvas);
+      } else {
+        this.colorPaletteSurface.setCanvas(this.colorPaletteCanvas);
+      }
+      var paletteMetrics = this.colorPaletteSurface.resize({ cssWidth: width, cssHeight: height });
+      this.colorPaletteWidth = paletteMetrics.cssWidth;
+      this.colorPaletteHeight = paletteMetrics.cssHeight;
+      this.colorPaletteContext = this.colorPaletteSurface.getLogicalContext({ noSmoothing: true });
     }
 
   },
 
   resize: function () {
-
-
+    if(this.canvas && this.colorPaletteCanvas) {
+      this.resizeCanvas();
+      if(this.visible) {
+        this.draw();
+      }
+    }
   },
 
   setDrawInEmulator: function(draw) {
@@ -845,10 +873,10 @@ DbgCharset.prototype = {
       color = '#' + r + g + b;
       context.fillStyle = color;
 
-      var x = (i % 8) * this.colorSize * UI.devicePixelRatio;
-      var y = Math.floor(i / 8) * this.colorSize * UI.devicePixelRatio;
+      var x = (i % 8) * this.colorSize;
+      var y = Math.floor(i / 8) * this.colorSize;
 
-      context.fillRect(x, y, this.colorSize * UI.devicePixelRatio, this.colorSize * UI.devicePixelRatio);    
+      context.fillRect(x, y, this.colorSize, this.colorSize);
 
       if(multicolorMode && i > 7) {
         context.font = "10px Verdana";
@@ -862,9 +890,9 @@ DbgCharset.prototype = {
 
     context.strokeStyle = 'yellow';
     if(this.selectedFgColor !== false) {
-      var xPos = (this.selectedFgColor % 8) * this.colorSize * UI.devicePixelRatio;
-      var yPos = Math.floor(this.selectedFgColor / 8) * this.colorSize * UI.devicePixelRatio;
-      var colorSize = this.colorSize * UI.devicePixelRatio;
+      var xPos = (this.selectedFgColor % 8) * this.colorSize;
+      var yPos = Math.floor(this.selectedFgColor / 8) * this.colorSize;
+      var colorSize = this.colorSize;
 
       context.fillStyle = 'yellow';
       context.beginPath();
@@ -877,15 +905,15 @@ DbgCharset.prototype = {
 
       context.beginPath();
       context.lineWidth = 2;
-      context.rect(xPos, yPos, this.colorSize * UI.devicePixelRatio, this.colorSize * UI.devicePixelRatio);
+      context.rect(xPos, yPos, this.colorSize, this.colorSize);
       context.stroke();
     }
 
     if(this.selectedBgColor !== false) {
-      var xPos = (this.selectedBgColor % 8) * this.colorSize * UI.devicePixelRatio;
-      var yPos = Math.floor(this.selectedBgColor / 8) * this.colorSize * UI.devicePixelRatio;
+      var xPos = (this.selectedBgColor % 8) * this.colorSize;
+      var yPos = Math.floor(this.selectedBgColor / 8) * this.colorSize;
 
-      var colorSize = this.colorSize * UI.devicePixelRatio;
+      var colorSize = this.colorSize;
 
       context.fillStyle = 'yellow';
       context.beginPath();
@@ -898,7 +926,7 @@ DbgCharset.prototype = {
 
       context.beginPath();
       context.lineWidth = 2;
-      context.rect(xPos, yPos, this.colorSize * UI.devicePixelRatio, this.colorSize * UI.devicePixelRatio);
+      context.rect(xPos, yPos, this.colorSize, this.colorSize);
       context.stroke();
     }
 
@@ -923,7 +951,7 @@ DbgCharset.prototype = {
     
     if(this.context && this.canvas) {
       this.context.fillStyle = '#111111';
-      this.context.fillRect(0, 0, this.canvas.width, this.canvas.height);
+      this.context.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
     }
 
     var colors = c64.colors.colors;
@@ -1148,7 +1176,7 @@ DbgCharset.prototype = {
     }
 
     this.offscreenContext.putImageData(dstImageData, 0, 0);
-    this.scale = 2 * UI.devicePixelRatio;
+    this.scale = 2;
     this.context.drawImage(this.offscreenCanvas, 
                           0, 
                           0, 

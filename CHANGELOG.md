@@ -2,9 +2,46 @@
 
 ## Unreleased
 
+### Added
+
+- Add a shared display-canvas surface with exact DPR sizing, deterministic
+  CSS-to-backing edge conversion, and explicit DPR cache invalidation.
+- Add a shared glyph-preview renderer for bitmap and vector tiles with
+  final-backing-lattice sampling and automatic DPR redraws.
+- Enforce display-canvas roles with an architecture check that rejects floored
+  display ratios and direct backing-store assignments on shared surfaces.
+
 ### Fixed
 
 - Keep the active tool cursor visible while dragging across the canvas.
+- Prevent dialogs from inheriting the browser's thick default border after the
+  legacy element reset was removed.
+- Keep generic canvas and scroll panels on the same rounded, idempotent backing
+  store sizing path at fractional display pixel ratios.
+- Render the tile editor, meta-tile palette, animation preview, mobile tile
+  palette (including its selected-tile preview), and sprite timeline at exact
+  fractional display pixel ratios, refreshing them on DPR changes while
+  preserving their CSS-pixel layout, scrolling, and hit testing.
+- Render info, block-editor, replacement, mobile current-tile, tile-chooser,
+  and mobile export previews through the shared exact-DPR preview path while
+  keeping export rasters at their intrinsic dimensions.
+- Keep shared glyph previews correctly centred at fractional display ratios,
+  preserve C64 multicolor background arguments, and recreate replacement
+  previews after switching projects.
+- Refresh every standalone display canvas exactly once after runtime DPR
+  changes, and route the desktop current-tile preview through the deterministic
+  backing-pixel sampler.
+- Keep C64 debugger hit testing aligned with its rendered pixel grid and render
+  color palettes, parameter graphs, color-import previews, frame timelines,
+  palette dialogs, and desktop export previews through exact-DPR shared
+  display surfaces.
+- Keep color-import sampling and drag markers aligned with the displayed image
+  after fractional-DPR backing dimensions are rounded.
+- Defer tile-editor backing-store allocation while a dialog holder has no
+  positive layout size.
+- Keep hidden color palettes, the C64 charset debugger, tile-material selectors,
+  tool-settings previews, and tile-info previews stable across runtime DPR
+  changes, including browser zoom below 100%.
 - Reload build configuration for every development rebuild so changes to the
   legacy source graph take effect without restarting the dev command.
 - Remove stale project color palette and tile set menu entries when creating a

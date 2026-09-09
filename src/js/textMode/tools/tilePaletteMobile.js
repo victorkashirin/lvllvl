@@ -7,6 +7,13 @@ var TilePaletteMobile = function() {
 
   this.canvas = null;
   this.context = null;
+  this.canvasSurface = null;
+  this.pixelArtBlitter = null;
+  this.width = 0;
+  this.height = 0;
+  this.canvasScale = 1;
+  this.currentTileCanvas = null;
+  this.removeDevicePixelRatioListener = null;
 
   this.paletteCanvas = null;
   this.paletteContext = null;
@@ -56,7 +63,7 @@ TilePaletteMobile.prototype = {
     this.velocityTween = null;
     if(this.context && this.canvas) {
       try {
-        this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.context.clearRect(0, 0, this.width, this.height);
       } catch(error) {}
     }
   },
@@ -102,6 +109,12 @@ TilePaletteMobile.prototype = {
   init: function(editor, args) {
     this.editor = editor;
     this.touchVelocity = new TouchVelocity();
+    if(!this.removeDevicePixelRatioListener) {
+      var _this = this;
+      this.removeDevicePixelRatioListener = UI.onDevicePixelRatioChange(function() {
+        _this.devicePixelRatioChanged();
+      });
+    }
 
   },
 
@@ -145,16 +158,8 @@ TilePaletteMobile.prototype = {
     var canvasId = 'tilePaletteMobileCurrentTile';
     var tileCanvas = document.getElementById(canvasId);
 
-    var width = 48;
-    var height = 48;
-    var scale = Math.floor(UI.devicePixelRatio);
-
-    tileCanvas.width = width * scale;
-    tileCanvas.height = height * scale;
-
-    tileCanvas.style.width = width + 'px';
-    tileCanvas.style.height = height + 'px';
-    
+    this.currentTileCanvas = tileCanvas;
+    this.resizeCurrentTileCanvas();
 
     var _this = this;
     tileCanvas.addEventListener("click", function(event){
@@ -172,6 +177,24 @@ TilePaletteMobile.prototype = {
 //    this.checkMobileToolScroll();
   },
 
+  resizeCurrentTileCanvas: function() {
+    if(!this.currentTileCanvas) {
+      return false;
+    }
+
+    var width = 48;
+    var height = 48;
+    this.editor.currentTile.setTilePaletteGlyphPreviewCanvas(
+      this.currentTileCanvas, width, height);
+    return true;
+  },
+
+  devicePixelRatioChanged: function() {
+    if(this.canvas) {
+      this.draw({ redrawTileset: false });
+    }
+  },
+
   initEvents: function() {
     var _this = this;
 
@@ -179,6 +202,8 @@ TilePaletteMobile.prototype = {
     if(!this.canvas) {
       return;
     }
+    this.canvasSurface = new UI.CanvasSurface(this.canvas);
+    this.pixelArtBlitter = new UI.PixelArtBlitter();
 
     $('#tilePaletteMobileCanvas').on('contextmenu', function(event) {
       event.preventDefault();
@@ -381,13 +406,13 @@ TilePaletteMobile.prototype = {
     var tileLeft = this.tileHPadding * this.scale + tile * tileHolderWidth;
     var tileRight = tileLeft + this.tileWidth * this.blockWidth * this.scale;
     var viewportLeft = -this.xScroll;
-    var viewportRight = viewportLeft + this.canvas.width;
+    var viewportRight = viewportLeft + this.width;
     var nextScroll = this.xScroll;
 
     if(tileLeft < viewportLeft) {
       nextScroll = -(tileLeft - this.tileHPadding * this.scale);
     } else if(tileRight > viewportRight) {
-      nextScroll = -(tileRight - this.canvas.width + this.tileHPadding * this.scale);
+      nextScroll = -(tileRight - this.width + this.tileHPadding * this.scale);
     }
 
     this.setXScroll(nextScroll);
@@ -477,6 +502,7 @@ TilePaletteMobile.prototype = {
 
       screenMode = layer.getScreenMode();
     }
+    this.screenMode = screenMode;
 
 
     if(this.paletteCanvas == null) {
@@ -528,10 +554,10 @@ TilePaletteMobile.prototype = {
       this.tileVPadding = 2;
     }
 
-    this.scale = Math.max(1, Math.floor( this.canvas.height / (this.tileHeight * this.blockHeight) ));
+    this.scale = Math.max(1, Math.floor( this.height / (this.tileHeight * this.blockHeight) ));
 
     if(screenMode == TextModeEditor.Mode.VECTOR) {
-      this.tileHeight = this.canvas.height - 2;
+      this.tileHeight = this.height - 2;
       this.tileWidth = this.tileHeight;      
       this.scale = 1;
     }
@@ -544,7 +570,7 @@ TilePaletteMobile.prototype = {
 
 
     // max x scroll is the width of palette when drawn at scale minus what is displayed
-    this.xScrollMax = tileHolderWidth * this.paletteTiles.length - this.canvas.width;
+    this.xScrollMax = tileHolderWidth * this.paletteTiles.length - this.width;
     if(this.xScrollMax < 0) {
       this.xScrollMax = 0;
     }
@@ -558,7 +584,7 @@ TilePaletteMobile.prototype = {
     }
 
 
-    var tilesDisplayed = Math.ceil(this.canvas.width / tileHolderWidth);
+    var tilesDisplayed = Math.ceil(this.width / tileHolderWidth);
     var startAtIndex = Math.floor(-xScroll / (tileHolderWidth));
     var endAtIndex = startAtIndex + tilesDisplayed + 1;
     if(endAtIndex > this.paletteTiles.length) {
@@ -570,7 +596,7 @@ TilePaletteMobile.prototype = {
     this.offscreenOffsetX = startAtIndex * tileHolderWidth + xScroll;
 
     
-    this.offscreenHeight = this.canvas.height;
+    this.offscreenHeight = this.height;
     this.offscreenWidth = tilesDisplayed * (tileHolderWidth / this.scale);
 
     if(!isFinite(this.offscreenWidth) || this.offscreenWidth <= 0 ||
@@ -731,11 +757,25 @@ TilePaletteMobile.prototype = {
     var width = $('#tilePaletteMobileHolder').width();
     var height = $('#tilePaletteMobileHolder').height();
 
-    this.canvas.width = width;
-    this.canvas.height = height;
+    this.width = isFinite(width) && width > 0 ? width : 0;
+    this.height = isFinite(height) && height > 0 ? height : 0;
+    if(this.width === 0 || this.height === 0) {
+      return false;
+    }
 
-    this.context = UI.getContextNoSmoothing(this.canvas);
-    this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    if(!this.canvasSurface) {
+      this.canvasSurface = new UI.CanvasSurface(this.canvas);
+      this.pixelArtBlitter = new UI.PixelArtBlitter();
+    }
+    var metrics = this.canvasSurface.resize({
+      cssWidth: this.width,
+      cssHeight: this.height,
+      pixelRatio: UI.devicePixelRatio
+    });
+    this.canvasScale = metrics.pixelRatio;
+    this.context = this.canvasSurface.getLogicalContext({ noSmoothing: true });
+    this.context.clearRect(0, 0, this.width, this.height);
+    return true;
   },
 
   draw: function(args) {
@@ -753,16 +793,14 @@ TilePaletteMobile.prototype = {
       redrawTileset = true;
     }
 
-    this.resize();
+    if(!this.resize()) {
+      return;
+    }
 
     // Desktop-to-mobile layout changes resize the still-hidden mobile palette
     // before TextModeEditor has made its compact panels visible. Canvas
     // getImageData/drawImage reject a zero-sized source, so wait for the resize
     // that gives the palette real dimensions.
-    if(this.canvas.width <= 0 || this.canvas.height <= 0) {
-      return;
-    }
-
     if(redrawTileset) {
       this.setPaletteTiles();
     }
@@ -811,9 +849,15 @@ TilePaletteMobile.prototype = {
 
 //    this.xScrollMax = (this.paletteCanvas.width * this.scale) - this.canvas.width;    
 
-    this.context.drawImage(this.paletteCanvas, 
-      srcX, srcY, srcWidth, srcHeight,
-      dstX, dstY, dstWidth, dstHeight);
+    if(this.screenMode == TextModeEditor.Mode.VECTOR) {
+      this.context.drawImage(this.paletteCanvas,
+        srcX, srcY, srcWidth, srcHeight,
+        dstX, dstY, dstWidth, dstHeight);
+    } else {
+      this.pixelArtBlitter.draw(this.context, false, this.paletteCanvas,
+        srcX, srcY, srcWidth, srcHeight,
+        dstX, dstY, dstWidth, dstHeight);
+    }
 
 
 

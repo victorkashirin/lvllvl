@@ -207,6 +207,7 @@ Object.assign(Editor.prototype, {
       resetProjectObject(this.textModeEditor.tools);
       resetProjectObject(this.textModeEditor.spriteFramesMobile);
       resetProjectObject(this.textModeEditor.animationPreview);
+      resetProjectObject(this.textModeEditor.info);
       resetProjectObject(this.textModeEditor.gridInfo);
       resetProjectObject(this.textModeEditor.colorEditor);
       resetProjectObject(this.textModeEditor.colorPalettePanel);
@@ -217,6 +218,8 @@ Object.assign(Editor.prototype, {
       resetProjectObject(this.textModeEditor.blockEditor);
       resetProjectObject(this.textModeEditor.replaceColorDialog);
       resetProjectObject(this.textModeEditor.replaceCharacterDialog);
+      resetProjectObject(this.textModeEditor.exportPngMobileDialog);
+      resetProjectObject(this.textModeEditor.exportGifMobileDialog);
       resetProjectObject(this.textModeEditor.chooseColorsDialog);
       resetProjectObject(this.textModeEditor.chooseCharactersDialog);
       resetProjectObject(this.textModeEditor.tilePickerPopup);

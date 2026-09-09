@@ -3474,120 +3474,14 @@ GridView2d.prototype = {
   // resolution and turns exact physical scales (for example 350% at 2x) into
   // alternating source-pixel widths.
   drawRasterImage: function(context, bounds, image, sx, sy, sw, sh, dx, dy, dw, dh) {
-    if(sw <= 0 || sh <= 0 || dw <= 0 || dh <= 0) {
-      return;
+    if(!this.pixelArtBlitter) {
+      this.pixelArtBlitter = new UI.PixelArtBlitter();
     }
-    var transform = context.getTransform();
-    var scaleX = dw / sw;
-    var scaleY = dh / sh;
-
-    // This sampler is for the viewport's axis-aligned positive DPR transform.
-    // Preserve native canvas behaviour for other callers and fractional source
-    // rectangles, which require filtering rather than discrete pixel reads.
-    if(transform.a <= 0 || transform.d <= 0 || transform.b !== 0 || transform.c !== 0
-      || !Number.isInteger(sx) || !Number.isInteger(sy)
-      || !Number.isInteger(sw) || !Number.isInteger(sh)) {
-      context.drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh);
-      return;
-    }
-
-    var physicalScaleX = scaleX * transform.a;
-    var physicalScaleY = scaleY * transform.d;
-    var physicalOriginX = transform.e + (dx - sx * scaleX) * transform.a;
-    var physicalOriginY = transform.f + (dy - sy * scaleY) * transform.d;
-    var epsilon = 1e-9;
-
-    // Integer physical magnification with an integer physical origin has an
-    // unambiguous nearest-neighbour result, so retain the zero-readback path.
-    if(!bounds && Number.isInteger(physicalScaleX) && physicalScaleY === physicalScaleX
-      && Number.isInteger(physicalOriginX) && Number.isInteger(physicalOriginY)) {
-      context.drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh);
-      return;
-    }
-
-    var sourceLeft = Math.max(0, sx);
-    var sourceTop = Math.max(0, sy);
-    var sourceRight = Math.min(image.width, sx + sw);
-    var sourceBottom = Math.min(image.height, sy + sh);
-    var targetCanvas = context.canvas || this.backBufferCanvas || this.canvas;
-    var targetWidth = targetCanvas ? targetCanvas.width : Math.round(this.width * transform.a);
-    var targetHeight = targetCanvas ? targetCanvas.height : Math.round(this.height * transform.d);
-    var left = Math.max(0, Math.ceil(physicalOriginX + sourceLeft * physicalScaleX - 0.5 - epsilon));
-    var top = Math.max(0, Math.ceil(physicalOriginY + sourceTop * physicalScaleY - 0.5 - epsilon));
-    var right = Math.min(targetWidth,
-      Math.ceil(physicalOriginX + sourceRight * physicalScaleX - 0.5 - epsilon));
-    var bottom = Math.min(targetHeight,
-      Math.ceil(physicalOriginY + sourceBottom * physicalScaleY - 0.5 - epsilon));
-    if(bounds) {
-      left = Math.max(left,
-        Math.ceil(transform.e + bounds.x * transform.a - 0.5 - epsilon));
-      top = Math.max(top,
-        Math.ceil(transform.f + bounds.y * transform.d - 0.5 - epsilon));
-      right = Math.min(right,
-        Math.ceil(transform.e + (bounds.x + bounds.width) * transform.a - 0.5 - epsilon));
-      bottom = Math.min(bottom,
-        Math.ceil(transform.f + (bounds.y + bounds.height) * transform.d - 0.5 - epsilon));
-    }
-    var width = right - left;
-    var height = bottom - top;
-    if(width <= 0 || height <= 0) {
-      // An offscreen source can still clear the clip in modes such as copy or
-      // destination-in. Preserve that native compositing behaviour without reads.
-      context.drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh);
-      return;
-    }
-
-    if(this.rasterCanvas == null) {
-      this.rasterCanvas = document.createElement('canvas');
-      this.rasterContext = UI.getContextNoSmoothing(this.rasterCanvas);
-    }
-    if(this.rasterImageData == null || this.rasterCanvas.width != width || this.rasterCanvas.height != height) {
-      this.rasterCanvas.width = width;
-      this.rasterCanvas.height = height;
-      this.rasterImageData = this.rasterContext.createImageData(width, height);
-    }
-    var output = new Uint32Array(this.rasterImageData.data.buffer);
-    var columns = new Int32Array(width);
-    for(var x = 0; x < width; x++) {
-      columns[x] = Math.floor((left + x + 0.5 - physicalOriginX) / physicalScaleX + epsilon);
-    }
-    var readX = columns[0];
-    var readWidth = columns[width - 1] - readX + 1;
-    var lastSourceY = Math.floor((bottom - 0.5 - physicalOriginY) / physicalScaleY + epsilon);
-    var sourceContext = image.getContext('2d');
-    var readY = -1;
-    var readBottom = -1;
-    var previousY = -1;
-    var input = null;
-    for(var y = 0; y < height; y++) {
-      var sourceY = Math.floor((top + y + 0.5 - physicalOriginY) / physicalScaleY + epsilon);
-      var row = y * width;
-      if(sourceY === previousY) {
-        output.copyWithin(row, row - width, row);
-        continue;
-      }
-      // Read only the required source footprint, in bounded row bands. Zooming
-      // out must not allocate an ImageData for the entire large source image.
-      if(sourceY >= readBottom) {
-        readY = sourceY;
-        readBottom = Math.min(readY + 64, lastSourceY + 1);
-        var pixels = sourceContext.getImageData(readX, readY, readWidth, readBottom - readY);
-        input = new Uint32Array(pixels.data.buffer);
-      }
-      var sourceRow = (sourceY - readY) * readWidth - readX;
-      for(var x = 0; x < width; x++) {
-        output[row + x] = input[sourceRow + columns[x]];
-      }
-      previousY = sourceY;
-    }
-    this.rasterContext.putImageData(this.rasterImageData, 0, 0);
-    // The scratch raster is already in backing pixels. Temporarily remove the
-    // DPR transform so one integer-positioned blit preserves its exact lattice,
-    // as well as the caller's opacity, composite mode and clip.
-    context.save();
-    context.setTransform(1, 0, 0, 1, 0, 0);
-    context.drawImage(this.rasterCanvas, left, top);
-    context.restore();
+    this.pixelArtBlitter.draw(
+      context, bounds, image, sx, sy, sw, sh, dx, dy, dw, dh);
+    this.rasterCanvas = this.pixelArtBlitter.rasterCanvas;
+    this.rasterContext = this.pixelArtBlitter.rasterContext;
+    this.rasterImageData = this.pixelArtBlitter.rasterImageData;
   },
 
   drawRasterRegions: function(context, regions, image, sx, sy, sw, sh, dx, dy, dw, dh) {

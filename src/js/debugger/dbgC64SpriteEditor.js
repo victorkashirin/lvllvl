@@ -2,6 +2,7 @@ var DbgC64SpriteEditor = function () {
   this.canvas = null;
   this.offscreenCanvas = null;
   this.context = null;
+  this.canvasSurface = null;
 
   this.spriteAddress = 0x2000;
   this.dbgSprites = null;
@@ -57,6 +58,14 @@ DbgC64SpriteEditor.prototype = {
     this.dbgSprites = dbgSprites;
     this.debugger = args.debugger;
     this.prefix = args.prefix;
+
+    var _this = this;
+    this.removeDevicePixelRatioListener = UI.onDevicePixelRatioChange(function() {
+      if(_this.canvas) {
+        _this.resize();
+        _this.draw();
+      }
+    });
 
   },
 
@@ -134,8 +143,6 @@ DbgC64SpriteEditor.prototype = {
     this.htmlPanel.on('resize', function () {
       _this.resize();
     });
-
-    this.canvasScale = Math.floor(UI.devicePixelRatio);
 
     var _this = this;
     UI.on('ready', function () {
@@ -346,14 +353,11 @@ DbgC64SpriteEditor.prototype = {
   mouseMove: function(event) {
     var x = event.pageX - $('#' + this.canvasElementId).offset().left;
     var y = event.pageY - $('#' + this.canvasElementId).offset().top;
-    x = x * this.canvasScale;
-    y = y * this.canvasScale;
+    if(x > this.gridXPosCss && x < this.gridXPosCss + this.spriteWidth * this.cssScaleX
+       && y > this.gridYPosCss && y < this.gridYPosCss + this.spriteHeight * this.cssScaleY) {
 
-    if(x > this.gridXPos && x < this.gridXPos + this.spriteWidth * this.scale
-       && y > this.gridYPos && y < this.gridYPos + this.spriteHeight * this.scale) {
-
-      var cursorPixelX = Math.floor( (x - this.gridXPos) / this.scale );
-      var cursorPixelY = Math.floor( (y - this.gridYPos) / this.scale );
+      var cursorPixelX = Math.floor( (x - this.gridXPosCss) / this.cssScaleX );
+      var cursorPixelY = Math.floor( (y - this.gridYPosCss) / this.cssScaleY );
 
       if(cursorPixelX !== this.cursorPixelX || cursorPixelY !== this.cursorPixelY) {
         this.cursorPixelX = cursorPixelX;
@@ -436,8 +440,6 @@ DbgC64SpriteEditor.prototype = {
   },
 
   resize: function () {
-    this.canvasScale = Math.floor(UI.devicePixelRatio);
-
     var element = $('#' + this.prefix + 'SpriteEditorPanel');
 
     var position = element.offset();
@@ -451,13 +453,18 @@ DbgC64SpriteEditor.prototype = {
 
 
     var canvasHeight = this.height - 72;
-
-    this.canvas.width = this.width * UI.devicePixelRatio;
-    this.canvas.height = (canvasHeight) * UI.devicePixelRatio;
-    this.canvas.style.width = this.width + 'px';
-    this.canvas.style.height = canvasHeight + 'px';
-
-    this.context = this.canvas.getContext('2d');
+    if(!this.canvas || this.width <= 0 || canvasHeight <= 0) {
+      return;
+    }
+    if(!this.canvasSurface) {
+      this.canvasSurface = new UI.CanvasSurface(this.canvas);
+    }
+    var metrics = this.canvasSurface.resize({
+      cssWidth: this.width,
+      cssHeight: canvasHeight
+    });
+    this.canvasScale = metrics.pixelRatio;
+    this.context = this.canvasSurface.getBackingContext();
 
     this.context.imageSmoothingEnabled = false;
     this.context.webkitImageSmoothingEnabled = false;
@@ -467,9 +474,13 @@ DbgC64SpriteEditor.prototype = {
 
 
     this.scale = Math.floor(this.canvas.height / this.spriteHeight);
+    this.cssScaleX = this.scale * metrics.cssWidth / metrics.backingWidth;
+    this.cssScaleY = this.scale * metrics.cssHeight / metrics.backingHeight;
 
     this.gridXPos = 0;
     this.gridYPos = 0;
+    this.gridXPosCss = this.gridXPos * metrics.cssWidth / metrics.backingWidth;
+    this.gridYPosCss = this.gridYPos * metrics.cssHeight / metrics.backingHeight;
 
 //    this.pixelWidth = Math.floor(maxWidth / this.charWidth);
 //    this.pixelHeight = Math.floor(maxHeight / this.charHeight);

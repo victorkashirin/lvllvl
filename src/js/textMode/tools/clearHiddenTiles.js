@@ -44,53 +44,6 @@ ClearHiddenTilesDialog.prototype = {
   },
 
   initContent: function() {
-
-    /*
-    if(this.replaceTileCanvas == null) {
-      this.replaceTileCanvas = document.getElementById('replaceCharacterCanvas');
-    }
-
-    if(this.replaceTileWithCanvas == null) {
-      this.replaceTileWithCanvas = document.getElementById('replaceWithCharacterCanvas');
-    }
-  
-
-    this.canvasScale = Math.floor(UI.devicePixelRatio);
-
-    var tileSet = this.editor.tileSetManager.getCurrentTileSet();
-    var charWidth = tileSet.getTileWidth();
-    var charHeight = tileSet.getTileHeight();
-    this.characterScale = 2;
-
-    var canvasDisplayWidth = charWidth * this.characterScale ;
-    var canvasDisplayHeight = charHeight * this.characterScale;
-
-
-    this.replaceTileCanvas.height = canvasDisplayHeight * this.canvasScale;
-    this.replaceTileCanvas.width = canvasDisplayWidth * this.canvasScale;
-    this.replaceTileCanvas.style.height = canvasDisplayHeight + 'px';
-    this.replaceTileCanvas.style.width = canvasDisplayWidth + 'px';
-
-
-    this.replaceTileWithCanvas.height = canvasDisplayHeight * this.canvasScale;
-    this.replaceTileWithCanvas.width = canvasDisplayWidth * this.canvasScale;
-    this.replaceTileWithCanvas.style.height = canvasDisplayHeight + 'px';
-    this.replaceTileWithCanvas.style.width = canvasDisplayWidth + 'px';
-
-    var currentCharacters = this.editor.currentTile.getCharacters();
-    var currentTile = 0;
-    if(currentCharacters.length > 0) {
-      currentTile = currentCharacters[0][0];
-    }
-
-    if(this.replaceTile === false) {
-      this.setReplaceTile(currentTile);
-    }
-
-    if(this.replaceWithTile === false) {
-      this.setReplaceWithTile(currentTile);
-    }
-    */
   },
 
   setReplaceWithTile: function(tile) {

@@ -19,12 +19,16 @@ var CurrentTile = function() {
 
   this.canvas = null;
   this.context = null;
+  this.canvasGlyphPreview = null;
 
   this.tilePaletteCanvas = null;
   this.tilePaletteContext = null;
+  this.tilePaletteGlyphPreview = null;
+  this.tilePalettePixelArtBlitter = null;
 
   this.tileSettingsTileCanvas = null;
   this.tileSettingsTileContext = null;
+  this.tileSettingsGlyphPreview = null;
 
   this.cursorCanvas = null;
   this.cursorContext = null;
@@ -46,8 +50,6 @@ var CurrentTile = function() {
   this.mobileCanvasEventsInit = false;  
   this.desktopCanvasEventsInit = false;
 
-  this.tileMaterialsCanvas = null;
-
   this.tileMaterials = null;
 
   this.cursorImageData = null;
@@ -61,6 +63,56 @@ CurrentTile.prototype = {
   init: function(editor) {
     this.editor = editor;
     this.init3d();
+  },
+
+  setCanvasGlyphPreviewCanvas: function(canvas, cssWidth, cssHeight) {
+    if(!canvas) {
+      return null;
+    }
+    this.canvas = canvas;
+    if(this.canvasGlyphPreview && this.canvasGlyphPreview.canvas !== this.canvas) {
+      this.canvasGlyphPreview.dispose();
+      this.canvasGlyphPreview = null;
+    }
+    if(!this.canvasGlyphPreview) {
+      this.canvasGlyphPreview = new UI.GlyphPreview(this.canvas);
+    }
+    this.canvasGlyphPreview.resize(cssWidth, cssHeight);
+    return this.canvasGlyphPreview;
+  },
+
+  setTilePaletteGlyphPreviewCanvas: function(canvas, cssWidth, cssHeight) {
+    if(!canvas) {
+      return null;
+    }
+    this.tilePaletteCanvas = canvas;
+    if(this.tilePaletteGlyphPreview
+      && this.tilePaletteGlyphPreview.canvas !== this.tilePaletteCanvas) {
+      this.tilePaletteGlyphPreview.dispose();
+      this.tilePaletteGlyphPreview = null;
+    }
+    if(!this.tilePaletteGlyphPreview) {
+      this.tilePaletteGlyphPreview = new UI.GlyphPreview(this.tilePaletteCanvas);
+    }
+    this.tilePaletteGlyphPreview.resize(cssWidth, cssHeight);
+    return this.tilePaletteGlyphPreview;
+  },
+
+  setTileSettingsGlyphPreviewCanvas: function(canvas, cssWidth, cssHeight) {
+    if(!canvas) {
+      return null;
+    }
+    this.tileSettingsTileCanvas = canvas;
+    if(this.tileSettingsGlyphPreview
+      && this.tileSettingsGlyphPreview.canvas !== this.tileSettingsTileCanvas) {
+      this.tileSettingsGlyphPreview.dispose();
+      this.tileSettingsGlyphPreview = null;
+    }
+    if(!this.tileSettingsGlyphPreview) {
+      this.tileSettingsGlyphPreview = new UI.GlyphPreview(this.tileSettingsTileCanvas);
+    }
+    this.tileSettingsGlyphPreview.resize(cssWidth, cssHeight);
+    return this.tileSettingsGlyphPreview;
   },
 
   // CurrentTile is a long-lived UI singleton. Its selected characters,
@@ -84,6 +136,16 @@ CurrentTile.prototype = {
     this.recentCharacters = [];
     this.recentColors = [];
     this.cursorImageData = null;
+    this.tilePalettePixelArtBlitter = null;
+    if(this.canvasGlyphPreview) {
+      this.canvasGlyphPreview.clear();
+    }
+    if(this.tilePaletteGlyphPreview) {
+      this.tilePaletteGlyphPreview.clear();
+    }
+    if(this.tileSettingsGlyphPreview) {
+      this.tileSettingsGlyphPreview.clear();
+    }
     if(this.characterMesh && this.scene && typeof this.scene.remove == 'function') {
       try {
         this.scene.remove(this.characterMesh);
@@ -555,150 +617,8 @@ currentTileSplitPanel
   },
 
   initEvents: function() {
-    var _this = this;
-
-    /*
-    if(this.tileMaterialsCanvas == null) {
-      this.tileMaterialsCanvas = document.getElementById('tileMaterialsCanvas');
-    }
-    
-
-    this.tileMaterialsCanvas.addEventListener('mousedown', function(event) {
-      _this.materialsMouseDown(event);
-    }, false);
-
-    this.tileMaterialsCanvas.addEventListener('mousemove', function(event) {
-      _this.materialsMouseMove(event);
-    }, false);
-
-    this.tileMaterialsCanvas.addEventListener('mouseup', function(event) {
-      _this.materialsMouseUp(event);
-    }, false);
-    */
-
   },
 
-  /*
-
-  materialsMouseDown: function(event) {
-    var x = event.pageX - $('#' + this.tileMaterialsCanvas.id).offset().left;
-    var y = event.pageY - $('#' + this.tileMaterialsCanvas.id).offset().top;
-
-    var xPos = Math.floor((x - this.materialSpacing) / (this.materialWidth + this.materialSpacing));
-    var yPos = Math.floor((y - this.materialSpacing) / (this.materialHeight + this.materialSpacing));
-
-    var material = xPos + yPos * 8;
-    if(material >= 0 && material < 16) {
-      this.setMaterial(material);
-    }
-
-  },
-
-  materialsMouseMove: function(event) {
-    var x = event.pageX - $('#' + this.tileMaterialsCanvas.id).offset().left;
-    var y = event.pageY - $('#' + this.tileMaterialsCanvas.id).offset().top;
-
-
-  },
-
-  materialsMouseUp: function(event) {
-    var x = event.pageX - $('#' + this.tileMaterialsCanvas.id).offset().left;
-    var y = event.pageY - $('#' + this.tileMaterialsCanvas.id).offset().top;
-
-
-  },
-
-  drawTileMaterials: function() {
-    if(this.tileMaterialsCanvas == null) {
-      this.tileMaterialsCanvas = document.getElementById('tileMaterialsCanvas')
-    }
-
-    var tileSet = this.editor.tileSetManager.getCurrentTileSet();
-
-    this.materialWidth = 16;
-    this.materialHeight = 16;
-    this.materialSpacing = 1;
-    var canvasWidth = 8 * (this.materialWidth + this.materialSpacing) + this.materialSpacing;
-    var canvasHeight = 2 * (this.materialHeight + this.materialSpacing) + this.materialSpacing;
-
-
-    this.tileMaterialsCanvas.width = canvasWidth * UI.devicePixelRatio;
-    this.tileMaterialsCanvas.height = canvasHeight * UI.devicePixelRatio;
-    this.tileMaterialsCanvas.style.width = canvasWidth + 'px';
-    this.tileMaterialsCanvas.style.height = canvasHeight + 'px';
-
-    this.tileMaterialsContext = this.tileMaterialsCanvas.getContext('2d');
-
-
-    this.tileMaterialsContext.fillStyle = '#222222';
-    this.tileMaterialsContext.fillRect(0, 0, this.tileMaterialsCanvas.width, this.tileMaterialsCanvas.height);
-
-    for(var y = 0; y < 2; y++) {
-      for(var x = 0; x < 8; x++) {
-        var material = x + y * 8;
-
-        var xPos = (this.materialSpacing + x * (this.materialWidth + this.materialSpacing)) * UI.devicePixelRatio;
-        var yPos = (this.materialSpacing + y * (this.materialHeight + this.materialSpacing)) * UI.devicePixelRatio;
-        var width = this.materialWidth * UI.devicePixelRatio;
-        var height = this.materialHeight * UI.devicePixelRatio;
-
-        var selected = false;
-        if(this.useCells) {
-          for(var j = 0; j < this.cells.length; j++) {
-            for(var i = 0; i < this.cells[j].length; i++) {
-              var tileId = this.cells[j][i].t;
-              if(tileId != this.editor.tileSetManager.noTile) {
-                if(tileSet.getTileMaterial(tileId) == material) {
-                  selected = true;
-                }
-              }
-            }
-          }
-
-        } else {
-          for(var j = 0; j < this.characters.length; j++) {
-            for(var i = 0; i < this.characters[j].length; i++) {
-              var tileId = this.characters[j][i];
-              if(tileId != this.editor.tileSetManager.noTile) {
-                if(tileSet.getTileMaterial(tileId) == material) {
-                  selected = true;
-                }
-              }
-            }
-          }
-        }
-
-        if(selected) {
-          this.tileMaterialsContext.fillStyle = '#cccccc';
-        } else {
-          this.tileMaterialsContext.fillStyle = '#121212';
-        }
-        this.tileMaterialsContext.fillRect(xPos, yPos, width, height);
-
-        var fontPx = 14 * UI.devicePixelRatio;
-        var font = fontPx + "px \"Courier New\", Courier, monospace";
-    
-        this.tileMaterialsContext.font = font;
-        if(selected) {
-          this.tileMaterialsContext.fillStyle = '#121212';
-        } else {
-          this.tileMaterialsContext.fillStyle = '#cccccc';
-        }
-
-        // draw all the characters in the same spot
-        for(var i = 0; i < 128; i++) {
-          var c = material.toString(16).toUpperCase();
-          var textMeasure = this.tileMaterialsContext.measureText(c);
-
-          var textX = xPos + (width - textMeasure.width) / 2;
-          var textY = yPos + 12 * UI.devicePixelRatio;
-          this.tileMaterialsContext.fillText(c, textX, textY);
-        }
-      }
-    }
-  },
-
-*/
   setMaterial: function(material) {
     var tileSet = this.editor.tileSetManager.getCurrentTileSet();
 
@@ -1656,9 +1576,17 @@ currentTileSplitPanel
 
     // scale used for vector cursors
     var scale = 1;
+    var offsetX = 0;
+    var offsetY = 0;
     if(typeof args != 'undefined') {
       if(typeof args.scale != 'undefined') {
         scale = args.scale;
+      }
+      if(typeof args.offsetX != 'undefined') {
+        offsetX = args.offsetX;
+      }
+      if(typeof args.offsetY != 'undefined') {
+        offsetY = args.offsetY;
       }
     }
 
@@ -1851,8 +1779,8 @@ currentTileSplitPanel
             args['rotZ'] = this.rotZ;
           }
           
-          args['x'] = x * charWidth;
-          args['y'] = y * charHeight;
+          args['x'] = offsetX + x * charWidth;
+          args['y'] = offsetY + y * charHeight;
           args['scale'] = scale;
 
           args['select'] = false;
@@ -1883,7 +1811,10 @@ currentTileSplitPanel
     var _this = this;
 
     if(device == 'mobile') {
-      this.canvas =  document.getElementById('toolsMobileCurrentTile');
+      this.canvas = document.getElementById('toolsMobileCurrentTile');
+      if(this.canvas) {
+        this.setCanvasGlyphPreviewCanvas(this.canvas, 60, 60);
+      }
       if(!this.mobileCanvasEventsInit) {
         if(this.canvas) {
           this.mobileCanvasEventsInit = true;
@@ -1894,10 +1825,23 @@ currentTileSplitPanel
       }
 
       this.tilePaletteCanvas = document.getElementById('tilePaletteMobileCurrentTile');
+      if(this.tilePaletteCanvas) {
+        this.setTilePaletteGlyphPreviewCanvas(this.tilePaletteCanvas, 48, 48);
+      }
+
+      var tileSettingsCanvas = document.getElementById('toolSettingsCurrentTile');
+      if(tileSettingsCanvas) {
+        this.setTileSettingsGlyphPreviewCanvas(tileSettingsCanvas, 24, 24);
+      }
 
 
     } else {
       this.canvas = this.canvasPanel.getCanvas();
+      var surfaceMetrics = this.canvasPanel.getSurfaceMetrics();
+      if(surfaceMetrics) {
+        this.setCanvasGlyphPreviewCanvas(
+          this.canvas, surfaceMetrics.cssWidth, surfaceMetrics.cssHeight);
+      }
 
       if(!this.desktopCanvasEventsInit) {
         this.desktopCanvasEventsInit = true;
@@ -1906,9 +1850,8 @@ currentTileSplitPanel
         }, false);
       }
 
-      this.tileSettingsTileCanvas = document.getElementById('toolSettingsCurrentTile');      
-      this.tileSettingsTileCanvas.width = 24 * UI.devicePixelRatio;
-      this.tileSettingsTileCanvas.height = 24 * UI.devicePixelRatio;
+      this.setTileSettingsGlyphPreviewCanvas(
+        document.getElementById('toolSettingsCurrentTile'), 24, 24);
 
       $('#toolSettingsCurrentTile').on('mouseenter', function() {
         UI.setCursor('pointer');
@@ -1924,6 +1867,36 @@ currentTileSplitPanel
 
 
   // draw the large version of the selected characters
+  drawSharedGlyphPreview: function(preview, totalCharWidth, totalCharHeight, isVector) {
+    if(!preview) {
+      return false;
+    }
+    if(isVector) {
+      var _this = this;
+      return preview.drawVector({
+        sourceWidth: totalCharWidth,
+        sourceHeight: totalCharHeight,
+        backgroundColor: '#222222',
+        draw: function(destination) {
+          _this.drawCursor({
+            scale: destination.scale,
+            canvas: destination.canvas,
+            context: destination.context,
+            imageData: null,
+            offsetX: destination.x / destination.scale,
+            offsetY: destination.y / destination.scale
+          });
+        }
+      });
+    }
+    return preview.drawBitmap({
+      sourceCanvas: this.cursorCanvas,
+      sourceWidth: totalCharWidth,
+      sourceHeight: totalCharHeight,
+      backgroundColor: '#222222'
+    });
+  },
+
   canvasDrawCharacters: function() {
 
     if(this.type != '2d') {
@@ -2007,7 +1980,9 @@ currentTileSplitPanel
 
 
     this.tileSettingsTileContext = null;
-    if(this.tileSettingsTileCanvas != null) {
+    if(this.tileSettingsTileCanvas != null
+      && (!this.tileSettingsGlyphPreview
+        || this.tileSettingsGlyphPreview.canvas !== this.tileSettingsTileCanvas)) {
       // this is the canvas in the tool settings bar
       this.tileSettingsTileContext = UI.getContextNoSmoothing(this.tileSettingsTileCanvas);
       this.tileSettingsTileContext.fillStyle = '#222222';
@@ -2038,7 +2013,13 @@ currentTileSplitPanel
 
 
     var layer =  this.editor.layers.getSelectedLayerObject();
-    if(layer.getMode() == TextModeEditor.Mode.VECTOR) {
+    var isVector = layer.getMode() == TextModeEditor.Mode.VECTOR;
+    var canvasPreview = this.canvasGlyphPreview
+      && this.canvasGlyphPreview.canvas === this.canvas
+      ? this.canvasGlyphPreview : null;
+    if(canvasPreview) {
+      this.drawSharedGlyphPreview(canvasPreview, totalCharWidth, totalCharHeight, isVector);
+    } else if(isVector) {
       
       this.drawCursor({
         scale: scale,
@@ -2085,8 +2066,13 @@ currentTileSplitPanel
         scale = hScale;
       }
   
-      var layer =  this.editor.layers.getSelectedLayerObject();
-      if(layer.getMode() == TextModeEditor.Mode.VECTOR) {
+      var tilePalettePreview = this.tilePaletteGlyphPreview
+        && this.tilePaletteGlyphPreview.canvas === this.tilePaletteCanvas
+        ? this.tilePaletteGlyphPreview : null;
+      if(tilePalettePreview) {
+        this.drawSharedGlyphPreview(tilePalettePreview,
+          totalCharWidth, totalCharHeight, isVector);
+      } else if(isVector) {
         
 
         this.drawCursor({
@@ -2107,8 +2093,11 @@ currentTileSplitPanel
     
         xPos = Math.floor((this.tilePaletteCanvas.width - destWidth) / 2);
         yPos = Math.floor((this.tilePaletteCanvas.height - destHeight) / 2);
-        this.tilePaletteContext.drawImage(this.cursorCanvas, 
-          0, 0, totalCharWidth, totalCharHeight,
+        if(!this.tilePalettePixelArtBlitter) {
+          this.tilePalettePixelArtBlitter = new UI.PixelArtBlitter();
+        }
+        this.tilePalettePixelArtBlitter.draw(this.tilePaletteContext, false,
+          this.cursorCanvas, 0, 0, totalCharWidth, totalCharHeight,
           xPos, yPos, destWidth, destHeight);
       }
 
@@ -2116,7 +2105,13 @@ currentTileSplitPanel
 
 
 
-    if(this.tileSettingsTileContext) {
+    var tileSettingsPreview = this.tileSettingsGlyphPreview
+      && this.tileSettingsGlyphPreview.canvas === this.tileSettingsTileCanvas
+      ? this.tileSettingsGlyphPreview : null;
+    if(tileSettingsPreview) {
+      this.drawSharedGlyphPreview(tileSettingsPreview,
+        totalCharWidth, totalCharHeight, isVector);
+    } else if(this.tileSettingsTileContext) {
       var scale = 1;
       var hScale = 1;
       var vScale = 1;
@@ -2160,7 +2155,10 @@ currentTileSplitPanel
           xPos, yPos, destWidth, destHeight);
       }
 
-      // redraw the char at top of tilepalettes
+    }
+
+    if(this.tileSettingsTileCanvas) {
+      // redraw the char at top of tile palettes
       if(this.editor.sideTilePalette) {
         this.editor.sideTilePalette.setCharacterInfoToCurrent();
       }
@@ -2168,9 +2166,7 @@ currentTileSplitPanel
       if(this.editor.tools.drawTools.tilePalette) {
         this.editor.tools.drawTools.tilePalette.setCharacterInfoToCurrent();
       }
-  
-
-    }     
+    }
 
     /*
     return;
@@ -2240,6 +2236,13 @@ currentTileSplitPanel
     this.height = height;
     this.left = left;
     this.top = top;
+
+    if(this.canvasPanel && width > 0 && height > 0) {
+      var desktopCanvas = this.canvasPanel.getCanvas();
+      if(this.canvas === desktopCanvas) {
+        this.setCanvasGlyphPreviewCanvas(desktopCanvas, width, height);
+      }
+    }
 
     
     this.camera.aspect = width / height;

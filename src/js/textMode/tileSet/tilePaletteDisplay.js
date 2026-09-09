@@ -15,6 +15,7 @@ var TilePaletteDisplay = function() {
   this.charPaletteY = 0;
   this.canvas = null;
   this.context = null;
+  this.canvasSurface = null;
 
 
   this.tileCanvas = null;
@@ -144,6 +145,15 @@ TilePaletteDisplay.prototype = {
       if(typeof args.colors != 'undefined') {
         this.colors = args.colors;
       }
+    }
+
+    if(this.resizeCanvas && !this.removeDevicePixelRatioListener) {
+      var _this = this;
+      this.removeDevicePixelRatioListener = UI.onDevicePixelRatioChange(function() {
+        if(_this.canvas) {
+          _this.draw({ redrawTiles: true });
+        }
+      });
     }
 
   },
@@ -753,6 +763,7 @@ TilePaletteDisplay.prototype = {
 
       if(this.canvas == null) {
         this.canvas = document.getElementById(this.canvasElementId);
+        this.canvasSurface = new UI.CanvasSurface(this.canvas);
         this.initEvents();
       }
 
@@ -774,11 +785,7 @@ TilePaletteDisplay.prototype = {
 
       // is the display allowed to resize the canvas?
       if(this.resizeCanvas) {
-        this.canvas.style.width = canvasWidth + 'px';
-        this.canvas.style.height = canvasHeight + 'px';
-
-        this.canvas.width = Math.round(canvasWidth * this.canvasScale);
-        this.canvas.height = Math.round(canvasHeight * this.canvasScale);
+        this.canvasSurface.resize({ cssWidth: canvasWidth, cssHeight: canvasHeight });
       }
       this.context = this.canvas.getContext("2d");
 
@@ -804,19 +811,11 @@ TilePaletteDisplay.prototype = {
     var canvasWidth = dimensions.width;
     var canvasHeight = dimensions.height;
 
-    var scaledCanvasWidth = Math.round(canvasWidth * this.canvasScale);
-    var scaledCanvasHeight = Math.round(canvasHeight * this.canvasScale);
-
-
     if(this.resizeCanvas) {
-      if(this.canvas.width !== scaledCanvasWidth || this.canvas.height !== scaledCanvasHeight) {
-        this.canvas.style.width = canvasWidth + 'px';
-        this.canvas.style.height = canvasHeight + 'px';
-
-
-        this.canvas.width = scaledCanvasWidth;
-        this.canvas.height = scaledCanvasHeight
+      if(!this.canvasSurface) {
+        this.canvasSurface = new UI.CanvasSurface(this.canvas);
       }
+      this.canvasSurface.resize({ cssWidth: canvasWidth, cssHeight: canvasHeight });
     }
     this.context = this.canvas.getContext("2d");
 

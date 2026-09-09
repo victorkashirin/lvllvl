@@ -1,6 +1,9 @@
 var SpriteFrames = function() {
   this.editor = null;
   this.canvas = null;
+  this.canvasSurface = null;
+  this.pixelArtBlitter = null;
+  this.canvasScale = 1;
 
   this.uiComponent = null;
 
@@ -66,6 +69,15 @@ SpriteFrames.prototype = {
   init: function(editor, id) {
     this.editor = editor;
 
+    if(!this.removeDevicePixelRatioListener) {
+      var _this = this;
+      this.removeDevicePixelRatioListener = UI.onDevicePixelRatioChange(function() {
+        if(_this.canvasSurface && !_this.canvasSurface.isPixelRatioCurrent()) {
+          _this.resize();
+        }
+      });
+    }
+
     if(typeof id == 'undefined') {
       this.id = '';
     } else {
@@ -89,6 +101,8 @@ SpriteFrames.prototype = {
     this.lastMouseY = 0;
     this.gridImageData = null;
     this.canvas = null;
+    this.canvasSurface = null;
+    this.pixelArtBlitter = null;
     this.rulerCanvas = null;
     this.rangeCanvas = null;
     this.gridCanvas = null;
@@ -158,6 +172,8 @@ SpriteFrames.prototype = {
 
     if(this.canvas == null) {
       this.canvas = document.getElementById('spriteFramesCanvas' + this.id);
+      this.canvasSurface = new UI.CanvasSurface(this.canvas);
+      this.pixelArtBlitter = new UI.PixelArtBlitter();
     }
 
 
@@ -198,6 +214,13 @@ SpriteFrames.prototype = {
     if(this.canvas == null) {
       this.canvas = document.getElementById('spriteFramesCanvas' + this.id);
     }
+    if(!this.canvas) {
+      return false;
+    }
+    if(!this.canvasSurface) {
+      this.canvasSurface = new UI.CanvasSurface(this.canvas);
+      this.pixelArtBlitter = new UI.PixelArtBlitter();
+    }
 
 
     var position = element.offset();
@@ -209,26 +232,25 @@ SpriteFrames.prototype = {
       this.height = element.height();
     }
 
-    if(this.width != this.canvas.style.width || this.height != this.canvas.style.height) {
-      if(this.width != 0 && this.height != 0) {
-
-        this.scale = 1;
-        
-        this.canvas.style.width = this.width + 'px';
-        this.canvas.style.height = this.height + 'px';
-
-        this.canvas.width = this.width * this.scale;
-        this.canvas.height = this.height * this.scale;
-      }
+    if(this.width <= 0 || this.height <= 0) {
+      return false;
     }
 
-    this.context = this.canvas.getContext('2d');
-    this.context.scale(this.scale, this.scale);
+    var metrics = this.canvasSurface.resize({
+      cssWidth: this.width,
+      cssHeight: this.height,
+      pixelRatio: UI.devicePixelRatio
+    });
+    this.canvasScale = metrics.pixelRatio;
+    this.scale = 1;
+    this.context = this.canvasSurface.getLogicalContext({ noSmoothing: true });
+    return true;
   },
 
   resize: function() {
-    this.sizeCanvas();
-    this.draw();
+    if(this.sizeCanvas() !== false) {
+      this.draw();
+    }
   },
 
 
@@ -1049,6 +1071,10 @@ SpriteFrames.prototype = {
     if(this.canvas == null) {
       this.sizeCanvas();
     }
+    if(!this.canvas || this.width <= 0 || this.height <= 0) {
+      return;
+    }
+    this.context = this.canvasSurface.getLogicalContext({ noSmoothing: true });
 
 
     var currentFrame = this.editor.graphic.getCurrentFrame();
@@ -1066,11 +1092,11 @@ SpriteFrames.prototype = {
 
 
     this.context.fillStyle = '#111111';
-    this.context.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    this.context.fillRect(0, 0, this.width, this.height);
 
 
     this.context.fillStyle = '#222222';
-    this.context.fillRect(0, 0, this.canvas.width, this.rulerHeight);
+    this.context.fillRect(0, 0, this.width, this.rulerHeight);
 
     var dstX = currentFrame * this.cellWidth + this.layerLabelWidth;
     var dstY = this.rangeHeight;
@@ -1089,9 +1115,6 @@ SpriteFrames.prototype = {
       this.cellWidth,  
       layerCount * this.cellHeight);
 
-
-    this.width = this.canvas.width;
-    this.height = this.canvas.height;
 
     this.layerLabelWidth = 0;
 
@@ -1131,8 +1154,8 @@ SpriteFrames.prototype = {
     var dstX = this.layerLabelWidth;
     var dstY = this.rangeHeight + this.rulerHeight ;
 
-    this.context.drawImage(this.gridCanvas, 
-      Math.round(this.scrollX), Math.round(this.scrollY),  drawWidth, drawHeight,
+    this.pixelArtBlitter.draw(this.context, false, this.gridCanvas,
+      Math.round(this.scrollX), Math.round(this.scrollY), drawWidth, drawHeight,
       dstX, dstY, drawWidth, drawHeight);
 
 

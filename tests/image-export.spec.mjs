@@ -316,3 +316,142 @@ test("transparent image export does not force an NES background", async ({ page 
 
   expect(alpha).toBe(0);
 });
+
+test("PNG and GIF exports preserve expected pixels independently of display DPR", async ({ page }) => {
+  await startDefaultProject(page);
+  await page.evaluate(() => g_app.menuClick("export-image"));
+  await expect(page.locator("#exportImageAs")).toBeVisible();
+
+  const exportsByRatio = await page.evaluate(async () => {
+    const editor = g_app.textModeEditor;
+    const layer = editor.layers.getSelectedLayerObject();
+    const tileSet = layer.getTileSet();
+    const tile = 1;
+    const colors = [0xffff0000, 0xff00ff00, 0xff0000ff, 0xffffffff];
+    const tilePixels = [];
+    for(let y = 0; y < 8; y++) {
+      for(let x = 0; x < 8; x++) {
+        tilePixels.push(colors[(y < 4 ? 0 : 2) + (x < 4 ? 0 : 1)]);
+      }
+    }
+
+    layer.mode = TextModeEditor.Mode.RGB;
+    layer.doc.screenMode = TextModeEditor.Mode.RGB;
+    tileSet.currentTileData[tile] = tilePixels;
+    tileSet.updateCharacters([tile], true);
+    layer.setCell({
+      x: 0, y: 0, t: tile, fc: 1, bc: -1,
+      fh: 0, fv: 0, rz: 0, update: false,
+    });
+    layer.bitmapTileAtlas = null;
+
+    const decode = async (blob) => {
+      const url = URL.createObjectURL(blob);
+      try {
+        const image = new Image();
+        await new Promise((resolve, reject) => {
+          image.onload = resolve;
+          image.onerror = reject;
+          image.src = url;
+        });
+        const canvas = document.createElement("canvas");
+        canvas.width = image.naturalWidth;
+        canvas.height = image.naturalHeight;
+        const context = canvas.getContext("2d");
+        context.drawImage(image, 0, 0);
+        return {
+          width: canvas.width,
+          height: canvas.height,
+          pixels: Array.from(context.getImageData(0, 0, canvas.width, canvas.height).data),
+        };
+      } finally {
+        URL.revokeObjectURL(url);
+      }
+    };
+
+    const originalPixelRatio = UI.devicePixelRatio;
+    const results = [];
+    try {
+      for(const ratio of [1, 1.25, 2]) {
+        UI.devicePixelRatio = ratio;
+        editor.exportFrameImage.exportFrame({
+          scale: 2,
+          includeBorder: false,
+          includeBackground: false,
+          layers: "current",
+          frame: editor.graphic.getCurrentFrame(),
+          crop: { x: 0, y: 0, width: 8, height: 8 },
+        });
+        const canvas = editor.exportFrameImage.getCanvas();
+        const context = canvas.getContext("2d");
+        const rendered = Array.from(context.getImageData(0, 0, canvas.width, canvas.height).data);
+        const pngBlob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+
+        const gif = new GIF({
+          workers: 1,
+          workerScript: "lib/gif/gif.worker.js",
+          quality: 1,
+          width: canvas.width,
+          height: canvas.height,
+          repeat: 0,
+        });
+        const dialog = editor.exportImageDialog;
+        dialog.canvas = canvas;
+        dialog.context = context;
+        dialog.includeBackground = true;
+        dialog.addGifFrame(gif, 100);
+        const gifBlob = await new Promise((resolve) => {
+          gif.on("finished", resolve);
+          gif.render();
+        });
+
+        results.push({
+          ratio,
+          rendered: { width: canvas.width, height: canvas.height, pixels: rendered },
+          png: await decode(pngBlob),
+          gif: await decode(gifBlob),
+        });
+      }
+    } finally {
+      UI.devicePixelRatio = originalPixelRatio;
+    }
+    return results;
+  });
+
+  const expectedPixels = [];
+  const colors = [
+    [255, 0, 0, 255],
+    [0, 255, 0, 255],
+    [0, 0, 255, 255],
+    [255, 255, 255, 255],
+  ];
+  for(let y = 0; y < 16; y++) {
+    for(let x = 0; x < 16; x++) {
+      expectedPixels.push(...colors[(y < 8 ? 0 : 2) + (x < 8 ? 0 : 1)]);
+    }
+  }
+
+  for(const result of exportsByRatio) {
+    for(const format of ["rendered", "png", "gif"]) {
+      expect(result[format].width, `${format} width at DPR ${result.ratio}`).toBe(16);
+      expect(result[format].height, `${format} height at DPR ${result.ratio}`).toBe(16);
+    }
+    expect(result.rendered.pixels, `rendered pixels at DPR ${result.ratio}`).toEqual(expectedPixels);
+    expect(result.png.pixels, `PNG pixels at DPR ${result.ratio}`).toEqual(expectedPixels);
+
+    const gifMismatches = [];
+    for(let index = 0; index < expectedPixels.length; index++) {
+      const channel = index % 4;
+      const tolerance = channel === 3 ? 0 : 8;
+      if(Math.abs(result.gif.pixels[index] - expectedPixels[index]) > tolerance) {
+        gifMismatches.push({
+          pixel: Math.floor(index / 4),
+          channel,
+          expected: expectedPixels[index],
+          actual: result.gif.pixels[index],
+        });
+      }
+    }
+    expect(gifMismatches.slice(0, 10), `GIF pixels at DPR ${result.ratio}`).toEqual([]);
+  }
+});

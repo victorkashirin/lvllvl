@@ -5,6 +5,8 @@
     "js/security/jqueryHtmlPolicy.js",
     "js/utils/cssScrollbarSupport.js",
     "js/ui/ui.js",
+    "js/ui/devicePixelRatio.js",
+    "js/ui/canvasPrimitives.js",
     "js/ui/number.js",
     "js/ui/slider.js",
     "js/ui/menuBar.js",

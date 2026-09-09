@@ -3,7 +3,7 @@ var ExportPngMobile = function() {
 
   this.previewCanvas = null;
   this.previewContext = null;
-  this.previewCanvasScale = null;
+  this.previewGlyph = null;
 
   this.layersCanvas = null;
 
@@ -40,6 +40,15 @@ ExportPngMobile.prototype = {
 
   init: function(editor) {
     this.editor = editor;
+  },
+
+  resetProjectState: function() {
+    if(this.previewGlyph) {
+      this.previewGlyph.clear();
+    }
+    this.canvas = null;
+    this.context = null;
+    this.layersCanvas = null;
   },
 
 
@@ -139,8 +148,6 @@ ExportPngMobile.prototype = {
       this.previewCanvas = document.getElementById('exportPngMobilePreview');
     }
 
-    this.previewCanvasScale = Math.floor(UI.devicePixelRatio);
-
 /*
     var element = $('#exportPngMobilePreviewHolder');
 
@@ -165,18 +172,11 @@ ExportPngMobile.prototype = {
     this.width = 320;
     this.height = 200;
 
-    this.previewCanvas.style.width = this.width + 'px';
-    this.previewCanvas.style.height = this.height + 'px';
-
-    this.previewCanvas.width = this.width * this.previewCanvasScale;
-    this.previewCanvas.height = this.height * this.previewCanvasScale;
-
+    if(!this.previewGlyph) {
+      this.previewGlyph = new UI.GlyphPreview(this.previewCanvas);
+    }
+    this.previewGlyph.resize(this.width, this.height);
     this.previewContext = this.previewCanvas.getContext('2d');
-    this.previewContext.imageSmoothingEnabled = false;
-    this.previewContext.webkitImageSmoothingEnabled = false;
-    this.previewContext.mozImageSmoothingEnabled = false;
-    this.previewContext.msImageSmoothingEnabled = false;
-    this.previewContext.oImageSmoothingEnabled = false;
 
     this.drawPreview({ redrawLayers: false, applyEffects: false});
   },
@@ -544,21 +544,19 @@ ExportPngMobile.prototype = {
     if(this.canvas == null) {
       return;
     }
-
-
-
-
-    this.previewContext.fillStyle = '#000000';
-    this.previewContext.fillRect(0, 0, this.previewCanvas.width, this.previewCanvas.height); 
-
-    this.previewContext.save();
-
-    this.previewContext.translate( Math.floor(this.previewCanvas.width / 2), Math.floor(this.previewCanvas.height / 2)); 
-    this.previewContext.scale(this.previewScale * this.previewCanvasScale, this.previewScale * this.previewCanvasScale);
-
-    this.previewContext.drawImage(this.canvas, Math.floor(this.previewOffsetX), Math.floor(this.previewOffsetY));//, this.canvas.width * this.previewScale, this.canvas.height * this.previewScale);    
-
-    this.previewContext.restore();
+    if(!this.previewGlyph) {
+      return;
+    }
+    this.previewGlyph.drawBitmap({
+      sourceCanvas: this.canvas,
+      backgroundColor: '#000000',
+      destinationCss: {
+        x: this.width / 2 + Math.floor(this.previewOffsetX) * this.previewScale,
+        y: this.height / 2 + Math.floor(this.previewOffsetY) * this.previewScale,
+        width: this.canvas.width * this.previewScale,
+        height: this.canvas.height * this.previewScale
+      }
+    });
 
   },
 

@@ -2,6 +2,7 @@ var ParamGraph = function() {
   this.canvasElementId = '';
   this.canvas = null;
   this.context = null;
+  this.canvasSurface = null;
 
   this.min = 0;
   this.max = 255;
@@ -20,7 +21,13 @@ var ParamGraph = function() {
 ParamGraph.prototype = {
   init: function(args) {
     this.canvasElementId = args.canvasElementId;    
-
+    var _this = this;
+    this.removeDevicePixelRatioListener = UI.onDevicePixelRatioChange(function() {
+      if(_this.canvas) {
+        _this.setup();
+        _this.draw();
+      }
+    });
   },
 
   on: function(eventName, f) {
@@ -39,18 +46,14 @@ ParamGraph.prototype = {
     }
 
 
-    this.canvasScale = Math.floor(window.devicePixelRatio);
-
     var width = 300;
     var height = 300;
-
-    this.canvas.width = width * this.canvasScale;
-    this.canvas.height = height * this.canvasScale;
-    this.canvas.style.width = width + 'px';
-    this.canvas.style.height = height + 'px';
-
-    this.context = this.canvas.getContext('2d');
-    this.context.scale(this.canvasScale, this.canvasScale);
+    if(!this.canvasSurface) {
+      this.canvasSurface = new UI.CanvasSurface(this.canvas);
+    }
+    var metrics = this.canvasSurface.resize({ cssWidth: width, cssHeight: height });
+    this.canvasScale = metrics.pixelRatio;
+    this.context = this.canvasSurface.getLogicalContext();
 
     this.width = width;
     this.height = height - this.paddingY * 2;
@@ -241,7 +244,7 @@ ParamGraph.prototype = {
     var barMaxHeight = height;
 
     this.context.fillStyle = '#111111';
-    this.context.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    this.context.fillRect(0, 0, this.width, this.height + this.paddingY * 2);
 
 
     this.context.font = "8px Verdana";

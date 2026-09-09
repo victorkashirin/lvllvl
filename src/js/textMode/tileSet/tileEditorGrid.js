@@ -6,6 +6,10 @@ var TileEditorGrid = function() {
 
   this.canvas = null;
   this.context = null;
+  this.canvasSurface = null;
+  this.pixelArtBlitter = null;
+  this.canvasWidth = 0;
+  this.canvasHeight = 0;
   this.clipboardCanvas = null;
 
   // checkerboard pattern
@@ -122,6 +126,16 @@ TileEditorGrid.prototype = {
   init: function(editor, args) {
     this.editor = editor;
     this.canvasElementId = args.canvasElementId;
+
+    if(!this.removeDevicePixelRatioListener) {
+      var _this = this;
+      this.removeDevicePixelRatioListener = UI.onDevicePixelRatioChange(function() {
+        if(_this.canvasSurface && !_this.canvasSurface.isPixelRatioCurrent()
+          && _this.canvasWidth > 0 && _this.canvasHeight > 0) {
+          _this.setSize(_this.canvasWidth, _this.canvasHeight);
+        }
+      });
+    }
 
     if(typeof args != 'undefined') {
       if(typeof args.useCells) {
@@ -252,11 +266,9 @@ TileEditorGrid.prototype = {
         // still not ready
         return;
       }
+      this.canvasSurface = new UI.CanvasSurface(this.canvas);
+      this.pixelArtBlitter = new UI.PixelArtBlitter();
       this.initEvents();
-    }
-
-    if(this.charWidth == tileSet.charWidth && this.charHeight == tileSet.charHeight) {
-      return;
     }
 
     var maxWidth = 220;
@@ -275,42 +287,44 @@ TileEditorGrid.prototype = {
       this.pixelWidth = this.pixelHeight;
     }
 
-    this.canvasScale = Math.floor(UI.devicePixelRatio);
-
-
     var width = (this.pixelWidth * this.charWidth + 1);
     var height = (this.pixelHeight * this.charHeight + 1);
-
-    this.canvas.width = width * this.canvasScale;
-    this.canvas.height = height * this.canvasScale;
-    this.canvas.style.width = width + 'px';
-    this.canvas.style.height = height + 'px';
-
-    this.context = this.canvas.getContext('2d');
-
-    this.context.imageSmoothingEnabled = false;
-    this.context.webkitImageSmoothingEnabled = false;
-    this.context.mozImageSmoothingEnabled = false;
-    this.context.msImageSmoothingEnabled = false;
-    this.context.oImageSmoothingEnabled = false;
+    var metrics = this.canvasSurface.resize({
+      cssWidth: width,
+      cssHeight: height,
+      pixelRatio: UI.devicePixelRatio
+    });
+    this.canvasScale = metrics.pixelRatio;
+    this.canvasWidth = metrics.cssWidth;
+    this.canvasHeight = metrics.cssHeight;
+    this.context = this.canvasSurface.getLogicalContext({ noSmoothing: true });
 
 
 
-    var left = (240 - this.canvas.width) / 2;
+    var left = (240 - this.canvasWidth) / 2;
     this.canvas.style.left = left + 'px';
 
-    var controlsTop = this.canvas.height + 10 + 10;
+    var controlsTop = this.canvasHeight + 10 + 10;
     document.getElementById('tileEditorControls').style.top = controlsTop + 'px';
 
 
-    this.characterCanvas = document.createElement('canvas');
+    if(!this.characterCanvas) {
+      this.characterCanvas = document.createElement('canvas');
+    }
   },
 
 
 
   setSize: function(width, height) {
     if(!this.canvas) {
-      return;
+      return false;
+    }
+    width = Number(width);
+    height = Number(height);
+    if(!isFinite(width) || width <= 0 || !isFinite(height) || height <= 0
+      || !isFinite(this.charWidth) || this.charWidth <= 0
+      || !isFinite(this.charHeight) || this.charHeight <= 0) {
+      return false;
     }
     this.pixelWidth = Math.floor(width / this.charWidth);
     this.pixelHeight = Math.floor(height / this.charHeight);
@@ -323,28 +337,20 @@ TileEditorGrid.prototype = {
       this.pixelWidth = this.pixelHeight;
     }
 
-    this.canvasScale = Math.floor(UI.devicePixelRatio);
-
-
-//    var width = (this.pixelWidth * this.charWidth + 1);
-//    var height = (this.pixelHeight * this.charHeight + 1);
-
-    this.canvas.width = width * this.canvasScale;
-    this.canvas.height = height * this.canvasScale;
-    this.canvas.style.width = width + 'px';
-    this.canvas.style.height = height + 'px';
-
-    this.context = this.canvas.getContext('2d');
-
-    this.context.imageSmoothingEnabled = false;
-    this.context.webkitImageSmoothingEnabled = false;
-    this.context.mozImageSmoothingEnabled = false;
-    this.context.msImageSmoothingEnabled = false;
-    this.context.oImageSmoothingEnabled = false;
+    var metrics = this.canvasSurface.resize({
+      cssWidth: width,
+      cssHeight: height,
+      pixelRatio: UI.devicePixelRatio
+    });
+    this.canvasScale = metrics.pixelRatio;
+    this.canvasWidth = metrics.cssWidth;
+    this.canvasHeight = metrics.cssHeight;
+    this.context = this.canvasSurface.getLogicalContext({ noSmoothing: true });
 
 //    this.scale = Math.floor( (this.canvas.width - 1) / (this.charWidth * this.charsAcross));
 //    console.log("scale = " + this.scale);
     this.draw();
+    return true;
   },
 
 
@@ -352,7 +358,7 @@ TileEditorGrid.prototype = {
     if(this.canvas == null) {
       return 0;
     } else {
-      return this.canvas.height;
+      return this.canvasHeight;
     }
   },
 
@@ -607,8 +613,8 @@ TileEditorGrid.prototype = {
     var x = event.pageX - $('#' + this.canvasElementId).offset().left;
     var y = event.pageY - $('#' + this.canvasElementId).offset().top;
 
-    x = Math.floor(x * this.canvasScale / this.pixelWidth);
-    y = Math.floor(y * this.canvasScale / this.pixelHeight);
+    x = Math.floor(x / this.pixelWidth);
+    y = Math.floor(y / this.pixelHeight);
 
     this.cursorCharacterX = Math.floor(x /  this.charWidth);
     this.cursorCharacterY = Math.floor(y / this.charHeight);
@@ -705,8 +711,8 @@ TileEditorGrid.prototype = {
     x = x - canvasOffset.left;
     y = y - canvasOffset.top;
 */
-    x = Math.floor(x * this.canvasScale / this.pixelWidth);
-    y = Math.floor(y * this.canvasScale / this.pixelHeight);
+    x = Math.floor(x / this.pixelWidth);
+    y = Math.floor(y / this.pixelHeight);
 
     var cursorCharacterX = Math.floor(x / this.charWidth);
     var cursorCharacterY = Math.floor(y / this.charHeight);
@@ -1484,9 +1490,9 @@ TileEditorGrid.prototype = {
     }
 
     if(this.checkerboardContext == null ||
-       this.checkerboardCanvas.width != this.canvas.width || this.checkerboardCanvas.height != this.canvas.height) {
-        this.checkerboardCanvas.width = this.canvas.width;
-        this.checkerboardCanvas.height = this.canvas.height;
+       this.checkerboardCanvas.width != this.canvasWidth || this.checkerboardCanvas.height != this.canvasHeight) {
+        this.checkerboardCanvas.width = this.canvasWidth;
+        this.checkerboardCanvas.height = this.canvasHeight;
         this.checkerboardContext = this.checkerboardCanvas.getContext('2d');
 
         var checkSize = 5;
@@ -1969,6 +1975,8 @@ TileEditorGrid.prototype = {
       return;
     }
 
+    this.context = this.canvasSurface.getLogicalContext({ noSmoothing: true });
+
 
     var tileSet = this.editor.tileSetManager.getCurrentTileSet();
     if(!tileSet) {
@@ -2024,8 +2032,8 @@ TileEditorGrid.prototype = {
     var totalCharWidth = this.charWidth * this.charsAcross;
     var totalCharHeight = this.charHeight * this.charsDown;
 
-    var pixelWidth = Math.floor( (this.canvas.width - 1) / totalCharWidth);
-    var pixelHeight = Math.floor( (this.canvas.height - 1) / totalCharHeight);
+    var pixelWidth = Math.floor( (this.canvasWidth - 1) / totalCharWidth);
+    var pixelHeight = Math.floor( (this.canvasHeight - 1) / totalCharHeight);
 
     if(pixelWidth > pixelHeight) {
       pixelWidth = pixelHeight;
@@ -2049,14 +2057,14 @@ TileEditorGrid.prototype = {
 
 
     if(this.screenMode == TextModeEditor.Mode.TEXTMODE || this.screenMode == TextModeEditor.Mode.C64ECM || this.screenMode == TextModeEditor.Mode.C64STANDARD) {
-      this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+      this.context.clearRect(0, 0, this.canvasWidth, this.canvasHeight);
     } else if(this.screenMode == TextModeEditor.Mode.INDEXED || this.screenMode == TextModeEditor.Mode.RGB) {
-      this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+      this.context.clearRect(0, 0, this.canvasWidth, this.canvasHeight);
       this.setupCheckerboardCanvas();
       this.context.drawImage(this.checkerboardCanvas, 0, 0, destWidth, destHeight, 0, 0, destWidth, destHeight);
       // draw checkerboard
     } else {
-      this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+      this.context.clearRect(0, 0, this.canvasWidth, this.canvasHeight);
 
       var backgroundColorIndex = layer.getBackgroundColor();//  this.editor.frames.getBackgroundColor();
       var backgroundColor = colorPalette.getHexString(backgroundColorIndex);
@@ -2069,9 +2077,9 @@ TileEditorGrid.prototype = {
       this.context.drawImage(this.characterCanvas, 
         0, 0);
     } else {
-      this.context.drawImage(this.characterCanvas, 
-              0, 0, totalCharWidth, totalCharHeight,
-              xPos, yPos, destWidth, destHeight);
+      this.pixelArtBlitter.draw(this.context, false, this.characterCanvas,
+        0, 0, totalCharWidth, totalCharHeight,
+        xPos, yPos, destWidth, destHeight);
     }
 
 
