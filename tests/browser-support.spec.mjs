@@ -242,6 +242,115 @@ test("desktop canvas context clicks open tile and color palettes", async ({ page
   await expect.poll(() => page.evaluate(() => UI.popup?.uiID)).toBe("colorPickerPopup");
 });
 
+test("edit color palette keeps every selection mode inside its layout", async ({ page }, testInfo) => {
+  test.skip(!isDesktop2DRendererProject(testInfo));
+  await open2DProject(page, testInfo);
+
+  await page.locator("#editColorPaletteButton").click();
+  const dialog = page.locator("#colorPaletteEdit");
+  await expect(dialog).toBeVisible();
+
+  const layoutState = () => page.evaluate(() => {
+    const bounds = (selector) => {
+      const element = document.querySelector(selector);
+      const box = element.getBoundingClientRect();
+      return {
+        bottom: box.bottom,
+        height: box.height,
+        left: box.left,
+        right: box.right,
+        top: box.top,
+        width: box.width,
+      };
+    };
+    const root = document.getElementById("colorPaletteEdit");
+    const sidebar = root.querySelector(".colorPaletteEditSidebar");
+    const header = root.querySelector(".colorPaletteEditHeader");
+    const currentColors = root.querySelector(".colorPaletteEditCurrentColors");
+    const chooseColors = root.querySelector(".editColorPaletteChooseMethod");
+    const actions = root.querySelector(".colorPaletteEditActionRow");
+    const actionTops = Array.from(actions.querySelectorAll(".ui-button"))
+      .map((button) => button.getBoundingClientRect().top);
+
+    return {
+      actionsFitOneRow: new Set(actionTops).size === 1 &&
+        actions.scrollWidth <= actions.clientWidth,
+      chooseColorsBelowPreviews: chooseColors.querySelector("h2").getBoundingClientRect().top >=
+        currentColors.getBoundingClientRect().bottom,
+      currentInfoWidth: bounds("#colorPaletteEditImageMouseSelectedColorInfo").width,
+      currentSwatchWidth: bounds("#colorPaletteEditImageMouseSelectedColor").width,
+      directPanels: Array.from(root.children)
+        .filter((child) => child.tagName === "DIV")
+        .map((child) => child.className),
+      headerHasTopPadding: header.querySelector("h2").getBoundingClientRect().top -
+        root.getBoundingClientRect().top >= 10,
+      hoverInfoWidth: bounds("#colorPaletteEditImageMouseHoverColorInfo").width,
+      hoverSwatchWidth: bounds("#colorPaletteEditImageMouseHoverColor").width,
+      root: bounds("#colorPaletteEdit"),
+      sidebar: bounds(".colorPaletteEditSidebar"),
+      sidebarHasNoHorizontalOverflow: sidebar.scrollWidth <= sidebar.clientWidth,
+    };
+  });
+
+  const rgbLayout = await layoutState();
+  expect(rgbLayout.directPanels).toEqual([
+    "colorPaletteEditWorkspace",
+    "colorPaletteEditSidebar",
+  ]);
+  expect(rgbLayout.actionsFitOneRow).toBe(true);
+  expect(rgbLayout.chooseColorsBelowPreviews).toBe(true);
+  expect(rgbLayout.currentSwatchWidth).toBeGreaterThan(0);
+  expect(rgbLayout.currentInfoWidth).toBeGreaterThan(0);
+  expect(rgbLayout.hoverSwatchWidth).toBeGreaterThan(0);
+  expect(rgbLayout.hoverInfoWidth).toBeGreaterThan(0);
+  expect(rgbLayout.headerHasTopPadding).toBe(true);
+  expect(rgbLayout.sidebarHasNoHorizontalOverflow).toBe(true);
+  expect(rgbLayout.sidebar.right).toBeLessThanOrEqual(rgbLayout.root.right);
+
+  await dialog.getByText("From Image", { exact: true }).click();
+  await expect(page.locator("#colorPaletteEditSelectionMethod_image")).toBeVisible();
+  expect(await page.evaluate(() => {
+    const sidebar = document.querySelector(".colorPaletteEditSidebar");
+    const imageMode = document.getElementById("colorPaletteEditSelectionMethod_image");
+    return imageMode.scrollWidth <= sidebar.clientWidth &&
+      imageMode.getBoundingClientRect().right <= sidebar.getBoundingClientRect().right;
+  })).toBe(true);
+
+  await dialog.getByText("Color Wheel", { exact: true }).click();
+  await expect(page.locator("#colorPaletteEditSelectionMethod_colorwheel")).toBeVisible();
+  expect(await page.evaluate(() => {
+    const sidebar = document.querySelector(".colorPaletteEditSidebar");
+    const wheel = document.querySelector(".colorPaletteEditColorWheel");
+    return wheel.scrollWidth <= sidebar.clientWidth &&
+      wheel.getBoundingClientRect().right <= sidebar.getBoundingClientRect().right;
+  })).toBe(true);
+
+  await page.locator("#colorPaletteEditTool_select").click();
+  await expect(page.locator("#colorPaletteEditGraphHolder")).toBeVisible();
+  await expect(page.locator(".colorPaletteEditCurrentColors")).toBeHidden();
+  expect(await page.evaluate(() => {
+    const sidebar = document.querySelector(".colorPaletteEditSidebar");
+    const graph = document.getElementById("colorPaletteEditGraphHolder");
+    return graph.getBoundingClientRect().right <= sidebar.getBoundingClientRect().right;
+  })).toBe(true);
+
+  expect(await page.evaluate(() => {
+    const paletteEditor = g_app.textModeEditor.colorPaletteEdit;
+    paletteEditor.uiComponent.setHeight(240);
+    paletteEditor.uiComponent.notifyResize();
+
+    const workspace = document.querySelector(".colorPaletteEditWorkspace");
+    const footer = document.querySelector(".colorPaletteEditFooter");
+    workspace.scrollTop = workspace.scrollHeight;
+
+    const workspaceBox = workspace.getBoundingClientRect();
+    const footerBox = footer.getBoundingClientRect();
+    return workspace.scrollHeight > workspace.clientHeight &&
+      footerBox.top >= workspaceBox.top &&
+      footerBox.bottom <= workspaceBox.bottom;
+  })).toBe(true);
+});
+
 test("pen cursor remains active while drawing", async ({ page }, testInfo) => {
   test.skip(testInfo.project.metadata.deviceClass !== "desktop");
   await open2DProject(page, testInfo);

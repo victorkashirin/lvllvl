@@ -13,6 +13,8 @@
 
 ### Fixed
 
+- Rework the Edit Color Palette dialog so its palette grid, color previews,
+  selection controls, and file actions stay aligned and scroll correctly.
 - Make Backspace and Delete in the Type tool erase cells immediately, including
   their background colour, while respecting mirrored drawing.
 - Keep the active tool cursor visible while dragging across the canvas.
