@@ -10,6 +10,7 @@ import {
 import { createImageImportCoordinator } from "./modules/feature-adapters/imageImportCoordinator.mjs";
 import { createDisabledRemoteProviders } from "./modules/feature-adapters/legacyRemoteProviderFacades.mjs";
 import { createLegacySvgExportPort } from "./modules/feature-adapters/legacySvgExportAdapter.mjs";
+import { createOklchColorControl } from "./modules/feature-adapters/oklchColorControl.mjs";
 import { createKeyboardShortcutsDialog } from "./modules/feature-adapters/keyboardShortcutsDialog.mjs";
 import { createLegacyCommandCatalogAdapter } from "./modules/feature-adapters/legacyCommandCatalogAdapter.mjs";
 import { registerNativeEditorCommands } from "./modules/feature-adapters/nativeEditorCommands.mjs";
@@ -169,6 +170,7 @@ const disabledRemoteProviders = createDisabledRemoteProviders({
 });
 
 const services = {
+  createOklchColorControl,
   clock,
   commands,
   imageImport,

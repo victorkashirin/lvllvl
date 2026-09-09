@@ -39,6 +39,8 @@ ColorEditor.prototype = {
     this.v = 0;
     this.rgb = 0;
     this.buttons = 0;
+    if(this.oklchControl) this.oklchControl.reset();
+    this.setColorType('hsv');
   },
 
   getVisible: function() {
@@ -135,6 +137,17 @@ ColorEditor.prototype = {
     this.hSliderCanvas = document.getElementById('editColorHCanvas');
     this.sSliderCanvas = document.getElementById('editColorSCanvas');
     this.vSliderCanvas = document.getElementById('editColorVCanvas');
+
+    var _this = this;
+    this.oklchControl = g_app.services.createOklchColorControl({
+      root: document.getElementById('colorEditorOKLCH'),
+      onChange: function(rgb) {
+        _this.setRGB(rgb);
+        _this.updateHex();
+        _this.updatePaletteColor();
+      }
+    });
+    this.oklchControl.setRgb(this.rgb || 0);
 
     this.initEvents();
   },
@@ -270,21 +283,10 @@ ColorEditor.prototype = {
 
   setColorType: function(colorType) {
     this.colorType = colorType;
-
-
-    if(colorType == 'rgb') {
-      $('#colorEditorRGB').show();
-      $('#colorEditorHSV').hide();
-      $('#colorEditorTab-rgb').addClass('colorEditorTabActive');
-      $('#colorEditorTab-hsv').removeClass('colorEditorTabActive');
-    }
-
-    if(colorType == 'hsv') {
-      $('#colorEditorRGB').hide();
-      $('#colorEditorHSV').show();
-      $('#colorEditorTab-hsv').addClass('colorEditorTabActive');
-      $('#colorEditorTab-rgb').removeClass('colorEditorTabActive');
-    }
+    $('.colorEditorPanel').hide();
+    $('#colorEditor' + colorType.toUpperCase()).show();
+    $('.colorEditorTab').removeClass('colorEditorTabActive');
+    $('#colorEditorTab-' + colorType).addClass('colorEditorTabActive');
   },
 
   mouseMoveSlider: function(event) {
@@ -757,6 +759,7 @@ ColorEditor.prototype = {
   },
 
   updateColorSliders: function() {
+    if(this.oklchControl) this.oklchControl.setRgb(this.rgb);
 
     $('#editColorR').val(this.r);
     $('#editColorG').val(this.g);

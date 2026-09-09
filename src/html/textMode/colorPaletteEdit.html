@@ -16,7 +16,9 @@
       padding-bottom: 6px;
     }
 
-    #colorPaletteEdit h3 { margin-top: 8px; }
+    #colorPaletteEdit h3 {
+      margin-top: 8px;
+    }
 
     .colorPaletteEditWorkspace {
       display: grid;
@@ -33,7 +35,9 @@
       padding: 0 10px 10px;
     }
 
-    .colorPaletteEditHeader { padding-top: 10px; }
+    .colorPaletteEditHeader {
+      padding-top: 10px;
+    }
 
     .colorPaletteEditInstructions {
       line-height: 16px;
@@ -51,8 +55,13 @@
       gap: 6px;
     }
 
-    .colorPaletteEditToolRow { min-height: 28px; }
-    #colorPaletteEditCurrentTool { margin-left: 4px; }
+    .colorPaletteEditToolRow {
+      min-height: 28px;
+    }
+
+    #colorPaletteEditCurrentTool {
+      margin-left: 4px;
+    }
 
     #colorPaletteEditCanvasHolder {
       min-height: 0;
@@ -61,8 +70,13 @@
       padding: 0 10px 10px;
     }
 
-    .colorPaletteEditFooter { padding-top: 10px; }
-    .colorPaletteEditDimensionRow { margin-bottom: 10px; }
+    .colorPaletteEditFooter {
+      padding-top: 10px;
+    }
+
+    .colorPaletteEditDimensionRow {
+      margin-bottom: 10px;
+    }
 
     .colorPaletteEditDimensionRow .cb-container {
       margin-bottom: 0;
@@ -83,9 +97,13 @@
       padding-right: 6px;
     }
 
-    .colorPaletteEditActionRow { gap: 4px; }
+    .colorPaletteEditActionRow {
+      gap: 4px;
+    }
 
-    #colorPaletteEditLoadLospec { background-color: #232125; }
+    #colorPaletteEditLoadLospec {
+      background-color: #232125;
+    }
 
     #colorPaletteEditLoadLospec img {
       filter: none;
@@ -99,7 +117,10 @@
       overflow: auto;
     }
 
-    #colorPaletteEdit .editColorPalettePanel { margin-bottom: 14px; }
+    #colorPaletteEdit .editColorPalettePanel {
+      margin-top: 12px;
+      margin-bottom: 14px;
+    }
 
     #colorPaletteEdit .editColorPaletteColorInfo {
       font-size: 11px;
@@ -119,7 +140,9 @@
       width: 8px;
     }
 
-    .colorPaletteEditCurrentColors { display: grid; }
+    .colorPaletteEditCurrentColors {
+      display: grid;
+    }
 
     .colorPaletteEditCurrentColorRow {
       display: grid;
@@ -133,15 +156,21 @@
       min-width: 0;
     }
 
-    #colorPaletteEdit .editColorPaletteChooseMethod { margin-bottom: 8px; }
+    #colorPaletteEdit .editColorPaletteChooseMethod {
+      margin-bottom: 8px;
+    }
 
     .colorPaletteEditMethodRow .rb-container {
       margin: 0 4px 4px 0;
     }
 
-    #colorPaletteEdit .colorPaletteSelectionMethod { min-width: 0; }
+    #colorPaletteEdit .colorPaletteSelectionMethod {
+      min-width: 0;
+    }
 
-    #colorPaletteEdit .colorComponentSelector canvas { flex: 0 0 200px; }
+    #colorPaletteEdit .colorComponentSelector canvas {
+      flex: 0 0 200px;
+    }
 
     .colorPaletteEditHexRow {
       align-items: center;
@@ -170,7 +199,9 @@
       max-width: 100%;
     }
 
-    .colorPaletteEditImageControls { margin-top: 6px; }
+    .colorPaletteEditImageControls {
+      margin-top: 6px;
+    }
 
     .colorPaletteEditImageOptions {
       align-items: center;
@@ -180,7 +211,9 @@
       margin: 10px 0;
     }
 
-    .colorPaletteEditImageOptions .controlLabel { margin: 0; }
+    .colorPaletteEditImageOptions .controlLabel {
+      margin: 0;
+    }
 
     .colorPaletteEditColorWheel {
       align-items: flex-start;
@@ -199,11 +232,20 @@
       </div>
 
       <div class="colorPaletteEditToolRow">
-        <div class="colorPaletteTool colorPaletteToolSelected" id="colorPaletteEditTool_pen" data-shortcut-command="editor.tool.pencil" data-shortcut-label="Pencil" title="Pencil"><img width="20" src="icons/glyphicons-31-pencil@2x.png" alt=""></div>
-        <div class="colorPaletteTool" id="colorPaletteEditTool_erase" data-shortcut-command="editor.tool.erase" data-shortcut-label="Eraser" title="Eraser"><img width="20" src="icons/glyphicons-551-erase@2x.png" alt=""></div>
-        <div class="colorPaletteTool" id="colorPaletteEditTool_eyedropper" data-shortcut-command="editor.tool.eyedropper" data-shortcut-label="Eyedropper" title="Eyedropper"><img width="20" src="icons/glyphicons-91-eyedropper@2x.png" alt=""></div>
-        <div class="colorPaletteTool" id="colorPaletteEditTool_select" data-shortcut-command="editor.tool.marquee" data-shortcut-label="Marquee" title="Marquee"><img width="20" src="icons/glyphicons-100-vector-path-select@2x.png" alt=""></div>
-        <div class="colorPaletteTool" id="colorPaletteEditTool_move" data-shortcut-command="editor.tool.move" data-shortcut-label="Move" title="Move"><img width="20" src="icons/glyphicons-187-move@2x.png" alt=""></div>
+        <div class="colorPaletteTool colorPaletteToolSelected" id="colorPaletteEditTool_pen"
+          data-shortcut-command="editor.tool.pencil" data-shortcut-label="Pencil" title="Pencil"><img width="20"
+            src="icons/glyphicons-31-pencil@2x.png" alt=""></div>
+        <div class="colorPaletteTool" id="colorPaletteEditTool_erase" data-shortcut-command="editor.tool.erase"
+          data-shortcut-label="Eraser" title="Eraser"><img width="20" src="icons/glyphicons-551-erase@2x.png" alt="">
+        </div>
+        <div class="colorPaletteTool" id="colorPaletteEditTool_eyedropper"
+          data-shortcut-command="editor.tool.eyedropper" data-shortcut-label="Eyedropper" title="Eyedropper"><img
+            width="20" src="icons/glyphicons-91-eyedropper@2x.png" alt=""></div>
+        <div class="colorPaletteTool" id="colorPaletteEditTool_select" data-shortcut-command="editor.tool.marquee"
+          data-shortcut-label="Marquee" title="Marquee"><img width="20"
+            src="icons/glyphicons-100-vector-path-select@2x.png" alt=""></div>
+        <div class="colorPaletteTool" id="colorPaletteEditTool_move" data-shortcut-command="editor.tool.move"
+          data-shortcut-label="Move" title="Move"><img width="20" src="icons/glyphicons-187-move@2x.png" alt=""></div>
         <div id="colorPaletteEditCurrentTool">&nbsp;</div>
       </div>
     </div>
@@ -219,20 +261,24 @@
           <span class="checkmark"></span>
         </label>
         <label for="colorPaletteEditGridWidth">Width:
-          <input type="number" id="colorPaletteEditGridWidth" class="number" min="1" max="30" value="16" style="width: 36px" size="2">
+          <input type="number" id="colorPaletteEditGridWidth" class="number" min="1" max="30" value="16"
+            style="width: 36px" size="2">
         </label>
         <label for="colorPaletteEditGridHeight">Height:
-          <input type="number" id="colorPaletteEditGridHeight" class="number" min="1" max="30" value="16" style="width: 36px" size="2">
+          <input type="number" id="colorPaletteEditGridHeight" class="number" min="1" max="30" value="16"
+            style="width: 36px" size="2">
         </label>
       </div>
 
       <div class="colorPaletteEditActionRow">
         <div class="ui-button" id="colorPaletteEditClear">Clear Palette</div>
         <div class="ui-button" id="colorPaletteEditLoad">Load Palette File...</div>
-        <div class="ui-button" id="colorPaletteEditLoadLospec"><img src="icons/lospec_logomark_1x.svg" alt="">Load Lospec Palette...</div>
+        <div class="ui-button" id="colorPaletteEditLoadLospec"><img src="icons/lospec_logomark_1x.svg" alt="">Load
+          Lospec Palette...</div>
         <div class="ui-button" id="colorPaletteEditSave">Save As...</div>
         <form id="colorPaletteEditLoadForm" style="position: absolute; top: -50px; left: -1000px">
-          <input type="file" id="colorPaletteEditChooseFile" accept=".png,.json,.aco,.act,.ase,.gpl,.txt,.hex,.vpl,.jpg,.jpeg">
+          <input type="file" id="colorPaletteEditChooseFile"
+            accept=".png,.json,.aco,.act,.ase,.gpl,.txt,.hex,.vpl,.jpg,.jpeg">
         </form>
       </div>
     </div>
@@ -259,6 +305,10 @@
         <div class="colorPaletteEditMethodRow">
           <label class="rb-container">HSV / RGB
             <input type="radio" name="editColorPaletteMethod" value="rgb" checked="checked">
+            <span class="checkmark"></span>
+          </label>
+          <label class="rb-container">OKLCH
+            <input type="radio" name="editColorPaletteMethod" value="oklch">
             <span class="checkmark"></span>
           </label>
           <label class="rb-container">From Image
@@ -322,18 +372,24 @@
         <div>
           <div class="colorComponentSelector">
             <label for="colorPaletteEditR">R</label>
-            <canvas width="200" height="28" id="colorPaletteEditRCanvas" class="colorPaletteSlider" data-component="r"></canvas>
-            <input type="number" class="number colorPaletteNumber" size="4" id="colorPaletteEditR" data-component="r" min="0" max="255" value="0">
+            <canvas width="200" height="28" id="colorPaletteEditRCanvas" class="colorPaletteSlider"
+              data-component="r"></canvas>
+            <input type="number" class="number colorPaletteNumber" size="4" id="colorPaletteEditR" data-component="r"
+              min="0" max="255" value="0">
           </div>
           <div class="colorComponentSelector">
             <label for="colorPaletteEditG">G</label>
-            <canvas width="200" height="28" id="colorPaletteEditGCanvas" class="colorPaletteSlider" data-component="g"></canvas>
-            <input type="number" class="number colorPaletteNumber" size="4" id="colorPaletteEditG" data-component="g" min="0" max="255" value="0">
+            <canvas width="200" height="28" id="colorPaletteEditGCanvas" class="colorPaletteSlider"
+              data-component="g"></canvas>
+            <input type="number" class="number colorPaletteNumber" size="4" id="colorPaletteEditG" data-component="g"
+              min="0" max="255" value="0">
           </div>
           <div class="colorComponentSelector">
             <label for="colorPaletteEditB">B</label>
-            <canvas width="200" height="28" id="colorPaletteEditBCanvas" class="colorPaletteSlider" data-component="b"></canvas>
-            <input type="number" class="number colorPaletteNumber" size="4" id="colorPaletteEditB" data-component="b" min="0" max="255" value="0">
+            <canvas width="200" height="28" id="colorPaletteEditBCanvas" class="colorPaletteSlider"
+              data-component="b"></canvas>
+            <input type="number" class="number colorPaletteNumber" size="4" id="colorPaletteEditB" data-component="b"
+              min="0" max="255" value="0">
           </div>
         </div>
 
@@ -341,18 +397,24 @@
         <div>
           <div class="colorComponentSelector">
             <label for="colorPaletteEditH">H</label>
-            <canvas width="200" height="28" id="colorPaletteEditHCanvas" class="colorPaletteSlider" data-component="h"></canvas>
-            <input type="number" class="number colorPaletteNumber" size="4" id="colorPaletteEditH" data-component="h" min="0" max="360" value="0">
+            <canvas width="200" height="28" id="colorPaletteEditHCanvas" class="colorPaletteSlider"
+              data-component="h"></canvas>
+            <input type="number" class="number colorPaletteNumber" size="4" id="colorPaletteEditH" data-component="h"
+              min="0" max="360" value="0">
           </div>
           <div class="colorComponentSelector">
             <label for="colorPaletteEditS">S</label>
-            <canvas width="200" height="28" id="colorPaletteEditSCanvas" class="colorPaletteSlider" data-component="s"></canvas>
-            <input type="number" class="number colorPaletteNumber" size="4" id="colorPaletteEditS" data-component="s" min="0" max="100" value="0">
+            <canvas width="200" height="28" id="colorPaletteEditSCanvas" class="colorPaletteSlider"
+              data-component="s"></canvas>
+            <input type="number" class="number colorPaletteNumber" size="4" id="colorPaletteEditS" data-component="s"
+              min="0" max="100" value="0">
           </div>
           <div class="colorComponentSelector">
             <label for="colorPaletteEditV">V</label>
-            <canvas width="200" height="28" id="colorPaletteEditVCanvas" class="colorPaletteSlider" data-component="v"></canvas>
-            <input type="number" class="number colorPaletteNumber" size="4" id="colorPaletteEditV" data-component="v" min="0" max="100" value="0">
+            <canvas width="200" height="28" id="colorPaletteEditVCanvas" class="colorPaletteSlider"
+              data-component="v"></canvas>
+            <input type="number" class="number colorPaletteNumber" size="4" id="colorPaletteEditV" data-component="v"
+              min="0" max="100" value="0">
           </div>
         </div>
 
@@ -362,12 +424,22 @@
         </div>
       </div>
 
+      <div id="colorPaletteEditSelectionMethod_oklch" class="colorPaletteSelectionMethod" style="display: none">
+        <h3>OKLCH</h3>
+        <div id="colorPaletteEditOKLCH"></div>
+        <div class="colorPaletteEditHexRow">
+          <label for="colorPaletteEditOklchHex">#</label>
+          <input type="text" maxlength="6" id="colorPaletteEditOklchHex" size="6">
+        </div>
+      </div>
+
       <div id="colorPaletteEditSelectionMethod_image" class="colorPaletteSelectionMethod" style="display: none">
         <div>
           <div class="colorPaletteEditImageFileRow">
             <div class="ui-button" id="colorPaletteEditImageChooseFile">Choose Image...</div>
             <div id="colorPaletteEditImageChooseFileName"></div>
-            <input class="formControl" style="position: absolute; top: -50px; left: -100px" id="colorPaletteEditImage" type="file" accept="image/*">
+            <input class="formControl" style="position: absolute; top: -50px; left: -100px" id="colorPaletteEditImage"
+              type="file" accept="image/*">
           </div>
           <canvas id="colorPaletteEditFromImageImage" style="background-color: #111111"></canvas>
         </div>
@@ -375,7 +447,8 @@
         <div class="colorPaletteEditImageControls">
           <label for="colorPaletteEditImageScale">Scale</label>
           <div class="ui-button" id="colorPaletteEditImageScaleDecrease" aria-label="Decrease image scale">-</div>
-          <input type="number" size="3" style="width: 40px" id="colorPaletteEditImageScale" min="1" class="number" value="100">
+          <input type="number" size="3" style="width: 40px" id="colorPaletteEditImageScale" min="1" class="number"
+            value="100">
           <div class="ui-button" id="colorPaletteEditImageScaleIncrease" aria-label="Increase image scale">+</div>
           <div class="ui-button" id="colorPaletteEditImageFit">Fit</div>
         </div>

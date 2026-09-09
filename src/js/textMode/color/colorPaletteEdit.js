@@ -288,6 +288,7 @@ ColorPaletteEdit.prototype = {
   },
 
   resetProjectState: function() {
+    if(this.oklchControl) this.oklchControl.reset();
     if(this.importImage && this.importImage.onload) {
       this.importImage.onload = null;
     }
@@ -402,6 +403,17 @@ ColorPaletteEdit.prototype = {
     this.hSliderCanvas = document.getElementById(this.prefix + 'HCanvas');
     this.sSliderCanvas = document.getElementById(this.prefix + 'SCanvas');
     this.vSliderCanvas = document.getElementById(this.prefix + 'VCanvas');
+
+    var oklchRoot = document.getElementById(this.prefix + 'OKLCH');
+    if(oklchRoot) {
+      this.oklchControl = g_app.services.createOklchColorControl({
+        root: oklchRoot,
+        onChange: function(rgb) {
+          _this.setRGB(rgb);
+          _this.updateHex();
+        }
+      });
+    }
 
 
     this.initEvents();
@@ -608,6 +620,12 @@ ColorPaletteEdit.prototype = {
 
   initEvents: function() {
     var _this = this;
+    $('#' + this.prefix + 'OklchHex').on('input change', function() {
+      var value = $(this).val();
+      if(!/^[0-9a-f]{6}$/i.test(value)) return;
+      _this.setRGB(parseInt(value, 16));
+      _this.updateHex();
+    });
 
     if(g_app.services && g_app.services.shortcutCatalog) {
       g_app.services.shortcutCatalog.updateLabels();
@@ -1423,9 +1441,12 @@ ColorPaletteEdit.prototype = {
   updateHex: function() {
     var colorHexString = ("000000" + this.rgb.toString(16)).substr(-6);
     $('#' + this.prefix + 'Hex').val(colorHexString);
+    $('#' + this.prefix + 'OklchHex').val(colorHexString);
   },
 
   updateColorSliders: function() {
+    if(this.oklchControl) this.oklchControl.setRgb(this.rgb);
+    $('#' + this.prefix + 'OklchHex').val(("000000" + this.rgb.toString(16)).substr(-6));
 
     $('#' + this.prefix + 'R').val(this.r);
     $('#' + this.prefix + 'G').val(this.g);

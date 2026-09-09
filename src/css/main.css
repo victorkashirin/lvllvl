@@ -915,6 +915,123 @@ input[type=checkbox] {
   margin-bottom: 8px;
 }
 
+.oklchTrack {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  height: 28px;
+  overflow: hidden;
+}
+
+.colorEditorPanel {
+  padding-right: 8px;
+}
+
+.colorEditorPanel .colorEditorNumber,
+.colorEditorPanel .oklchNumber {
+  box-sizing: border-box;
+  flex: 0 0 50px;
+  width: 50px;
+}
+
+.colorEditorPanel .colorEditorSlider {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 34px;
+}
+
+#colorEditorOKLCH .oklchTrack {
+  height: 34px;
+}
+
+#colorPaletteEdit .oklchTrack {
+  flex: 0 0 200px;
+}
+
+.oklchComponentSelector .oklchSlider {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 0;
+  border-radius: 0;
+  box-sizing: border-box;
+  cursor: pointer;
+  display: block;
+  height: 100%;
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  background-size: 100% calc(100% - 4px);
+  background-repeat: no-repeat;
+}
+
+.oklchCaret {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  pointer-events: none;
+}
+
+.oklchCaret::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  transform: translateX(-50%);
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.oklchCaret::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: -2px;
+  border-left: 2px solid transparent;
+  border-right: 2px solid transparent;
+  border-bottom: 4px solid #fff;
+}
+
+.oklchComponentSelector input[type=range].oklchSlider::-webkit-slider-runnable-track {
+  height: 100%;
+  background: transparent;
+  border: 0;
+}
+
+.oklchComponentSelector input[type=range].oklchSlider::-moz-range-track {
+  height: 100%;
+  background: transparent;
+  border: 0;
+}
+
+.oklchComponentSelector input[type=range].oklchSlider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 0;
+  height: 100%;
+  margin-top: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.oklchComponentSelector input[type=range].oklchSlider::-moz-range-thumb {
+  width: 0;
+  height: 100%;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+input[type=range].oklchSlider:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: -2px;
+}
+
+.oklchGamutHint {
+  color: #aaa;
+  font-size: 10px;
+  margin: 0 0 8px 6px;
+}
+
 .colorComponentSelector label {
   width: 12px;
   margin: 0 6px 4px 6px;

@@ -2,8 +2,12 @@
 
 ## Unreleased
 
+## 0.498.1 - 2026-09-10
+
 ### Added
 
+- Add OKLCH color controls to the Color Editor panel and Edit Color Palette
+  dialog, with live RGB/hex synchronization and chroma reduction for sRGB palettes.
 - Add a shared display-canvas surface with exact DPR sizing, deterministic
   CSS-to-backing edge conversion, and explicit DPR cache invalidation.
 - Add a shared glyph-preview renderer for bitmap and vector tiles with
@@ -13,6 +17,11 @@
 
 ### Fixed
 
+- Match OKLCH gradients to the existing borderless sliders and triangular
+  caret, and leave space beside the Color Editor panel's narrower number inputs.
+- Align OKLCH labels, gradients, and 50px number inputs with RGB/HSV, and
+  keep panel gradient heights fixed when the sidebar is resized; commit values
+  at the precision shown by the controls.
 - Rework the Edit Color Palette dialog so its palette grid, color previews,
   selection controls, and file actions stay aligned and scroll correctly.
 - Make Backspace and Delete in the Type tool erase cells immediately, including
