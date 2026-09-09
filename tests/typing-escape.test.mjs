@@ -7,6 +7,10 @@ const typingSource = readFileSync(
   new URL("../src/js/textMode/tools/typing.js", import.meta.url),
   "utf8",
 );
+const grid2dSource = readFileSync(
+  new URL("../src/js/textMode/grid2d.js", import.meta.url),
+  "utf8",
+);
 const drawToolsSource = readFileSync(
   new URL("../src/js/textMode/tools/drawTools.js", import.meta.url),
   "utf8",
@@ -20,6 +24,7 @@ function event(key, keyCode) {
   return {
     altKey: false,
     ctrlKey: false,
+    getModifierState: () => false,
     key,
     keyCode,
     metaKey: false,
@@ -29,6 +34,98 @@ function event(key, keyCode) {
     shiftKey: false,
   };
 }
+
+test("Backspace and Delete erase Type-tool cells and their backgrounds", () => {
+  const sandbox = vm.createContext({
+    g_app: { mode: "2d" },
+    g_newSystem: true,
+  });
+  vm.runInContext(typingSource, sandbox);
+  vm.runInContext(grid2dSource, sandbox);
+
+  const cells = [];
+  let redraws = 0;
+  const layer = {
+    getGridHeight: () => 10,
+    getGridWidth: () => 10,
+    getType: () => "grid",
+    setCell: (cell) => cells.push({ ...cell }),
+  };
+  const typing = new sandbox.Typing();
+  const grid2d = new sandbox.Grid2d();
+  const editor = {
+    colorPaletteManager: { noColor: -1 },
+    currentTile: { bgColor: 6, color: 2 },
+    frames: { getBlockModeEnabled: () => false },
+    graphic: { getHasTileFlip: () => true },
+    grid: {
+      grid2d,
+      setCursorEnabled() {},
+    },
+    gridView2d: { draw: () => { redraws++; } },
+    history: { endEntry() {}, startEntry() {} },
+    layers: { getSelectedLayerObject: () => layer },
+    tileSetManager: {
+      blankCharacter: 32,
+      getCurrentTileSet: () => ({}),
+    },
+    tools: {
+      drawTools: {
+        mirrorH: true,
+        mirrorHX: 5,
+        mirrorV: false,
+      },
+    },
+  };
+  grid2d.editor = editor;
+  typing.editor = editor;
+  typing.updateTypeCanvas = () => {};
+  typing.setCursorPosition({ x: 3, y: 4 });
+
+  typing.keyDown(event("Backspace", 8));
+  assert.deepEqual(cells[0], {
+    bc: -1,
+    fh: 0,
+    fv: 0,
+    t: 32,
+    x: 2,
+    y: 4,
+    z: 0,
+  });
+  assert.deepEqual(cells[1], {
+    bc: -1,
+    fh: 1,
+    fv: 0,
+    t: 32,
+    x: 7,
+    y: 4,
+    z: 0,
+  });
+  assert.deepEqual({ ...typing.cursor }, { x: 2, y: 4, z: 0 });
+  assert.equal(redraws, 1);
+
+  typing.keyDown(event("Delete", 46));
+  assert.deepEqual(cells[2], {
+    bc: -1,
+    fh: 0,
+    fv: 0,
+    t: 32,
+    x: 2,
+    y: 4,
+    z: 0,
+  });
+  assert.deepEqual(cells[3], {
+    bc: -1,
+    fh: 1,
+    fv: 0,
+    t: 32,
+    x: 7,
+    y: 4,
+    z: 0,
+  });
+  assert.deepEqual({ ...typing.cursor }, { x: 2, y: 4, z: 0 });
+  assert.equal(redraws, 2);
+});
 
 test("typing sessions stop without changing tools and can be restarted", () => {
   const status = { textContent: "" };

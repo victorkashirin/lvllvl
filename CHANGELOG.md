@@ -13,6 +13,8 @@
 
 ### Fixed
 
+- Make Backspace and Delete in the Type tool erase cells immediately, including
+  their background colour, while respecting mirrored drawing.
 - Keep the active tool cursor visible while dragging across the canvas.
 - Prevent dialogs from inheriting the browser's thick default border after the
   legacy element reset was removed.

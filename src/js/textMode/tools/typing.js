@@ -891,11 +891,22 @@ Typing.prototype = {
 
         this.moveCursor(-x, 1);
         break;
-      case 8:  // delete
-        this.moveCursor(-1, 0);
+      case 8:  // backspace
+      case 46: // delete
+        if(keyCode == 8) {
+          this.moveCursor(-1, 0);
+        }
         var x = this.cursor.x;
         var y = this.cursor.y;
         var z = 0;
+
+        var layer = null;
+        if(g_app.mode != '3d') {
+          layer = this.editor.layers.getSelectedLayerObject();
+          if(layer == null || layer.getType() != 'grid') {
+            return;
+          }
+        }
 
         this.editor.history.startEntry('type');
 
@@ -903,24 +914,26 @@ Typing.prototype = {
           var grid3d = this.editor.grid3d;
           z = grid3d.getXYPosition();
           grid3d.setCell({
-            t: this.editor.tileSetManager.noTile, 
+            t: this.editor.tileSetManager.noTile,
+            bc: this.editor.colorPaletteManager.noColor,
             x: x, 
             y: y, 
             z: z
           });
 
         } else {
-          var layer = this.editor.layers.getSelectedLayerObject();
-          if(layer == null || layer.getType() != 'grid') {
-            return;
-          }
           z = 0;
-          layer.setCell({
-            t: this.editor.tileSetManager.blankCharacter, 
+          var cellData = {
+            t: this.editor.tileSetManager.blankCharacter,
+            bc: this.editor.colorPaletteManager.noColor,
+            fh: 0,
+            fv: 0,
             x: x, 
             y: y, 
             z: z
-          });
+          };
+          layer.setCell(cellData);
+          this.editor.grid.grid2d.setMirrorCells(layer, cellData);
         }
 
 
@@ -936,12 +949,14 @@ Typing.prototype = {
 
         if(this.editor.frames.getBlockModeEnabled()) {
           // need to update whole grid if block mode is enabled
+          this.editor.graphic.invalidateAllCells();
+          this.editor.graphic.redraw({ allCells: true});
+        } else {
           if(g_newSystem) {
             this.editor.gridView2d.draw();
           } else {
             this.editor.grid.update();
           }
-      
         }
         
         break;
