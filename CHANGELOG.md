@@ -9,6 +9,10 @@
 
 ### Fixed
 
+- Keep project-tree delete and rename operations synchronized with open tabs,
+  active editor paths, and persistence state, with validation for invalid names.
+- Keep New Project tile-set and color-palette selections consistent with the
+  visible mode and chosen preset metadata.
 - Load tile-set and color-palette presets and import tools when their selectors
   are opened from the landing-page New Project dialog.
 - Keep animation playback, frame navigation, modal dialogs, screen-mode drafts,

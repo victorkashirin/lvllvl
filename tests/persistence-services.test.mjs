@@ -148,6 +148,26 @@ test("document lifecycle creates, opens, edits, saves, reloads, and deletes thro
   assert.equal(memory.entries.has(reloaded.files[0].id), false);
 });
 
+test("saving with no current document clears the previously persisted path", async () => {
+  const { persistence } = createServices({
+    projects: [{
+      currentPath: "/screens/Deleted",
+      id: "project-1",
+      name: "Project",
+      type: "project",
+    }],
+  });
+
+  await persistence.saveProjectMetadata({
+    currentPath: false,
+    name: "Project",
+    type: "project",
+  });
+
+  const [project] = await persistence.listProjects("project");
+  assert.equal(Object.hasOwn(project, "currentPath"), false);
+});
+
 for (const failure of [
   { label: "partial blob", method: "set", key: "blob-1", committed: false },
   { label: "manifest", method: "set", key: "project-1-version-1", committed: false },

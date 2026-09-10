@@ -236,6 +236,47 @@ Document.prototype = {
 
   },
 
+  renameDocRecord: function(path, newName) {
+    var record = this.getDocRecord(path);
+    if(!record) {
+      return { success: false, error: 'The document could not be found.' };
+    }
+
+    newName = typeof newName == 'string' ? newName.trim() : '';
+    if(newName.length === 0) {
+      return { success: false, error: 'Please enter a name.' };
+    }
+
+    var slashPos = path.lastIndexOf('/');
+    if(slashPos === -1) {
+      return { success: false, error: 'The document path is invalid.' };
+    }
+
+    var parentPath = path.substring(0, slashPos);
+    var parentRecord = this.getDocRecord(parentPath);
+    if(!parentRecord || !parentRecord.children) {
+      return { success: false, error: 'The document folder could not be found.' };
+    }
+
+    for(var i = 0; i < parentRecord.children.length; i++) {
+      var sibling = parentRecord.children[i];
+      if(sibling !== record && sibling.name === newName) {
+        return { success: false, error: 'A document with that name already exists.' };
+      }
+    }
+
+    var oldPath = path;
+    var newPath = parentPath + '/' + newName;
+    if(record.name === newName) {
+      return { success: true, oldPath: oldPath, path: newPath, record: record };
+    }
+
+    record.name = newName;
+    this.recordModified(record, newPath);
+
+    return { success: true, oldPath: oldPath, path: newPath, record: record };
+  },
+
 
   getTypeFromPath: function(path) {
 

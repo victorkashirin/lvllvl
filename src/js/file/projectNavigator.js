@@ -1535,6 +1535,12 @@ ProjectNavigator.prototype = {
 
 
   deleteRecord: function(path) {
+    var record = g_app.doc.getDocRecord(path);
+    if(!record) {
+      return false;
+    }
+
+    var wasCurrent = this.currentPath === path;
     if(g_app.doc.deleteDocRecord(path)) {
       // need to get the parent record..
       var slashPos = path.lastIndexOf('/');
@@ -1548,20 +1554,30 @@ ProjectNavigator.prototype = {
       // remove tab if it exists
 
       var tabPanel = g_app.tabPanel;
-      // it'll fail if there is no tab..
-      tabPanel.closeTab(path);
-      
+      if(wasCurrent) {
+        this.currentPath = false;
+      }
+      tabPanel.closeTab(record.id);
+
+      if(wasCurrent && tabPanel.getTabs().length === 0) {
+        this.currentEditor = null;
+        g_app.setMode('none');
+      }
+
+      return true;
     }
+
+    return false;
   },
 
   showRename: function(path) {
 
     if(this.renameDialog == null) {
       var width = 300;
-      var height = 120;
+      var height = 145;
 
       if(UI.isMobile.any()) {
-        height = 220;
+        height = 240;
         width = 270;
       }
       this.renameDialog = UI.create("UI.Dialog", { "id": "docRecordRenameDialog", "title": "Rename", "width": width, "height": height });
@@ -1571,6 +1587,7 @@ ProjectNavigator.prototype = {
       html += '  <div class="formGroup">';
       html += '    <label class="controlLabel" for="renameDocRecordName">Name:</label>';
       html += '    <input type="text" class="formControl submitOnEnter" spellcheck="false" id="renameDocRecordName"/>';
+      html += '    <div id="renameDocRecordError" role="alert" style="display: none; color: #ff8080; margin-top: 6px"></div>';
       html += '  </div>';
       html += '</div>';
       
@@ -1581,8 +1598,9 @@ ProjectNavigator.prototype = {
       var okButton = UI.create('UI.Button', { "text": "OK", "color": "primary" });
       okButton.on('click', function(event) {
         var newName = $('#renameDocRecordName').val(); 
-        _this.renameDocRecord(_this.renamePath, newName);
-        UI.closeDialog();
+        if(_this.renameDocRecord(_this.renamePath, newName)) {
+          UI.closeDialog();
+        }
       });
 
       var closeButton = UI.create('UI.Button', { "text": "Cancel", "color": "secondary" });
@@ -1597,8 +1615,9 @@ ProjectNavigator.prototype = {
       $('#renameDocRecordDialog .submitOnEnter').on('keypress', function(e) {
         if(e.key.toLowerCase() == 'enter') {
           var newName = $('#renameDocRecordName').val(); 
-          _this.renameDocRecord(_this.renamePath, newName);
-          UI.closeDialog();
+          if(_this.renameDocRecord(_this.renamePath, newName)) {
+            UI.closeDialog();
+          }
   
         }
       });
@@ -1609,6 +1628,7 @@ ProjectNavigator.prototype = {
     if(record) {
       this.renamePath = path;
       var filename = record.name;
+      $('#renameDocRecordError').text('').hide();
       $('#renameDocRecordName').val(filename);
       UI.showDialog("docRecordRenameDialog");    
 
@@ -1626,24 +1646,21 @@ ProjectNavigator.prototype = {
   },
 
   renameDocRecord: function(path, newName) {
-    var record = g_app.doc.getDocRecord(path);
-    
-    if(record) {
+    var result = g_app.doc.renameDocRecord(path, newName);
+    if(!result.success) {
+      $('#renameDocRecordError').text(result.error).show();
+      $('#renameDocRecordName').focus();
+      return false;
+    }
 
-      var treeNode = this.tree.getNodeFromPath('/Project' + path);
-      var parentRecord = record;
-      var treeNodeParent = treeNode.getParentNode();
-      var parentPath = path;
-      var slashIndex = path.lastIndexOf('/');
-      if(slashIndex != -1) {
-        parentPath = parentPath.substr(0, slashIndex);
-        parentRecord = g_app.doc.getDocRecord(parentPath);
+    var record = result.record;
+    var treeNode = this.tree.getNodeFromPath('/Project' + path);
+    var treeNodeParent = treeNode ? treeNode.getParentNode() : null;
+    var slashIndex = result.path.lastIndexOf('/');
+    var parentPath = result.path.substr(0, slashIndex);
+    var parentRecord = g_app.doc.getDocRecord(parentPath);
 
-      }
-
-      record.name = newName;
-
-      switch(record.type) {
+    switch(record.type) {
         case 'graphic':
           break;
         case 'tile set':
@@ -1658,10 +1675,31 @@ ProjectNavigator.prototype = {
             colorPalette.nameChanged();
           }
           break;
-      }
-      this.refreshTreeNode(parentRecord, treeNodeParent);
-      this.treeRoot.refreshChildren();    
     }
+
+    if(this.currentPath === path) {
+      this.currentPath = result.path;
+      if(this.currentEditor && this.currentEditor.path === path) {
+        this.currentEditor.path = result.path;
+      }
+    }
+
+    var tabPanel = g_app.tabPanel;
+    var tabIndex = tabPanel.getTabIndex(record.id);
+    if(tabIndex !== -1) {
+      tabPanel.setTabData(tabIndex, {
+        path: result.path,
+        title: record.name
+      });
+    }
+
+    if(treeNodeParent) {
+      this.refreshTreeNode(parentRecord, treeNodeParent);
+    }
+    this.treeRoot.refreshChildren();
+    this.renamePath = result.path;
+    $('#renameDocRecordError').text('').hide();
+    return true;
   },
   
   showContextMenu: function(event, treeNode) {

@@ -83,7 +83,10 @@ export class PersistenceService {
     projectData.type = type;
     projectData.lastModified = this.clock();
     projectData.projectNavVisible = "projectNavVisible" in args ? !!args.projectNavVisible : false;
-    if ("currentPath" in args && args.currentPath !== false) projectData.currentPath = args.currentPath;
+    if ("currentPath" in args) {
+      if (args.currentPath === false) delete projectData.currentPath;
+      else projectData.currentPath = args.currentPath;
+    }
     if ("owner" in args && "repository" in args) {
       projectData.githubOwner = args.owner;
       projectData.githubRepository = args.repository;

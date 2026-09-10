@@ -3,16 +3,21 @@ var NewProjectDialog = function() {
   this.htmlPanel = null;
 
   this.mode = 'textmode';
-  this.colorPaletteId = 'c64_colodore';
-  this.colorPalette = null;
-  this.colorPaletteCreated = false;
-  this.colorPaletteName = 'C64';
-
-  this.tileSetId = 'petscii';
-  this.tileSetCreated = false;
-  this.tileSet = null;
-  this.tileSetName = 'C64 PETSCII';
-  
+  this.assetSelection = {
+    colorPalette: {
+      presetId: 'c64_colodore',
+      created: false,
+      asset: null,
+      name: 'C64'
+    },
+    tileSet: {
+      presetId: 'petscii',
+      created: false,
+      asset: null,
+      name: 'C64 PETSCII',
+      mode: 'textmode'
+    }
+  };
 
 }
 
@@ -44,22 +49,23 @@ NewProjectDialog.prototype = {
 
 
   setMode: function(mode) {
-    if(this.mode !== mode) {
-      this.mode = mode;
-      if(mode == 'vector') {
-        this.tileSetId = 'vector:modular-shapes';
-        $('#newProjectTileSet').html('Modular Shapes');
-        this.tileSetName = 'Modular Shapes';
-        $('#enableFlipRotateRow').show();
-      } else if(mode == 'petscii') {
-        this.tileSetId = 'petscii';
-        $('#newProjectTileSet').html('C64 PETSCII');
-        this.tileSetName = 'C64 PETSCII';
+    this.mode = mode;
+    if(mode == 'vector') {
+      this.assetSelection.tileSet = {
+        presetId: 'vector:modular-shapes', created: false, asset: null,
+        name: 'Modular Shapes', mode: mode
+      };
+      $('#newProjectTileSet').text('Modular Shapes');
+      $('#enableFlipRotateRow').show();
+    } else {
+      this.assetSelection.tileSet = {
+        presetId: 'petscii', created: false, asset: null,
+        name: 'C64 PETSCII', mode: mode
+      };
+      $('#newProjectTileSet').text('C64 PETSCII');
+      if(mode == 'petscii') {
         $('#enableFlipRotateRow').hide();
       } else {
-        this.tileSetId = 'petscii';
-        $('#newProjectTileSet').html('C64 PETSCII');
-        this.tileSetName = 'C64 PETSCII';
         $('#enableFlipRotateRow').show();
       }
     }
@@ -81,32 +87,41 @@ NewProjectDialog.prototype = {
       var tileSetId = args.presetId;
       var description = args.description;
 
-      _this.tileSetCreated = args.tileSetCreated;
-      _this.tileSet = args.tileSet;
-      _this.mode = args.mode;
+      _this.mode = args.mode || (type == 'vector' ? 'vector' : 'textmode');
 
+      var presetId;
       if(type == 'vector') {
         $('input[name=newProjectMode][value=vector]').prop('checked', true);
-        _this.tileSetId = 'vector:' + tileSetId;
+        presetId = tileSetId ? 'vector:' + tileSetId : false;
       } else {
         $('input[name=newProjectMode][value=textmode]').prop('checked', true);
-        _this.tileSetId = tileSetId;
+        presetId = tileSetId;
       }
-
 
       if(_this.mode == 'indexed') {
-        _this.colorPalette = args.colorPalette;
-        _this.colorPaletteCreated = true;
-        $('#newProjectColorPalette').text(description.name + ' Palette');
-        this.colorPaletteName = description.name;
+        var paletteName = description ? description.name : 'Custom';
+        _this.assetSelection.colorPalette = {
+          presetId: false,
+          created: true,
+          asset: args.colorPalette,
+          name: paletteName
+        };
+        $('#newProjectColorPalette').text(paletteName + ' Palette');
       }
 
+      var tileSetName = 'Custom';
       if(description) {
-        var width = description.width;
-        var height = description.height;
-        $('#newProjectTileSet').text(description.name);
-        this.tileSetName = description.name;
+        tileSetName = description.name;
       }
+      $('#newProjectTileSet').text(tileSetName);
+
+      _this.assetSelection.tileSet = {
+        presetId: args.tileSetCreated === true ? false : presetId,
+        created: args.tileSetCreated === true,
+        asset: args.tileSetCreated === true ? args.tileSet : null,
+        name: tileSetName,
+        mode: _this.mode
+      };
 
     }
 
@@ -121,20 +136,15 @@ NewProjectDialog.prototype = {
     args.setColorPalette = false;
     args.callback = function(args) {//presetId, description) {
       var description = args.description;
-      _this.colorPaletteCreated = args.colorPaletteCreated;
+      var colorPaletteName = description ? description.name : 'Custom';
+      _this.assetSelection.colorPalette = {
+        presetId: args.colorPaletteCreated ? false : args.presetId,
+        created: args.colorPaletteCreated === true,
+        asset: args.colorPaletteCreated === true ? args.colorPalette : null,
+        name: colorPaletteName
+      };
 
-      if(!args.colorPaletteCreated) {
-        _this.colorPaletteId = args.presetId;
-        _this.colorPalette = null;
-      } else {
-        _this.colorPaletteId = false;
-        _this.colorPalette = args.colorPalette;
-      }
-
-      if(description) {
-        $('#newProjectColorPalette').text(description.name);
-        this.colorPaletteName = description.name;
-      }
+      $('#newProjectColorPalette').text(colorPaletteName);
 
 //      _this.choosePreset(presetId, args);
     }
@@ -280,26 +290,24 @@ NewProjectDialog.prototype = {
     args.canFlipTile = tileFlip;
     args.canRotateTile = tileRotate;
 
-    args.screenMode = $('input[name=newProjectMode]:checked').val();
-    args.tileSetPresetId = this.tileSetId;
+    var tileSetSelection = this.assetSelection.tileSet;
+    var colorPaletteSelection = this.assetSelection.colorPalette;
+    args.screenMode = tileSetSelection.mode;
+    args.tileSetPresetId = tileSetSelection.presetId;
 
-    args.tileSetCreated = this.tileSetCreated;
-    args.tileSet = this.tileSet;
-    args.tileSetName = this.tileSetName;
+    args.tileSetCreated = tileSetSelection.created;
+    args.tileSet = tileSetSelection.asset;
+    args.tileSetName = tileSetSelection.name;
     if(args.tileSet) {
-      args.screenMode = this.mode;
+      args.screenMode = tileSetSelection.mode;
     }
 
     if(args.screenMode == 'vector') {
-      if(this.tileSetId.indexOf('vector') !== 0) {
-        this.tileSetId = 'vector:modular-shapes';
+      if(!args.tileSetPresetId || args.tileSetPresetId.indexOf('vector') !== 0) {
+        args.tileSetPresetId = 'vector:modular-shapes';
       }
       args.canFlipTile = true;
       args.canRotateTile = true;
-    } else {
-      if(this.tileSetId && this.tileSetId.indexOf('vector') == 0) {
-        args.tileSet = 'petscii';
-      }
     }
 
     if(args.screenMode == 'petscii') {
@@ -308,9 +316,10 @@ NewProjectDialog.prototype = {
       args.screenMode = TextModeEditor.Mode.C64STANDARD;
     }
 
-    args.colorPalettePresetId = this.colorPaletteId;
-    args.colorPalette = this.colorPalette;
-    args.colorPaletteName = this.colorPaletteName;
+    args.colorPalettePresetId = colorPaletteSelection.presetId;
+    args.colorPaletteCreated = colorPaletteSelection.created;
+    args.colorPalette = colorPaletteSelection.asset;
+    args.colorPaletteName = colorPaletteSelection.name;
     args.width = width;
     args.height = height;
 
