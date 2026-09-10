@@ -11,7 +11,7 @@ import {
   symlink,
   writeFile,
 } from "node:fs/promises";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -43,6 +43,14 @@ const sourceRoot = path.join(projectRoot, sourceDirectory);
 const publishedBuildRoot = path.join(projectRoot, buildDirectory);
 const thirdPartyNoticesFile = path.join(projectRoot, "THIRD_PARTY_NOTICES.md");
 const thirdPartySbomFile = path.join(projectRoot, "docs/runtime-dependencies.spdx.json");
+const packageLockFile = path.join(projectRoot, "package-lock.json");
+const buildScriptFile = fileURLToPath(import.meta.url);
+const developmentCacheRoot = path.join(
+  projectRoot,
+  "node_modules/.cache/lvllvl-development",
+);
+const developmentCacheManifest = "build-graph.json";
+const developmentCacheVersion = 1;
 const embeddedPackageSourceMaps = new Set(packageSourceMapsWithEmbeddedSources);
 const outputDirectories = [
   "js/html",
@@ -55,6 +63,29 @@ const outputDirectories = [
 let buildRoot = publishedBuildRoot;
 let version;
 let buildDate;
+let developmentCacheSeed;
+
+const productionBuildProfile = Object.freeze({
+  cacheBuildGraph: false,
+  minifyJavaScript: true,
+  name: "production",
+  sourceMapHires: true,
+});
+
+const developmentBuildProfile = Object.freeze({
+  cacheBuildGraph: true,
+  minifyJavaScript: false,
+  name: "development",
+  sourceMapHires: false,
+});
+
+function resolveBuildProfile(arguments_) {
+  if (arguments_.length === 0) return productionBuildProfile;
+  if (arguments_.length === 1 && arguments_[0] === "--development") {
+    return developmentBuildProfile;
+  }
+  throw new Error("Usage: node scripts/build.mjs [--development]");
+}
 
 async function assertCaseExactPath(baseDirectory, relativePath) {
   const normalized = path.normalize(relativePath);
@@ -140,6 +171,135 @@ async function concatenateFiles(relativePaths) {
   return `${chunks.join("\n\n")}\n\n`;
 }
 
+function graphArtifactPaths(output, graph) {
+  const artifacts = [output];
+  if (graph.kind === "javascript" && graph.sourceMap && sourceMapPolicy.publish) {
+    artifacts.push(`${output}.map`);
+  }
+  return artifacts;
+}
+
+async function getDevelopmentCacheSeed() {
+  developmentCacheSeed ??= Promise.all([
+    readFile(buildScriptFile),
+    readFile(packageLockFile),
+  ]);
+  return developmentCacheSeed;
+}
+
+function updateFingerprint(hash, value) {
+  const contents = Buffer.isBuffer(value) ? value : Buffer.from(value);
+  hash.update(`${contents.length}:`);
+  hash.update(contents);
+}
+
+function createBuildGraphFingerprint(metadata, seedFiles, inputs) {
+  const hash = createHash("sha256");
+  updateFingerprint(hash, JSON.stringify(metadata));
+  for (const contents of seedFiles) updateFingerprint(hash, contents);
+  for (const { contents, relativePath } of inputs) {
+    updateFingerprint(hash, relativePath);
+    updateFingerprint(hash, contents);
+  }
+  return hash.digest("hex");
+}
+
+async function fingerprintBuildGraphEntry(output, graph, buildProfile) {
+  const [buildScript, packageLock] = await getDevelopmentCacheSeed();
+  const metadata = {
+    browserEcmaVersion: browserPolicy.javascriptEcmaVersion,
+    buildProfile,
+    cacheVersion: developmentCacheVersion,
+    graph,
+    output,
+    sourceMapPolicy,
+    version,
+  };
+
+  const inputs = [];
+  for (const relativePath of graph.inputs) {
+    const contents = await readFile(await sourceFile(relativePath));
+    inputs.push({ contents, relativePath });
+  }
+  return createBuildGraphFingerprint(metadata, [buildScript, packageLock], inputs);
+}
+
+async function readDevelopmentCache() {
+  try {
+    const manifest = JSON.parse(await readFile(
+      path.join(developmentCacheRoot, developmentCacheManifest),
+      "utf8",
+    ));
+    if (
+      manifest?.version === developmentCacheVersion &&
+      manifest.entries &&
+      typeof manifest.entries === "object"
+    ) {
+      return manifest.entries;
+    }
+  } catch (error) {
+    if (error.code !== "ENOENT") {
+      console.warn(`Ignoring unreadable development build cache: ${error.message}`);
+    }
+  }
+  return {};
+}
+
+async function reuseCachedGraphEntry(output, graph, fingerprint, cacheEntries) {
+  if (cacheEntries[output] !== fingerprint) return false;
+  for (const artifact of graphArtifactPaths(output, graph)) {
+    const destination = path.join(buildRoot, artifact);
+    await mkdir(path.dirname(destination), { recursive: true });
+    try {
+      await cp(path.join(developmentCacheRoot, artifact), destination, { force: true });
+    } catch (error) {
+      if (error.code !== "ENOENT") {
+        console.warn(`Ignoring unreadable cached ${artifact}: ${error.message}`);
+      }
+      return false;
+    }
+  }
+  return true;
+}
+
+async function publishDevelopmentCache(cacheEntries) {
+  const cacheParent = path.dirname(developmentCacheRoot);
+  await mkdir(cacheParent, { recursive: true });
+  const stagedCache = await mkdtemp(path.join(cacheParent, ".lvllvl-development-build-"));
+
+  try {
+    for (const [output, graph] of Object.entries(buildGraph)) {
+      for (const artifact of graphArtifactPaths(output, graph)) {
+        const destination = path.join(stagedCache, artifact);
+        await mkdir(path.dirname(destination), { recursive: true });
+        await cp(path.join(buildRoot, artifact), destination, { force: true });
+      }
+    }
+    await writeFile(
+      path.join(stagedCache, developmentCacheManifest),
+      `${JSON.stringify({ entries: cacheEntries, version: developmentCacheVersion }, null, 2)}\n`,
+    );
+    await publishDirectory(stagedCache, developmentCacheRoot);
+  } catch (error) {
+    await rm(stagedCache, { force: true, recursive: true });
+    throw error;
+  }
+}
+
+async function tryPublishDevelopmentCache(
+  cacheEntries,
+  publishCache = publishDevelopmentCache,
+  warn = console.warn,
+) {
+  try {
+    await publishCache(cacheEntries);
+    return true;
+  } catch (error) {
+    warn(`Could not update development build cache: ${error.message}`);
+    return false;
+  }
+}
+
 async function listFiles(directory, prefix = "") {
   const entries = await readdir(directory, { withFileTypes: true });
   entries.sort((left, right) => left.name.localeCompare(right.name));
@@ -184,7 +344,7 @@ async function buildHtmlCache() {
   );
 }
 
-async function bundleLegacyJavaScript(output, graph) {
+async function bundleLegacyJavaScript(output, graph, buildProfile) {
   const sourceBundle = new MagicStringBundle({ separator: "\n\n" });
   for (const relativePath of graph.inputs) {
     const content = renderVersion(await readFile(await sourceFile(relativePath), "utf8"));
@@ -201,7 +361,7 @@ async function bundleLegacyJavaScript(output, graph) {
   const virtualId = path.join(projectRoot, ".legacy-entry", output);
   const inputMap = sourceBundle.generateMap({
     file: `${outputName}.entry.js`,
-    hires: true,
+    hires: buildProfile.sourceMapHires,
     includeContent: sourceMapPolicy.includeSources,
   });
   const rollupBuild = await rollup({
@@ -247,7 +407,7 @@ async function bundleLegacyJavaScript(output, graph) {
   rollupMap.file = outputName;
   rollupMap.sources = [...graph.inputs];
 
-  if (!graph.minify) {
+  if (!graph.minify || !buildProfile.minifyJavaScript) {
     const sourceMapReference = graph.sourceMap ? `\n//# sourceMappingURL=${mapName}\n` : "\n";
     await writeFile(path.join(buildRoot, output), `${chunk.code}${sourceMapReference}`);
     if (graph.sourceMap && sourceMapPolicy.publish) {
@@ -286,15 +446,36 @@ async function bundleLegacyJavaScript(output, graph) {
   }
 }
 
-async function buildDeclaredGraph() {
+async function buildDeclaredGraph(buildProfile, previousCacheEntries) {
+  const nextCacheEntries = {};
+  let cacheHits = 0;
+  let rebuiltEntries = 0;
+
   for (const [output, graph] of Object.entries(buildGraph)) {
     await mkdir(path.join(buildRoot, path.posix.dirname(output)), { recursive: true });
+    let fingerprint;
+    if (buildProfile.cacheBuildGraph) {
+      fingerprint = await fingerprintBuildGraphEntry(output, graph, buildProfile);
+      if (await reuseCachedGraphEntry(output, graph, fingerprint, previousCacheEntries)) {
+        nextCacheEntries[output] = fingerprint;
+        cacheHits++;
+        continue;
+      }
+    }
+
     if (graph.kind === "javascript") {
-      await bundleLegacyJavaScript(output, graph);
+      await bundleLegacyJavaScript(output, graph, buildProfile);
     } else {
       await writeFile(path.join(buildRoot, output), await concatenateFiles(graph.inputs));
     }
+    if (fingerprint) nextCacheEntries[output] = fingerprint;
+    rebuiltEntries++;
   }
+
+  if (buildProfile.cacheBuildGraph) {
+    console.log(`Development build graph: ${cacheHits} cached, ${rebuiltEntries} rebuilt`);
+  }
+  return nextCacheEntries;
 }
 
 async function writeIndexes() {
@@ -516,13 +697,16 @@ async function publishDirectory(stagedDirectory, publishedDirectory) {
   }
 }
 
-async function build() {
+async function build({ buildProfile = productionBuildProfile } = {}) {
   const packageJson = JSON.parse(await readFile(path.join(projectRoot, "package.json"), "utf8"));
   version = packageJson.version;
   if (typeof version !== "string" || version.trim() === "") {
     throw new Error("package.json must contain a release version");
   }
   buildDate = resolveBuildDate();
+  const previousCacheEntries = buildProfile.cacheBuildGraph
+    ? await readDevelopmentCache()
+    : {};
 
   await verifyProductionLegacyGraph();
   const moduleVerification = await verifyModuleBoundaries();
@@ -530,7 +714,8 @@ async function build() {
     moduleVerification.modules.map((filename) => [filename, filename]),
   );
 
-  console.log(`Building lvllvl ${version} in a temporary directory`);
+  const profileLabel = buildProfile === productionBuildProfile ? "" : " development";
+  console.log(`Building lvllvl ${version}${profileLabel} in a temporary directory`);
   const stagedBuildRoot = await mkdtemp(path.join(projectRoot, `.${buildDirectory}-build-`));
   buildRoot = stagedBuildRoot;
 
@@ -543,7 +728,7 @@ async function build() {
     await copyRuntimeAssets();
     await writeBuildInfo();
     await buildHtmlCache();
-    await buildDeclaredGraph();
+    const nextCacheEntries = await buildDeclaredGraph(buildProfile, previousCacheEntries);
     await bundleModuleDependencies();
     await copyDeclaredScripts(copiedScripts);
     await copyDeclaredScripts(moduleScripts);
@@ -564,6 +749,10 @@ async function build() {
     await cp(wasmSource, path.join(buildRoot, "js/c64/wasm/c64.wasm"), { force: true });
     await cp(wasmSource, path.join(buildRoot, "c64page/js/c64.wasm"), { force: true });
 
+    if (buildProfile.cacheBuildGraph) {
+      await tryPublishDevelopmentCache(nextCacheEntries);
+    }
+
     await publishDirectory(stagedBuildRoot, publishedBuildRoot);
     console.log(`Build complete: published ${buildDirectory}/`);
   } catch (error) {
@@ -575,6 +764,14 @@ async function build() {
 }
 
 const isDirectRun = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-if (isDirectRun) await build();
+if (isDirectRun) await build({ buildProfile: resolveBuildProfile(process.argv.slice(2)) });
 
-export { assertCaseExactPath, build, isAllowedUnresolvedDependencyWarning, publishDirectory };
+export {
+  assertCaseExactPath,
+  build,
+  createBuildGraphFingerprint,
+  isAllowedUnresolvedDependencyWarning,
+  publishDirectory,
+  resolveBuildProfile,
+  tryPublishDevelopmentCache,
+};

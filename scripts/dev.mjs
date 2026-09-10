@@ -33,10 +33,14 @@ async function buildFresh() {
   // Build configuration is executable ESM and Node caches its imports for the
   // lifetime of this process. Run each build in a child process so edits to the
   // graph or configuration are reflected without restarting the dev command.
-  const { stdout, stderr } = await runFile(process.execPath, [buildScriptPath], {
-    cwd: projectRoot,
-    maxBuffer: 4 * 1024 * 1024,
-  });
+  const { stdout, stderr } = await runFile(
+    process.execPath,
+    [buildScriptPath, "--development"],
+    {
+      cwd: projectRoot,
+      maxBuffer: 4 * 1024 * 1024,
+    },
+  );
   if (stdout) process.stdout.write(stdout);
   if (stderr) process.stderr.write(stderr);
 }

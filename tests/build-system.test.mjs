@@ -26,8 +26,11 @@ import {
 } from "../scripts/build-config.mjs";
 import {
   assertCaseExactPath,
+  createBuildGraphFingerprint,
   isAllowedUnresolvedDependencyWarning,
   publishDirectory,
+  resolveBuildProfile,
+  tryPublishDevelopmentCache,
 } from "../scripts/build.mjs";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -230,6 +233,59 @@ test("build input paths are validated with exact filesystem casing", async (cont
   );
 });
 
+test("development builds keep production optimizations out of the edit loop", () => {
+  assert.deepEqual(resolveBuildProfile([]), {
+    cacheBuildGraph: false,
+    minifyJavaScript: true,
+    name: "production",
+    sourceMapHires: true,
+  });
+  assert.deepEqual(resolveBuildProfile(["--development"]), {
+    cacheBuildGraph: true,
+    minifyJavaScript: false,
+    name: "development",
+    sourceMapHires: false,
+  });
+  assert.throws(
+    () => resolveBuildProfile(["--unknown"]),
+    /Usage: node scripts\/build\.mjs \[--development\]/,
+  );
+});
+
+test("development cache invalidation is isolated to the changed graph entry", () => {
+  const seedFiles = [Buffer.from("build implementation"), Buffer.from("package lock")];
+  const fingerprint = (output, relativePath, contents) => createBuildGraphFingerprint(
+    { output, profile: "development" },
+    seedFiles,
+    [{ contents: Buffer.from(contents), relativePath }],
+  );
+  const before = {
+    libs: fingerprint("js/libs.js", "lib/library.js", "library source"),
+    main: fingerprint("js/main.js", "js/editor.js", "editor source"),
+  };
+  const after = {
+    libs: fingerprint("js/libs.js", "lib/library.js", "library source"),
+    main: fingerprint("js/main.js", "js/editor.js", "changed editor source"),
+  };
+
+  assert.equal(after.libs, before.libs);
+  assert.notEqual(after.main, before.main);
+});
+
+test("development cache publication failures do not fail the build", async () => {
+  const warnings = [];
+  const published = await tryPublishDevelopmentCache(
+    {},
+    async () => {
+      throw new Error("cache is read-only");
+    },
+    (warning) => warnings.push(warning),
+  );
+
+  assert.equal(published, false);
+  assert.deepEqual(warnings, ["Could not update development build cache: cache is read-only"]);
+});
+
 test("dependency bundling ignores only declared unresolved package edges", () => {
   const dependency = bundledModuleDependencies["@tanstack/hotkeys"];
   const knownImporter = path.join(projectRoot, dependency.allowedUnresolvedImports[0].importers[0]);
@@ -323,8 +379,8 @@ test("the first publish migrates a legacy physical output directory", async (con
   assert.deepEqual(await readdir(root), [".dist-build-new", "dist"]);
 });
 
-// A development rebuild invokes the full production build in a child process;
-// allow enough time for that serialized build on slower CI hosts.
+// A development rebuild invokes the fast build in a child process; allow enough
+// time for its first uncached run on slower CI hosts.
 test("the development server rebuilds once and remains available", { timeout: 120_000 }, async () => {
   const child = spawn(process.execPath, ["scripts/dev.mjs"], {
     cwd: projectRoot,
@@ -395,15 +451,22 @@ test("the development server rebuilds once and remains available", { timeout: 12
       "Vite must leave the retryable image-import URL for the browser to resolve",
     );
 
+    const rebuildOutputStart = output.length;
     await writeFile(rebuildTrigger, "trigger a source watcher event\n");
     await waitForCondition(
-      () => output.includes("server restarted"),
+      () => output.slice(rebuildOutputStart).includes("server restarted"),
       60_000,
       () => `Development server did not finish its rebuild:\n${output}`,
     );
     await delay(2_000);
 
-    assert.equal((output.match(/Building lvllvl/g) ?? []).length, 2, output);
+    const rebuildOutput = output.slice(rebuildOutputStart);
+    assert.equal((rebuildOutput.match(/Building lvllvl/g) ?? []).length, 1, output);
+    assert.match(
+      rebuildOutput,
+      new RegExp(`Development build graph: ${Object.keys(buildGraph).length} cached, 0 rebuilt`),
+      output,
+    );
     const rebuiltResponse = await fetch(devUrl);
     assert.equal(rebuiltResponse.status, 200, output);
     assert.notEqual(assetVersion(await rebuiltResponse.text()), initialVersion);

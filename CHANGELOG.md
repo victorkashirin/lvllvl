@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Added
+
+- Speed up local development with unminified coarse-map bundles and a
+  content-addressed build-graph cache, while preserving release build output.
+
 ### Fixed
 
 - Keep the module architecture baseline in sync with the shared message dialog.

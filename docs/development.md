@@ -10,7 +10,10 @@ npm run dev
 ```
 
 The development server performs an initial build, serves `dist/` at
-`http://127.0.0.1:5173/`, and rebuilds when files under `src/` change.
+`http://127.0.0.1:5173/`, and rebuilds when files under `src/` change. Development
+bundles skip release minification, use lower-cost source maps, and reuse unchanged
+build-graph outputs from `node_modules/.cache/lvllvl-development`. Production builds
+remain fully minified with high-resolution source maps.
 
 ## Production build and verification
 
