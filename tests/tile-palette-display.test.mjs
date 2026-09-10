@@ -29,6 +29,8 @@ async function createTilePaletteDisplay({ tileWidth, tileHeight }) {
   });
 
   const rectangles = [];
+  const strokes = [];
+  let clips = 0;
   const canvasContext = {
     beginPath() {},
     clearRect() {},
@@ -36,7 +38,14 @@ async function createTilePaletteDisplay({ tileWidth, tileHeight }) {
     rect(...rectangle) {
       rectangles.push(rectangle);
     },
-    stroke() {},
+    save() {},
+    clip() {
+      clips++;
+    },
+    restore() {},
+    stroke() {
+      strokes.push({ color: this.strokeStyle, width: this.lineWidth });
+    },
   };
   const display = new context.TilePaletteDisplay();
   display.editor = {
@@ -62,7 +71,7 @@ async function createTilePaletteDisplay({ tileWidth, tileHeight }) {
   display.selectedGridCells = [{ x: 4, y: 1 }];
   display.calculateScroll = function () {};
 
-  return { display, rectangles };
+  return { display, rectangles, strokes, getClipCount: () => clips };
 }
 
 async function createTestTileSet() {
@@ -308,7 +317,7 @@ async function createPaletteRenderFixture({
 }
 
 test("tile palette selection follows non-square tile dimensions", async () => {
-  const { display, rectangles } = await createTilePaletteDisplay({
+  const { display, rectangles, strokes, getClipCount } = await createTilePaletteDisplay({
     tileWidth: 8,
     tileHeight: 14,
   });
@@ -316,6 +325,11 @@ test("tile palette selection follows non-square tile dimensions", async () => {
   display.draw();
 
   assert.deepEqual(rectangles, [[69, 30, 16, 28]]);
+  assert.deepEqual(strokes.slice(-2), [
+    { color: "#0ff", width: 2 },
+    { color: "#000000", width: 2 },
+  ]);
+  assert.equal(getClipCount(), 1);
 });
 
 test("horizontal tile palettes fit the available width", async () => {
@@ -539,6 +553,35 @@ test("fit-to-width remains pixel-aligned across panel sizes", async () => {
     assert.ok(dimensions.width <= availableWidth, `overflow at ${availableWidth}px`);
     assert.equal(Number.isInteger(8 * scale), true, `fractional tile at ${availableWidth}px`);
   }
+});
+
+test("blocked keyboard movement preserves the tile selection", async () => {
+  const { display } = await createTilePaletteDisplay({
+    tileWidth: 8,
+    tileHeight: 8,
+  });
+
+  display.mode = "grid";
+  display.charPaletteMapType = "columns";
+  display.charPaletteMap = [[0, 1]];
+  display.columnHeight = 1;
+  display.selectedCharacters = [0];
+  display.selectedCharactersGrid = [[0]];
+  display.selectedGridCells = [
+    { x: 0, y: 0, selectedGridX: 0, selectedGridY: 0 },
+  ];
+  display.draw = () => {};
+
+  display.moveSelection(-1, 0);
+
+  assert.deepEqual([...display.selectedCharacters], [0]);
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(display.selectedCharactersGrid)),
+    [[0]],
+  );
+
+  display.moveSelection(1, 0);
+  assert.deepEqual([...display.selectedCharacters], [1]);
 });
 
 test("selective bitmap updates reuse the slot map and upload only changed tiles", async () => {

@@ -34,6 +34,7 @@ var ColorPickerPopup = function() {
 
   this.html += '  <canvas id="colorPickerCanvas" style="position: absolute; left: 54px"></canvas>';
   this.html += '  <div id="colorPickerInfo" style="color: #ffffff; margin: 2px; position: absolute; left: 2px; bottom: 2px"></div>';
+  this.html += '  <div id="colorPickerKeyboardHint" style="display: none; color: #bbbbbb; position: absolute; right: 4px; bottom: 2px">Shift+Enter / Right-click BG</div>';
   this.html += '  <div id="colorPickerLabel1" style="display: none; position: absolute; color: #ffffff"></div>';
   this.html += '  <div id="colorPickerLabel2" style="display: none; position: absolute; color: #ffffff"></div>';
   this.html += '</div>';
@@ -44,8 +45,11 @@ var ColorPickerPopup = function() {
   this.canvas = null;
   this.context = null;
   this.highlightedColor = false;
+  this.keyboardNoColorHighlighted = false;
+  this.keyboardNoColorReturnColor = false;
 
   this.colorPickedCallback = null;
+  this.secondaryColorPickedCallback = null;
   this.c64ECMColorSetCallback = null;
   this.c64ECMColorIndex = 0;
 
@@ -59,8 +63,11 @@ var ColorPickerPopup = function() {
 ColorPickerPopup.prototype = {
   resetProjectState: function() {
     this.highlightedColor = false;
+    this.keyboardNoColorHighlighted = false;
+    this.keyboardNoColorReturnColor = false;
     this.currentColor = false;
     this.colorPickedCallback = null;
+    this.secondaryColorPickedCallback = null;
     this.c64ECMColorSetCallback = null;
     if(this.colorPaletteDisplay && typeof this.colorPaletteDisplay.resetProjectState == 'function') {
       this.colorPaletteDisplay.resetProjectState();
@@ -69,13 +76,103 @@ ColorPickerPopup.prototype = {
   },
 
   init: function(editor) {
+    var _this = this;
     this.editor = editor;
 
     this.uiComponent = UI.create("UI.Popup", { "id": "colorPickerPopup", "width": 300, "height": 300 });
+
+    this.uiComponent.on('keydown', function(event) {
+      _this.keyDown(event);
+    });
     
     this.htmlComponent = UI.create("UI.HTMLPanel", { "html": this.html });
     this.uiComponent.add(this.htmlComponent);
     this.initEvents();
+  },
+
+  keyDown: function(event) {
+    if(!this.colorPaletteDisplay) {
+      return;
+    }
+
+    var dx = 0;
+    var dy = 0;
+    switch(event.key) {
+      case 'ArrowLeft':
+        dx = -1;
+      break;
+      case 'ArrowRight':
+        dx = 1;
+      break;
+      case 'ArrowUp':
+        dy = -1;
+      break;
+      case 'ArrowDown':
+        dy = 1;
+      break;
+      case 'Enter':
+        var color = this.colorPaletteDisplay.getHighlightColor();
+        var noColorSelected = this.hasNone && this.keyboardNoColorHighlighted &&
+          color === this.editor.colorPaletteManager.noColor;
+        if(color !== false &&
+            (color !== this.editor.colorPaletteManager.noColor || noColorSelected)) {
+          var colorPicked = false;
+          if(event.shiftKey && this.secondaryColorPickedCallback) {
+            this.secondaryColorPickedCallback(color);
+            colorPicked = true;
+          } else if(!event.shiftKey && this.c64ECM && this.c64ECMColorSetCallback) {
+            this.c64ECMColorSetCallback(this.c64ECMColorIndex, color);
+            colorPicked = true;
+          } else if(!event.shiftKey && this.colorPickedCallback) {
+            this.colorPickedCallback(color);
+            colorPicked = true;
+          }
+          if(colorPicked) {
+            this.close();
+          }
+        }
+        event.preventDefault();
+        return;
+      case 'Escape':
+        this.close();
+        event.preventDefault();
+        return;
+      default:
+        return;
+    }
+
+    if(this.keyboardNoColorHighlighted) {
+      if(dy > 0) {
+        var returnColor = this.keyboardNoColorReturnColor;
+        this.setKeyboardNoColorHighlighted(false);
+        if(returnColor !== false && returnColor !== this.editor.colorPaletteManager.noColor) {
+          this.colorPaletteDisplay.setHighlightColor(returnColor);
+        } else {
+          this.colorPaletteDisplay.moveHighlight(0, 0);
+        }
+      }
+      event.preventDefault();
+      return;
+    }
+
+    var previousColor = this.colorPaletteDisplay.getHighlightColor();
+    var moved = this.colorPaletteDisplay.moveHighlight(dx, dy);
+    if(!moved && dy < 0 && this.hasNone) {
+      this.keyboardNoColorReturnColor = previousColor;
+      this.setKeyboardNoColorHighlighted(true);
+    }
+    event.preventDefault();
+  },
+
+  setKeyboardNoColorHighlighted: function(highlighted) {
+    this.keyboardNoColorHighlighted = highlighted;
+    $('#popupColor-1').css('box-shadow', highlighted ?
+      '0 0 0 1px #FFD400, 0 0 0 2px #000000' :
+      'none');
+    $('#popupColor-1').css('border-radius', highlighted ? '2px' : '0');
+    if(highlighted && this.colorPaletteDisplay) {
+      this.colorPaletteDisplay.setHighlightColor(this.editor.colorPaletteManager.noColor);
+    }
   },
 
   updateInfo: function() {
@@ -110,7 +207,15 @@ ColorPickerPopup.prototype = {
     $('#popupColor-1').on('click', function(event) {
       _this.colorPickedCallback(-1);
       _this.close();
-    });    
+    });
+
+    $('#popupColor-1').on('contextmenu', function(event) {
+      event.preventDefault();
+      if(_this.secondaryColorPickedCallback) {
+        _this.secondaryColorPickedCallback(-1);
+        _this.close();
+      }
+    });
 
     $('input[name=colorPickerECMColorIndex]').on('click', function() {
       var index = $('input[name=colorPickerECMColorIndex]:checked').val();
@@ -146,24 +251,37 @@ ColorPickerPopup.prototype = {
     var _this = this;
 
     this.colorPaletteDisplay = new ColorPaletteDisplay();
-    this.colorPaletteDisplay.init(this.editor, { "canvasElementId": "colorPickerCanvas", "maxSelectableColors": 1, "canSelectWithRightMouseButton": false   });
+    this.colorPaletteDisplay.init(this.editor, { "canvasElementId": "colorPickerCanvas", "maxSelectableColors": 1, "canSelectWithRightMouseButton": false, "highVisibilityHighlight": true });
 
     this.colorPaletteDisplay.on('colorselected', function(event) {
-      if(event.colorIndex == 0) {
-        var color = event.color;
-        if(color !== _this.editor.colorPaletteManager.noColor) {
-          if(_this.c64ECM && _this.c64ECMColorSetCallback) {
-            _this.c64ECMColorSetCallback(_this.c64ECMColorIndex, event.color);
+      var color = event.color;
+      if(color === _this.editor.colorPaletteManager.noColor) {
+        return;
+      }
 
-          } else {
-            _this.colorPickedCallback(event.color);
-          }
+      if(event.colorIndex == 1) {
+        if(_this.secondaryColorPickedCallback) {
+          _this.secondaryColorPickedCallback(color);
+          _this.close();
         }
-        _this.close();
+      } else if(event.colorIndex == 0) {
+        if(_this.c64ECM && _this.c64ECMColorSetCallback) {
+          _this.c64ECMColorSetCallback(_this.c64ECMColorIndex, color);
+
+        } else if(_this.colorPickedCallback) {
+          _this.colorPickedCallback(color);
+        }
+        if(_this.colorPickedCallback || (_this.c64ECM && _this.c64ECMColorSetCallback)) {
+          _this.close();
+        }
       }
     });
 
     this.colorPaletteDisplay.on('highlightchanged', function(event) {
+      if(event.color !== _this.editor.colorPaletteManager.noColor &&
+          _this.keyboardNoColorHighlighted) {
+        _this.setKeyboardNoColorHighlighted(false);
+      }
       _this.highlightedColor = event.color;
       _this.updateInfo();
     });
@@ -179,11 +297,16 @@ ColorPickerPopup.prototype = {
     var colorPalette = this.editor.colorPaletteManager.getCurrentColorPalette();
 
     this.colorPickedCallback = null;
+    this.secondaryColorPickedCallback = null;
     this.c64ECMColorSetCallback = null;
 
     if(typeof args != 'undefined') {
       if(typeof args.colorPickedCallback != 'undefined') {
         this.colorPickedCallback = args.colorPickedCallback;
+      }
+
+      if(typeof args.secondaryColorPickedCallback != 'undefined') {
+        this.secondaryColorPickedCallback = args.secondaryColorPickedCallback;
       }
 
       if(typeof args.c64ECMColorSetCallback != 'undefined') {
@@ -197,6 +320,13 @@ ColorPickerPopup.prototype = {
         this.colorPaletteDisplay.setType('');
       }
     }
+
+    this.colorPaletteDisplay.canSelectWithRightMouseButton =
+      typeof this.secondaryColorPickedCallback == 'function';
+    this.colorPaletteDisplay.setSelectedColors([
+      this.editor.colorPaletteManager.noColor,
+      this.editor.colorPaletteManager.noColor
+    ]);
 
 
     var colors = [];
@@ -271,14 +401,28 @@ ColorPickerPopup.prototype = {
     }
 
 
-    if(this.currentColor !== false) {
+    this.setKeyboardNoColorHighlighted(false);
+    this.keyboardNoColorReturnColor = false;
+
+    if(this.currentColor === this.editor.colorPaletteManager.noColor && this.hasNone) {
+      this.colorPaletteDisplay.setSelectedColor(0, this.currentColor);
+      this.setKeyboardNoColorHighlighted(true);
+    } else if(this.currentColor !== false) {
       var currentColorHex = colorPalette.getHexString(this.currentColor);
 
       $('#colorPickerCurrentColor').css('background-color', '#' + currentColorHex);
       $('#colorPickerHoverColor').css('background-color', '#' + currentColorHex);
 
       this.colorPaletteDisplay.setSelectedColor(0, this.currentColor);
+      this.colorPaletteDisplay.setHighlightColor(this.currentColor);
+    } else {
+      this.colorPaletteDisplay.setSelectedColor(0, this.editor.colorPaletteManager.noColor);
+      this.colorPaletteDisplay.setHighlightColor(this.editor.colorPaletteManager.noColor);
+      this.colorPaletteDisplay.moveHighlight(0, 0);
     }
+
+    $('#colorPickerKeyboardHint').toggle(
+      typeof this.secondaryColorPickedCallback == 'function');
 
 
     this.colorCount = colorPalette.getColorCount();

@@ -49,6 +49,19 @@ var TilePaletteMobile = function() {
 
 TilePaletteMobile.prototype = {
 
+  strokeSelectionOutline: function() {
+    this.context.save();
+    this.context.lineJoin = 'round';
+    this.context.strokeStyle = styles.tilePalette.selectOutline;
+    this.context.lineWidth = 2;
+    this.context.stroke();
+
+    this.context.clip();
+    this.context.strokeStyle = styles.tilePalette.selectOutlineContrast || '#000000';
+    this.context.stroke();
+    this.context.restore();
+  },
+
   resetProjectState: function() {
     this.paletteTiles = [];
     this.tileCount = 0;
@@ -902,11 +915,7 @@ TilePaletteMobile.prototype = {
       // draw rects around selected
       var selectedBlock = this.editor.currentTile.getBlock();
 
-      this.context.fillStyle = styles.tilePalette.selectOutline;
-      this.context.strokeStyle = styles.tilePalette.selectOutline;
-
       this.context.beginPath();
-      this.context.lineWidth = 2;
       var tileX = this.tileHPadding * this.scale + selectedBlock * this.scale * (this.tileWidth * this.blockWidth + this.tileHPadding) + this.xScroll;
       var tileY = this.tileVPadding * this.scale;
 
@@ -916,18 +925,14 @@ TilePaletteMobile.prototype = {
                         tileY, 
                         tileWidth,  
                         tileHeight);      
-      this.context.stroke();
+      this.strokeSelectionOutline();
 
     } else {
 
       // draw rects around selected
       var selectedTiles = this.editor.currentTile.getCharacters();
 
-      this.context.fillStyle = styles.tilePalette.selectOutline;
-      this.context.strokeStyle = styles.tilePalette.selectOutline;
-
       this.context.beginPath();
-      this.context.lineWidth = 2;
       for(var i = 0; i < selectedTiles.length; i++) {
         for(var j = 0; j < selectedTiles[i].length; j++) {
           var tile = selectedTiles[i][j];
@@ -942,7 +947,7 @@ TilePaletteMobile.prototype = {
                             tileHeight);      
         }
       }
-      this.context.stroke();
+      this.strokeSelectionOutline();
     } 
 
 

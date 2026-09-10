@@ -1804,11 +1804,7 @@ TilePaletteDisplay.prototype = {
 
 
 
-    this.context.fillStyle = styles.tilePalette.selectOutline;
-    this.context.strokeStyle = styles.tilePalette.selectOutline;
-
     this.context.beginPath();
-    this.context.lineWidth = 2;
     var tileWidth = renderedTileDimensions.width;
     var tileHeight = renderedTileDimensions.height;
     if(this.selectedGridCells.length == 0) {
@@ -1848,7 +1844,19 @@ TilePaletteDisplay.prototype = {
       }
     }
 
+    // Draw two one-pixel bands: gold outside and black inside the selection.
+    // Clipping the second stroke to the selection removes the third band that
+    // results from overlaying centered strokes of different widths.
+    this.context.save();
+    this.context.lineJoin = 'round';
+    this.context.strokeStyle = styles.tilePalette.selectOutline;
+    this.context.lineWidth = 2 * this.canvasScale;
     this.context.stroke();
+
+    this.context.clip();
+    this.context.strokeStyle = styles.tilePalette.selectOutlineContrast || '#000000';
+    this.context.stroke();
+    this.context.restore();
 
 
     // if dragging a tile in sort mode, draw that
@@ -1917,6 +1925,11 @@ TilePaletteDisplay.prototype = {
       selectedCharactersSave.push(this.selectedCharacters[i]);      
     }
 
+    var _this = this;
+    var cancelMove = function() {
+      _this.selectedCharacters = selectedCharactersSave;
+    };
+
     var newCharacters = [];
     this.selectedCharacters = [];
 
@@ -1937,6 +1950,7 @@ TilePaletteDisplay.prototype = {
         y += dy;
 
         if(y < 0 || y >= this.charPaletteMap.length) {
+          cancelMove();
           return;
         }
         
@@ -1947,6 +1961,7 @@ TilePaletteDisplay.prototype = {
           x -= this.charPaletteMap[y].length;
           y += this.columnHeight;
           if(y >= this.charPaletteMap.length) {
+            cancelMove();
             return;
           }
         }
@@ -1956,17 +1971,20 @@ TilePaletteDisplay.prototype = {
           x += this.charPaletteMap[y].length;
           y -= this.columnHeight;
           if(y < 0) {
+            cancelMove();
             return;
           }
         }
 
         if(y >= this.charPaletteMap.length || y < 0 || x >= this.charPaletteMap[y].length  || x < 0) {
+          cancelMove();
           return;
         }
 
         var newSelectedCharacter = this.charPaletteMap[y][x];
 
         if(newSelectedCharacter === false || newSelectedCharacter < 0) {
+          cancelMove();
           return;
         }
 
@@ -2012,11 +2030,7 @@ TilePaletteDisplay.prototype = {
               }
               newCharacters[j].push(t);
             } else {
-              // want to restore selected characters
-              this.selectedCharacters = [];
-              for(var i = 0; i < selectedCharactersSave.length; i++) {                        
-                this.selectedCharacters.push(selectedCharactersSave[i]);
-              }              
+              cancelMove();
               return;
             }
 
@@ -2030,6 +2044,7 @@ TilePaletteDisplay.prototype = {
           newCharacters.push([]);
           for(var i = 0; i < characters[j].length; i++) {
             var character = characters[j][i];
+            var characterMoved = false;
             for(var y = 0; y < charPaletteMapHeight; y++) {
               for(var x = 0; x < this.charPaletteMap[y].length; x++) {
                 if(this.charPaletteMap[y][x] == character) {
@@ -2052,7 +2067,12 @@ TilePaletteDisplay.prototype = {
                   if( newY >= 0 && newY < charPaletteMapHeight
                     && newX >= 0 && newX < charPaletteMapWidth) {
                     var c = this.charPaletteMap[newY][newX];
+                    if(c === false || c < 0) {
+                      cancelMove();
+                      return;
+                    }
                     newCharacters[j].push(c);
+                    characterMoved = true;
 
                     if(!this.isCharacterSelected(c)) {
                       this.selectedCharacters.push(c);
@@ -2066,7 +2086,7 @@ TilePaletteDisplay.prototype = {
                       this.selectedCharacters.push(selectedCharactersSave[i]);
                     }
                     */
-                
+                    cancelMove();
                     return;
                   }
 
@@ -2075,6 +2095,10 @@ TilePaletteDisplay.prototype = {
                   break;
                 }
               }
+            }
+            if(!characterMoved) {
+              cancelMove();
+              return;
             }
           }
         }
@@ -2103,6 +2127,50 @@ TilePaletteDisplay.prototype = {
 
 
     this.draw();     
+  },
+
+  scrollSelectionIntoView: function() {
+    var position = false;
+    if(this.selectedGridCells.length > 0) {
+      var cell = this.selectedGridCells[0];
+      var column = Math.floor(cell.y / this.columnHeight);
+      var row = cell.y % this.columnHeight;
+      position = this.getTilePosition(cell.x, row, column, this.tilePaletteScale);
+    } else if(this.selectedCharacters.length > 0) {
+      var character = this.selectedCharacters[0];
+      if(this.tileLocations[character] && this.tileLocations[character].length > 0) {
+        position = {
+          x: this.tileLocations[character][0].paletteX,
+          y: this.tileLocations[character][0].paletteY
+        };
+      }
+    }
+
+    var dimensions = this.getScaledTileDimensions(this.tilePaletteScale);
+    if(!position || !dimensions) {
+      return;
+    }
+
+    var scrollX = this.scrollX;
+    var scrollY = this.scrollY;
+    if(position.x < scrollX) {
+      scrollX = position.x;
+    } else if(position.x + dimensions.width > scrollX + this.viewWidth) {
+      scrollX = position.x + dimensions.width - this.viewWidth;
+    }
+    if(position.y < scrollY) {
+      scrollY = position.y;
+    } else if(position.y + dimensions.height > scrollY + this.viewHeight) {
+      scrollY = position.y + dimensions.height - this.viewHeight;
+    }
+
+    scrollX = Math.max(0, Math.min(scrollX, this.contentWidth - this.viewWidth));
+    scrollY = Math.max(0, Math.min(scrollY, this.contentHeight - this.viewHeight));
+    if(scrollX !== this.scrollX || scrollY !== this.scrollY) {
+      this.scrollX = scrollX;
+      this.scrollY = scrollY;
+      this.draw();
+    }
   },
 
   tilePaletteDoubleClick: function(event) {

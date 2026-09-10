@@ -1889,7 +1889,7 @@ ColorPaletteEdit.prototype = {
 
     if(this.uiComponent == null) {
       var width = 800;
-      var height = 660;
+      var height = 700;
 
       this.uiComponent = UI.create("UI.Dialog", 
         { "id": "editColorPaletteDialog", "title": "Edit Color Palette", "width": width, "height": height });

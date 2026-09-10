@@ -1866,17 +1866,52 @@ currentTileSplitPanel
 
 
 
+  drawSelectorOutline: function(preview, totalCharWidth, totalCharHeight) {
+    var metrics = preview.surface.getMetrics();
+    if(!metrics) {
+      return;
+    }
+
+    var destination = preview.getDestinationRect({}, totalCharWidth, totalCharHeight);
+    var bandWidth = metrics.pixelRatio;
+    var inset = bandWidth;
+    var width = destination.width - 2 * inset;
+    var height = destination.height - 2 * inset;
+    if(width <= 0 || height <= 0) {
+      return;
+    }
+
+    var context = preview.surface.getBackingContext({ noSmoothing: true });
+    context.save();
+    context.beginPath();
+    context.rect(destination.x + inset, destination.y + inset, width, height);
+    context.lineJoin = 'round';
+    context.strokeStyle = styles.tilePalette.selectOutline;
+    context.lineWidth = 2 * bandWidth;
+    context.stroke();
+
+    context.clip();
+    context.strokeStyle = styles.tilePalette.selectOutlineContrast || '#000000';
+    context.stroke();
+    context.restore();
+  },
+
   // draw the large version of the selected characters
   drawSharedGlyphPreview: function(preview, totalCharWidth, totalCharHeight, isVector) {
     if(!preview) {
       return false;
     }
+    var _this = this;
+    var afterDraw = function() {
+      _this.drawSelectorOutline(preview, totalCharWidth, totalCharHeight);
+    };
+    var drawn = false;
     if(isVector) {
-      var _this = this;
-      return preview.drawVector({
+      drawn = preview.drawVector({
         sourceWidth: totalCharWidth,
         sourceHeight: totalCharHeight,
         backgroundColor: '#222222',
+        afterDraw: afterDraw,
         draw: function(destination) {
           _this.drawCursor({
             scale: destination.scale,
@@ -1888,13 +1923,16 @@ currentTileSplitPanel
           });
         }
       });
+    } else {
+      drawn = preview.drawBitmap({
+        sourceCanvas: this.cursorCanvas,
+        sourceWidth: totalCharWidth,
+        sourceHeight: totalCharHeight,
+        backgroundColor: '#222222',
+        afterDraw: afterDraw
+      });
     }
-    return preview.drawBitmap({
-      sourceCanvas: this.cursorCanvas,
-      sourceWidth: totalCharWidth,
-      sourceHeight: totalCharHeight,
-      backgroundColor: '#222222'
-    });
+    return drawn;
   },
 
   canvasDrawCharacters: function() {

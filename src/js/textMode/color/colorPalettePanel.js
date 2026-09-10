@@ -65,7 +65,7 @@ ColorPalettePanel.prototype = {
   initEvents: function() {
     var _this = this;
     this.colorPaletteDisplay = new ColorPaletteDisplay();
-    this.colorPaletteDisplay.init(this.editor, { canvasElementId: "colorPalettePanelCanvas", "canSelectWithRightMouseButton": true });
+    this.colorPaletteDisplay.init(this.editor, { canvasElementId: "colorPalettePanelCanvas", "canSelectWithRightMouseButton": true, "highVisibilitySelection": true });
     this.colorPaletteDisplay.setType('cellcolor');
     
     this.colorPaletteDisplay.on('colorselected', function(event) {

@@ -431,6 +431,13 @@ UI.GlyphPreview.prototype.drawBitmap = function(args) {
   this.pixelArtBlitter.draw(context, false, args.sourceCanvas,
     sourceX, sourceY, sourceWidth, sourceHeight,
     destination.x, destination.y, destination.width, destination.height);
+  if(typeof args.afterDraw == 'function') {
+    args.afterDraw({
+      canvas: this.canvas,
+      context: context,
+      destination: destination
+    });
+  }
   return true;
 }
 
@@ -458,6 +465,13 @@ UI.GlyphPreview.prototype.drawVector = function(args) {
     scale: Math.min(destination.width / args.sourceWidth,
       destination.height / args.sourceHeight)
   });
+  if(typeof args.afterDraw == 'function') {
+    args.afterDraw({
+      canvas: this.canvas,
+      context: context,
+      destination: destination
+    });
+  }
   return true;
 }
 
@@ -476,7 +490,8 @@ UI.GlyphPreview.prototype.drawTile = function(args) {
       && key != 'fit'
       && key != 'scale'
       && key != 'vector'
-      && key != 'destinationCss') {
+      && key != 'destinationCss'
+      && key != 'afterDraw') {
       drawArgs[key] = args[key];
     }
   }
@@ -495,6 +510,7 @@ UI.GlyphPreview.prototype.drawTile = function(args) {
       scale: args.scale,
       destinationCss: args.destinationCss,
       backgroundColor: args.backgroundColor,
+      afterDraw: args.afterDraw,
       draw: function(destination) {
         drawArgs.x = destination.x / destination.scale;
         drawArgs.y = destination.y / destination.scale;
@@ -529,7 +545,8 @@ UI.GlyphPreview.prototype.drawTile = function(args) {
     fit: args.fit,
     scale: args.scale,
     destinationCss: args.destinationCss,
-    backgroundColor: args.backgroundColor
+    backgroundColor: args.backgroundColor,
+    afterDraw: args.afterDraw
   });
 }
 

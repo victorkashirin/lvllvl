@@ -86,6 +86,8 @@ var ColorPaletteDisplay = function() {
 
   this.drawEnabled = true;
   this.drawHighlightInMarquee = true;
+  this.highVisibilitySelection = false;
+  this.highVisibilityHighlight = false;
 
 }
 
@@ -130,6 +132,14 @@ ColorPaletteDisplay.prototype = {
 
       if(typeof args.canSelectMultiple != 'undefined') {
         this.canSelectMultiple = args.canSelectMultiple;
+      }
+
+      if(typeof args.highVisibilityHighlight != 'undefined') {
+        this.highVisibilityHighlight = args.highVisibilityHighlight;
+      }
+
+      if(typeof args.highVisibilitySelection != 'undefined') {
+        this.highVisibilitySelection = args.highVisibilitySelection;
       }
     }
 
@@ -996,6 +1006,43 @@ ColorPaletteDisplay.prototype = {
 
   },
 
+  moveHighlight: function(dx, dy) {
+    var mapXY = this.colorToGridXy(this.highlightColor);
+
+    if(mapXY.x === false || mapXY.y === false) {
+      mapXY = this.colorToGridXy(this.selectedColors[0]);
+    }
+
+    if(mapXY.x === false || mapXY.y === false) {
+      for(var firstY = 0; firstY < this.colorMap.length; firstY++) {
+        for(var firstX = 0; firstX < this.colorMap[firstY].length; firstX++) {
+          if(this.colorMap[firstY][firstX] !== this.noColor) {
+            this.setHighlightColor(this.colorMap[firstY][firstX]);
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+
+    var x = mapXY.x;
+    var y = mapXY.y;
+    while(dx !== 0 || dy !== 0) {
+      x += dx;
+      y += dy;
+      if(y < 0 || y >= this.colorMap.length ||
+          x < 0 || x >= this.colorMap[y].length) {
+        return false;
+      }
+
+      if(this.colorMap[y][x] !== this.noColor) {
+        this.setHighlightColor(this.colorMap[y][x]);
+        return true;
+      }
+    }
+    return false;
+  },
+
   gridXYToCell: function(gridX, gridY) {
     var x = gridX * (this.colorWidth + this.colorSpacing);
     var y = gridY * (this.colorHeight + this.colorSpacing);
@@ -1330,8 +1377,11 @@ ColorPaletteDisplay.prototype = {
 
         if(colorPosition.x !== false) {
           // should check 
-          this.context.fillStyle = "#ffff00";
-          this.context.strokeStyle = "#ffff00";
+          var selectionOutline = this.highVisibilitySelection
+            ? (styles.colorPalette.selectionOutline || '#FFD400')
+            : '#ffff00';
+          this.context.fillStyle = selectionOutline;
+          this.context.strokeStyle = selectionOutline;
 
           var xPos = this.colorSpacing + (colorPosition.x) * (this.colorWidth + this.colorSpacing);
           var yPos = this.colorSpacing + colorPosition.y * (this.colorHeight + this.colorSpacing);
@@ -1350,9 +1400,21 @@ ColorPaletteDisplay.prototype = {
           this.context.fill();
 
           this.context.beginPath();
-          this.context.lineWidth = 2;
           this.context.rect(xPos, yPos, this.colorWidth, this.colorHeight);
-          this.context.stroke();
+          if(this.highVisibilitySelection) {
+            this.context.save();
+            this.context.lineJoin = 'round';
+            this.context.lineWidth = 2;
+            this.context.stroke();
+
+            this.context.clip();
+            this.context.strokeStyle = styles.colorPalette.selectionContrast || '#000000';
+            this.context.stroke();
+            this.context.restore();
+          } else {
+            this.context.lineWidth = 2;
+            this.context.stroke();
+          }
         }
 
       }
@@ -1365,15 +1427,27 @@ ColorPaletteDisplay.prototype = {
       var colorPosition = this.colorToGridXy(this.highlightColor);
 
       if(colorPosition.x !== false) {
-        this.context.strokeStyle = styles.colorPalette.highlightOutline;
         var xPos = this.colorSpacing + colorPosition.x * (this.colorWidth + this.colorSpacing);
         var yPos = this.colorSpacing + colorPosition.y * (this.colorWidth + this.colorSpacing);
 
 
         this.context.beginPath();
-        this.context.lineWidth = 1;
         this.context.rect(xPos, yPos, this.colorWidth, this.colorHeight);
+        if(this.highVisibilityHighlight) {
+          this.context.lineJoin = 'round';
+          this.context.strokeStyle = styles.colorPalette.keyboardHighlightContrast || '#000000';
+          // This is a logical canvas context; its DPR transform already scales
+          // line widths to backing pixels.
+          this.context.lineWidth = 3;
+          this.context.stroke();
+          this.context.strokeStyle = styles.colorPalette.keyboardHighlightOutline || '#FFD400';
+          this.context.lineWidth = 1;
+        } else {
+          this.context.strokeStyle = styles.colorPalette.highlightOutline;
+          this.context.lineWidth = 1;
+        }
         this.context.stroke();
+        this.context.lineJoin = 'miter';
       }
     }
 

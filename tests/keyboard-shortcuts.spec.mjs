@@ -304,6 +304,248 @@ test("Meta Tile Editor uses rebound shared commands", async ({ page }) => {
   ]);
 });
 
+test("tile and color picker popups support keyboard-only selection", async ({ page }) => {
+  await open2DProject(page);
+
+  await expect.poll(() => page.evaluate(() => {
+    const display = g_app.textModeEditor.colorPalettePanel.colorPaletteDisplay;
+    const color = display.getSelectedColor(0);
+    const position = display.colorToGridXy(color);
+    if(position.x === false || position.y === false) return null;
+    const ratio = display.canvasScale;
+    const x = display.colorSpacing
+      + position.x * (display.colorWidth + display.colorSpacing)
+      + display.colorWidth / 2;
+    const y = display.colorSpacing
+      + position.y * (display.colorHeight + display.colorSpacing);
+    const context = display.canvas.getContext("2d");
+    const pixel = (logicalX, logicalY) => Array.from(context.getImageData(
+      Math.floor(logicalX * ratio),
+      Math.floor(logicalY * ratio),
+      1,
+      1,
+    ).data.slice(0, 3));
+    return {
+      outer: pixel(x, y - 0.5),
+      inner: pixel(x, y + 0.5),
+    };
+  })).toEqual({
+    outer: [255, 212, 0],
+    inner: [0, 0, 0],
+  });
+
+  await expect.poll(() => page.locator("#toolSettingsCurrentTile").evaluate((canvas) => {
+    const context = canvas.getContext("2d");
+    const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+    for(let index = 0; index < pixels.length; index += 4) {
+      if(pixels[index] === 255 && pixels[index + 1] === 212 && pixels[index + 2] === 0) {
+        return true;
+      }
+    }
+    return false;
+  })).toBe(true);
+
+  await page.evaluate(() => {
+    const editor = g_app.textModeEditor;
+    editor.currentTile.setCharacters([[0]]);
+    document.activeElement?.blur();
+  });
+
+  await page.keyboard.press("/");
+  await expect(page.locator("#characterPickerCanvas")).toBeVisible();
+  expect(await page.evaluate(() =>
+    g_app.textModeEditor.tileSetManager.tilePickerPopup.tilePaletteDisplay
+      .getSelectedCharactersGrid(),
+  )).toEqual([[0]]);
+
+  await page.keyboard.press("ArrowRight");
+  const pendingTile = await page.evaluate(() =>
+    g_app.textModeEditor.tileSetManager.tilePickerPopup.tilePaletteDisplay
+      .getSelectedCharactersGrid(),
+  );
+  expect(pendingTile).not.toEqual([[0]]);
+  expect(await page.evaluate(() =>
+    g_app.textModeEditor.currentTile.getCharacters(),
+  )).toEqual([[0]]);
+
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#characterPickerCanvas")).toBeHidden();
+  expect(await page.evaluate(() =>
+    g_app.textModeEditor.currentTile.getCharacters(),
+  )).toEqual(pendingTile);
+
+  const edgeTile = await page.evaluate(() =>
+    g_app.textModeEditor.tileSetManager.tilePickerPopup.tilePaletteDisplay
+      .getCharPaletteMap()[0][0],
+  );
+  await page.evaluate((tile) => {
+    g_app.textModeEditor.currentTile.setCharacters([[tile]]);
+  }, edgeTile);
+  await page.keyboard.press("/");
+  await expect(page.locator("#characterPickerCanvas")).toBeVisible();
+  await page.keyboard.press("ArrowLeft");
+  expect(await page.evaluate(() => {
+    const display = g_app.textModeEditor.tileSetManager.tilePickerPopup.tilePaletteDisplay;
+    return {
+      characters: display.getSelectedCharacters(),
+      grid: display.getSelectedCharactersGrid(),
+    };
+  })).toEqual({ characters: [edgeTile], grid: [[edgeTile]] });
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#characterPickerCanvas")).toBeHidden();
+
+  const colorNavigation = await page.evaluate(() => {
+    const editor = g_app.textModeEditor;
+    const map = editor.colorPaletteManager.getCurrentColorPalette().getCurrentColorMap();
+    const directions = [
+      { dx: 1, dy: 0, key: "ArrowRight", opposite: "ArrowLeft" },
+      { dx: -1, dy: 0, key: "ArrowLeft", opposite: "ArrowRight" },
+      { dx: 0, dy: 1, key: "ArrowDown", opposite: "ArrowUp" },
+      { dx: 0, dy: -1, key: "ArrowUp", opposite: "ArrowDown" },
+    ];
+    for(let y = 0; y < map.length; y++) {
+      for(let x = 0; x < map[y].length; x++) {
+        if(map[y][x] < 0) continue;
+        for(const direction of directions) {
+          const nextY = y + direction.dy;
+          const nextX = x + direction.dx;
+          if(map[nextY]?.[nextX] >= 0) {
+            editor.currentTile.setColor(map[y][x]);
+            editor.currentTile.setBGColor(map[y][x]);
+            return {
+              background: map[y][x],
+              foreground: map[y][x],
+              key: direction.key,
+              opposite: direction.opposite,
+              target: map[nextY][nextX],
+            };
+          }
+        }
+      }
+    }
+    throw new Error("The test palette has no adjacent colors");
+  });
+
+  await page.keyboard.press("Shift+Slash");
+  await expect(page.locator("#colorPickerCanvas")).toBeVisible();
+  await expect(page.locator("#colorPickerKeyboardHint"))
+    .toHaveText("Shift+Enter / Right-click BG");
+  await page.keyboard.press(colorNavigation.key);
+  expect(await page.evaluate(() =>
+    g_app.textModeEditor.colorPaletteManager.colorPicker.colorPaletteDisplay
+      .getHighlightColor(),
+  )).toBe(colorNavigation.target);
+  expect(await page.evaluate(() => ({
+    background: g_app.textModeEditor.currentTile.getBGColor(),
+    foreground: g_app.textModeEditor.currentTile.getColor(),
+  }))).toEqual({
+    background: colorNavigation.background,
+    foreground: colorNavigation.foreground,
+  });
+
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#colorPickerCanvas")).toBeHidden();
+  expect(await page.evaluate(() => ({
+    background: g_app.textModeEditor.currentTile.getBGColor(),
+    foreground: g_app.textModeEditor.currentTile.getColor(),
+  }))).toEqual({
+    background: colorNavigation.background,
+    foreground: colorNavigation.target,
+  });
+
+  await page.keyboard.press("Shift+Slash");
+  await expect(page.locator("#colorPickerCanvas")).toBeVisible();
+  const rightClickCell = await page.evaluate((color) => {
+    const display = g_app.textModeEditor.colorPaletteManager.colorPicker.colorPaletteDisplay;
+    const position = display.colorToGridXy(color);
+    return {
+      x: display.colorSpacing + position.x * (display.colorWidth + display.colorSpacing) + display.colorWidth / 2,
+      y: display.colorSpacing + position.y * (display.colorHeight + display.colorSpacing) + display.colorHeight / 2,
+    };
+  }, colorNavigation.target);
+  const colorCanvasBox = await page.locator("#colorPickerCanvas").boundingBox();
+  await page.mouse.click(
+    colorCanvasBox.x + rightClickCell.x,
+    colorCanvasBox.y + rightClickCell.y,
+    { button: "right" },
+  );
+  await expect(page.locator("#colorPickerCanvas")).toBeHidden();
+  expect(await page.evaluate(() => ({
+    background: g_app.textModeEditor.currentTile.getBGColor(),
+    foreground: g_app.textModeEditor.currentTile.getColor(),
+  }))).toEqual({
+    background: colorNavigation.target,
+    foreground: colorNavigation.target,
+  });
+
+  await page.keyboard.press("Shift+Slash");
+  await expect(page.locator("#colorPickerCanvas")).toBeVisible();
+  await page.keyboard.press(colorNavigation.opposite);
+  await page.keyboard.press("Shift+Enter");
+  await expect(page.locator("#colorPickerCanvas")).toBeHidden();
+  expect(await page.evaluate(() => ({
+    background: g_app.textModeEditor.currentTile.getBGColor(),
+    foreground: g_app.textModeEditor.currentTile.getColor(),
+  }))).toEqual({
+    background: colorNavigation.foreground,
+    foreground: colorNavigation.target,
+  });
+
+  await page.evaluate(() => {
+    const editor = g_app.textModeEditor;
+    const colorMap = editor.colorPaletteManager.getCurrentColorPalette().getCurrentColorMap();
+    const topRowColor = colorMap[0].find((color) => color >= 0);
+    window.__transparentKeyboardColor = null;
+    editor.colorPaletteManager.showColorPicker(100, 100, {
+      colorPickedCallback: (color) => {
+        window.__transparentKeyboardColor = color;
+      },
+      currentColor: topRowColor,
+      hasNone: true,
+    });
+  });
+  await expect(page.locator("#colorPickerCanvas")).toBeVisible();
+  await page.keyboard.press("ArrowUp");
+  expect(await page.evaluate(() =>
+    g_app.textModeEditor.colorPaletteManager.colorPicker.keyboardNoColorHighlighted,
+  )).toBe(true);
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#colorPickerCanvas")).toBeHidden();
+  expect(await page.evaluate(() => window.__transparentKeyboardColor)).toBe(-1);
+
+  await page.evaluate(() => {
+    const editor = g_app.textModeEditor;
+    window.__originalGetScreenMode = editor.getScreenMode;
+    editor.getScreenMode = () => TextModeEditor.Mode.C64STANDARD;
+  });
+  await page.keyboard.press("Shift+Slash");
+  await expect(page.locator("#colorPickerCanvas")).toBeVisible();
+  await expect(page.locator("#colorPickerKeyboardHint")).toBeHidden();
+  await page.keyboard.press(colorNavigation.opposite);
+  await page.keyboard.press("Shift+Enter");
+  await expect(page.locator("#colorPickerCanvas")).toBeVisible();
+  expect(await page.evaluate(() =>
+    g_app.textModeEditor.currentTile.getColor(),
+  )).toBe(colorNavigation.target);
+  const unsupportedColorCanvasBox = await page.locator("#colorPickerCanvas").boundingBox();
+  await page.mouse.click(
+    unsupportedColorCanvasBox.x + rightClickCell.x,
+    unsupportedColorCanvasBox.y + rightClickCell.y,
+    { button: "right" },
+  );
+  await expect(page.locator("#colorPickerCanvas")).toBeVisible();
+  expect(await page.evaluate(() =>
+    g_app.textModeEditor.colorPaletteManager.colorPicker.colorPaletteDisplay
+      .getSelectedColor(1),
+  )).toBe(-1);
+  await page.keyboard.press("Escape");
+  await page.evaluate(() => {
+    const editor = g_app.textModeEditor;
+    editor.getScreenMode = window.__originalGetScreenMode;
+    delete window.__originalGetScreenMode;
+  });
+});
+
 test("menu rebindings retire the legacy default accelerator", async ({ page }) => {
   await open2DProject(page);
   const modifier = await page.evaluate(() => UI.os === "Mac OS" ? "Meta" : "Control");

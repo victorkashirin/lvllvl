@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+### Added
+
+- Add arrow-key navigation to the tile and color picker popups, with Enter to
+  choose a tile or foreground color, Shift+Enter for supported background-color
+  modes, right-click background-color selection, and layered high-contrast
+  selection outlines—including the current-tile selector—that remain clear
+  across tile colors.
+
+### Fixed
+
+- Give selected colors in the sidebar palette a contrasting black-and-gold
+  outline instead of a heavy solid-yellow border.
+
 ## 0.498.1 - 2026-09-10
 
 ### Added

@@ -1533,6 +1533,7 @@ GridView2d.prototype = {
     }
 
     args.mode = 'grid';
+    args.selectedGrid = this.editor.currentTile.getCharacters();
     var x = this.mousePageX - 20;
     var y = this.mousePageY - 20;
 
@@ -1545,6 +1546,26 @@ GridView2d.prototype = {
     var args = {};
     args.colorPickedCallback = function(color) {
       _this.editor.currentTile.setColor(color);
+    }
+
+    var screenMode = this.editor.getScreenMode();
+    if(screenMode == TextModeEditor.Mode.C64ECM) {
+      args.secondaryColorPickedCallback = function(color) {
+        var index = _this.editor.currentTile.getBGColor();
+        if(index === _this.editor.colorPaletteManager.noColor) {
+          index = 0;
+        }
+        _this.editor.setC64ECMColor(index, color);
+        _this.editor.currentTile.setBGColor(index, { force: true });
+      }
+    } else if(screenMode != TextModeEditor.Mode.C64STANDARD &&
+        screenMode != TextModeEditor.Mode.C64MULTICOLOR &&
+        screenMode != TextModeEditor.Mode.NES &&
+        screenMode != TextModeEditor.Mode.INDEXED &&
+        screenMode != TextModeEditor.Mode.RGB) {
+      args.secondaryColorPickedCallback = function(color) {
+        _this.editor.currentTile.setBGColor(color);
+      }
     }
 
     var x = this.mousePageX - 20;

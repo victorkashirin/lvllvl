@@ -12,6 +12,7 @@ var TilePickerPopup = function() {
   this.highlightedCharacter = false;
 
   this.characterPickedCallback = null;
+  this.mouseUpCallback = null;
 
   this.tilePickerCanvas = null;
   this.canvasSurface = null;
@@ -27,6 +28,7 @@ TilePickerPopup.prototype = {
   resetProjectState: function() {
     this.highlightedCharacter = false;
     this.characterPickedCallback = null;
+    this.mouseUpCallback = null;
     if(this.tilePaletteDisplay && typeof this.tilePaletteDisplay.resetProjectState == 'function') {
       this.tilePaletteDisplay.resetProjectState();
     }
@@ -49,12 +51,18 @@ TilePickerPopup.prototype = {
     
 
     this.uiComponent.on('keydown', function(event) {
-      _this.editor.keyDown(event);
-      _this.tilePaletteDisplay.draw({ redrawTiles: true });
+      if(!_this.keyDown(event)) {
+        _this.editor.keyDown(event);
+        _this.tilePaletteDisplay.draw({ redrawTiles: true });
+      }
 
     });
 
     this.uiComponent.on('keyup', function(event) {
+      if(_this.isKeyboardSelectionKey(event.key)) {
+        event.preventDefault();
+        return;
+      }
       _this.editor.keyUp(event);
       _this.tilePaletteDisplay.draw({ redrawTiles: true });
 
@@ -66,10 +74,71 @@ TilePickerPopup.prototype = {
 
   },
 
+  isKeyboardSelectionKey: function(key) {
+    return key === 'ArrowLeft' || key === 'ArrowRight' ||
+      key === 'ArrowUp' || key === 'ArrowDown' ||
+      key === 'Enter' || key === 'Escape';
+  },
+
+  keyDown: function(event) {
+    var dx = 0;
+    var dy = 0;
+    switch(event.key) {
+      case 'ArrowLeft':
+        dx = -1;
+      break;
+      case 'ArrowRight':
+        dx = 1;
+      break;
+      case 'ArrowUp':
+        dy = -1;
+      break;
+      case 'ArrowDown':
+        dy = 1;
+      break;
+      case 'Enter':
+        var selection = {
+          characters: this.tilePaletteDisplay.getSelectedCharacters(),
+          grid: this.tilePaletteDisplay.getSelectedCharactersGrid()
+        };
+        if(selection.characters.length > 0) {
+          if(this.mode === 'single' && this.characterPickedCallback) {
+            this.characterPickedCallback(selection.characters[0]);
+          } else if(this.mouseUpCallback) {
+            this.mouseUpCallback(event, selection);
+          }
+          UI.hidePopup();
+        }
+        event.preventDefault();
+        return true;
+      case 'Escape':
+        UI.hidePopup();
+        event.preventDefault();
+        return true;
+      default:
+        return false;
+    }
+
+    var characterSelectedCallback = this.tilePaletteDisplay.characterSelectedCallback;
+    if(this.mode === 'single') {
+      this.tilePaletteDisplay.characterSelectedCallback = false;
+    }
+    this.tilePaletteDisplay.moveSelection(dx, dy);
+    this.tilePaletteDisplay.characterSelectedCallback = characterSelectedCallback;
+    this.tilePaletteDisplay.scrollSelectionIntoView();
+    var characters = this.tilePaletteDisplay.getSelectedCharacters();
+    if(characters.length > 0) {
+      this.updateInfo(characters[0]);
+    }
+    event.preventDefault();
+    return true;
+  },
+
   updateInfo: function(character) {
     var html = '';
     html += 'Tile: ';
     html += character;
+    html += ' &middot; Enter to select';
 
     var hex = character.toString(16);
     if(hex.length == 1) {
@@ -107,8 +176,13 @@ TilePickerPopup.prototype = {
     var _this = this;
 
     this.characterPickedCallback = null;
+    this.mouseUpCallback = null;
     if(typeof args.characterPickedCallback != 'undefined') {
       this.characterPickedCallback = args.characterPickedCallback;
+    }
+
+    if(typeof args.mouseUp != 'undefined') {
+      this.mouseUpCallback = args.mouseUp;
     }
 
     if(typeof args.mode != 'undefined') {
@@ -147,19 +221,32 @@ TilePickerPopup.prototype = {
       }
     }
 
-    if(typeof args.mouseUp != 'undefined') {
-      this.tilePaletteDisplay.on('mouseup', function(event) {
+    this.tilePaletteDisplay.on('mouseup', function(event) {
+      if(_this.mouseUpCallback) {
         var selection = {};
         selection.characters = _this.tilePaletteDisplay.getSelectedCharacters();
         selection.grid = _this.tilePaletteDisplay.getSelectedCharactersGrid();
 
-        args.mouseUp(event, selection);
-      });
-    }
+        _this.mouseUpCallback(event, selection);
+      }
+    });
 
     // need to call init in case character set has changed.
     var mapType = this.editor.tools.drawTools.tilePalette.getTilePaletteMapType();
     this.tilePaletteDisplay.initCharPalette({ "mapType": mapType });
+
+    if(this.mode === 'grid') {
+      var selectedGrid = args.selectedGrid;
+      if(typeof selectedGrid === 'undefined' && this.editor.currentTile) {
+        selectedGrid = this.editor.currentTile.getCharacters();
+      }
+      this.tilePaletteDisplay.clearSelectedGridCells();
+      this.tilePaletteDisplay.setSelectedGrid(selectedGrid || []);
+      var selectedCharacters = this.tilePaletteDisplay.getSelectedCharacters();
+      if(selectedCharacters.length > 0) {
+        this.updateInfo(selectedCharacters[0]);
+      }
+    }
     this.tilePaletteDisplay.draw({ "redrawTiles": true });
 
     var paletteDimensions = this.tilePaletteDisplay.getContentDimensions();

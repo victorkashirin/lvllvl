@@ -90,6 +90,7 @@ test("GlyphPreview renders vectors physically and redraws on a DPR revision", ()
   const preview = new UI.GlyphPreview(canvas);
   preview.resize(19, 17);
   const draws = [];
+  const overlays = [];
   const tileSet = {
     getType: () => "vector",
     getTileWidth: () => 8,
@@ -104,8 +105,10 @@ test("GlyphPreview renders vectors physically and redraws on a DPR revision", ()
     character: 9,
     backgroundColor: "#222",
     destinationCss: { x: 2, y: 3, width: 8, height: 10 },
+    afterDraw: ({ destination }) => overlays.push({ ...destination }),
   });
   assert.deepEqual(draws[0], { x: 2.5, y: 3.75, scale: 1.25 });
+  assert.deepEqual(overlays[0], { x: 2.5, y: 3.75, width: 10, height: 12.5 });
   assert.equal(blits.length, 0, "vectors render directly into the backing surface");
 
   UI.devicePixelRatio = 1.5;
@@ -114,4 +117,5 @@ test("GlyphPreview renders vectors physically and redraws on a DPR revision", ()
   assert.equal(canvas.width, 29);
   assert.equal(canvas.height, 26);
   assert.deepEqual(draws[1], { x: 3, y: 4.5, scale: 1.5 });
+  assert.deepEqual(overlays[1], { x: 3, y: 4.5, width: 12, height: 15 });
 });

@@ -271,12 +271,17 @@ var styles = {
   },
 
   tilePalette: {
-    selectOutline: '#1ea0ff',
+    selectOutline: '#FFD400',
+    selectOutlineContrast: '#000000',
     highlightOutline: '#888888'
   },
 
   colorPalette: {
-    highlightOutline: '#ff0000'
+    highlightOutline: '#ff0000',
+    selectionOutline: '#FFD400',
+    selectionContrast: '#000000',
+    keyboardHighlightOutline: '#FFD400',
+    keyboardHighlightContrast: '#000000'
   },
 
   music: {
