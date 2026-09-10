@@ -86,6 +86,10 @@ TileSetImport.prototype = {
       document: this.projectDocument,
       generation: this.projectGeneration
     };
+    if(context.document === null) {
+      return typeof context.generation != 'undefined' &&
+        g_app.doc === null && context.generation === g_app.projectGeneration;
+    }
     return !!context.document && (!g_app.isCurrentProject ||
       g_app.isCurrentProject(context.document, context.generation));
   },

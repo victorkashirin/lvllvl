@@ -29,6 +29,10 @@ TileSetChoosePreset.prototype = {
   },
 
   isCurrentProject: function() {
+    if(this.projectDocument === null) {
+      return typeof this.projectGeneration != 'undefined' &&
+        g_app.doc === null && this.projectGeneration === g_app.projectGeneration;
+    }
     return !!this.projectDocument && (!g_app.isCurrentProject ||
       g_app.isCurrentProject(this.projectDocument, this.projectGeneration));
   },
