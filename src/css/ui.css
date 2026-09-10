@@ -850,6 +850,19 @@ input[type=radio] {
 
 }
 
+.ui-message-dialog-message {
+  align-items: center;
+  box-sizing: border-box;
+  color: var(--text-primary, #dddddd);
+  display: flex;
+  inset: 0;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  padding: 10px 12px;
+  position: absolute;
+  white-space: pre-wrap;
+}
+
 .ui-splitpanel-northresize,
 .ui-splitpanel-southresize {
   position: absolute;

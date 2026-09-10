@@ -12,6 +12,7 @@ import { createDisabledRemoteProviders } from "./modules/feature-adapters/legacy
 import { createLegacySvgExportPort } from "./modules/feature-adapters/legacySvgExportAdapter.mjs";
 import { createOklchColorControl } from "./modules/feature-adapters/oklchColorControl.mjs";
 import { createKeyboardShortcutsDialog } from "./modules/feature-adapters/keyboardShortcutsDialog.mjs";
+import { installMessageDialog } from "./modules/feature-adapters/messageDialog.mjs";
 import { createLegacyCommandCatalogAdapter } from "./modules/feature-adapters/legacyCommandCatalogAdapter.mjs";
 import { registerNativeEditorCommands } from "./modules/feature-adapters/nativeEditorCommands.mjs";
 import { createShortcutContextProvider } from "./modules/feature-adapters/shortcutContextProvider.mjs";
@@ -25,6 +26,11 @@ const legacy = /** @type {any} */ (globalThis);
 const featureRegistry = new FeatureRegistry();
 const clock = () => Date.now();
 const createId = () => globalThis.generateUUID();
+const showAlert = installMessageDialog({
+  document: globalThis.document,
+  UI: legacy.UI,
+  window: globalThis,
+});
 
 /** @type {Storage | null} */
 let shortcutBrowserStorage = null;
@@ -130,7 +136,7 @@ const featureHost = Object.freeze({
   isMobile: () => app.isMobile(),
   reportError: (/** @type {string} */ operation, /** @type {unknown} */ error) =>
     app.reportFeatureError(operation, error),
-  showAlert: (/** @type {string} */ message) => legacy.alert(message),
+  showAlert,
 });
 
 const imageImport = featureRegistry.register(

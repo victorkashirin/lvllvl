@@ -33,7 +33,7 @@ ExportC64Dialog.prototype = {
     }
 
     if(this.uiComponent == null) {
-      this.uiComponent = UI.create("UI.Dialog", { "id": "toC64Dialog", "title": "Export C64", "width": 640 });
+      this.uiComponent = UI.create("UI.Dialog", { "id": "toC64Dialog", "title": "Export C64 Player Source / PRG", "width": 640 });
 
       this.htmlComponent = UI.create("UI.HTMLPanel");
       this.uiComponent.add(this.htmlComponent);
@@ -171,15 +171,6 @@ ExportC64Dialog.prototype = {
       var y = event.pageY;
       args.currentColor = _this.monochromeColor;
       _this.editor.colorPaletteManager.showColorPicker(x, y, args);
-    });
-
-    $('#exportC64Type').on('change', function(event) {
-      var value = $(this).val();
-      if(value == 'd64') {
-        $('#exportC64D64Options').show();
-      } else {
-        $('#exportC64D64Options').hide();        
-      }
     });
 
     $('#exportC64Music').on('change', function(event) {
@@ -325,16 +316,7 @@ ExportC64Dialog.prototype = {
     }
 
     args.layers = $('input[name=exportC64Layer]:checked').val();
-    args.type = $('#exportC64Type').val();
-
-    if(args.type == 'd64') {
-      args.diskName = $('#exportC64DiskName').val();
-      args.prgName = $('#exportC64Name').val();
-    }
-
-    if(type == 'source') {
-      args.type = 'source';
-    }
+    args.type = type;
 
     var layer = this.editor.layers.getSelectedLayerObject();
     if(!layer || layer.getType() != 'grid') {

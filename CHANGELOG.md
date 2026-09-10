@@ -12,6 +12,12 @@
 
 ### Fixed
 
+- Move the legacy GIF/video and experimental C64 source exporters from the
+  Interface menu to their matching Export sections, and remove the unsupported
+  D64 option from the experimental C64 exporter while making its downloads
+  respect the requested filename.
+- Replace native browser alert dialogs with queued, keyboard-accessible modals
+  that match the rest of the application.
 - Make Tab toggle artwork preview mode until the next press instead of showing
   the preview only while the key is held.
 - Align the image/video import transform controls and widen their scale and

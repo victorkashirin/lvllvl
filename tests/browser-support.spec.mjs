@@ -89,6 +89,40 @@ async function open2DProject(page, testInfo, { vector = false } = {}) {
   )).toBe(true);
 }
 
+test("application alerts use the styled modal and preserve queued messages", async ({ page }) => {
+  await page.route(/^https:\/\//, (route) =>
+    route.fulfill({ body: "", contentType: "application/javascript", status: 200 }),
+  );
+  await page.goto("/", { waitUntil: "domcontentloaded" });
+  await waitForStableStartPage(
+    page,
+    browserPolicy.performanceBudgets.startupMilliseconds,
+  );
+
+  await page.evaluate(() => {
+    window.alert('<img src=x onerror="window.__alertInjected=true">\nFirst message');
+    window.__secondAlertClosed = false;
+    UI.alert("Second message", { title: "Export failed" }).then(() => {
+      window.__secondAlertClosed = true;
+    });
+  });
+
+  const alertDialog = page.getByRole("alertdialog");
+  await expect(alertDialog).toBeVisible();
+  await expect(alertDialog).toContainText('<img src=x onerror="window.__alertInjected=true">');
+  await expect(alertDialog.locator("img")).toHaveCount(1);
+  expect(await page.evaluate(() => window.__alertInjected)).toBeUndefined();
+
+  await page.keyboard.press("Enter");
+  await expect(alertDialog).toContainText("Second message");
+  await expect(alertDialog.getByRole("heading")).toHaveText("Export failed");
+  expect(await page.evaluate(() => window.__secondAlertClosed)).toBe(false);
+
+  await page.keyboard.press("Escape");
+  await expect(alertDialog).toBeHidden();
+  await expect.poll(() => page.evaluate(() => window.__secondAlertClosed)).toBe(true);
+});
+
 test("form controls keep their dark theme across supported browsers", async ({ page }, testInfo) => {
   await page.route(/^https:\/\//, (route) =>
     route.fulfill({ body: "", contentType: "application/javascript", status: 200 }),

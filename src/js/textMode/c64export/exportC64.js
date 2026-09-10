@@ -2036,7 +2036,7 @@ ExportC64.prototype = {
     if(type != 'source') {
       this.assemble(args);
     } else {
-      this.downloadZip();
+      this.downloadZip(args);
     }
 
 
@@ -2045,7 +2045,7 @@ ExportC64.prototype = {
 
   },
 
-  downloadZip: function() {
+  downloadZip: function(args) {
     console.log('download zip!');
     console.log(this.files);
 
@@ -2054,6 +2054,12 @@ ExportC64.prototype = {
 
     var files = this.files
     var projectFilename = 'source';
+    if(typeof args.filename == 'string' && args.filename.trim() != '') {
+      projectFilename = args.filename.trim();
+    }
+    if(/\.zip$/i.test(projectFilename)) {
+      projectFilename = projectFilename.substring(0, projectFilename.length - 4);
+    }
 
     for(var i = 0; i < files.length; i++) {
       var type = 'file';
@@ -2187,9 +2193,12 @@ ExportC64.prototype = {
     g_app.assemblerEditor.assemble(function(results) {
 //      console.log('done');
 //      console.log(results);
-      var filename = 'output.prg';
+      var filename = 'output';
+      if(typeof args.filename == 'string' && args.filename.trim() != '') {
+        filename = args.filename.trim();
+      }
 
-      if(filename.indexOf('.prg') == -1) {
+      if(!/\.prg$/i.test(filename)) {
         filename += ".prg";
       }
       download(results.prg, filename, "application/prg");   

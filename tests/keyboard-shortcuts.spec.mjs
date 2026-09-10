@@ -567,6 +567,45 @@ test("menu rebindings retire the legacy default accelerator", async ({ page }) =
   expect(await page.evaluate(() => window.__shortcutCopyImageCount)).toBe(1);
 });
 
+test("export commands use Export attribution and current labels in shortcut settings", async ({ page }) => {
+  await open2DProject(page);
+  await openShortcutSettings(page);
+
+  const shortcutPresentation = await page.evaluate(() => {
+    const presentationFor = (commandId) => {
+      const row = document.querySelector(`tr[data-command-id="${commandId}"]`);
+      let group = row?.previousElementSibling;
+      while (group && !group.classList.contains("keyboard-shortcuts-group")) {
+        group = group.previousElementSibling;
+      }
+      return {
+        category: group?.querySelector(".keyboard-shortcuts-group-function")?.textContent,
+        title: row?.querySelector(".keyboard-shortcuts-command-title")?.textContent,
+      };
+    };
+
+    return {
+      c64: presentationFor("export.c64"),
+      gif: presentationFor("export.gif"),
+    };
+  });
+
+  expect(shortcutPresentation).toEqual({
+    c64: {
+      category: "Export",
+      title: "C64 Player Source / PRG (experimental)...",
+    },
+    gif: {
+      category: "Export",
+      title: "GIF / Video (legacy)...",
+    },
+  });
+  await expect(page.locator("#keyboardShortcutsRoot"))
+    .not.toContainText("Export C64 (new)...");
+  await expect(page.locator("#keyboardShortcutsRoot"))
+    .not.toContainText("Export GIF / Video (old version)...");
+});
+
 test("shortcut settings replace conflicts and drive the editor from one binding", async ({ page }) => {
   const pageErrors = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));

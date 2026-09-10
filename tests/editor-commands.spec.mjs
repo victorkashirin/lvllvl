@@ -61,6 +61,108 @@ test("landing page and About show plus release information", async ({ page }) =>
   })).toHaveAttribute("href", "https://github.com/victorkashirin/lvllvl");
 });
 
+test("export variants live in Export and advertise their actual capabilities", async ({ page }) => {
+  await open2DProject(page);
+
+  const exportState = await page.evaluate(() => {
+    const tileMenu = (label) => g_app.menuBar.menus.find((menu) =>
+      menu.label === label && menu.className.split(/\s+/).includes("ui-menu-tilemode"));
+    const labels = (label) => tileMenu(label).menuItems
+      .filter((item) => item.type !== "separator")
+      .map((item) => item.label);
+    const commands = g_app.services.commands.getCommands();
+
+    return {
+      commands: ["export.gif", "export.c64"].map((id) => {
+        const command = commands.find((candidate) => candidate.id === id);
+        return { category: command.category, id: command.id, title: command.title };
+      }),
+      menus: {
+        export: labels("Export"),
+        interface: labels("Interface"),
+      },
+    };
+  });
+  const menuItems = exportState.menus;
+
+  expect(menuItems.export).toEqual(expect.arrayContaining([
+    "GIF / PNG...",
+    "GIF / Video (legacy)...",
+    "C64 PRG / D64...",
+    "C64 Player Source / PRG (experimental)...",
+  ]));
+  expect(menuItems.interface).not.toEqual(expect.arrayContaining([
+    "GIF / Video (legacy)...",
+    "C64 Player Source / PRG (experimental)...",
+  ]));
+  expect(menuItems.export.indexOf("GIF / Video (legacy)..."))
+    .toBe(menuItems.export.indexOf("GIF / PNG...") + 1);
+  expect(menuItems.export.indexOf("C64 Player Source / PRG (experimental)..."))
+    .toBe(menuItems.export.indexOf("C64 PRG / D64...") + 1);
+  expect(exportState.commands).toEqual([
+    {
+      category: "Export",
+      id: "export.gif",
+      title: "GIF / Video (legacy)...",
+    },
+    {
+      category: "Export",
+      id: "export.c64",
+      title: "C64 Player Source / PRG (experimental)...",
+    },
+  ]);
+
+  await page.evaluate(() => g_app.menuClick("export-gif"));
+  const gifDialog = page.locator(".ui-dialog:visible").filter({
+    hasText: "Export GIF / Video (legacy)",
+  }).last();
+  await expect(gifDialog).toBeVisible();
+  await expect(gifDialog.locator('input[name="exportGIFFormat"][value="video"]'))
+    .toHaveCount(1);
+  await page.evaluate(() => UI.closeDialog());
+
+  await page.evaluate(() => g_app.menuClick("export-c64"));
+  const c64Dialog = page.locator(".ui-dialog:visible").filter({
+    hasText: "Export C64 Player Source / PRG",
+  }).last();
+  await expect(c64Dialog).toBeVisible();
+  await expect(c64Dialog.locator("#exportC64As")).toBeVisible();
+  await expect(c64Dialog.locator("#exportC64DownloadSource")).toHaveCount(1);
+  await expect(c64Dialog.locator("#exportC64DownloadPRG")).toHaveCount(1);
+  await expect(c64Dialog.locator("#exportC64Type, #exportC64D64Options"))
+    .toHaveCount(0);
+
+  const filenames = await page.evaluate(async () => {
+    const c64Exporter = g_app.textModeEditor.exportC64.exportC64;
+    const originalAssemble = g_app.assemblerEditor.assemble;
+    const originalDownload = window.download;
+    const downloads = [];
+
+    try {
+      await new Promise((resolve, reject) => {
+        const timeout = window.setTimeout(() => reject(new Error("Timed out waiting for exports")), 5000);
+        window.download = (_data, filename) => {
+          downloads.push(filename);
+          if (downloads.length === 2) {
+            window.clearTimeout(timeout);
+            resolve();
+          }
+        };
+        g_app.assemblerEditor.assemble = (callback) => callback({ prg: new Uint8Array([0]) });
+        c64Exporter.files = [];
+        c64Exporter.downloadZip({ filename: "player-source.zip" });
+        c64Exporter.assemble({ filename: "player-build" });
+      });
+    } finally {
+      g_app.assemblerEditor.assemble = originalAssemble;
+      window.download = originalDownload;
+    }
+
+    return downloads.sort();
+  });
+  expect(filenames).toEqual(["player-build.prg", "player-source.zip"]);
+});
+
 test("fractional-DPR tile input and every undo surface share classic history", async ({ page }) => {
   await open2DProject(page);
 

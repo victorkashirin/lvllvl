@@ -11,8 +11,8 @@
       "sha256": "dc7fbd8a4136473b3b89e973b9316626b0cb3845a1a2fb70f3e5651d90e57f4a"
     },
     "css/style.css": {
-      "bytes": 135416,
-      "sha256": "494743fd1f6878899a78043cd1e0a1e6cc686339544339be4c21e20c31f1a3d1"
+      "bytes": 135967,
+      "sha256": "000ef3a56c2a8e5ced3895df6b0f1f20646d1f30d25795d04dbe0e51d4dfc496"
     },
     "fonts/glyphicons-halflings-regular.woff2": {
       "bytes": 20188,
@@ -27,16 +27,16 @@
       "sha256": "f6e20ce93d4c5e5a0fe109bd3a07dc51e482ba8700c4ef7468bbc0839d2872b8"
     },
     "js/main.js": {
-      "bytes": 3425121,
-      "sha256": "b58aac74d52593f6a544d8d1e76b2bfb9f81edf927fbac02b355b3170ed2610f"
+      "bytes": 3434538,
+      "sha256": "2f7285b218e317d0eadde8f5a18c0ed21a66493ee65fac7d69e69479da8bc276"
     },
     "js/main.js.map": {
-      "bytes": 10848743,
-      "sha256": "fa91855e4c4b071fc08372ee5a05857e09e2ea7457c0b47bbd87521ac12cbd92"
+      "bytes": 10874267,
+      "sha256": "ed9ad64b8dac5d2bd5823f2bc5fd3696ce9003ac05ca3e14ab5f83d33be04b23"
     },
     "js/bootstrap.mjs": {
-      "bytes": 8151,
-      "sha256": "0f0e7ce1e3a2701b38275e6c41af4bf25218276f7ae5824e74bcddcfc4346eae"
+      "bytes": 8305,
+      "sha256": "25b06cc6c2491d76a8fe74684675f8e1b8c24d7a9d9dd1758356a6c4cef0f772"
     },
     "js/modules/application/commandService.mjs": {
       "bytes": 74446,
@@ -59,8 +59,8 @@
       "sha256": "edf8e490574850373e5e2f3b305c4420e5b1ad9ef032158103e708cf1ed3130d"
     },
     "js/modules/domain/editorCommandDefinitions.mjs": {
-      "bytes": 10792,
-      "sha256": "9b1d7176221523eef5b7d2fefc41e3734383f16f4132614408098592a9b667f7"
+      "bytes": 10802,
+      "sha256": "cb70f3be9bc7e79bfcced40df2e201363d421cc3478a895d2ddea1e433a63b1a"
     },
     "js/modules/domain/keybindings.mjs": {
       "bytes": 30247,
@@ -102,9 +102,13 @@
       "bytes": 11031,
       "sha256": "02bc56cc2686e2b2f5e09844f51020d57fd20aa691178ffe72681d4877283384"
     },
+    "js/modules/feature-adapters/messageDialog.mjs": {
+      "bytes": 3215,
+      "sha256": "6717b510a123bd2bf1904cc9468c7d04edefe2477ddd347749c132b791ead667"
+    },
     "js/modules/feature-adapters/nativeEditorCommands.mjs": {
-      "bytes": 20919,
-      "sha256": "1362bc6d235d1af869037d5e3e6550673355812b46a5b678d2444fe7fb044b3b"
+      "bytes": 20885,
+      "sha256": "2335305e94cc8ec5dba67694b3345ee80f449854f4193c6177cb18d3253f1031"
     },
     "js/modules/feature-adapters/oklchColorControl.mjs": {
       "bytes": 3719,
@@ -139,8 +143,8 @@
       "sha256": "2ab71fe16867ae034937a337627924ef72c1aec9e19facc172c38e2a84a11d86"
     },
     "js/html/htmlcache.js": {
-      "bytes": 383541,
-      "sha256": "4ec92913d5d7b93cb784e13a22b910376be81688857cd95c19e034d6cfa3a230"
+      "bytes": 382811,
+      "sha256": "907a645460e7eb8c20f90a33eda9ca2d3f0063c801e3bb664ddb9f1b10788cfb"
     }
   }
 }

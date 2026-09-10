@@ -477,6 +477,7 @@ export const moduleGraph = {
     "js/modules/feature-adapters/imageImportCoordinator.mjs",
     "js/modules/feature-adapters/imageImportFeature.mjs",
     "js/modules/feature-adapters/keyboardShortcutsDialog.mjs",
+    "js/modules/feature-adapters/messageDialog.mjs",
     "js/modules/feature-adapters/legacyCommandCatalogAdapter.mjs",
     "js/modules/feature-adapters/nativeEditorCommands.mjs",
     "js/modules/feature-adapters/shortcutContextProvider.mjs",

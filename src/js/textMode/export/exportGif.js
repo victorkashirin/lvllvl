@@ -239,7 +239,7 @@ ExportGif.prototype = {
     this.editor.frames.setShowPrevFrame(false);
 
     if(this.uiComponent == null) {
-      this.uiComponent = UI.create("UI.Dialog", { "id": "exportGifDialog", "title": "Export GIF", "width": 734, "height": 626 });
+      this.uiComponent = UI.create("UI.Dialog", { "id": "exportGifDialog", "title": "Export GIF / Video (legacy)", "width": 734, "height": 626 });
 
       this.splitPanel = UI.create("UI.SplitPanel", { "id": "exportGifSplitPanel" });
       this.uiComponent.add(this.splitPanel);

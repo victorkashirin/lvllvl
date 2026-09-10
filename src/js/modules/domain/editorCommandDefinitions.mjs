@@ -53,9 +53,11 @@ const definitions = Object.freeze([
   ]),
   ...commandGroup("Export", [
     ["export.image", "GIF / PNG...", "export-image"],
+    ["export.gif", "GIF / Video (legacy)...", "export-gif"],
     ["export.png", "Sprite Sheet (PNG)...", "export-png"],
     ["export.svg", "SVG...", "export-svg"],
     ["export.prg", "C64 PRG / D64...", "export-prg"],
+    ["export.c64", "C64 Player Source / PRG (experimental)...", "export-c64"],
     ["export.c64assembly", "C64 Assembly Source...", "export-c64assembly"],
     ["export.mega65assembly", "Mega65 Assembly Source...", "export-mega65assembly"],
     ["export.x16assembly", "X16 Assembly Source...", "export-x16assembly"],
@@ -155,8 +157,6 @@ const definitions = Object.freeze([
     ["view.metatilepalettepanelbottom", "Meta Tile Palette Panel Bottom", "view-metatilepalettepanelbottom"],
     ["view.animationpanel", "Animation Panel", "view-animationpanel"],
     ["view.performanceStats", "Performance Stats", "view-perfstats"],
-    ["export.gif", "Export GIF / Video (old version)...", "export-gif"],
-    ["export.c64", "Export C64 (new)...", "export-c64"],
     ["settings.mobilemode", "Mobile Mode", "settings-mobilemode"],
   ]),
   ...commandGroup("Help", [

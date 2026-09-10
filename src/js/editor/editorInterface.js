@@ -202,6 +202,7 @@ main split panel north is menu
       menu = _this.menuBar.addMenu({"label": "Export", "className": 'ui-menu-tilemode' });
       menu.addSeparator({ "label": "Visual Formats" });
       menu.addItem({ "label": "GIF / PNG...", "id": "export-image", "commandId": "export.image" });
+      menu.addItem({ "label": "GIF / Video (legacy)...", "id": "export-gif", "commandId": "export.gif" });
 
       menu.addItem({ "label": "Sprite Sheet (PNG)...", "id": "export-png", "commandId": "export.png" });
 
@@ -211,6 +212,7 @@ main split panel north is menu
 
       menu.addSeparator({ "label": "C64 Formats" });
       menu.addItem({ "label": "C64 PRG / D64...", "id": "export-prg", "commandId": "export.prg" });
+      menu.addItem({ "label": "C64 Player Source / PRG (experimental)...", "id": "export-c64", "commandId": "export.c64" });
 
       menu.addItem({ "label": "C64 Assembly Source" + "...", "id": "export-c64assembly", "commandId": "export.c64assembly" });
       menu.addItem({ "label": "Mega65 Assembly Source" + "...", "id": "export-mega65assembly", "commandId": "export.mega65assembly" });
@@ -460,9 +462,6 @@ main split panel north is menu
 
       menu.addSeparator({  });
       menu.addItem({ "label": "Perf Stats", "id": "view-perfstats", "commandId": "view.performanceStats" });
-      menu.addSeparator({  });
-      menu.addItem({ "label": "Export GIF / " + "Video (old version)" + "...", "id": "export-gif", "commandId": "export.gif" });
-      menu.addItem({ "label": "Export C64 (new)...", "id": "export-c64", "commandId": "export.c64" });
       menu.addSeparator({  });
       menu.addItem({ "label": "Mobile Mode", "id": "settings-mobilemode", "commandId": "settings.mobilemode" });
 
