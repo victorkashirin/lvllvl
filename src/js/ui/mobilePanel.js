@@ -44,6 +44,7 @@ UI.MobilePanel = function(args) {
 
     this.components = new Array();
     this.buttons = new Array();
+    this.isOpen = false;
 
     this.closeButton = UI.create("UI.Button", {"imageSrc": "icons/svg/glyphicons-basic-599-menu-close.svg", "imageAlt": "Close", "text": "", "style": "padding: 1px 4px", "cssclass": "ui-dialog-close-button" });
 
@@ -343,6 +344,8 @@ UI.MobilePanel = function(args) {
    * @method show
    */
   this.show = function() {
+    if(this.isOpen) return false;
+    this.isOpen = true;
     $('#' + this.id  + '-background').css('z-index', g_dialogZIndex);
 
     $('#' + this.id + '-background').fadeIn(1000);
@@ -386,7 +389,8 @@ UI.MobilePanel = function(args) {
       $('#' + this.id).css('left', this.left + 'px');
     }
 
-    g_dialogStack.push(this);    
+    g_dialogStack.push(this);
+    return true;
   }
 
   /**
@@ -395,6 +399,8 @@ UI.MobilePanel = function(args) {
    * @method close
    */
   this.close = function() {
+    if(!this.isOpen) return false;
+    this.isOpen = false;
 
     var _this = this;
     // Consumers that bridge this animated component to an application
@@ -419,14 +425,14 @@ UI.MobilePanel = function(args) {
       $('#' + this.id + '-background').hide();
     }
 
-    g_dialogZIndex -= 2;
-    g_dialogStack.pop();
+    removeDialogFromLegacyStack(this);
 
 /*
     var id = this.id;
     $('#' + id).remove();
 */
 
+    return true;
   }
 }
 

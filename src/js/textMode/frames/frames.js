@@ -208,13 +208,15 @@ Frames.prototype = {
 
 
     $('#frameDuration').on('change', function() {
-      var duration = parseInt($('#frameDuration').val());
-      _this.setFrameDuration(duration);
+      var duration = $('#frameDuration').val();
+      if(!_this.setFrameDuration(duration)) {
+        _this.updateFrameDuration();
+      }
     });
 
     $('#frameDuration').on('keyup', function() {
-      var duration = parseInt($('#frameDuration').val());
-      if(!isNaN(duration)) {
+      var duration = $('#frameDuration').val();
+      if(duration !== '') {
         _this.setFrameDuration(duration);
       }
     });
@@ -267,6 +269,8 @@ Frames.prototype = {
     $('#playMode').on('change', function(){
       _this.setPlayMode($(this).val());
     });
+
+    this.syncFrameControls();
   },
 
   insertFrame: function(frame, duration, frameData, layerFrameData) {
@@ -301,6 +305,12 @@ Frames.prototype = {
   
 
   deleteFrame: function(frame) {
+    if(this.getFrameState().frameCount <= 1) {
+      this.syncFrameControls();
+      return false;
+    }
+
+    var deleted = false;
 
     if(g_app.getMode() != '3d') {
 
@@ -310,6 +320,7 @@ Frames.prototype = {
       }
 
       if(this.editor.graphic.deleteFrame(currentFrame)) {
+        deleted = true;
         if(currentFrame > 0) {
           currentFrame--;
 
@@ -320,8 +331,6 @@ Frames.prototype = {
           this.editor.graphic.redraw();
           this.gotoFrame(0);
         }
-      } else {
-        alert('Unable to delete frame');
       }
     } else {
       var currentFrame = this.editor.grid3d.getCurrentFrame();
@@ -329,6 +338,7 @@ Frames.prototype = {
         currentFrame = frame;
       }
       if(this.editor.grid3d.deleteFrame(currentFrame)) {
+        deleted = true;
         if(currentFrame > 0) {
           currentFrame--;
 
@@ -336,14 +346,14 @@ Frames.prototype = {
         } else {
           this.gotoFrame(0);
         }
-      } else {
-        alert('Unable to delete frame');
       }
 
 
     }
 
     this.frameTimeline.draw();
+    this.syncFrameControls();
+    return deleted;
 
   },
   
@@ -401,6 +411,7 @@ Frames.prototype = {
       _this.play();
     });
 
+    this.syncFrameControls();
   },
 
   buildInterface: function(parentComponent) {
@@ -416,6 +427,7 @@ Frames.prototype = {
     UI.on('ready', function() {
       _this.htmlComponent.load("html/textMode/frames.html", function() {
         _this.initEvents();
+        _this.syncFrameControls();
       });
     });
 
@@ -435,6 +447,7 @@ Frames.prototype = {
     UI.on('ready', function() {
       _this.mobileHtmlComponent.load("html/textMode/framesMobile.html", function() {
         _this.initEventsMobile();
+        _this.syncFrameControls();
       });
     });
 
@@ -917,6 +930,88 @@ Frames.prototype = {
   },
 */
 
+  getFrameState: function() {
+    var frameCount = 0;
+    var currentFrame = 0;
+
+    if(!this.editor) {
+      return { frameCount: frameCount, currentFrame: currentFrame };
+    }
+
+    if(g_app.getMode() == '3d') {
+      if(this.editor.grid3d) {
+        frameCount = this.editor.grid3d.getFrameCount();
+        currentFrame = this.editor.grid3d.getCurrentFrame();
+      }
+    } else if(this.editor.graphic) {
+      frameCount = this.editor.graphic.getFrameCount();
+      currentFrame = this.editor.graphic.getCurrentFrame();
+    }
+
+    return { frameCount: frameCount, currentFrame: currentFrame };
+  },
+
+  getPlayableFrameCount: function() {
+    var state = this.getFrameState();
+    var fromFrame = 0;
+    var toFrame = state.frameCount;
+
+    if(g_app.getMode() != '3d' && this.editor && this.editor.graphic &&
+        this.editor.graphic.getType() == 'sprite' && this.editor.animationPreview) {
+      var frameRanges = this.editor.graphic.getFrameRanges();
+      var selectedRange = this.editor.animationPreview.getFrameRange();
+      if(selectedRange !== '' && selectedRange >= 0 && selectedRange < frameRanges.length) {
+        fromFrame = frameRanges[selectedRange].start;
+        toFrame = frameRanges[selectedRange].end;
+      }
+    }
+
+    return Math.max(0, toFrame - fromFrame);
+  },
+
+  setFrameControlEnabled: function(selector, enabled) {
+    var control = $(selector);
+    control.toggleClass('ui-button-disabled', !enabled);
+    control.attr('aria-disabled', String(!enabled));
+    control.prop('disabled', !enabled);
+  },
+
+  syncPlayButton: function() {
+    var label = this.playFrames ? 'Pause animation' : 'Play animation';
+    var icon = this.playFrames ? 'pause' : 'play';
+    var text = this.playFrames ? 'Pause' : 'Play';
+
+    $('#playIcon').attr('class', 'halflings halflings-' + icon);
+    $('#playLabel').text(text);
+    $('#play')
+      .attr('aria-label', label)
+      .attr('aria-pressed', String(this.playFrames));
+    $('#playMobileIcon').attr('class', 'halflings halflings-' + icon);
+    $('#playMobile')
+      .attr('aria-label', label)
+      .attr('aria-pressed', String(this.playFrames));
+  },
+
+  syncFrameControls: function() {
+    var state = this.getFrameState();
+    var hasMultipleFrames = state.frameCount > 1;
+    var canPlay = this.getPlayableFrameCount() > 1;
+
+    if(!canPlay) {
+      this.playFrames = false;
+    }
+
+    this.setFrameControlEnabled('#play', canPlay);
+    this.setFrameControlEnabled('#playMobile', canPlay);
+    this.setFrameControlEnabled('#prevFrame', state.currentFrame > 0);
+    this.setFrameControlEnabled('#prevFrameMobile', state.currentFrame > 0);
+    this.setFrameControlEnabled('#nextFrame', state.currentFrame + 1 < state.frameCount);
+    this.setFrameControlEnabled('#nextFrameMobile', state.currentFrame + 1 < state.frameCount);
+    this.setFrameControlEnabled('#deleteFrame', hasMultipleFrames);
+    this.setFrameControlEnabled('#deleteFrameMobile', hasMultipleFrames);
+    this.syncPlayButton();
+  },
+
   updateFrameInfo: function() {
 
     var html = ' / ' + this.editor.graphic.frameCount;
@@ -928,6 +1023,7 @@ Frames.prototype = {
       html = frameNumber + ' / ' + this.editor.graphic.frameCount;
       $('#frameCountInfoMobile').html(html);
     }
+    this.syncFrameControls();
   },
 
   setFrameData: function(frame, frameData, z) {
@@ -1052,8 +1148,8 @@ Frames.prototype = {
     $('#currentFrame').val(userCurrentFrame);    
     $('#frameDuration').val(this.frames[frame].duration);
 
-
-return;
+    this.syncFrameControls();
+    return;
 
   },
 /*
@@ -1066,37 +1162,35 @@ return;
 */
 
   nextFrame: function() {
-    var currentFrame = false;
-    
-    if(g_app.getMode() != '3d') {
-      currentFrame = this.editor.graphic.getCurrentFrame();
-    } else {
-      currentFrame = this.editor.grid3d.getCurrentFrame();
+    var state = this.getFrameState();
+    if(state.currentFrame + 1 >= state.frameCount) {
+      this.syncFrameControls();
+      return false;
     }
-    this.gotoFrame(currentFrame + 1);
+    this.gotoFrame(state.currentFrame + 1);
+    return true;
 
   },
 
   prevFrame: function() {
-    var currentFrame = false;
-    
-    if(g_app.getMode() != '3d') {
-      currentFrame = this.editor.graphic.getCurrentFrame();
-    } else {
-      currentFrame = this.editor.grid3d.getCurrentFrame();
+    var state = this.getFrameState();
+    if(state.currentFrame <= 0) {
+      this.syncFrameControls();
+      return false;
     }
-
-    this.gotoFrame(currentFrame - 1);
+    this.gotoFrame(state.currentFrame - 1);
+    return true;
   },
 
 
   setFrameDuration: function(duration, frame) {
+    var updated = false;
     if(g_app.getMode() != '3d') {
-      this.editor.graphic.setFrameDuration(duration, frame);
+      updated = this.editor.graphic.setFrameDuration(duration, frame);
     } else {
-      this.editor.grid3d.setFrameDuration(duration, frame);
+      updated = this.editor.grid3d.setFrameDuration(duration, frame);
     }
-
+    return updated;
   },
 
   gotoFrame: function(frame) {
@@ -1122,7 +1216,8 @@ return;
 
     if(isNaN(frame) || frame < 0 || frame >= frameCount) {
       $('#currentFrame').val(parseInt(currentFrame, 10) + 1);
-      return;
+      this.syncFrameControls();
+      return false;
     }
 
     var frameDuration = 12;
@@ -1159,11 +1254,20 @@ return;
     this.editor.updateBackgroundColorPicker();
     this.editor.updateBorderColorPicker();
     this.editor.updateC64MultiColorPickers();
+    this.syncFrameControls();
+    return true;
   },
 
   updateFrameDuration: function() {
-    var currentFrame = this.editor.graphic.getCurrentFrame();
-    var frameDuration = this.editor.graphic.getFrameDuration(currentFrame);
+    var currentFrame = 0;
+    var frameDuration = 12;
+    if(g_app.getMode() != '3d') {
+      currentFrame = this.editor.graphic.getCurrentFrame();
+      frameDuration = this.editor.graphic.getFrameDuration(currentFrame);
+    } else {
+      currentFrame = this.editor.grid3d.getCurrentFrame();
+      frameDuration = this.editor.grid3d.getFrameDuration(currentFrame);
+    }
     $('#frameDuration').val(frameDuration);
 
   },
@@ -1183,7 +1287,13 @@ return;
 
     if(imageImporter && imageImporter.importInProgress) {
       // don't play if import in progress
-      return;
+      return false;
+    }
+
+    if(this.getPlayableFrameCount() < 2) {
+      this.playFrames = false;
+      this.syncFrameControls();
+      return false;
     }
 
     if(g_app.isMobile()) {
@@ -1196,34 +1306,13 @@ return;
       this.playFrames = !this.playFrames;
     }
 
-    if(g_app.isMobile()) {
-      if(this.playFrames) {
-        $('#playMobile').html('<i class="halflings halflings-pause"></i>');
-      } else {
-        $('#playMobile').html('<i class="halflings halflings-play"></i>');
-      }
-
-    } else {
-
-      if(this.playFrames) {
-        $('#play').html('<i class="halflings halflings-pause"></i>&nbsp;Pause');
-      } else {
-        $('#play').html('<i class="halflings halflings-play"></i>&nbsp;Play');
-      }
-    }
-
+    this.syncFrameControls();
+    return true;
   },
 
   stop: function() {
-    if(this.playFrames) {
-      this.playFrames = false;
-      $('#play').html('<i class="halflings halflings-play"></i>&nbsp;Play');
-
-      if(g_app.isMobile()) {
-        $('#playMobile').html('<i class="halflings halflings-play"></i>');
-      }
-    }
-
+    this.playFrames = false;
+    this.syncFrameControls();
   },
 
   update: function() {
@@ -1288,6 +1377,16 @@ return;
 
       }
 
+      duration = Number(duration);
+      if(!isFinite(duration) || duration < 1) {
+        duration = 12;
+      }
+
+      if(toFrame - fromFrame <= 1) {
+        this.stop();
+        return;
+      }
+
 
       if(time - this.lastFrameTime > duration * FRAMERATE) {
         var frame = currentFrame;
@@ -1295,23 +1394,19 @@ return;
         frame += this.playDirection;
 
         if(this.playMode == "pingpong") {
-          if(frame === fromFrame) {
-            this.playDirection = 1;
-          }
-          if(frame === toFrame) {
-            this.playDirection = -1;
-          }
-
           if(frame >= toFrame) {
-            frame = fromFrame;
+            this.playDirection = -1;
+            frame = toFrame - 2;
           } else if(frame < fromFrame) {
-            frame = fromFrame;
+            this.playDirection = 1;
+            frame = fromFrame + 1;
           }
         } else if(this.playMode == "once") {
           if(frame >= toFrame) {
-            frame = fromFrame;
-            this.editor.animationTools.stop();
-            //return;
+            this.gotoFrame(toFrame - 1);
+            this.lastFrameTime = time;
+            this.stop();
+            return;
           }          
         } else {
           if(frame >= toFrame) {

@@ -95,6 +95,42 @@ Layers.prototype = {
     this.editor = editor;
   },
 
+  canDeleteSelectedLayer: function() {
+    if(this.layers.length <= 1 || this.selectedLayerId === false) {
+      return false;
+    }
+
+    var layerIndex = this.getLayerIndex(this.selectedLayerId);
+    return layerIndex !== false && layerIndex >= 0 && this.layers[layerIndex].type != 'background';
+  },
+
+  setLayerControlEnabled: function(selector, enabled) {
+    if(typeof $ != 'function') {
+      return;
+    }
+    $(selector)
+      .toggleClass('ui-button-disabled', !enabled)
+      .attr('aria-disabled', String(!enabled))
+      .prop('disabled', !enabled);
+  },
+
+  syncDeleteLayerControls: function() {
+    var enabled = this.canDeleteSelectedLayer();
+    this.setLayerControlEnabled('#layersDeleteLayer', enabled);
+    this.setLayerControlEnabled('#deleteLayerMobileButton', enabled);
+
+    if(typeof UI == 'function') {
+      var menuItem = UI('layers-delete');
+      if(menuItem && typeof menuItem.setEnabled == 'function') {
+        menuItem.setEnabled(enabled);
+      }
+      if(typeof UI.commandContextChanged == 'function') {
+        UI.commandContextChanged('layers');
+      }
+    }
+    return enabled;
+  },
+
   resetProjectState: function() {
     this.cancelLayerPreviewUpdate();
     this.layers = [];
@@ -118,6 +154,7 @@ Layers.prototype = {
       $('#layersHolder').empty();
       $('#layersHolderMobile').empty();
     }
+    this.syncDeleteLayerControls();
   },
 
 
@@ -169,9 +206,8 @@ Layers.prototype = {
       });
 
       $('#deleteLayerMobileButton').on('click', function() {
-
-        if(_this.getLayerCount() <= 1) {
-          alert('Sorry, you cannot delete this layer');
+        if(!_this.canDeleteSelectedLayer()) {
+          _this.syncDeleteLayerControls();
           return;
         }
         if(confirm('Are you sure you want to delete this layer?')) {
@@ -194,7 +230,7 @@ Layers.prototype = {
         _this.moveLayer(-1);
       });
 
-
+      this.syncDeleteLayerControls();
     } 
   },
 
@@ -476,6 +512,7 @@ Layers.prototype = {
     if(this.scrollbar) {
       this.scrollbar.update();
     }
+    this.syncDeleteLayerControls();
 
   },
 
@@ -571,6 +608,10 @@ Layers.prototype = {
     });
 
     $('#layersDeleteLayer').on('click', function() {
+      if(!_this.canDeleteSelectedLayer()) {
+        _this.syncDeleteLayerControls();
+        return;
+      }
       if(confirm('Are you sure you want to delete this layer?')) {
         _this.deleteLayer();
       }
@@ -615,6 +656,7 @@ Layers.prototype = {
 
 
     this.setupLayersEvents();
+    this.syncDeleteLayerControls();
   },
 
   toggleLayerVisible: function(layerId) {
@@ -1625,6 +1667,7 @@ Layers.prototype = {
     this.editor.history.addAction('createlayer', { layerId: layerId, args: args } );
     this.editor.history.endEntry();
 
+    this.syncDeleteLayerControls();
     return layerId;
   },
 
@@ -1634,13 +1677,14 @@ Layers.prototype = {
     this.updateLayerPreview(layerId);
     this.selectLayer(layerId);
     this.updateLayerLabel(layerId);
+    this.syncDeleteLayerControls();
 
   },
 
   deleteLayer: function(args) {
-    if(this.layers.length == 1) {
-      alert("Cannot delete last layer");
-      return;
+    if(this.layers.length <= 1) {
+      this.syncDeleteLayerControls();
+      return false;
     }
 
     var layerId = false;
@@ -1653,8 +1697,9 @@ Layers.prototype = {
     }
     if(layerId === false) {
       layerIndex = this.getSelectedLayerIndex();
-      if(layerIndex == -1) {
-        return;
+      if(layerIndex === false || layerIndex < 0 || !this.layers[layerIndex]) {
+        this.syncDeleteLayerControls();
+        return false;
       }
 
       layerId = this.layers[layerIndex].layerId;
@@ -1670,11 +1715,9 @@ Layers.prototype = {
       }
     }
 
-
-
-    if(this.layers[layerIndex].type == 'background') {
-      alert("Cannot delete background layer");
-      return;
+    if(layerIndex === false || !this.layers[layerIndex] || this.layers[layerIndex].type == 'background') {
+      this.syncDeleteLayerControls();
+      return false;
     }
 
     if(this.layers[layerIndex].type == 'grid') {
@@ -1728,6 +1771,8 @@ Layers.prototype = {
     }
 
     this.editor.graphic.redraw({ allCells: true });
+    this.syncDeleteLayerControls();
+    return true;
 
   },
 
@@ -1926,6 +1971,11 @@ Layers.prototype = {
     if(colorPaletteDisplay) {
       colorPaletteDisplay.setDrawEnabled(drawColorPaletteEnabledSave);    
       colorPaletteDisplay.draw();
+    }
+
+    this.syncDeleteLayerControls();
+    if(this.editor.tools && this.editor.tools.drawTools && this.editor.tools.drawTools.select) {
+      this.editor.tools.drawTools.select.syncCropControlState();
     }
 
   },

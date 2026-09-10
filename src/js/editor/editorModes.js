@@ -1073,6 +1073,10 @@ Object.assign(Editor.prototype, {
 
     }
 
+    if((mode == '2d' || mode == '3d') && this.textModeEditor && this.textModeEditor.frames) {
+      this.textModeEditor.frames.syncFrameControls();
+    }
+
     if(this.menuBar) {
       if(mode == 'assembler') {
           // TODO: prob should be in on focus of text editor

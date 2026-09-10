@@ -123,6 +123,211 @@ test("application alerts use the styled modal and preserve queued messages", asy
   await expect.poll(() => page.evaluate(() => window.__secondAlertClosed)).toBe(true);
 });
 
+test("interaction controls stay synchronized with modal, frame, layer, and selection state", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "chromium-desktop");
+  await open2DProject(page, testInfo);
+
+  const modalState = await page.evaluate(() => {
+    const focusOrigin = document.createElement("button");
+    focusOrigin.id = "interactionStateFocusOrigin";
+    document.body.appendChild(focusOrigin);
+    focusOrigin.focus();
+    const dialog = UI.create("UI.Dialog", {
+      id: "interactionStateDialog",
+      title: "Interaction state",
+      width: 220,
+      height: 100,
+    });
+    const firstShow = UI.showDialog(dialog);
+    const duplicateShow = UI.showDialog(dialog);
+    const openEntries = UI.dialogStack.filter((entry) => entry === dialog).length;
+    const topDialog = UI.create("UI.Dialog", {
+      id: "interactionStateTopDialog",
+      title: "Top interaction state",
+      width: 220,
+      height: 100,
+    });
+    UI.showDialog(topDialog);
+    const closed = UI.closeDialog(dialog);
+    const exactCloseState = {
+      focusRemainsInTopDialog: document.activeElement === topDialog.element ||
+        topDialog.element.contains(document.activeElement),
+      canProcessMenuKeys: UI.canProcessMenuKeys,
+      firstIsOpen: dialog.isOpen,
+      remainingIsTopDialog: UI.dialogStack.length === 1 && UI.dialogStack[0] === topDialog,
+      topIsOpen: topDialog.isOpen,
+    };
+    UI.closeDialog(topDialog);
+    const focusReturnedToOrigin = document.activeElement === focusOrigin;
+    focusOrigin.remove();
+    return {
+      canProcessMenuKeys: UI.canProcessMenuKeys,
+      closed,
+      duplicateShow,
+      exactCloseState,
+      focusReturnedToOrigin,
+      firstShow,
+      isOpen: dialog.isOpen,
+      openEntries,
+      remainingEntries: UI.dialogStack.filter((entry) => entry === dialog).length,
+    };
+  });
+  expect(modalState).toEqual({
+    canProcessMenuKeys: true,
+    closed: true,
+    duplicateShow: false,
+    exactCloseState: {
+      focusRemainsInTopDialog: true,
+      canProcessMenuKeys: false,
+      firstIsOpen: false,
+      remainingIsTopDialog: true,
+      topIsOpen: true,
+    },
+    focusReturnedToOrigin: true,
+    firstShow: true,
+    isOpen: false,
+    openEntries: 1,
+    remainingEntries: 0,
+  });
+
+  const initialControls = await page.evaluate(() => ({
+    cropEnabled: UI("screen-crop").enabled,
+    deleteFrameDisabled: document.querySelector("#deleteFrame").disabled,
+    deleteLayerButtonDisabled: document.querySelector("#layersDeleteLayer").getAttribute("aria-disabled") === "true",
+    deleteLayerEnabled: UI("layers-delete").enabled,
+    nextFrameDisabled: document.querySelector("#nextFrame").disabled,
+    playDisabled: document.querySelector("#play").disabled,
+    previousFrameDisabled: document.querySelector("#prevFrame").disabled,
+  }));
+  expect(initialControls).toEqual({
+    cropEnabled: false,
+    deleteFrameDisabled: true,
+    deleteLayerButtonDisabled: true,
+    deleteLayerEnabled: false,
+    nextFrameDisabled: true,
+    playDisabled: true,
+    previousFrameDisabled: true,
+  });
+
+  const originalDuration = await page.evaluate(() =>
+    g_app.textModeEditor.graphic.getFrameDuration(0));
+  await page.locator("#frameDuration").fill("");
+  await page.locator("#frameDuration").dispatchEvent("change");
+  await expect(page.locator("#frameDuration")).toHaveValue(String(originalDuration));
+  expect(await page.evaluate(() =>
+    g_app.textModeEditor.graphic.getFrameDuration(0))).toBe(originalDuration);
+
+  await page.locator("#duplicateFrame").click();
+  await expect(page.locator("#play")).toBeEnabled();
+  await expect(page.locator("#deleteFrame")).toBeEnabled();
+  await expect(page.locator("#prevFrame")).toHaveAttribute("aria-disabled", "false");
+  await expect(page.locator("#nextFrame")).toHaveAttribute("aria-disabled", "true");
+  await page.locator("#play").click();
+  await expect(page.locator("#play")).toHaveAttribute("aria-label", "Pause animation");
+  await expect(page.locator("#play")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#play > .rippleJS")).toHaveCount(1);
+  await page.evaluate(() => {
+    const frames = g_app.textModeEditor.frames;
+    frames.stop();
+    frames.gotoFrame(g_app.textModeEditor.graphic.getFrameCount() - 1);
+  });
+  await page.locator("#prevFrame").click();
+  await expect(page.locator("#prevFrame")).toHaveAttribute("aria-disabled", "true");
+  await expect(page.locator("#nextFrame")).toHaveAttribute("aria-disabled", "false");
+
+  const contextualControls = await page.evaluate(() => {
+    const editor = g_app.textModeEditor;
+    const layers = editor.layers;
+    const originalLayerId = layers.selectedLayerId;
+    const temporaryLayerId = "interaction-state-layer";
+    layers.layers.push({ layerId: temporaryLayerId, type: "image" });
+    layers.selectedLayerId = temporaryLayerId;
+    layers.syncDeleteLayerControls();
+    const deletableLayer = UI("layers-delete").enabled;
+    layers.layers.pop();
+    layers.selectedLayerId = originalLayerId;
+    layers.syncDeleteLayerControls();
+
+    const select = editor.tools.drawTools.select;
+    const cropWithoutSelection = editor.cropToSelection();
+    select.setSelection({
+      from: { x: 0, y: 0, z: 0 },
+      to: { x: 1, y: 1, z: 0 },
+      saveInHistory: false,
+    });
+    const cropWithSelection = UI("screen-crop").enabled;
+
+    const realHistory = editor.history;
+    const selectionHistoryActions = [];
+    editor.history = {
+      startEntry() {},
+      addAction(name, args) { selectionHistoryActions.push({ name, args }); },
+      endEntry() {},
+    };
+    select.setSelection({
+      from: { x: 0, y: 0, z: 0 },
+      to: { x: 1, y: 1, z: 0 },
+      saveInHistory: true,
+    });
+    selectionHistoryActions.length = 0;
+    select.setSelection({
+      from: { x: 2, y: 2, z: 0 },
+      to: { x: 3, y: 3, z: 0 },
+      saveInHistory: false,
+    });
+    select.setSelection({
+      from: { x: 2, y: 2, z: 0 },
+      to: { x: 3, y: 3, z: 0 },
+      saveInHistory: true,
+    });
+    editor.history = realHistory;
+    const selectionCommit = selectionHistoryActions.map(({ name, args }) => ({
+      from: args.from,
+      lastFrom: args.lastFrom,
+      name,
+    }));
+    select.unselectAll();
+    return {
+      cropAfterClear: UI("screen-crop").enabled,
+      cropWithoutSelection,
+      cropWithSelection,
+      deletableLayer,
+      lastLayerAfterRestore: UI("layers-delete").enabled,
+      selectionCommit,
+    };
+  });
+  expect(contextualControls).toEqual({
+    cropAfterClear: false,
+    cropWithoutSelection: false,
+    cropWithSelection: true,
+    deletableLayer: true,
+    lastLayerAfterRestore: false,
+    selectionCommit: [{
+      from: { x: 2, y: 2, z: 0 },
+      lastFrom: { x: 0, y: 0, z: 0 },
+      name: "setSelection",
+    }],
+  });
+
+  await page.evaluate(() => g_app.textModeEditor.showScreenModeDialog());
+  await expect(page.locator("#screenModeDialog")).toBeVisible();
+  const savedOrientation = await page.evaluate(() => ({
+    flip: g_app.textModeEditor.getHasTileFlip(),
+    rotate: g_app.textModeEditor.getHasTileRotate(),
+  }));
+  await page.locator("#screenModeDialog").evaluate((dialog) => {
+    for(const checkbox of dialog.querySelectorAll("input[type=checkbox]")) {
+      checkbox.checked = !checkbox.checked;
+    }
+  });
+  await page.evaluate(() => UI.closeDialog("screenModeDialog"));
+  await page.evaluate(() => g_app.textModeEditor.showScreenModeDialog());
+  await expect(page.locator("#screenModeDialog")).toBeVisible();
+  await expect(page.locator("#screenModeDialogAllowTileFlip")).toBeChecked({ checked: savedOrientation.flip });
+  await expect(page.locator("#screenModeDialogAllowTileRotate")).toBeChecked({ checked: savedOrientation.rotate });
+  await page.evaluate(() => UI.closeDialog("screenModeDialog"));
+});
+
 test("form controls keep their dark theme across supported browsers", async ({ page }, testInfo) => {
   await page.route(/^https:\/\//, (route) =>
     route.fulfill({ body: "", contentType: "application/javascript", status: 200 }),

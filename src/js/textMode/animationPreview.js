@@ -202,6 +202,10 @@ AnimationPreview.prototype = {
       this.draw();
     }
 
+    if(this.editor.frames && typeof this.editor.frames.syncFrameControls == 'function') {
+      this.editor.frames.syncFrameControls();
+    }
+
   },
 
   getFrameRange: function() {

@@ -88,6 +88,12 @@ UI.DialogTitleMouseUp = function(id) {
 
 var g_dialogZIndex = 1000;
 var g_dialogStack = new Array();
+var removeDialogFromLegacyStack = function(dialog) {
+  var dialogIndex = g_dialogStack.lastIndexOf(dialog);
+  if(dialogIndex !== -1) {
+    g_dialogStack.splice(dialogIndex, 1);
+  }
+};
 UI.Dialog = function(args) {
 
 
@@ -633,7 +639,7 @@ UI.Dialog = function(args) {
    * @method show
    */
   this.show = function() {
-    if(this.isOpen) return;
+    if(this.isOpen) return false;
     this.previousFocus = document.activeElement;
     this.mount();
     this.isOpen = true;
@@ -656,7 +662,7 @@ UI.Dialog = function(args) {
     // TODO: doing this also in UI ??
     g_dialogStack.push(this);
     this.element.focus({ preventScroll: true });
-    
+    return true;
   }
 
   /**
@@ -664,7 +670,9 @@ UI.Dialog = function(args) {
    *
    * @method close
    */
-  this.close = function() {
+  this.close = function(args) {
+    if(!this.isOpen) return false;
+    var restoreFocus = !args || args.restoreFocus !== false;
     this.trigger('close');
 
     this.isOpen = false;
@@ -672,18 +680,18 @@ UI.Dialog = function(args) {
     $(this.backgroundElement).stop(true, true).hide();
     $(this.element).stop(true, true).hide();
     store.append(this.backgroundElement, this.element);
-    if(this.previousFocus && this.previousFocus.isConnected) {
+    if(restoreFocus && this.previousFocus && this.previousFocus.isConnected) {
       this.previousFocus.focus({ preventScroll: true });
     }
 
-    g_dialogZIndex -= 2;
-    g_dialogStack.pop();
+    removeDialogFromLegacyStack(this);
 
 /*
     var id = this.id;
     $('#' + id).remove();
 */
 
+    return true;
   }
 }
 

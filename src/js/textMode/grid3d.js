@@ -755,10 +755,16 @@ Grid3d.prototype = {
     }
 
     if(theFrame < 0 || theFrame >= this.frameCount) {
-      return;
+      return false;
+    }
+
+    duration = Number(duration);
+    if(!isFinite(duration) || Math.floor(duration) !== duration || duration < 1 || duration > 255) {
+      return false;
     }
 
     this.frames[theFrame].duration = duration;
+    return true;
   },
 
   getCurrentLayer: function() {

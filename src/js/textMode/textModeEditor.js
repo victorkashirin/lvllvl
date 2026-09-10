@@ -1153,8 +1153,7 @@ TextModeEditor.prototype = {
   },
 
   cropToSelection: function() {
-    
-    this.tools.drawTools.select.cropToSelection();
+    return this.tools.drawTools.select.cropToSelection();
   },
 
   showBlockSizeDialog: function() {
@@ -1751,6 +1750,10 @@ TextModeEditor.prototype = {
       this.gridView2d.render();
     }
 
+    if(this.tools && this.tools.drawTools && this.tools.drawTools.select) {
+      this.tools.drawTools.select.syncCropControlState();
+    }
+
   },
 
 
@@ -1939,6 +1942,13 @@ TextModeEditor.prototype = {
       g_app.menuBar.setClassVisible('ui-menu-sprite', false);
     }
 
+    if(this.tools && this.tools.drawTools && this.tools.drawTools.select) {
+      this.tools.drawTools.select.syncCropControlState();
+    }
+    if(this.layers) {
+      this.layers.syncDeleteLayerControls();
+    }
+
   },
 
   showMobileMenu: function() {
@@ -1952,6 +1962,12 @@ TextModeEditor.prototype = {
 
   showScreenModeDialog: function() {
     var _this = this;
+    var syncScreenModeControls = function() {
+      $('#screenModeDialogMode').val(_this.getScreenMode());
+      $('#screenModeDialogAllowTileFlip').prop('checked', _this.getHasTileFlip());
+      $('#screenModeDialogAllowTileRotate').prop('checked', _this.getHasTileRotate());
+    };
+
     if(this.screenModeDialog == null) {
       var width = 300;
       var height = 140;
@@ -1964,12 +1980,7 @@ TextModeEditor.prototype = {
       this.screenModeHTML = UI.create("UI.HTMLPanel");
       this.screenModeDialog.add(this.screenModeHTML);
       this.screenModeHTML.load('html/textMode/screenModeDialog.html', function() {
-        $('#screenModeDialogMode').val(_this.getScreenMode());
-        
-        $('#screenModeDialogAllowTileFlip').prop('checked', _this.getHasTileFlip());
-        $('#screenModeDialogAllowTileRotate').prop('checked', _this.getHasTileRotate());
-
-        _this.getHasTileRotate();
+        syncScreenModeControls();
       });
 
       this.okButton = UI.create('UI.Button', { "text": "OK", "color": "primary" });
@@ -1999,10 +2010,8 @@ TextModeEditor.prototype = {
       });
     }
 
+    syncScreenModeControls();
     UI.showDialog("screenModeDialog");
-    $('#screenModeDialogMode').val(this.getScreenMode());
-
-
   },
 
   showTileEditor: function(args) {

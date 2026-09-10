@@ -23,8 +23,7 @@ Object.assign(Editor.prototype, {
         this.textModeEditor.showDimensionsDialog();
       break;
       case 'screen-crop':
-        this.textModeEditor.cropToSelection();
-        break;
+        return this.textModeEditor.cropToSelection();
       case '3d-mode':
         this.setMode('3d');
       break;
@@ -452,6 +451,10 @@ Object.assign(Editor.prototype, {
       break;
 
       case 'layers-delete':
+        if(!this.textModeEditor.layers.canDeleteSelectedLayer()) {
+          this.textModeEditor.layers.syncDeleteLayerControls();
+          break;
+        }
         if(confirm('Are you sure you want to delete this layer?')) {
 
           this.textModeEditor.layers.deleteLayer();

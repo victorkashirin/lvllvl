@@ -9,6 +9,8 @@
 
 ### Fixed
 
+- Keep animation playback, frame navigation, modal dialogs, screen-mode drafts,
+  and layer/crop actions synchronized with their actual interactive state.
 - Keep the module architecture baseline in sync with the shared message dialog.
 - Regenerate the runtime dependency inventory and build-artifact baseline for
   the 0.498.2 release.

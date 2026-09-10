@@ -98,6 +98,7 @@ Select.prototype = {
     this.copiedFromLayer = false;
     this.selectionChangedAfterCopy = false;
     this.blockSet = null;
+    this.syncCropControlState();
   },
 
   show: function() {
@@ -107,11 +108,34 @@ Select.prototype = {
   },
 
   isActive: function() {
-    // should check if visible and if min != max
-    if(this.editor.getEditorMode() == 'pixel') {
+    return this.hasSelection();
+  },
+
+  hasSelection: function() {
+    if(!this.editor || this.editor.getEditorMode() == 'pixel' || !this.selection.visible) {
       return false;
     }
-    return this.selection.visible;
+
+    var layer = this.editor.layers && this.editor.layers.getSelectedLayerObject
+      ? this.editor.layers.getSelectedLayerObject()
+      : null;
+    return !!layer && layer.getType() == 'grid'
+      && this.selection.maxX > this.selection.minX
+      && this.selection.maxY > this.selection.minY;
+  },
+
+  syncCropControlState: function() {
+    var enabled = this.hasSelection();
+    if(typeof UI == 'function') {
+      var menuItem = UI('screen-crop');
+      if(menuItem && typeof menuItem.setEnabled == 'function') {
+        menuItem.setEnabled(enabled);
+      }
+      if(typeof UI.commandContextChanged == 'function') {
+        UI.commandContextChanged('selection');
+      }
+    }
+    return enabled;
   },
 
 
@@ -314,8 +338,9 @@ Select.prototype = {
   },
 
   cropToSelection: function() {
-    if(this.selection.minX == this.selection.maxX || this.selection.minY == this.selection.maxY) {
-      return;
+    if(!this.hasSelection()) {
+      this.syncCropControlState();
+      return false;
     }
 
     var width = (this.selection.maxX - this.selection.minX);
@@ -332,13 +357,15 @@ Select.prototype = {
     });
 
     this.unselectAll();
+    return true;
   },
 
   setSelection: function(args) {
 
     var layer = this.editor.layers.getSelectedLayerObject();
     if(!layer || layer.getType() !== 'grid') {
-      return;
+      this.syncCropControlState();
+      return false;
     }
 
     this.selectionChangedAfterCopy = true;
@@ -419,7 +446,8 @@ Select.prototype = {
     if(from.x == this.lastSelection.from.x && from.y == this.lastSelection.from.y && from.z == this.lastSelection.from.z
         && to.x == this.lastSelection.to.x && to.y == this.lastSelection.to.y && to.z == this.lastSelection.to.z
         && enabled === this.selectionEnabled) {
-      return;
+      this.syncCropControlState();
+      return false;
     }
 
 
@@ -438,6 +466,9 @@ Select.prototype = {
       this.editor.history.addAction('setSelection', history);
       this.editor.history.endEntry();
 
+      // Keep this as the last committed selection. Drag previews use
+      // saveInHistory:false and must not replace the state that mouseUp uses
+      // to create a single undo entry.
       this.lastSelection.from.x = from.x;
       this.lastSelection.from.y = from.y;
       this.lastSelection.from.z = from.z;
@@ -447,7 +478,6 @@ Select.prototype = {
       this.lastSelection.to.z = to.z;
       this.selectionEnabled = enabled;
     }
-
 
 
     this.selectionActive = true;
@@ -563,6 +593,8 @@ Select.prototype = {
     if(this.editor.gridView2d) {
       this.editor.gridView2d.setOverlayNeedsRedraw();
     }
+    this.syncCropControlState();
+    return true;
   },
 
   recordSelectionChangeHistory: function() {

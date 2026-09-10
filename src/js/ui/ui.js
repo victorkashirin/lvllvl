@@ -422,14 +422,21 @@ UI.showDialog = function(theDialog) {
   if(typeof(theDialog) == 'string') {
     theDialog = UI.get(theDialog);
   }
+  if(!theDialog || UI.dialogStack.indexOf(theDialog) !== -1 || theDialog.isOpen === true) {
+    return false;
+  }
+
+  if(theDialog.show() === false) {
+    return false;
+  }
   UI.dialogStack.push(theDialog);
-  theDialog.show();
 
   UI.mouseInComponent = theDialog;
   UI.canProcessMenuKeys = false;
   if(typeof UI.commandContextChanged == 'function') {
     UI.commandContextChanged('modal');
   }
+  return true;
 
 }
 
@@ -444,16 +451,48 @@ UI.closeDialog = function(theDialog) {
     theDialog = UI.get(theDialog);
   }
 
-  UI.dialogStack.splice(UI.dialogStack.length - 1, 1);
-  UI.mouseDownInComponent = null;//false;
-  UI.mouseInComponent = null;
-  if(UI.dialogStack.length == 0) {
-    UI.canProcessMenuKeys = true;
+  var dialogIndex = UI.dialogStack.lastIndexOf(theDialog);
+  if(dialogIndex == -1) {
+    return false;
   }
-  theDialog.close();
+
+  var wasTopDialog = dialogIndex == UI.dialogStack.length - 1;
+  var previousFocus = theDialog.previousFocus;
+  UI.dialogStack.splice(dialogIndex, 1);
+
+  // A dialog opened above this one may have saved focus inside it. Rewire
+  // that chain so closing the remaining dialogs cannot restore focus into a
+  // hidden dialog.
+  if(!wasTopDialog && theDialog.element && previousFocus) {
+    for(var i = dialogIndex; i < UI.dialogStack.length; i++) {
+      var stackedDialog = UI.dialogStack[i];
+      if(stackedDialog.previousFocus &&
+          (stackedDialog.previousFocus === theDialog.element ||
+           theDialog.element.contains(stackedDialog.previousFocus))) {
+        stackedDialog.previousFocus = previousFocus;
+      }
+    }
+  }
+
+  UI.mouseDownInComponent = null;//false;
+  UI.mouseInComponent = UI.dialogStack.length > 0
+    ? UI.dialogStack[UI.dialogStack.length - 1]
+    : null;
+  UI.canProcessMenuKeys = UI.dialogStack.length == 0;
+  theDialog.close({ restoreFocus: wasTopDialog });
+
+  if(UI.dialogStack.length > 0) {
+    var topDialog = UI.dialogStack[UI.dialogStack.length - 1];
+    var topElement = topDialog.element;
+    if(topElement && typeof topElement.focus == 'function' &&
+        (document.activeElement !== topElement && !topElement.contains(document.activeElement))) {
+      topElement.focus({ preventScroll: true });
+    }
+  }
   if(typeof UI.commandContextChanged == 'function') {
     UI.commandContextChanged('modal');
   }
+  return true;
 }
 
 UI.closeAllDialogs = function() {
