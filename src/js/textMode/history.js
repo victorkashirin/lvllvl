@@ -136,6 +136,17 @@ History.prototype = {
               changedCharacters.push(params.c);
             }
           }
+          if(actionName == 'setLayerMode') {
+            var modeLayer = this.editor.layers.getLayerObjectFromRef(params.layerRef);
+            if(modeLayer) {
+              modeLayer.setTileSet(params.oldTileSetId);
+              modeLayer._setMode(params.oldMode);
+              if(modeLayer.isCurrentLayer()) {
+                this.editor.setInterfaceScreenMode(params.oldMode);
+              }
+              this.editor.layers.updateLayerLabel(modeLayer.getId());
+            }
+          }
           if(actionName == 'setBackgroundColor') {
             this.editor.tools.currentBackgroundColor = params.oldColor;
             this.editor.setBackgroundColor(params.oldColor);
@@ -314,6 +325,17 @@ History.prototype = {
               changedCharacters.push(params.c);
             }
 
+        }
+        if(actionName == 'setLayerMode') {
+          var modeLayer = this.editor.layers.getLayerObjectFromRef(params.layerRef);
+          if(modeLayer) {
+            modeLayer.setTileSet(params.newTileSetId);
+            modeLayer._setMode(params.newMode);
+            if(modeLayer.isCurrentLayer()) {
+              this.editor.setInterfaceScreenMode(params.newMode);
+            }
+            this.editor.layers.updateLayerLabel(modeLayer.getId());
+          }
         }
         if(actionName == 'setBackgroundColor') {
           this.editor.tools.currentBackgroundColor = params.newColor;
@@ -513,8 +535,6 @@ History.prototype = {
     this.changes.push({ "name": actionName, "params": params });
 //    console.log(this.changes.length);
   },
-
-
 
   endEntry: function() {
     if(!this.enabled) {

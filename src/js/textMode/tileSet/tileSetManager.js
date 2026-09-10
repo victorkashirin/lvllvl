@@ -848,14 +848,7 @@ TileSetManager.prototype = {
       } else {
 
         var layer = this.editor.layers.getSelectedLayerObject();
-        if(layer.getMode() == 'vector') {
-          layer.setMode(TextModeEditor.Mode.TEXTMODE);
-
-        }
-
-
-        tileSet.setToPreset(tileSetId, function() {
-
+        var tileSetPresetLoaded = function() {
           // only really want to do this if graphic is currently being displayed
           _this.editor.tileSetManager.tileSetUpdated({ updateBlankCells: true, updateSortMethods: true });
           _this.editor.layers.updateLayerInterface(layer.getId());
@@ -866,15 +859,18 @@ TileSetManager.prototype = {
             _this.editor.tools.drawTools.tilePalette.drawTilePalette();
             _this.editor.sideTilePalette.drawTilePalette();
 
-            if(g_app.getMode() == '3d') {
-
-            } else {
+            if(g_app.getMode() != '3d') {
               _this.editor.graphic.setCellDimensionsFromTiles();
               _this.editor.graphic.redraw({ allCells: true });
             }
-            
           }
-        });
+        };
+
+        if(layer.getMode() == 'vector') {
+          layer.setMode({ "mode": TextModeEditor.Mode.TEXTMODE, "tileSet": tileSetId }, tileSetPresetLoaded);
+        } else {
+          tileSet.setToPreset(tileSetId, tileSetPresetLoaded);
+        }
       }
     }
 

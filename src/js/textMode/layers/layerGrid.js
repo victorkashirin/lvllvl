@@ -38,6 +38,7 @@ var LayerGrid = function() {
 */
 
   this.mode = false;
+  this.modeChangeId = 0;
   this.hasCharRotation = false;
   this.hasCharFlip = false;
 
@@ -1169,39 +1170,57 @@ LayerGrid.prototype = {
 
 
 
-    // work out if tileset is used anywhere else
-    var tileSetUsed = false;
-    var layerCount = this.editor.layers.getLayerCount();
-    
-    for(var i = 0; i < layerCount; i++) {
-      var layer = this.editor.layers.getLayerObjectFromIndex(i);
-      if(layer.getId() != this.getId()) {
-        if(layer.getTileSetId() == this.getTileSetId()) {
-          tileSetUsed = true;
-          break;
-        }
-      }
-    }
-    
-
-    if(
+    var changesVectorType =
       (screenMode == 'vector' && this.doc.screenMode != 'vector')
-      || (this.doc.screenMode == 'vector' && screenMode != 'vector')
-    ) {
-      // switching from non vector to vector or vice versa
-      var tileSet = this.getTileSet();
-      if(tileSetUsed) {
-        // need to create a new tile set
-        var name = screenMode + ' Tile Set';
-        name = name[0].toUpperCase() + name.substring(1)
+      || (this.doc.screenMode == 'vector' && screenMode != 'vector');
+    var oldMode = this.doc.screenMode;
+    var oldTileSetId = this.getTileSetId();
+    var tileSet = this.getTileSet();
+    var modeChangeId = ++this.modeChangeId;
 
-        var newTileSetId = this.editor.tileSetManager.createTileSet({ name: name, width: 8, height: 8 }); 
-        tileSet = this.editor.tileSetManager.getTileSet(newTileSetId);
-        tileSet.setTileCount(256);
-        this.setTileSet(tileSet.getId());      
-      }
+    if(changesVectorType) {
+      // Vector conversion replaces all tile data. Keep the source tile set intact
+      // so the mode change can be undone without losing the original glyphs.
+      var name = screenMode + ' Tile Set';
+      name = name[0].toUpperCase() + name.substring(1);
 
+      var newTileSetId = this.editor.tileSetManager.createTileSet({ name: name, width: 8, height: 8 });
+      tileSet = this.editor.tileSetManager.getTileSet(newTileSetId);
+      tileSet.setTileCount(256);
     }
+
+    var recordModeChange = function() {
+      if(!changesVectorType) {
+        return;
+      }
+      _this.editor.history.startEntry('change layer mode');
+      _this.editor.history.addAction('setLayerMode', {
+        layerRef: _this.layerRef,
+        oldMode: oldMode,
+        newMode: screenMode,
+        oldTileSetId: oldTileSetId,
+        newTileSetId: tileSet.getId()
+      });
+      _this.editor.history.endEntry();
+    };
+
+    var applyModeChange = function() {
+      if(_this.modeChangeId != modeChangeId) {
+        return false;
+      }
+      if(changesVectorType) {
+        _this.setTileSet(tileSet.getId());
+      }
+      _this._setMode(screenMode);
+      recordModeChange();
+      return true;
+    };
+
+    var modeChangeFailed = function() {
+      if(_this.modeChangeId == modeChangeId) {
+        console.error('Unable to load tile set for layer mode change');
+      }
+    };
       
 
     var _this = this;
@@ -1220,7 +1239,9 @@ LayerGrid.prototype = {
         }
 
         tileSet.setToVector(tileSetPreset, function() {
-          _this._setMode(screenMode);        
+          if(!applyModeChange()) {
+            return;
+          }
         
   //        _this.editor.tileSetManager.updateSortMethods();
 
@@ -1230,22 +1251,25 @@ LayerGrid.prototype = {
           if(typeof callback != 'undefined') {
             callback();
           }
-        });
+        }, modeChangeFailed);
       }
 
     } else {
 
       if(this.doc.screenMode == 'vector') {
         // if switching from vector to non vector, tileset needs to be set to a non vector tileset
-        tileSet.setToPreset('petscii', function() {
-          _this._setMode(screenMode);
+        var textTileSetPreset = tileSetPreset === false ? 'petscii' : tileSetPreset;
+        tileSet.setToPreset(textTileSetPreset, function() {
+          if(!applyModeChange()) {
+            return;
+          }
           if(typeof callback != 'undefined') {
             callback();
           }  
-        });
+        }, modeChangeFailed);
       } else {
         // switching from a non vector mode to another non vector mode
-        this._setMode(screenMode);
+        applyModeChange();
         if(typeof callback != 'undefined') {
           callback();
         }

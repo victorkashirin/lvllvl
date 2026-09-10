@@ -200,7 +200,7 @@ var TileSet = function() {
 }
 
 TileSet.prototype = {
-  setToVector: function(vectorFile, callback) {
+  setToVector: function(vectorFile, callback, errorCallback) {
     this.setType('vector');
 
     // test code, load the font
@@ -209,7 +209,7 @@ TileSet.prototype = {
     var projectGeneration = this.projectGeneration;
 
     var path = 'vectorsets/' + vectorFile + '.json?3'; 
-    $.get(path, function(response) {
+    var request = $.get(path, function(response) {
       if(projectDocument && g_app.isCurrentProject &&
           !g_app.isCurrentProject(projectDocument, projectGeneration)) {
         return;
@@ -273,6 +273,9 @@ TileSet.prototype = {
         callback();
       }
     });
+    if(request && request.fail && typeof errorCallback != 'undefined') {
+      request.fail(errorCallback);
+    }
   },
 
   getFontScale: function(fontSize) {
@@ -963,7 +966,7 @@ TileSet.prototype = {
     return false;
   },
 
-  setToPreset: function(preset, callback) {
+  setToPreset: function(preset, callback, errorCallback) {
     var mode = 'textmode';
     var pos = preset.indexOf(':');
     if(pos != -1) {
@@ -972,7 +975,7 @@ TileSet.prototype = {
     }
 
     if(mode == 'vector') {
-      this.setToVector(preset, callback);
+      this.setToVector(preset, callback, errorCallback);
       return;
     }
 
@@ -1036,6 +1039,9 @@ TileSet.prototype = {
 
     if(filename === false) {
       // invalid preset
+      if(typeof errorCallback != 'undefined') {
+        errorCallback();
+      }
       return;
     }   
 
@@ -1062,6 +1068,9 @@ TileSet.prototype = {
       if(callback) {
         callback();
       }
+    }
+    if(typeof errorCallback != 'undefined') {
+      img.onerror = errorCallback;
     }
     img.src = url;
   },

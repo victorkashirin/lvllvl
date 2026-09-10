@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.498.2 - 2026-09-10
+
 ### Added
 
 - Add arrow-key navigation to the tile and color picker popups, with Enter to
@@ -12,6 +14,8 @@
 
 ### Fixed
 
+- Make switches between text and vector layer modes undoable without losing the
+  original tile set.
 - Move the legacy GIF/video and experimental C64 source exporters from the
   Interface menu to their matching Export sections, and remove the unsupported
   D64 option from the experimental C64 exporter while making its downloads

@@ -867,6 +867,287 @@ test("classic redo restores position and enabled state after replay fails", asyn
   assert.equal(history.enabled, true);
 });
 
+test("classic history restores a layer mode and its lossless tile set", async () => {
+  const History = await loadClassic("js/textMode/history.js", "History", { g_newSystem: true });
+  const changes = [];
+  const layer = {
+    mode: "vector",
+    tileSetId: "vector-tiles",
+    getId: () => "layer-1",
+    isCurrentLayer: () => true,
+    setTileSet(tileSetId) {
+      this.tileSetId = tileSetId;
+      changes.push(["tiles", tileSetId]);
+    },
+    _setMode(mode) {
+      this.mode = mode;
+      changes.push(["mode", mode]);
+    },
+  };
+  const editor = {
+    layers: {
+      getLayerObjectFromRef: () => layer,
+      updateLayerLabel: (layerId) => changes.push(["label", layerId]),
+    },
+    setInterfaceScreenMode: (mode) => changes.push(["interface", mode]),
+    tileSetManager: { getCurrentTileSet: () => ({}) },
+  };
+  const history = new History();
+  history.init(editor);
+  history.history = [{ actions: [{
+    name: "setLayerMode",
+    params: {
+      layerRef: 2,
+      oldMode: "textmode",
+      newMode: "vector",
+      oldTileSetId: "bitmap-tiles",
+      newTileSetId: "vector-tiles",
+    },
+  }] }];
+  history.historyLength = 1;
+  history.historyPosition = 1;
+
+  history.undo();
+  assert.equal(layer.mode, "textmode");
+  assert.equal(layer.tileSetId, "bitmap-tiles");
+  assert.deepEqual(changes, [
+    ["tiles", "bitmap-tiles"],
+    ["mode", "textmode"],
+    ["interface", "textmode"],
+    ["label", "layer-1"],
+  ]);
+
+  changes.length = 0;
+  history.redo();
+  assert.equal(layer.mode, "vector");
+  assert.equal(layer.tileSetId, "vector-tiles");
+  assert.deepEqual(changes, [
+    ["tiles", "vector-tiles"],
+    ["mode", "vector"],
+    ["interface", "vector"],
+    ["label", "layer-1"],
+  ]);
+});
+
+test("text-to-vector conversion preserves the bitmap tile set and enters history", async () => {
+  const LayerGrid = await loadClassic("js/textMode/layers/layerGrid.js", "LayerGrid");
+  const historyActions = [];
+  let oldTileSetConverted = false;
+  const oldTileSet = { setToVector: () => { oldTileSetConverted = true; } };
+  const vectorTileSet = {
+    count: 0,
+    getId: () => "vector-tiles",
+    setTileCount(count) { this.count = count; },
+    setToVector(preset, callback) {
+      assert.equal(preset, "modular-shapes");
+      callback();
+    },
+  };
+  const layer = new LayerGrid();
+  layer.layerRef = 4;
+  layer.doc = { screenMode: "textmode", tileSetId: "bitmap-tiles" };
+  layer.getTileSet = () => oldTileSet;
+  layer.getTileSetId = () => layer.doc.tileSetId;
+  layer.setTileSet = (tileSetId) => { layer.doc.tileSetId = tileSetId; };
+  layer._setMode = (mode) => { layer.doc.screenMode = mode; };
+  layer.editor = {
+    history: {
+      startEntry: (name) => historyActions.push(["start", name]),
+      addAction: (name, params) => historyActions.push([name, params]),
+      endEntry: () => historyActions.push(["end"]),
+    },
+    tileSetManager: {
+      createTileSet: () => "vector-tiles",
+      getTileSet: () => vectorTileSet,
+    },
+    tools: { drawTools: { tilePalette: { drawTilePalette() {} } } },
+    sideTilePalette: { drawTilePalette() {} },
+  };
+
+  layer.setMode("vector");
+
+  assert.equal(oldTileSetConverted, false);
+  assert.equal(vectorTileSet.count, 256);
+  assert.equal(layer.doc.screenMode, "vector");
+  assert.equal(layer.doc.tileSetId, "vector-tiles");
+  assert.equal(historyActions[1][0], "setLayerMode");
+  assert.deepEqual({ ...historyActions[1][1] }, {
+    layerRef: 4,
+    oldMode: "textmode",
+    newMode: "vector",
+    oldTileSetId: "bitmap-tiles",
+    newTileSetId: "vector-tiles",
+  });
+});
+
+test("only the latest asynchronous layer-mode change is committed", async () => {
+  const LayerGrid = await loadClassic("js/textMode/layers/layerGrid.js", "LayerGrid");
+  const pending = [];
+  const historyActions = [];
+  let nextTileSet = 0;
+  const tileSets = {};
+  const layer = new LayerGrid();
+  layer.layerRef = 5;
+  layer.doc = { screenMode: "textmode", tileSetId: "bitmap-tiles" };
+  layer.getTileSet = () => ({ getId: () => layer.doc.tileSetId });
+  layer.getTileSetId = () => layer.doc.tileSetId;
+  layer.setTileSet = (tileSetId) => { layer.doc.tileSetId = tileSetId; };
+  layer._setMode = (mode) => { layer.doc.screenMode = mode; };
+  layer.editor = {
+    history: {
+      startEntry() {},
+      addAction: (name, params) => historyActions.push([name, params]),
+      endEntry() {},
+    },
+    tileSetManager: {
+      createTileSet() {
+        const id = `vector-${++nextTileSet}`;
+        tileSets[id] = {
+          getId: () => id,
+          setTileCount() {},
+          setToVector(preset, success, failure) {
+            pending.push({ id, success, failure });
+          },
+        };
+        return id;
+      },
+      getTileSet: (id) => tileSets[id],
+    },
+    tools: { drawTools: { tilePalette: { drawTilePalette() {} } } },
+    sideTilePalette: { drawTilePalette() {} },
+  };
+
+  layer.setMode("vector");
+  layer.setMode("vector");
+  assert.equal(layer.doc.tileSetId, "bitmap-tiles");
+  assert.equal(layer.doc.screenMode, "textmode");
+
+  pending[0].success();
+  assert.equal(layer.doc.tileSetId, "bitmap-tiles");
+  assert.equal(historyActions.length, 0);
+
+  pending[1].success();
+  assert.equal(layer.doc.tileSetId, "vector-2");
+  assert.equal(layer.doc.screenMode, "vector");
+  assert.equal(historyActions.length, 1);
+  assert.equal(historyActions[0][1].oldTileSetId, "bitmap-tiles");
+  assert.equal(historyActions[0][1].newTileSetId, "vector-2");
+});
+
+test("failed layer-mode loads leave the active layer and history unchanged", async () => {
+  const LayerGrid = await loadClassic("js/textMode/layers/layerGrid.js", "LayerGrid", {
+    console: { error() {} },
+  });
+  let failureCallback;
+  let historyActions = 0;
+  const layer = new LayerGrid();
+  layer.doc = { screenMode: "textmode", tileSetId: "bitmap-tiles" };
+  layer.getTileSet = () => ({ getId: () => "bitmap-tiles" });
+  layer.getTileSetId = () => layer.doc.tileSetId;
+  layer.setTileSet = (tileSetId) => { layer.doc.tileSetId = tileSetId; };
+  layer._setMode = (mode) => { layer.doc.screenMode = mode; };
+  layer.editor = {
+    history: {
+      startEntry() {},
+      addAction() { historyActions++; },
+      endEntry() {},
+    },
+    tileSetManager: {
+      createTileSet: () => "vector-tiles",
+      getTileSet: () => ({
+        getId: () => "vector-tiles",
+        setTileCount() {},
+        setToVector(preset, success, failure) { failureCallback = failure; },
+      }),
+    },
+  };
+
+  layer.setMode("vector");
+  failureCallback();
+
+  assert.equal(layer.doc.tileSetId, "bitmap-tiles");
+  assert.equal(layer.doc.screenMode, "textmode");
+  assert.equal(historyActions, 0);
+});
+
+test("vector-to-text conversion loads the chosen preset into the new tile set", async () => {
+  const LayerGrid = await loadClassic("js/textMode/layers/layerGrid.js", "LayerGrid");
+  let oldTileSetChanged = false;
+  let loadedPreset = null;
+  const layer = new LayerGrid();
+  layer.layerRef = 6;
+  layer.doc = { screenMode: "vector", tileSetId: "vector-tiles" };
+  layer.getTileSet = () => ({ setToPreset() { oldTileSetChanged = true; } });
+  layer.getTileSetId = () => layer.doc.tileSetId;
+  layer.setTileSet = (tileSetId) => { layer.doc.tileSetId = tileSetId; };
+  layer._setMode = (mode) => { layer.doc.screenMode = mode; };
+  layer.editor = {
+    history: { startEntry() {}, addAction() {}, endEntry() {} },
+    tileSetManager: {
+      createTileSet: () => "text-tiles",
+      getTileSet: () => ({
+        getId: () => "text-tiles",
+        setTileCount() {},
+        setToPreset(preset, success) {
+          loadedPreset = preset;
+          success();
+        },
+      }),
+    },
+  };
+
+  layer.setMode({ mode: "textmode", tileSet: "custom-preset" });
+
+  assert.equal(oldTileSetChanged, false);
+  assert.equal(loadedPreset, "custom-preset");
+  assert.equal(layer.doc.tileSetId, "text-tiles");
+  assert.equal(layer.doc.screenMode, "textmode");
+});
+
+test("bitmap preset selection delegates vector conversion without mutating the source", async () => {
+  let chooserArgs;
+  let sourcePresetLoads = 0;
+  let requestedMode = null;
+  const g_app = {
+    getMode: () => "2d",
+    isMobile: () => false,
+  };
+  const TileSetManager = await loadClassic("js/textMode/tileSet/tileSetManager.js", "TileSetManager", {
+    g_app,
+    TextModeEditor: { Mode: { TEXTMODE: "textmode" } },
+  });
+  const layer = {
+    getId: () => "layer-1",
+    getMode: () => "vector",
+    setMode(args, callback) {
+      requestedMode = args;
+      callback();
+    },
+  };
+  const editor = {
+    layers: {
+      getSelectedLayerObject: () => layer,
+      updateLayerInterface() {},
+    },
+    tileSetManager: null,
+    tools: { drawTools: { tilePalette: { drawTilePalette() {} } } },
+    sideTilePalette: { drawTilePalette() {} },
+    graphic: { setCellDimensionsFromTiles() {}, redraw() {} },
+  };
+  const manager = new TileSetManager();
+  manager.editor = editor;
+  editor.tileSetManager = manager;
+  manager.getCurrentTileSet = () => ({ setToPreset() { sourcePresetLoads++; } });
+  manager.tileSetUpdated = () => {};
+  manager.getChoosePresetDialog = () => ({ show: (args) => { chooserArgs = args; } });
+
+  manager.showChoosePreset({});
+  chooserArgs.callback.call(manager, { type: "textmode", presetId: "custom-preset" });
+
+  assert.equal(sourcePresetLoads, 0);
+  assert.deepEqual({ ...requestedMode }, { mode: "textmode", tileSet: "custom-preset" });
+});
+
 test("classic undo compensates actions applied before replay fails", async () => {
   const History = await loadClassic("js/textMode/history.js", "History", { g_newSystem: false });
   const failure = new Error("undo failed after mutation");
