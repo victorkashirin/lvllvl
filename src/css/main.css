@@ -109,6 +109,24 @@ a {
   align-items: center;
 }
 
+.importImageTransformControls {
+  align-items: center;
+  column-gap: 20px;
+  margin-top: 4px;
+  white-space: nowrap;
+}
+
+.importImageTransformControlGroup {
+  align-items: center;
+  display: inline-flex;
+  gap: 4px;
+}
+
+.importImageTransformValue {
+  cursor: ew-resize;
+  width: 64px;
+}
+
 .formControlLabel {
   width: 90px;
   display: flex;

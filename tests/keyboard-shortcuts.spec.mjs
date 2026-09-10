@@ -1128,6 +1128,15 @@ test("Preview and tile placement are listed and honor their effective bindings",
   await page.keyboard.press("Insert");
   expect(await page.evaluate(() => window.__shortcutPlaceCount)).toBe(2);
 
+  const defaultGridCanvasId = await page.evaluate(() =>
+    g_app.textModeEditor.gridView2d.canvas.id,
+  );
+  await page.locator(`#${defaultGridCanvasId}`).hover();
+  await page.keyboard.press("Tab");
+  await expect(page.locator("body")).toHaveClass(/\boverview-mode\b/);
+  await page.keyboard.press("Tab");
+  await expect(page.locator("body")).not.toHaveClass(/\boverview-mode\b/);
+
   const gridCanvasId = await page.evaluate(() => {
     const commands = g_app.services.commands;
     commands.assignBinding("textMode.preview.hold",
@@ -1146,14 +1155,14 @@ test("Preview and tile placement are listed and honor their effective bindings",
   await page.keyboard.press(`${modifier}+=`);
   expect(await page.evaluate(() => g_app.textModeEditor.gridView2d.getScale())).toBe(overviewScale);
   await page.keyboard.up("5");
-  await expect(page.locator("body")).not.toHaveClass(/\boverview-mode\b/);
-
-  await page.keyboard.down("5");
   await expect(page.locator("body")).toHaveClass(/\boverview-mode\b/);
+
   await page.evaluate(() => window.dispatchEvent(new Event("blur")));
-  await expect(page.locator("body")).not.toHaveClass(/\boverview-mode\b/);
+  await expect(page.locator("body")).toHaveClass(/\boverview-mode\b/);
   expect(await page.evaluate(() => g_app.services.commands.getActiveCommandCount())).toBe(0);
-  await page.keyboard.up("5");
+
+  await page.keyboard.press("5");
+  await expect(page.locator("body")).not.toHaveClass(/\boverview-mode\b/);
 
   await page.keyboard.down("5");
   await expect(page.locator("body")).toHaveClass(/\boverview-mode\b/);

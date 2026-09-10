@@ -26,27 +26,25 @@
                   <td valign="top">
 
                     <canvas width="320" height="200" id="importImageCanvas" style="border:1px solid #444444; background: transparent"></canvas>
-                    <div class="formRow" style="margin-top: 4px">
+                    <div class="formRow importImageTransformControls">
                       <!--
                       <label for="importImageScale" class="controlLabel">Scale (%)</label>
                       -->
 
-                      <div style="display: inline-block; margin-right: 20px">
-                        Scale
+                      <div class="importImageTransformControlGroup">
+                        <span>Scale</span>
                         <div class="ui-button" id="importImageScaleDecrease">-</div>
-                        <input size="3" style="width: 40px" type="text" id="importImageScale" class="number"  value="100"/>
+                        <input size="6" type="text" id="importImageScale" class="number importImageTransformValue" value="100"/>
                         <div class="ui-button" id="importImageScaleIncrease">+</div>
                         <div class="ui-button" id="importImageScaleToFit">Fit</div>
                       </div>
 
-                      <div style="display: inline-block">
-                        <label for="importImageX">X</label>:&nbsp;
-                        <input size="3" style="width: 35px" type="text" class="number" id="importImageX" value="0"/> 
+                      <div class="importImageTransformControlGroup">
+                        <label for="importImageX">X:</label>
+                        <input size="6" type="text" class="number importImageTransformValue" id="importImageX" value="0"/>
 
-                        &nbsp;&nbsp;
-
-                        <label for="importImageY">Y</label>:&nbsp;
-                        <input size="3" style="width: 35px" type="text" class="number" id="importImageY" value="0"/> 
+                        <label for="importImageY">Y:</label>
+                        <input size="6" type="text" class="number importImageTransformValue" id="importImageY" value="0"/>
                       </div>
 
                     </div>

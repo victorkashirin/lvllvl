@@ -34,19 +34,6 @@ Object.assign(Editor.prototype, {
       _this.keyPress(event);
     });
 
-    // A keyup is not delivered when the browser loses focus. Never leave the
-    // press-and-hold overview active after switching windows or tabs.
-    window.addEventListener('blur', function() {
-      _this.setOverviewMode(false);
-    });
-
-    document.addEventListener('visibilitychange', function() {
-      if(document.hidden) {
-        _this.setOverviewMode(false);
-      }
-    });
-
-
   },
 
   createZenModeInterface: function() {
@@ -704,9 +691,12 @@ Object.assign(Editor.prototype, {
       return;
     }
 
-    if(!commandServiceActive && this.isOverviewShortcut(event) && this.canStartOverviewMode(event)) {
+    if(!commandServiceActive
+      && !event.repeat
+      && this.isOverviewShortcut(event)
+      && (this.overviewMode || this.canStartOverviewMode(event))) {
       event.preventDefault();
-      this.setOverviewMode(true);
+      this.setOverviewMode(!this.overviewMode);
       return;
     }
 
@@ -732,13 +722,6 @@ Object.assign(Editor.prototype, {
 
   keyUp: function(event) {
 
-
-    var commandServiceActive = this.services && this.services.commands;
-    if(!commandServiceActive && this.overviewMode && (event.key == 'Tab' || event.keyCode == 9)) {
-      event.preventDefault();
-      this.setOverviewMode(false);
-      return;
-    }
 
     if(!this.allowKeyShortcuts) {
       return;

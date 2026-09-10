@@ -65,8 +65,7 @@ export function registerNativeEditorCommands({ app, commands, toolMetadata }) {
   register({
     id: "textMode.preview.hold", title: "Preview Artwork", category: "View", key: "Tab",
     contexts: context({ deviceType: "desktop", editorMode: "2d", pointerCanvas: true }),
-    execute: () => app.setOverviewMode(true),
-    release: () => app.setOverviewMode(false),
+    execute: () => app.setOverviewMode(!app.overviewMode),
   });
   register({
     id: "textMode.canvas.placeSelectedTile", title: "Place Selected Tile", category: "Canvas",

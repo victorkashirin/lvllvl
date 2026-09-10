@@ -1696,20 +1696,46 @@ test("desktop dialogs refit without losing their preferred size or selector cont
     .filter({ hasText: "Import Image / Video" })).toBeVisible();
   const compactImport = await page.evaluate(() => {
     const dialog = UI.get("importImageDialog");
+    const transformGroups = [...document.querySelectorAll(".importImageTransformControlGroup")];
+    const transformValues = [
+      [document.querySelector("#importImageScale"), "1234.56"],
+      [document.querySelector("#importImageX"), "-123456"],
+      [document.querySelector("#importImageY"), "123456"],
+    ];
+    const measurementContext = document.createElement("canvas").getContext("2d");
+    const valuesFit = transformValues.every(([input, value]) => {
+      const style = getComputedStyle(input);
+      measurementContext.font = style.font;
+      const contentWidth = input.clientWidth
+        - Number.parseFloat(style.paddingLeft)
+        - Number.parseFloat(style.paddingRight);
+      return measurementContext.measureText(value).width <= contentWidth;
+    });
+    const controlsAlign = transformGroups.every((group) => {
+      const centers = [...group.children].map((control) => {
+        const bounds = control.getBoundingClientRect();
+        return bounds.top + bounds.height / 2;
+      });
+      return Math.max(...centers) - Math.min(...centers) <= 1;
+    });
     const source = document.querySelector(`#${g_app.services.imageImport
       .getActive(g_app.textModeEditor).innerSplitPanel.id}north`).getBoundingClientRect();
     const settings = document.querySelector("#importImageAllSettings").getBoundingClientRect();
     return {
+      controlsAlign,
       preferredHeight: dialog.preferredHeight,
       renderedHeight: dialog.height,
       settingsHeight: settings.height,
       sourceHeight: source.height,
+      valuesFit,
     };
   });
+  expect(compactImport.controlsAlign).toBe(true);
   expect(compactImport.preferredHeight).toBe(800);
   expect(compactImport.renderedHeight).toBeLessThan(compactImport.preferredHeight);
   expect(compactImport.settingsHeight).toBeGreaterThan(150);
   expect(compactImport.sourceHeight).toBeGreaterThan(150);
+  expect(compactImport.valuesFit).toBe(true);
 
   await page.locator("#importImageUseChars").scrollIntoViewIfNeeded();
   const lastImportControlFits = await page.evaluate(() => {

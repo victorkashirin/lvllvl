@@ -12,6 +12,10 @@
 
 ### Fixed
 
+- Make Tab toggle artwork preview mode until the next press instead of showing
+  the preview only while the key is held.
+- Align the image/video import transform controls and widen their scale and
+  position fields so selected-image values remain visible.
 - Give selected colors in the sidebar palette a contrasting black-and-gold
   outline instead of a heavy solid-yellow border.
 
