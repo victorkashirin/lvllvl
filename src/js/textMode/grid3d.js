@@ -137,6 +137,11 @@ Grid3d.prototype = {
   createDoc: function(args, callback) {
 
     args = args || {};
+    var validation = TextModeEditor.validateDocCreation(
+      args, ['gridWidth', 'gridHeight', 'gridDepth']);
+    if(!validation.success) {
+      return false;
+    }
     var doc = args.document || g_app.doc;
     var projectGeneration = args.projectGeneration;
     var isCurrent = function() {
@@ -145,21 +150,16 @@ Grid3d.prototype = {
     if(!doc || !isCurrent()) {
       return;
     }
-    var name = args.name;
+    var name = validation.name;
 
-    var gridWidth = args.gridWidth;
-    var gridHeight = args.gridHeight;
-    var gridDepth = args.gridDepth;
-    if(typeof gridDepth == 'undefined') {
-      gridDepth = 25;
-    }
+    var gridWidth = validation.values.gridWidth;
+    var gridHeight = validation.values.gridHeight;
+    var gridDepth = validation.values.gridDepth;
 
     var parentPath = '/3d scene';
     if(typeof args.parentPath != 'undefined') {
       parentPath = args.parentPath;  
     }
-
-    var name = args.name;
 
     var id = g_app.getGuid();
 

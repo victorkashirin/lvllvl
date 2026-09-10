@@ -81,7 +81,8 @@ ExportGif.prototype = {
     html += '</div>';
 
     this.exportProgressDialog = UI.create("UI.Dialog", 
-      { "id": "exportGifProgressDialog", "title": "Export Progress", "width": 280, "height": 140 });
+      { "id": "exportGifProgressDialog", "title": "Export Progress", "width": 280, "height": 140,
+        "showCloseButton": false });
 
 
 
@@ -744,8 +745,8 @@ ExportGif.prototype = {
     this.recorder.stop();
     this.recordingVideo = false;
 
-    UI.closeDialog();
-    UI.closeDialog();
+    UI.closeDialog(this.exportProgressDialog);
+    UI.closeDialog(this.uiComponent);
 
 //    var url = URL.createObjectURL(blob);
 //    var 
@@ -1026,9 +1027,8 @@ ExportGif.prototype = {
 
   exportGifFinished: function() {
     this.exportInProgress = false;
-    // close both dialogs
-    UI.closeDialog();
-    UI.closeDialog();
+    UI.closeDialog(this.exportProgressDialog);
+    UI.closeDialog(this.uiComponent);
 
   },
 

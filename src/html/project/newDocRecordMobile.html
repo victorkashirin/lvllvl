@@ -12,20 +12,24 @@
 
   <div class="formGroup">
     <label class="controlLabel" for="newProjectFileNameMobile">Name:</label>
-    <input type="text" class="formControl" id="newProjectFileNameMobile"  spellcheck="false"/>
+    <input type="text" class="formControl" id="newProjectFileNameMobile" spellcheck="false"
+      required aria-describedby="newDocRecordMobileError"/>
   </div>
 
 
   <div id="newDocRecordMobileGridDimensions">
     <div class="formGroup">
       <label class="controlLabel" for="newDocRecordGridWidthMobile">Grid Size:</label>
-      <input type="text" class="formControl number" min="1" value="40" id="newDocRecordGridWidthMobile" size="2"/>
+      <input type="number" class="formControl number" min="1" max="200" step="1" value="40"
+        id="newDocRecordGridWidthMobile" size="3" aria-describedby="newDocRecordMobileError"/>
       <span style="margin: 0 4px 0 4px">x</span>
-      <input type="text" class="formControl number" min="1" value="25" id="newDocRecordGridHeightMobile" size="2" />
+      <input type="number" class="formControl number" min="1" max="200" step="1" value="25"
+        id="newDocRecordGridHeightMobile" size="3" aria-describedby="newDocRecordMobileError"/>
 
       <span id="newDocRecordGridDimensionsDepthMobile">
         <span style="margin: 0 4px 0 4px">x</span>
-        <input type="text" class="formControl number" min="1" value="25" id="newDocRecordGridDepthMobile" size="2"/>
+        <input type="number" class="formControl number" min="1" max="200" step="1" value="25"
+          id="newDocRecordGridDepthMobile" size="3" aria-describedby="newDocRecordMobileError"/>
       </span>
     </div>
     <!--
@@ -50,5 +54,8 @@
         </select>
       </div>    
   </div>
+
+  <div id="newDocRecordMobileError" role="alert"
+    style="display: none; color: #ff8080; margin-top: 6px"></div>
 
 </div>

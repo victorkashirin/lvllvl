@@ -9,6 +9,9 @@
 
 ### Fixed
 
+- Prevent asynchronous export and mobile document creation from closing
+  unrelated dialogs, make non-cancellable progress dialogs non-dismissible,
+  and validate New Project/mobile document names and grid dimensions.
 - Keep project-tree delete and rename operations synchronized with open tabs,
   active editor paths, and persistence state, with validation for invalid names.
 - Keep New Project tile-set and color-palette selections consistent with the

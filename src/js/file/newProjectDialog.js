@@ -219,12 +219,13 @@ NewProjectDialog.prototype = {
       html += '      <label class="formControlLabel" for="newProjectWidth">Dimensions</label>';
 
       html += '      <div style="display: flex">';
-      html += '      <input type="number" style="width: 30px" class="formControl number dimensionsNumber" min="1" id="newProjectWidth" size="4" value="40"/>';
+      html += '      <input type="number" style="width: 30px" class="formControl number dimensionsNumber" min="1" max="200" step="1" aria-describedby="newProjectDimensionsError" id="newProjectWidth" size="4" value="40"/>';
       html += '      <div>&nbsp;x&nbsp;</div>';
-      html += '      <input type="number" style="width: 30px" class="formControl number dimensionsNumber" min="1" id="newProjectHeight" size="4" value="25"/>';
+      html += '      <input type="number" style="width: 30px" class="formControl number dimensionsNumber" min="1" max="200" step="1" aria-describedby="newProjectDimensionsError" id="newProjectHeight" size="4" value="25"/>';
       html += '      </div>';
 
       html += '    </div>';
+      html += '    <div id="newProjectDimensionsError" role="alert" style="display: none; color: #ff8080; margin: -4px 0 8px 104px"></div>';
 
 
       html += '    <div class="formRow" id="enableFlipRotateRow">';
@@ -257,13 +258,14 @@ NewProjectDialog.prototype = {
 
       this.okButton = UI.create('UI.Button', { "text": "OK", "color": "primary" });
       this.okButton.on('click', function(event) {
-        _this.createNewProject();
-        UI.closeDialog();
+        if(_this.createNewProject()) {
+          UI.closeDialog(_this.uiComponent);
+        }
       });
 
       this.closeButton = UI.create('UI.Button', { "text": "Cancel", "color": "secondary" });
       this.closeButton.on('click', function(event) {
-        UI.closeDialog();
+        UI.closeDialog(_this.uiComponent);
       });
 
       this.uiComponent.addButton(this.okButton);
@@ -275,14 +277,33 @@ NewProjectDialog.prototype = {
       });
     } 
 
+    $('#newProjectDimensionsError').hide().text('');
+    $('#newProjectWidth, #newProjectHeight').removeAttr('aria-invalid');
     UI.showDialog("newProjectDialog");
 
   },
 
   createNewProject: function() {
 
-    var width = parseInt($('#newProjectWidth').val(), 10);
-    var height = parseInt($('#newProjectHeight').val(), 10);
+    var validation = TextModeEditor.validateDocCreation({
+      name: 'Untitled Screen',
+      gridWidth: $('#newProjectWidth').val(),
+      gridHeight: $('#newProjectHeight').val()
+    }, ['gridWidth', 'gridHeight']);
+
+    $('#newProjectDimensionsError').hide().text('');
+    $('#newProjectWidth, #newProjectHeight').removeAttr('aria-invalid');
+    if(!validation.success) {
+      var fieldSelector = validation.field == 'gridWidth'
+        ? '#newProjectWidth'
+        : '#newProjectHeight';
+      $('#newProjectDimensionsError').text(validation.error).show();
+      $(fieldSelector).attr('aria-invalid', 'true').focus();
+      return false;
+    }
+
+    var width = validation.values.gridWidth;
+    var height = validation.values.gridHeight;
 
     var tileRotate = $('#newProjectTileRotate').is(':checked');
     var tileFlip = $('#newProjectTileFlip').is(':checked');
@@ -324,6 +345,7 @@ NewProjectDialog.prototype = {
     args.height = height;
 
     g_app.newProject(args);
+    return true;
   }
 
 }

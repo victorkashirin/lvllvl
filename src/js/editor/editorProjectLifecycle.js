@@ -370,9 +370,6 @@ Object.assign(Editor.prototype, {
     args = args || {};
     var _this = this;
 
-    var generation = this.beginProjectTransition();
-    this.fileManager.setIsNew(true);
-
     var mode = 'monochrome';
     var editor = 'screen';
 
@@ -387,6 +384,31 @@ Object.assign(Editor.prototype, {
     if(typeof args.mode != 'undefined') {
       mode = args.mode;
     }
+
+    var gridWidth = mode == 'nes' ? 32 : 40;
+    var gridHeight = mode == 'nes' ? 30 : 25;
+    if(typeof args.width != 'undefined') {
+      gridWidth = args.width;
+    }
+    if(typeof args.height != 'undefined') {
+      gridHeight = args.height;
+    }
+
+    if(typeof args.template == 'undefined') {
+      var validation = TextModeEditor.validateDocCreation({
+        name: 'Untitled Screen',
+        gridWidth: gridWidth,
+        gridHeight: gridHeight
+      }, ['gridWidth', 'gridHeight']);
+      if(!validation.success) {
+        return false;
+      }
+      gridWidth = validation.values.gridWidth;
+      gridHeight = validation.values.gridHeight;
+    }
+
+    var generation = this.beginProjectTransition();
+    this.fileManager.setIsNew(true);
 
 
     var doc = this.createDocument();
@@ -435,22 +457,8 @@ Object.assign(Editor.prototype, {
       tileSetName = args.tileSetName;
     }
 
-    var gridWidth = 40;
-    var gridHeight = 25;
-
     if(mode == 'nes') {
-      gridWidth = 32;
-      gridHeight = 30;
       colorPalettePresetId = 'nes';
-    }
-
-
-    if(typeof args.width != 'undefined') {
-      gridWidth = args.width;
-    }
-
-    if(typeof args.height != 'undefined') {
-      gridHeight = args.height;
     }
 
     if(typeof args.template != 'undefined') {

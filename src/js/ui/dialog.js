@@ -122,10 +122,7 @@ UI.Dialog = function(args) {
     this.maxWidth = typeof args.maxWidth != 'undefined' ? args.maxWidth : false;
     this.maxHeight = typeof args.maxHeight != 'undefined' ? args.maxHeight : false;
 
-    this.showCloseButton = true;
-    if(typeof args.showCloseButton !== 'undefined') {
-      this.showCloseButton = false;
-    }
+    this.showCloseButton = args.showCloseButton !== false;
 
     if(this.fullScreen) {
 
@@ -552,12 +549,11 @@ UI.Dialog = function(args) {
     html += '    <h2 id="' + this.id + 'titleheading" class="ui-dialog-titlebar-heading" data-ui-dialog-title="' + this.id + '" >';
     html += SafeHTML.escape(this.title);
     html += '    </h2>';
-    html += '    <div id="' + this.id + 'titlebarclose" data-ui-dialog-close="' + this.id + '" class="ui-dialog-titlebar-close">';
-
     if(this.showCloseButton) {
+      html += '    <div id="' + this.id + 'titlebarclose" data-ui-dialog-close="' + this.id + '" class="ui-dialog-titlebar-close">';
       html += this.closeButton.getHTML();
+      html += '    </div>';
     }
-    html += '    </div>';
     html += '  </div>';
 
     html += '  <div id="' + this.id + '-content" class="ui-dialog-content ui-mouseevents" ';
@@ -591,12 +587,11 @@ UI.Dialog = function(args) {
     html += '    <h2 id="' + this.id + 'titleheading" class="ui-dialog-titlebar-heading" data-ui-dialog-title="' + this.id + '" >';
     html += SafeHTML.escape(this.title);
     html += '    </h2>';
-    html += '    <div id="' + this.id + 'titlebarclose" data-ui-dialog-close="' + this.id + '" class="ui-dialog-titlebar-close">';
-
     if(this.showCloseButton) {
+      html += '    <div id="' + this.id + 'titlebarclose" data-ui-dialog-close="' + this.id + '" class="ui-dialog-titlebar-close">';
       html += this.closeButton.getHTML();
+      html += '</div>';
     }
-    html += '</div>';
     html += '  </div>';
 
     html += '  <div id="' + this.id + 'content" class="ui-dialog-content" ';

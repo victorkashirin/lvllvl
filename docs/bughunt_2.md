@@ -46,7 +46,7 @@ The chooser callbacks have a second state split: they assign `this.tileSetName` 
 
 **Fix:** update the entire asset selection as one state object. Selecting a built-in mode must clear custom tile-set fields; chooser callbacks must update the dialog instance. Add custom tile set → switch mode → create and named preset → create tests that compare the visible selection with the created asset and metadata.
 
-### 4. Background completion handlers blindly pop dialogs that may no longer belong to the operation
+### 4. Background completion handlers blindly pop dialogs that may no longer belong to the operation — Completed
 
 **Locations:** `src/js/textMode/export/exportImage.js:105-120`, `src/js/textMode/export/exportImage.js:1600-1602`, `src/js/textMode/export/exportImage.js:1749-1753`, `src/js/textMode/export/exportGif.js:77-89`, `src/js/textMode/export/exportGif.js:743-748`, `src/js/textMode/export/exportGif.js:1027-1031`, `src/js/textMode/export3d/export3dGif.js:76-89`, `src/js/textMode/export3d/export3dGif.js:1048-1051`, `src/js/file/projectNavigatorMobile.js:248-280`, `src/js/file/projectNavigatorMobile.js:403-503`
 
@@ -56,7 +56,7 @@ Mobile New has the same race in a different form: OK closes immediately, while s
 
 **Fix:** close explicit dialog instances/IDs only when they are still open. Decide separately whether the parent should close. Make non-cancellable progress dialogs non-dismissible, or wire dismissal to real cancellation. Test dismiss/open-another-dialog while an async operation is pending.
 
-### 5. Mobile New Document accepts blank names and non-finite or non-positive dimensions
+### 5. Mobile New Document accepts blank names and non-finite or non-positive dimensions — Completed
 
 **Locations:** `src/html/project/newDocRecordMobile.html:13-28`, `src/js/file/projectNavigatorMobile.js:248-261`, `src/js/file/projectNavigatorMobile.js:304-360`, `src/js/file/projectNavigatorMobile.js:370-450`
 

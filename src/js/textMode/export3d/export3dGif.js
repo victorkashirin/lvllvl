@@ -80,7 +80,8 @@ Export3dGif.prototype = {
     html += '</div>';
 
     this.exportProgressDialog = UI.create("UI.Dialog", 
-      { "id": "export3dGifProgressDialog", "title": "Export Progress", "width": 280, "height": 120 });
+      { "id": "export3dGifProgressDialog", "title": "Export Progress", "width": 280, "height": 120,
+        "showCloseButton": false });
 
 
 
@@ -1046,9 +1047,8 @@ if(true) {//characterTicks.length > 0) {
   },
 
   exportGifFinished: function() {
-    // close both dialogs
-    UI.closeDialog();
-    UI.closeDialog();
+    UI.closeDialog(this.exportProgressDialog);
+    UI.closeDialog(this.uiComponent);
 
   },
 

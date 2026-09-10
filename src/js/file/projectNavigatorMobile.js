@@ -93,6 +93,9 @@ ProjectNavigatorMobile.prototype = {
 
     var filename = 'Untitled';
     $('#newProjectFileNameMobile').val(filename);
+    $('#newDocRecordMobileError').text('').hide();
+    $('#newProjectFileNameMobile, #newDocRecordGridWidthMobile, #newDocRecordGridHeightMobile, #newDocRecordGridDepthMobile')
+      .removeAttr('aria-invalid');
 
 
   },
@@ -252,13 +255,15 @@ ProjectNavigatorMobile.prototype = {
         var width = $('#newDocRecordGridWidthMobile').val();
         var height = $('#newDocRecordGridHeightMobile').val();
         var depth = $('#newDocRecordGridDepthMobile').val();
-        _this.newRecord({
+        if(_this.newRecord({
           type: type,
           name: name,
           width: width,
           height: height,
           depth: depth
-        });
+        })) {
+          UI.closeDialog(_this.newDocRecordDialog);
+        }
 
         /*
         var args = {};
@@ -276,12 +281,11 @@ ProjectNavigatorMobile.prototype = {
         _this.newFile(args);
         */
 
-        UI.closeDialog();
       });
 
       this.closeButton = UI.create('UI.Button', { "text": "Cancel", "color": "secondary" });
       this.closeButton.on('click', function(event) {
-        UI.closeDialog();
+        UI.closeDialog(_this.newDocRecordDialog);
       });
 
       this.newDocRecordDialog.addButton(this.okButton);
@@ -330,11 +334,31 @@ ProjectNavigatorMobile.prototype = {
 
 
   newRecord: function(args) {
-    var name = args.name;
     var type = args.type;
     var _this = this;
     var extension = '';
 
+    var dimensions = [];
+    if(type == 'screen') {
+      dimensions = ['gridWidth', 'gridHeight'];
+    } else if(type == '3d scene') {
+      dimensions = ['gridWidth', 'gridHeight', 'gridDepth'];
+    }
+    $('#newDocRecordMobileError').text('').hide();
+    $('#newProjectFileNameMobile, #newDocRecordGridWidthMobile, #newDocRecordGridHeightMobile, #newDocRecordGridDepthMobile')
+      .removeAttr('aria-invalid');
+    var validation = TextModeEditor.validateDocCreation({
+      name: args.name,
+      gridWidth: args.width,
+      gridHeight: args.height,
+      gridDepth: args.depth
+    }, dimensions);
+    if(!validation.success) {
+      this.showNewRecordError(validation);
+      return false;
+    }
+
+    var name = validation.name;
 
     var parentPath = false;
     switch(type) {
@@ -354,7 +378,7 @@ ProjectNavigatorMobile.prototype = {
     }
 
     if(parentPath === false) {
-      return;
+      return false;
     }
 
     name = this.getUniqueFilename('/' + parentPath + '/', name, extension);
@@ -367,27 +391,9 @@ ProjectNavigatorMobile.prototype = {
       var colorPaletteId = $('#newDocRecordMobileColorPalette').val();
 
 
-      var width = 40;
-
-      if(typeof args.width != 'undefined') {
-        width = parseInt(args.width, 10);
-      }
-
-      var height = 40;
-      if(typeof args.height != 'undefined') {
-        height = parseInt(args.height, 10);
-      }
-      if(isNaN(height)) {
-        height = 25;
-      }
-
-      var depth = 25;
-      if(typeof args.depth != 'undefined') {
-        depth = parseInt(args.depth, 10);
-      }
-      if(isNaN(depth)) {
-        depth = 25;
-      }
+      var width = validation.values.gridWidth;
+      var height = validation.values.gridHeight;
+      var depth = validation.values.gridDepth;
 
       g_app.textModeEditor.grid3d.createDoc({
         parentPath: '/3d scenes',
@@ -405,8 +411,9 @@ ProjectNavigatorMobile.prototype = {
 
         _this.selectDoc(newDocRecord.id, '3d scenes/' + name);
         _this.openSelected();
-        UI.closeDialog();
-      });      
+        UI.closeDialog(_this.uiComponent);
+      });
+      return true;
 
     }
     if(type == 'screen') {
@@ -418,19 +425,8 @@ ProjectNavigatorMobile.prototype = {
       var colorPaletteId = $('#newDocRecordMobileColorPalette').val();
 
 
-      var width = 40;
-
-      if(typeof args.width != 'undefined') {
-        width = parseInt(args.width, 10);
-      }
-      var height = 40;
-
-      if(typeof args.height != 'undefined') {
-        height = parseInt(args.height, 10);
-      }
-      if(isNaN(height)) {
-        height = 25;
-      }
+      var width = validation.values.gridWidth;
+      var height = validation.values.gridHeight;
 
       g_app.textModeEditor.createDoc({
         parentPath: '/screens',
@@ -446,8 +442,9 @@ ProjectNavigatorMobile.prototype = {
         _this.updateProjectList();
         _this.selectDoc(newDocRecord.id, 'screens/' + name);
         _this.openSelected();
-        UI.closeDialog();
+        UI.closeDialog(_this.uiComponent);
       });
+      return true;
 
     }
 
@@ -490,8 +487,9 @@ ProjectNavigatorMobile.prototype = {
         _this.openSelected();
         g_app.textModeEditor.setBackgroundColor(g_app.textModeEditor.colorPaletteManager.noColor);
 
-        UI.closeDialog();
+        UI.closeDialog(_this.uiComponent);
       });
+      return true;
     }
     if(type == 'asm') {
       type = 'asm';
@@ -500,9 +498,25 @@ ProjectNavigatorMobile.prototype = {
       _this.updateProjectList();
       _this.selectDoc(newDocRecord.id, 'asm/inc/' + name);
       _this.openSelected();
-      UI.closeDialog();
-  }
+      UI.closeDialog(_this.uiComponent);
+      return true;
+    }
 
+    return false;
+  },
+
+  showNewRecordError: function(validation) {
+    var fieldSelectors = {
+      name: '#newProjectFileNameMobile',
+      gridWidth: '#newDocRecordGridWidthMobile',
+      gridHeight: '#newDocRecordGridHeightMobile',
+      gridDepth: '#newDocRecordGridDepthMobile'
+    };
+    var selector = fieldSelectors[validation.field];
+    $('#newDocRecordMobileError').text(validation.error).show();
+    if(selector) {
+      $(selector).attr('aria-invalid', 'true').focus();
+    }
   },
 
   appendDocList: function(parentFile, prefix, container) {

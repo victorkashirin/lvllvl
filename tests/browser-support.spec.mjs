@@ -158,6 +158,22 @@ test("interaction controls stay synchronized with modal, frame, layer, and selec
       topIsOpen: topDialog.isOpen,
     };
     UI.closeDialog(topDialog);
+    const progressDialog = UI.create("UI.Dialog", {
+      id: "interactionStateProgressDialog",
+      title: "Working",
+      width: 220,
+      height: 100,
+      showCloseButton: false,
+    });
+    UI.showDialog(progressDialog);
+    const progressCloseState = {
+      closeControlPresent: document.getElementById(
+        "interactionStateProgressDialogtitlebarclose",
+      ) !== null,
+      isOpenBeforeExplicitClose: progressDialog.isOpen,
+    };
+    progressCloseState.explicitCloseSucceeded = UI.closeDialog(progressDialog);
+    progressCloseState.isOpenAfterExplicitClose = progressDialog.isOpen;
     const focusReturnedToOrigin = document.activeElement === focusOrigin;
     focusOrigin.remove();
     return {
@@ -169,6 +185,7 @@ test("interaction controls stay synchronized with modal, frame, layer, and selec
       firstShow,
       isOpen: dialog.isOpen,
       openEntries,
+      progressCloseState,
       remainingEntries: UI.dialogStack.filter((entry) => entry === dialog).length,
     };
   });
@@ -187,6 +204,12 @@ test("interaction controls stay synchronized with modal, frame, layer, and selec
     firstShow: true,
     isOpen: false,
     openEntries: 1,
+    progressCloseState: {
+      closeControlPresent: false,
+      explicitCloseSucceeded: true,
+      isOpenAfterExplicitClose: false,
+      isOpenBeforeExplicitClose: true,
+    },
     remainingEntries: 0,
   });
 

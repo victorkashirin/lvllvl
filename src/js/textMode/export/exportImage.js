@@ -113,7 +113,8 @@ ExportImage.prototype = {
         "id": "exportImageProgressDialog", 
         "title": "Export Progress", 
         "width": 280, 
-        "height": 140 
+        "height": 140,
+        "showCloseButton": false
       });
 
     this.exportProgressHTML = UI.create("UI.HTMLPanel", {"html": html});
@@ -1748,9 +1749,8 @@ ExportImage.prototype = {
 
   exportGifFinished: function() {
     this.exportInProgress = false;
-    // close both dialogs
-    UI.closeDialog();
-    UI.closeDialog();
+    UI.closeDialog(this.exportProgressDialog);
+    UI.closeDialog(this.uiComponent);
   },
 
   // need to integrate this with Frames.update

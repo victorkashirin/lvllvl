@@ -15,6 +15,22 @@ const newProjectDialogSource = readFileSync(
   new URL("../src/js/file/newProjectDialog.js", import.meta.url),
   "utf8",
 );
+const projectNavigatorMobileSource = readFileSync(
+  new URL("../src/js/file/projectNavigatorMobile.js", import.meta.url),
+  "utf8",
+);
+const textModeEditorSource = readFileSync(
+  new URL("../src/js/textMode/textModeEditor.js", import.meta.url),
+  "utf8",
+);
+const grid3dSource = readFileSync(
+  new URL("../src/js/textMode/grid3d.js", import.meta.url),
+  "utf8",
+);
+const editorProjectLifecycleSource = readFileSync(
+  new URL("../src/js/editor/editorProjectLifecycle.js", import.meta.url),
+  "utf8",
+);
 
 function createJQueryState() {
   const state = new Map([
@@ -22,6 +38,12 @@ function createJQueryState() {
     ["#newProjectHeight", { value: "25" }],
     ["#newProjectTileRotate", { checked: true }],
     ["#newProjectTileFlip", { checked: true }],
+    ["#newProjectDimensionsError", {}],
+    ["#newProjectFileNameMobile", { value: "Untitled" }],
+    ["#newDocRecordGridWidthMobile", { value: "40" }],
+    ["#newDocRecordGridHeightMobile", { value: "25" }],
+    ["#newDocRecordGridDepthMobile", { value: "25" }],
+    ["#newDocRecordMobileError", {}],
   ]);
 
   function $(selector) {
@@ -35,7 +57,9 @@ function createJQueryState() {
         return item.text;
       },
       is(query) { return query === ":checked" ? item.checked === true : false; },
+      attr(name, value) { item[name] = value; return this; },
       prop(name, value) { item[name] = value; return this; },
+      removeAttr(name) { delete item[name]; return this; },
       show() { item.visible = true; return this; },
       text(value) {
         if(value !== undefined) { item.text = value; return this; }
@@ -56,15 +80,22 @@ function loadProjectState() {
   const sandbox = vm.createContext({
     $: jquery.$,
     console,
+    Editor: function Editor() {},
     TextModeEditor: { Mode: { C64STANDARD: "c64standard" } },
     UI: {},
     g_app: {},
   });
   vm.runInContext(
     `${documentSource}\n${projectNavigatorSource}\n${newProjectDialogSource}\n` +
+      `${projectNavigatorMobileSource}\n${textModeEditorSource}\n${grid3dSource}\n` +
+      `${editorProjectLifecycleSource}\n` +
       "globalThis.TestDocument = Document;" +
+      "globalThis.TestEditor = Editor;" +
       "globalThis.TestProjectNavigator = ProjectNavigator;" +
-      "globalThis.TestNewProjectDialog = NewProjectDialog;",
+      "globalThis.TestNewProjectDialog = NewProjectDialog;" +
+      "globalThis.TestProjectNavigatorMobile = ProjectNavigatorMobile;" +
+      "globalThis.TestTextModeEditor = TextModeEditor;" +
+      "globalThis.TestGrid3d = Grid3d;",
     sandbox,
   );
   return { ...sandbox, jquery };
@@ -254,4 +285,145 @@ test("named tile and palette presets submit the names shown in New Project", () 
   assert.equal(submitted.tileSetName, "Teletext");
   assert.equal(submitted.colorPalettePresetId, "dawn");
   assert.equal(submitted.colorPaletteName, "Dawn");
+});
+
+test("New Project rejects invalid dimensions before starting a project transition", () => {
+  const { TestEditor, TestNewProjectDialog, g_app, jquery } = loadProjectState();
+  let submitted;
+  g_app.newProject = (args) => { submitted = args; };
+
+  const dialog = new TestNewProjectDialog();
+  jquery.state.get("#newProjectWidth").value = "201";
+  assert.equal(dialog.createNewProject(), false);
+  assert.equal(submitted, undefined);
+  assert.match(jquery.state.get("#newProjectDimensionsError").text, /200 or less/);
+  assert.equal(jquery.state.get("#newProjectDimensionsError").visible, true);
+  assert.equal(jquery.state.get("#newProjectWidth")["aria-invalid"], "true");
+  assert.equal(jquery.state.get("#newProjectWidth").focused, true);
+
+  const editor = new TestEditor();
+  let transitions = 0;
+  editor.beginProjectTransition = () => { transitions++; return 1; };
+  editor.fileManager = { setIsNew() {} };
+  assert.equal(editor.newProject({ width: 201, height: 25 }), false);
+  assert.equal(transitions, 0);
+
+  jquery.state.get("#newProjectWidth").value = "40";
+  jquery.state.get("#newProjectHeight").value = "25";
+  assert.equal(dialog.createNewProject(), true);
+  assert.equal(submitted.width, 40);
+  assert.equal(submitted.height, 25);
+});
+
+test("mobile document creation rejects invalid names and bounded dimensions", () => {
+  const {
+    TestGrid3d,
+    TestProjectNavigatorMobile,
+    TestTextModeEditor,
+    UI,
+    g_app,
+    jquery,
+  } = loadProjectState();
+  const closedDialogs = [];
+  UI.closeDialog = (dialog) => { closedDialogs.push(dialog); };
+  g_app.doc = {
+    getDocRecord() { return null; },
+  };
+
+  let createCalls = 0;
+  g_app.textModeEditor = {
+    createDoc() { createCalls++; },
+    grid3d: { createDoc() { createCalls++; } },
+  };
+  const navigator = new TestProjectNavigatorMobile();
+  navigator.uiComponent = { id: "project-navigator" };
+
+  const invalid = [
+    { args: { type: "screen", name: "   ", width: "40", height: "25" }, field: "name" },
+    { args: { type: "screen", name: "Screen", width: "text", height: "25" }, field: "gridWidth" },
+    { args: { type: "screen", name: "Screen", width: "40", height: "0" }, field: "gridHeight" },
+    { args: { type: "3d scene", name: "Scene", width: "40", height: "25", depth: "-1" }, field: "gridDepth" },
+    { args: { type: "screen", name: "Screen", width: "201", height: "25" }, field: "gridWidth" },
+  ];
+  const fieldSelectors = {
+    name: "#newProjectFileNameMobile",
+    gridWidth: "#newDocRecordGridWidthMobile",
+    gridHeight: "#newDocRecordGridHeightMobile",
+    gridDepth: "#newDocRecordGridDepthMobile",
+  };
+  for(const fixture of invalid) {
+    assert.equal(navigator.newRecord(fixture.args), false);
+    const selector = fieldSelectors[fixture.field];
+    assert.equal(jquery.state.get(selector)["aria-invalid"], "true");
+    assert.equal(jquery.state.get(selector).focused, true);
+    assert.equal(jquery.state.get("#newDocRecordMobileError").visible, true);
+  }
+  assert.equal(createCalls, 0);
+  assert.deepEqual(closedDialogs, []);
+
+  const normalized = TestTextModeEditor.validateDocCreation(
+    { name: "  Valid  ", gridWidth: "40", gridHeight: "25" },
+    ["gridWidth", "gridHeight"],
+  );
+  assert.equal(normalized.success, true);
+  assert.equal(normalized.name, "Valid");
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(normalized.values)),
+    { gridWidth: 40, gridHeight: 25 },
+  );
+
+  const editor = new TestTextModeEditor();
+  editor.colorPaletteManager = { addColorPaletteToDoc() { createCalls++; } };
+  assert.equal(editor.createDoc({ name: "Screen", gridWidth: 0, gridHeight: 25 }), false);
+
+  const grid3d = new TestGrid3d();
+  assert.equal(grid3d.createDoc({
+    name: "Scene", gridWidth: 40, gridHeight: 25, gridDepth: Infinity,
+  }), false);
+  assert.equal(createCalls, 0);
+});
+
+test("mobile document completion closes its owner without closing a newer dialog", () => {
+  const { TestProjectNavigatorMobile, UI, g_app } = loadProjectState();
+  const projectDialog = { id: "project-navigator", isOpen: true };
+  const newDocumentDialog = { id: "new-document", isOpen: true };
+  const newerDialog = { id: "newer-dialog", isOpen: true };
+  UI.dialogStack = [projectDialog, newDocumentDialog];
+  UI.closeDialog = (dialog) => {
+    const index = UI.dialogStack.indexOf(dialog);
+    if(index === -1) return false;
+    UI.dialogStack.splice(index, 1);
+    dialog.isOpen = false;
+    return true;
+  };
+  g_app.doc = { getDocRecord() { return null; } };
+
+  let createArgs;
+  let finishCreation;
+  g_app.textModeEditor = {
+    createDoc(args, callback) {
+      createArgs = args;
+      finishCreation = callback;
+    },
+  };
+  const navigator = new TestProjectNavigatorMobile();
+  navigator.uiComponent = projectDialog;
+  navigator.updateProjectList = () => {};
+  navigator.selectDoc = () => {};
+  navigator.openSelected = () => true;
+
+  assert.equal(navigator.newRecord({
+    type: "screen", name: " Screen ", width: "40", height: "25",
+  }), true);
+  assert.equal(createArgs.name, "Screen");
+  assert.equal(createArgs.gridWidth, 40);
+  assert.equal(createArgs.gridHeight, 25);
+
+  UI.closeDialog(newDocumentDialog);
+  UI.dialogStack.push(newerDialog);
+  finishCreation({ id: "created-screen" });
+
+  assert.deepEqual(UI.dialogStack, [newerDialog]);
+  assert.equal(projectDialog.isOpen, false);
+  assert.equal(newerDialog.isOpen, true);
 });

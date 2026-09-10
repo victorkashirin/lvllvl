@@ -142,6 +142,36 @@ TextModeEditor.Mode.INDEXED = 'indexed';
 TextModeEditor.Mode.RGB = 'rgb';
 TextModeEditor.Mode.VECTOR = 'vector';
 
+TextModeEditor.MAX_GRID_DIMENSION = 200;
+
+TextModeEditor.validateDocCreation = function(args, dimensions) {
+  args = args || {};
+  dimensions = dimensions || [];
+
+  var name = typeof args.name == 'string' ? args.name.trim() : '';
+  if(name == '') {
+    return { success: false, field: 'name', error: 'Enter a document name.' };
+  }
+
+  var values = {};
+  for(var i = 0; i < dimensions.length; i++) {
+    var dimension = dimensions[i];
+    var value = Number(args[dimension]);
+    var label = dimension.replace(/^grid/, '').toLowerCase();
+    if(!Number.isFinite(value) || !Number.isInteger(value) || value < 1) {
+      return { success: false, field: dimension,
+        error: 'Grid ' + label + ' must be a positive whole number.' };
+    }
+    if(value > TextModeEditor.MAX_GRID_DIMENSION) {
+      return { success: false, field: dimension,
+        error: 'Grid ' + label + ' must be ' + TextModeEditor.MAX_GRID_DIMENSION + ' or less.' };
+    }
+    values[dimension] = value;
+  }
+
+  return { success: true, name: name, values: values };
+};
+
 TextModeEditor.prototype = {
 
 
@@ -405,6 +435,10 @@ TextModeEditor.prototype = {
 
   createDoc: function(args, callback) {
     args = args || {};
+    var validation = TextModeEditor.validateDocCreation(args, ['gridWidth', 'gridHeight']);
+    if(!validation.success) {
+      return false;
+    }
     var doc = args.document || g_app.doc;
     var projectGeneration = args.projectGeneration;
     var isCurrent = function() {
@@ -421,13 +455,13 @@ TextModeEditor.prototype = {
       parentPath = args.parentPath;  
     }
 
-    var name = args.name;
+    var name = validation.name;
     // defaults
     var colorPalette = args.colorPalette;
     //var tileSet = args.tileSet;
 
-    var gridWidth = args.gridWidth;
-    var gridHeight = args.gridHeight;
+    var gridWidth = validation.values.gridWidth;
+    var gridHeight = validation.values.gridHeight;
 
     var cellWidth = 8;
     var cellHeight = 8;

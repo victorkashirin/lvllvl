@@ -239,6 +239,36 @@ test("GIF previews resize and repaint only while their dialogs are active", () =
   }
 });
 
+test("asynchronous GIF completion closes only its owned dialogs", () => {
+  for(const fixture of [
+    { path: "../src/js/textMode/export/exportImage.js", name: "ExportImage", method: "createProgressDialog" },
+    { path: "../src/js/textMode/export/exportGif.js", name: "ExportGif", method: "initExportProgress" },
+    { path: "../src/js/textMode/export3d/export3dGif.js", name: "Export3dGif", method: "initExportProgress" },
+  ]) {
+    const closed = [];
+    let progressArgs = null;
+    const UI = {
+      closeDialog(dialog) { closed.push(dialog); },
+      create(type, args) {
+        if(type === "UI.Dialog") progressArgs = args;
+        return { add() {} };
+      },
+    };
+    const sandbox = vm.createContext({ UI });
+    vm.runInContext(readSource(fixture.path), sandbox);
+    const exporter = new sandbox[fixture.name]();
+    exporter.uiComponent = { id: "parent" };
+    exporter[fixture.method]();
+    const progressDialog = exporter.exportProgressDialog;
+
+    assert.equal(progressArgs.showCloseButton, false,
+      `${fixture.name} progress cannot be dismissed without cancellation`);
+    exporter.exportGifFinished();
+    assert.deepEqual(closed, [progressDialog, exporter.uiComponent],
+      `${fixture.name} closes its progress and parent instances explicitly`);
+  }
+});
+
 test("palette wrappers measure logical content rather than canvas backing dimensions", () => {
   for(const path of [
     "../src/js/textMode/tileSet/tilePickerPopup.js",
