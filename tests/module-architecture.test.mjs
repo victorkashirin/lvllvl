@@ -353,7 +353,7 @@ test("the generated image-import module has no sloppy-script global writes", asy
 
 test("the production ES-module graph is discovered and obeys its boundaries", async () => {
   const result = await verifyModuleBoundaries();
-  assert.equal(result.files, 24);
+  assert.equal(result.files, 25);
   assert.deepEqual(result.modules, [
     "js/bootstrap.mjs",
     "js/modules/application/commandService.mjs",
@@ -372,6 +372,7 @@ test("the production ES-module graph is discovered and obeys its boundaries", as
     "js/modules/feature-adapters/legacyCommandCatalogAdapter.mjs",
     "js/modules/feature-adapters/legacyRemoteProviderFacades.mjs",
     "js/modules/feature-adapters/legacySvgExportAdapter.mjs",
+    "js/modules/feature-adapters/messageDialog.mjs",
     "js/modules/feature-adapters/nativeEditorCommands.mjs",
     "js/modules/feature-adapters/oklchColorControl.mjs",
     "js/modules/feature-adapters/shortcutContextProvider.mjs",
@@ -380,7 +381,7 @@ test("the production ES-module graph is discovered and obeys its boundaries", as
     "js/modules/infrastructure/imageImportModuleLoader.mjs",
     "js/modules/infrastructure/keybindingStorageAdapter.mjs",
   ]);
-  assert.equal(result.edges.length, 27);
+  assert.equal(result.edges.length, 28);
 });
 
 test("module discovery rejects an unreachable file under a governed root", async (context) => {

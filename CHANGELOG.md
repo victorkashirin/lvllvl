@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### Fixed
+
+- Keep the module architecture baseline in sync with the shared message dialog.
+- Regenerate the runtime dependency inventory and build-artifact baseline for
+  the 0.498.2 release.
+- Update the cross-browser form-theme regression check for native accent-colour
+  controls and the current disabled-text contrast.
+- Keep the Edit Color Palette file actions on one row when Firefox reserves
+  scrollbar width and uses wider system-font metrics.
+
 ## 0.498.2 - 2026-09-10
 
 ### Added

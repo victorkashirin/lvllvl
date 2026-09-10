@@ -38,7 +38,7 @@ test("form controls use the dark theme and align with adjacent text", async ({ p
       <textarea id="themed-textarea">Text area</textarea>
       <select id="themed-select"><option>Option</option></select>
       <input id="themed-range" type="range" min="0" max="100" value="50">
-      <button id="themed-button" type="button">Button</button>
+      <button class="ui-button" id="themed-button" type="button">Button</button>
     `;
     document.body.append(fixture);
 
@@ -77,6 +77,7 @@ test("form controls use the dark theme and align with adjacent text", async ({ p
       nativeCheckbox: verticalGeometry(nativeCheckbox),
       nativeLabel: verticalGeometry(document.getElementById("native-checkbox-label")),
       nativeStyle: {
+        accentColor: nativeStyle.accentColor,
         appearance: nativeStyle.appearance,
         backgroundColor: nativeStyle.backgroundColor,
         borderRadius: nativeStyle.borderRadius,
@@ -160,9 +161,10 @@ test("form controls use the dark theme and align with adjacent text", async ({ p
   expect(desktopAlignment.swatches.map((swatch) => swatch.height)).toEqual([12, 12]);
   expect(desktopAlignment.buttonBorderRadius).toBe("2px");
   expect(desktopAlignment.nativeStyle).toEqual({
-    appearance: "none",
-    backgroundColor: "rgb(51, 51, 51)",
-    borderRadius: "2px",
+    accentColor: "rgb(34, 102, 170)",
+    appearance: "auto",
+    backgroundColor: "rgba(0, 0, 0, 0)",
+    borderRadius: "0px",
     borderStyle: "none",
     colorScheme: "dark",
     marginBlockEnd: "0px",
@@ -176,7 +178,7 @@ test("form controls use the dark theme and align with adjacent text", async ({ p
   });
   expect(desktopAlignment.metaColorScheme).toBe("dark");
   expect(desktopAlignment.rangeStyle).toEqual({
-    accentColor: "rgb(63, 111, 150)",
+    accentColor: "rgb(34, 102, 170)",
     appearance: "none",
     height: "25px",
     thumbBackgroundColor: "rgb(136, 136, 136)",

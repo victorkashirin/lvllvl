@@ -166,9 +166,8 @@ test("form controls keep their dark theme across supported browsers", async ({ p
 
     return {
       checkbox: {
+        accentColor: checkboxStyle.accentColor,
         appearance: checkboxStyle.appearance,
-        backgroundColor: checkboxStyle.backgroundColor,
-        borderRadius: checkboxStyle.borderRadius,
       },
       disabledSelect: {
         backgroundColor: disabledSelectStyle.backgroundColor,
@@ -196,18 +195,17 @@ test("form controls keep their dark theme across supported browsers", async ({ p
 
   expect(controlTheme).toEqual({
     checkbox: {
-      appearance: "none",
-      backgroundColor: "rgb(63, 111, 150)",
-      borderRadius: "2px",
+      accentColor: "rgb(34, 102, 170)",
+      appearance: "auto",
     },
     disabledSelect: {
       backgroundColor: "rgb(43, 43, 43)",
-      color: "rgb(119, 119, 119)",
+      color: "rgb(166, 166, 166)",
       opacity: "1",
     },
     disabledText: {
       backgroundColor: "rgb(43, 43, 43)",
-      color: "rgb(119, 119, 119)",
+      color: "rgb(166, 166, 166)",
       opacity: "1",
     },
     range: {

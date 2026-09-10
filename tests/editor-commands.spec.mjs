@@ -391,7 +391,7 @@ test("zen mode reveals edge controls, keeps shortcuts active, and restores the l
   });
 });
 
-test("holding Tab shows a clean centred overview, remembers its zoom, and restores the working view", async ({ page }) => {
+test("Tab toggles a clean centred overview, remembers its zoom, and restores the working view", async ({ page }) => {
   await open2DProject(page);
 
   const before = await page.evaluate(() => {
@@ -453,7 +453,7 @@ test("holding Tab shows a clean centred overview, remembers its zoom, and restor
 
   await gridCanvas.hover();
   await page.evaluate(() => document.activeElement.blur());
-  await page.keyboard.down("Tab");
+  await page.keyboard.press("Tab");
   await expect(page.locator("body")).toHaveClass(/\boverview-mode\b/);
   await expect.poll(() => page.evaluate(() => {
     const editor = g_app.textModeEditor;
@@ -551,7 +551,7 @@ test("holding Tab shows a clean centred overview, remembers its zoom, and restor
     };
   })).toEqual({ cameraX: 0, cameraY: 0, scale: 0.25 });
 
-  await page.keyboard.up("Tab");
+  await page.keyboard.press("Tab");
   await expect(page.locator("body")).not.toHaveClass(/\boverview-mode\b/);
   await expect.poll(() => page.evaluate(() => {
     const editor = g_app.textModeEditor;
@@ -579,7 +579,7 @@ test("holding Tab shows a clean centred overview, remembers its zoom, and restor
 
   await gridCanvas.hover();
   await page.evaluate(() => document.activeElement.blur());
-  await page.keyboard.down("Tab");
+  await page.keyboard.press("Tab");
   await expect.poll(() => page.evaluate(() => {
     const gridView = g_app.textModeEditor.gridView2d;
     return {
@@ -589,18 +589,17 @@ test("holding Tab shows a clean centred overview, remembers its zoom, and restor
       scale: gridView.getScale(),
     };
   })).toEqual({ artworkOnly: true, cameraX: 0, cameraY: 0, scale: 0.25 });
-  await page.keyboard.up("Tab");
+  await page.keyboard.press("Tab");
 
   await page.keyboard.press("Alt+Shift+z");
   await expect(page.locator("body")).toHaveClass(/\bzen-mode\b/);
   await gridCanvas.hover();
   await page.evaluate(() => document.activeElement.blur());
-  await page.keyboard.down("Tab");
+  await page.keyboard.press("Tab");
   await expect(page.locator("body")).toHaveClass(/\boverview-mode\b/);
   await page.keyboard.press("Alt+Shift+z");
   await expect(page.locator("body")).not.toHaveClass(/\bzen-mode\b/);
   await expect(page.locator("body")).not.toHaveClass(/\boverview-mode\b/);
-  await page.keyboard.up("Tab");
   await expect.poll(() => page.evaluate(() => {
     const editor = g_app.textModeEditor;
     return {
