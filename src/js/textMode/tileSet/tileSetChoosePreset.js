@@ -15,6 +15,7 @@ var TileSetChoosePreset = function() {
 
   this.tileSets = [];
   this.visible = false;
+  this.suppressLoadTabStart = false;
 }
 
 TileSetChoosePreset.prototype = {
@@ -89,10 +90,13 @@ TileSetChoosePreset.prototype = {
         if(tabIndex >= 0) {
           if(key == 'load') {
             _this.tileSetChoosePanel.showOnly('tileSetImportPanel');
-            _this.startLoadTileset({});
+            if(!_this.suppressLoadTabStart) {
+              _this.startLoadTileset({});
+            }
           } else {
             _this.tileSetChoosePanel.showOnly('tileSetChoosePresetPanel');
             _this.setTilePresetType(key);
+            _this.setLoadImportReady(true);
           }
         }
       });
@@ -131,7 +135,11 @@ TileSetChoosePreset.prototype = {
     
         if(_this.activeTab == 'load') {
           if(_this.tileSetImport) {
-            _this.tileSetImport.importTileSet({ callback: _this.callback, createTileSet: _this.createTileSetOnLoad});
+            if(!_this.tileSetImport.importTileSet({ callback: _this.callback, createTileSet: _this.createTileSetOnLoad})) {
+              return;
+            }
+          } else {
+            return;
           }
         } else {
           if(_this.callback !== false) {          
@@ -191,6 +199,11 @@ TileSetChoosePreset.prototype = {
   },
 
   startLoadTileset: function(args) {
+    args = args || {};
+    var _this = this;
+    args.importReadyCallback = function(ready) {
+      _this.setLoadImportReady(ready);
+    };
 
     if(this.tileSetImport == null) {
       this.tileSetImport = new TileSetImport();
@@ -199,6 +212,12 @@ TileSetChoosePreset.prototype = {
 
     this.tileSetImport.start(args);
 
+  },
+
+  setLoadImportReady: function(ready) {
+    if(this.okButton && typeof this.okButton.setEnabled == 'function') {
+      this.okButton.setEnabled(this.activeTab != 'load' || !!ready);
+    }
   },
 
   createTemplateLink: function() {
@@ -429,7 +448,9 @@ TileSetChoosePreset.prototype = {
     var _this = this;
 
     if(typeof args.showImport != 'undefined' && args.showImport) {
+      this.suppressLoadTabStart = true;
       this.tabPanel.showTab('load');
+      this.suppressLoadTabStart = false;
       this.tileSetChoosePanel.showOnly('tileSetImportPanel');
       this.activeTab = 'load';      
       this.startLoadTileset(args);

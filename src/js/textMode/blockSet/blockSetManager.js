@@ -56,6 +56,8 @@ BlockSetManager.prototype = {
 
     $('#settingsBlockWidth').val(blockWidth);
     $('#settingsBlockHeight').val(blockHeight);
+    $('#settingsBlockWidth, #settingsBlockHeight').removeAttr('aria-invalid');
+    $('#settingsBlockWidthError, #settingsBlockHeightError').hide().text('');
 
     var colorPerMode = this.editor.getColorPerMode();
 
@@ -93,13 +95,21 @@ BlockSetManager.prototype = {
         UI.closeDialog();
         return;
       }
-      var width = $('#settingsBlockWidth').val();
-      var height = $('#settingsBlockHeight').val();
+      var dimensions = _this.validateBlockDimensions(
+        $('#settingsBlockWidth').val(), $('#settingsBlockHeight').val()
+      );
+      _this.showBlockDimensionErrors(dimensions);
+      if(!dimensions.valid) {
+        $(dimensions.firstInvalidSelector).focus();
+        return;
+      }
+      var width = dimensions.width;
+      var height = dimensions.height;
       var colorMode = $('#settingsBlockColorMode').val();
 
-      if(typeof _this.blockSizeDialogCallback != 'undefined') {
-        _this.blockSizeDialogCallback(width, height, colorMode);
-
+      if(typeof _this.blockSizeDialogCallback == 'function' &&
+          _this.blockSizeDialogCallback(width, height, colorMode) === false) {
+        return;
       }
 
       UI.closeDialog();
@@ -110,6 +120,46 @@ BlockSetManager.prototype = {
     this.closeButton.on('click', function(event) {
       UI.closeDialog();
     });
+  },
+
+  validateBlockDimensions: function(width, height) {
+    var result = {
+      valid: true,
+      width: Number(width),
+      height: Number(height),
+      errors: {},
+      firstInvalidSelector: null
+    };
+    var fields = [
+      { name: 'width', selector: '#settingsBlockWidth', label: 'MetaTile width' },
+      { name: 'height', selector: '#settingsBlockHeight', label: 'MetaTile height' }
+    ];
+    for(var i = 0; i < fields.length; i++) {
+      var field = fields[i];
+      var value = result[field.name];
+      if(!Number.isFinite(value) || !Number.isInteger(value) || value < 1 || value > 64) {
+        result.valid = false;
+        result.errors[field.selector] = field.label + ' must be a whole number from 1 to 64.';
+        if(result.firstInvalidSelector == null) {
+          result.firstInvalidSelector = field.selector;
+        }
+      }
+    }
+    return result;
+  },
+
+  showBlockDimensionErrors: function(validation) {
+    var selectors = ['#settingsBlockWidth', '#settingsBlockHeight'];
+    for(var i = 0; i < selectors.length; i++) {
+      var selector = selectors[i];
+      if(validation.errors[selector]) {
+        $(selector).attr('aria-invalid', 'true');
+        $(selector + 'Error').text(validation.errors[selector]).show();
+      } else {
+        $(selector).removeAttr('aria-invalid');
+        $(selector + 'Error').hide().text('');
+      }
+    }
   },
 
 
@@ -129,12 +179,18 @@ BlockSetManager.prototype = {
   },
 
   checkBlockMode: function(width, height) {
+    var dimensions = this.validateBlockDimensions(width, height);
+    if(!dimensions.valid) {
+      return false;
+    }
+    width = dimensions.width;
+    height = dimensions.height;
     // check blockset is compatible with block mode..
     var blockSet = this.getCurrentBlockSet();
 
     if(!blockSet) {
       console.log("NO BLOCK SET!!!");
-      return;
+      return false;
     }
 
     var blockCount = blockSet.getBlockCount();
@@ -195,10 +251,7 @@ BlockSetManager.prototype = {
       }
     }
 
-
-    // is there at least one block?
-
-
+    return true;
   },
 
 

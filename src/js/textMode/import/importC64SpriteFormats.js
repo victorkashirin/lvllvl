@@ -4,6 +4,8 @@ var ImportC64SpriteFormats = function() {
   this.visible = false;
 
   this.importType = false;
+  this.importReady = false;
+  this.importGeneration = 0;
 
   this.canvas = null;
   this.context = null;
@@ -44,11 +46,30 @@ ImportC64SpriteFormats.prototype = {
       g_app.isCurrentProject(context.document, context.generation));
   },
 
+  setImportReady: function(ready, importType) {
+    this.importReady = !!ready;
+    this.importType = this.importReady ? importType : false;
+    if(this.okButton && typeof this.okButton.setEnabled == 'function') {
+      this.okButton.setEnabled(this.importReady);
+    }
+  },
+
+  isCurrentImport: function(context) {
+    return context.importGeneration === this.importGeneration && this.isCurrentProject(context);
+  },
+
+  resetImportSource: function() {
+    this.importGeneration++;
+    this.setImportReady(false);
+    this.filename = '';
+    this.sprites = [];
+    this.spriteFrames = [];
+  },
+
   resetProjectState: function() {
     this.projectDocument = null;
     this.projectGeneration = undefined;
-    this.importType = false;
-    this.spriteFrames = [];
+    this.resetImportSource();
     this.c64ImageData = null;
     this.spriteImageData = null;
     if(this.context && typeof this.context.clearRect == 'function' && this.canvas) {
@@ -70,6 +91,7 @@ ImportC64SpriteFormats.prototype = {
   start: function() {
     var _this = this;
     this.captureProjectContext();
+    this.resetImportSource();
 
     if(this.uiComponent == null) {
       this.uiComponent = UI.create("UI.Dialog", { "id": "importC64SpriteFormatsDialog", "title": "Import", "width": 615, "height": 500 });
@@ -99,11 +121,12 @@ ImportC64SpriteFormats.prototype = {
         _this.initEvents();
       });
 
-      this.okButton = UI.create('UI.Button', { "text": "Import", "color": "primary" });
+      this.okButton = UI.create('UI.Button', { "text": "Import", "color": "primary", "enabled": false });
       this.uiComponent.addButton(this.okButton);
       this.okButton.on('click', function(event) {
-        _this.doImport();
-        UI.closeDialog();
+        if(_this.doImport()) {
+          UI.closeDialog();
+        }
       });
 
       this.closeButton = UI.create('UI.Button', { "text": "Cancel", "color": "secondary" });
@@ -257,8 +280,13 @@ ImportC64SpriteFormats.prototype = {
   },
 
   doImport: function() {
-    if(!this.isCurrentProject()) {
-      return;
+    if(!this.isCurrentProject() || !this.importReady || !this.importType) {
+      return false;
+    }
+    var layer = this.editor.layers.getSelectedLayerObject();
+    if(!layer || layer.getType() !== 'grid') {
+      alert('Please choose a grid layer');
+      return false;
     }
     if(this.importType == 'spritepad') {
       this.importSpritePad.doImport();
@@ -269,6 +297,7 @@ ImportC64SpriteFormats.prototype = {
     if(this.importType == 'prg') {
       this.importPRGSprites();
     }
+    return true;
   },
 
   initEvents: function() {
@@ -338,6 +367,7 @@ ImportC64SpriteFormats.prototype = {
 
 
   setImportFile: function(file) {
+    this.resetImportSource();
     if(typeof file == 'undefined') {
       return;
     }
@@ -367,26 +397,25 @@ ImportC64SpriteFormats.prototype = {
   },
 
   loadSpritePad: function(file) {
-    if(this.importSpritePad == null) {
-      this.importSpritePad = new ImportSpritePad();
-      this.importSpritePad.init(this.editor);      
-    }
-    this.importType = 'spritepad';
-
+    this.importSpritePad = new ImportSpritePad();
+    this.importSpritePad.init(this.editor);
     $('.importC64SpriteSettings').hide();
     $('#importC64SpriteSpritePadControls').show();
 
 
     var _this = this;
-    var context = { document: this.projectDocument, generation: this.projectGeneration };
+    var context = { document: this.projectDocument, generation: this.projectGeneration, importGeneration: this.importGeneration };
     var reader = new FileReader();
     reader.onload = function(e) {
-      if(!_this.isCurrentProject(context)) {
+      if(!_this.isCurrentImport(context)) {
         return;
       }
       var byteArray = new Uint8Array(e.target.result);
 
       _this.importSpritePad.readSpritePad(byteArray);
+      if(!_this.importSpritePad.getSprites || _this.importSpritePad.getSprites().length == 0) {
+        return;
+      }
 
       _this.context.clearRect(0, 0, _this.canvas.width, _this.canvas.height);
 
@@ -403,6 +432,7 @@ ImportC64SpriteFormats.prototype = {
 
       }
       _this.drawSpritePad();
+      _this.setImportReady(true, 'spritepad');
     };
     reader.readAsArrayBuffer(file);
   },
@@ -482,26 +512,26 @@ ImportC64SpriteFormats.prototype = {
   },
 
   loadSPR: function(file) {
-    if(this.importSPR == null) {
-      this.importSPR = new ImportSPR();
-      this.importSPR.init(this.editor);      
-    }
-
-    this.importType = 'spr';
+    this.importSPR = new ImportSPR();
+    this.importSPR.init(this.editor);
 
     var _this = this;
-    var context = { document: this.projectDocument, generation: this.projectGeneration };
+    var context = { document: this.projectDocument, generation: this.projectGeneration, importGeneration: this.importGeneration };
     var reader = new FileReader();
     reader.onload = function(e) {
-      if(!_this.isCurrentProject(context)) {
+      if(!_this.isCurrentImport(context)) {
         return;
       }
       var byteArray = new Uint8Array(e.target.result);
       _this.importSPR.readSPR(byteArray);
+      if(!_this.importSPR.getSprites || _this.importSPR.getSprites().length == 0) {
+        return;
+      }
       _this.context.clearRect(0, 0, _this.canvas.width, _this.canvas.height);
 
       $('.importC64SpriteSettings').hide();
       $('#importC64SpriteSPRControls').show();
+      _this.setImportReady(true, 'spr');
 
     };
     reader.readAsArrayBuffer(file);
@@ -555,20 +585,23 @@ ImportC64SpriteFormats.prototype = {
     $('#importC64SpritePRGControls').show();
 
     var _this = this;
-    var context = { document: this.projectDocument, generation: this.projectGeneration };
+    var context = { document: this.projectDocument, generation: this.projectGeneration, importGeneration: this.importGeneration };
     var reader = new FileReader();
     reader.onload = function(e) {
-      if(!_this.isCurrentProject(context)) {
+      if(!_this.isCurrentImport(context)) {
         return;
       }
       var data = new Uint8Array(reader.result);
+      if(data.length < 2) {
+        return;
+      }
 
       c64_reset();
       c64_loadPRG(data, data.length, false);
+      _this.setImportReady(true, 'prg');
     };
     reader.readAsArrayBuffer(file);
 
-    this.importType = 'prg';
   },
 
 
@@ -580,14 +613,18 @@ ImportC64SpriteFormats.prototype = {
 
 
     var _this = this;
-    var context = { document: this.projectDocument, generation: this.projectGeneration };
+    var context = { document: this.projectDocument, generation: this.projectGeneration, importGeneration: this.importGeneration };
     var reader = new FileReader();
     reader.onload = function(e) {
-      if(!_this.isCurrentProject(context)) {
+      if(!_this.isCurrentImport(context)) {
         return;
       }
       var data = new Uint8Array(reader.result);
+      if(data.length == 0) {
+        return;
+      }
       c64_insertDisk(data, data.length);
+      _this.setImportReady(true, 'prg');
     };
     reader.readAsArrayBuffer(file);
 
@@ -595,13 +632,12 @@ ImportC64SpriteFormats.prototype = {
     var filename = file.name;
     $('#importC64SpriteFormatsAttachedDisk').text(filename);
 
-    this.importType = 'prg';
   },
 
   resetC64: function() {
     c64_reset();
+    this.resetImportSource();
     
-    this.importType = 'prg';
     document.getElementById('importC64SpriteFormatsForm').reset();
 
     $('.importC64SpriteSettings').hide();
@@ -853,7 +889,6 @@ ImportC64SpriteFormats.prototype = {
     this.canvas.height = 272;    
     this.context = this.canvas.getContext('2d');
 
-    this.importType = 'prg';
     $('.importC64SpriteSettings').hide();
     $('#importC64SpritePRGControls').show();
 

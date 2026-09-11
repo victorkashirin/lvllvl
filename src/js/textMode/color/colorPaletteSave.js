@@ -38,8 +38,9 @@ ColorPaletteSave.prototype = {
       this.okButton = UI.create('UI.Button', { "text": "OK", "color": "primary" });
       this.uiComponent.addButton(this.okButton);
       this.okButton.on('click', function(event) {
-        _this.save();
-        UI.closeDialog();
+        if(_this.save() !== false) {
+          UI.closeDialog();
+        }
       });
 
       this.closeButton = UI.create('UI.Button', { "text": "Cancel", "color": "secondary" });
@@ -106,9 +107,30 @@ ColorPaletteSave.prototype = {
   },
 
   setColorsAcross: function(colorsAcross) {
+    var colorCount = this.colorPalette ? this.colorPalette.getColorCount() : 0;
+    if(!Number.isFinite(colorsAcross) || !Number.isInteger(colorsAcross) ||
+        colorsAcross < 1 || colorsAcross > Math.max(1, colorCount)) {
+      return false;
+    }
     this.colorsAcross = colorsAcross;
     this.colorPaletteDisplay.setColorsAcross(colorsAcross);
     this.setSortOrder(this.sortOrder);
+    return true;
+  },
+
+  updateColorsAcrossFromInput: function(restoreInvalid) {
+    var value = Number($('#saveColorPaletteColorsAcross').val());
+    if(this.setColorsAcross(value)) {
+      $('#saveColorPaletteColorsAcross').removeAttr('aria-invalid');
+      return true;
+    }
+
+    $('#saveColorPaletteColorsAcross').attr('aria-invalid', 'true');
+    if(restoreInvalid) {
+      $('#saveColorPaletteColorsAcross').val(this.colorsAcross);
+      $('#saveColorPaletteColorsAcross').removeAttr('aria-invalid');
+    }
+    return false;
   },
 
   setSortOrder: function(sortOrder) {
@@ -136,19 +158,11 @@ ColorPaletteSave.prototype = {
     });
 
     $('#saveColorPaletteColorsAcross').on('keyup', function(event) {
-      var colorsAcross = parseInt($(this).val(), 10);
-      if(isNaN(colorsAcross)) {
-        return;
-      }
-      _this.setColorsAcross(colorsAcross);
+      _this.updateColorsAcrossFromInput(false);
     });
 
     $('#saveColorPaletteColorsAcross').on('change', function(event) {
-      var colorsAcross = parseInt($(this).val(), 10);
-      if(isNaN(colorsAcross)) {
-        return;
-      }
-      _this.setColorsAcross(colorsAcross);
+      _this.updateColorsAcrossFromInput(true);
     });
 
 
@@ -212,7 +226,10 @@ ColorPaletteSave.prototype = {
 
       this.cellWidth = parseInt($('#saveColorPaletteCellWidth').val(), 10);
       this.cellHeight = parseInt($('#saveColorPaletteCellHeight').val(), 10);
-      this.setColorsAcross(colorsAcross);
+      if(!this.updateColorsAcrossFromInput(false)) {
+        $('#saveColorPaletteColorsAcross').val(this.colorsAcross);
+        $('#saveColorPaletteColorsAcross').removeAttr('aria-invalid');
+      }
 
     } else {
       $('#saveColorPaletteColorsAcrossRow').hide();
@@ -243,6 +260,10 @@ ColorPaletteSave.prototype = {
       break;
 
       case 'png':
+        if(!this.updateColorsAcrossFromInput(false)) {
+          return false;
+        }
+        map = this.colorPaletteDisplay.getColorMap();
         colorPalette.saveAsPNG(filename, map, this.cellWidth, this.cellHeight);
       break;
 
@@ -263,6 +284,8 @@ ColorPaletteSave.prototype = {
         colorPalette.saveAsHex(filename, map);
       break;
     }
+
+    return true;
 
   },
 

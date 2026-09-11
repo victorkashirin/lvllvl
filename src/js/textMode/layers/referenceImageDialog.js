@@ -32,6 +32,9 @@ var ReferenceImageDialog = function() {
 
   this.image = null;
   this.imageDataURL = null;
+  this.imageReady = false;
+  this.imageGeneration = 0;
+  this.pendingImage = null;
 
   this.x = 0;
   this.y = 0;
@@ -86,6 +89,16 @@ ReferenceImageDialog.prototype = {
         || g_app.isCurrentProject(context.document, context.generation));
   },
 
+  setImageReady: function(ready) {
+    var width = this.image ? (this.image.naturalWidth || this.image.width || 0) : 0;
+    var height = this.image ? (this.image.naturalHeight || this.image.height || 0) : 0;
+    this.imageReady = ready === true && width > 0 && height > 0;
+    if(this.okButton) {
+      this.okButton.setEnabled(this.imageReady);
+    }
+    return this.imageReady;
+  },
+
 
   resetProjectState: function() {
     if(this.image && this.image.onload) {
@@ -101,8 +114,11 @@ ReferenceImageDialog.prototype = {
       }
     }
     this.objectURL = null;
+    this.imageGeneration++;
+    this.pendingImage = null;
     this.image = null;
     this.imageDataURL = null;
+    this.setImageReady(false);
     this.customColorSet = [];
     this.colors = [];
     this.mouseIsDown = false;
@@ -170,11 +186,12 @@ ReferenceImageDialog.prototype = {
         });
 
 
-        this.okButton = UI.create('UI.Button', { "text": "OK", "color": "primary" });
+        this.okButton = UI.create('UI.Button', { "text": "OK", "color": "primary", "enabled": false });
         this.uiComponent.addButton(this.okButton);
         this.okButton.on('click', function(event) {
-          _this.setLayerRefImage();
-          UI.closeDialog();
+          if(_this.setLayerRefImage()) {
+            UI.closeDialog();
+          }
         });
 
         /*
@@ -224,11 +241,12 @@ ReferenceImageDialog.prototype = {
         });
 
 
-        this.okButton = UI.create('UI.Button', { "text": "OK", "color": "primary" });
+        this.okButton = UI.create('UI.Button', { "text": "OK", "color": "primary", "enabled": false });
         this.uiComponent.addButton(this.okButton);
         this.okButton.on('click', function(event) {
-          _this.setLayerRefImage();
-          UI.closeDialog();
+          if(_this.setLayerRefImage()) {
+            UI.closeDialog();
+          }
         });
 
         this.closeButton = UI.create('UI.Button', { "text": "Cancel", "color": "secondary" });
@@ -306,6 +324,7 @@ ReferenceImageDialog.prototype = {
     var params = layer.getReferenceImageParams();
 
     this.image = layer.getReferenceImage();
+    this.setImageReady(!!this.image);
     this.x = 0;
     this.y = 0;
     this.brightness = 0;
@@ -519,8 +538,8 @@ ReferenceImageDialog.prototype = {
   },
 
   setLayerRefImage: function() {
-    if(!this.isCurrentProject()) {
-      return;
+    if(!this.isCurrentProject() || !this.setImageReady(true) || !this.canvas) {
+      return false;
     }
     /*
     this.editor.layers.setReferenceImage(this.canvas,
@@ -561,8 +580,9 @@ ReferenceImageDialog.prototype = {
       });
 
       this.editor.graphic.redraw({ allCells: true });
+      return true;
     }
-
+    return false;
   },
 
 
@@ -1006,6 +1026,10 @@ ReferenceImageDialog.prototype = {
     if(!file) {
       return;
     }
+    this.imageGeneration++;
+    var imageGeneration = this.imageGeneration;
+    this.image = null;
+    this.setImageReady(false);
 
     var _this = this;
     this.captureProjectContext();
@@ -1014,14 +1038,33 @@ ReferenceImageDialog.prototype = {
       generation: this.projectGeneration
     };
     var image = new Image();
+    this.pendingImage = image;
     image.onload = function() {
-      if(!_this.isCurrentProject(projectContext)) {
+      if(_this.pendingImage !== image || _this.imageGeneration !== imageGeneration ||
+        !_this.isCurrentProject(projectContext)) {
         return;
       }
+      _this.pendingImage = null;
       _this.image = image;
       _this.scaleToFit();
       _this.showImage();
+      _this.setImageReady(true);
+      if(_this.objectURL && typeof url.revokeObjectURL == 'function') {
+        url.revokeObjectURL(_this.objectURL);
+        _this.objectURL = null;
+      }
     }
+    image.onerror = function() {
+      if(_this.pendingImage === image && _this.imageGeneration === imageGeneration) {
+        _this.pendingImage = null;
+        _this.image = null;
+        _this.setImageReady(false);
+        if(_this.objectURL && typeof url.revokeObjectURL == 'function') {
+          url.revokeObjectURL(_this.objectURL);
+          _this.objectURL = null;
+        }
+      }
+    };
 /*  
     if(!this.image) {
       this.image = new Image();

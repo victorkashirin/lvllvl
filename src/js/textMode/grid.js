@@ -58,8 +58,16 @@ var Grid = function() {
   this.backgroundImage.visible = false;
 
   this.backgroundImageCanvas = null;
+  this.backgroundImageContext = null;
   this.backgroundImageTexture = null;
   this.backgroundImageMaterial = null;
+  this.backgroundImageMesh = null;
+  this.backgroundImageScale = 1;
+  this.backgroundImageSource = null;
+  this.backgroundImageX = 0;
+  this.backgroundImageY = 0;
+  this.backgroundImageDrawWidth = 0;
+  this.backgroundImageDrawHeight = 0;
 
 
   this.updateEnabled = true;
@@ -77,6 +85,35 @@ Grid.prototype = {
 
 //    console.log('create grid');
 //    this.createGrid();
+  },
+
+  disposeBackgroundImageBacking: function() {
+    if(this.backgroundImage && this.backgroundImage.parent &&
+        typeof this.backgroundImage.parent.remove == 'function') {
+      this.backgroundImage.parent.remove(this.backgroundImage);
+    } else if(this.backgroundImage && typeof scene != 'undefined' && scene &&
+        typeof scene.remove == 'function') {
+      scene.remove(this.backgroundImage);
+    }
+    if(this.backgroundImageMesh && this.backgroundImageMesh.geometry &&
+        typeof this.backgroundImageMesh.geometry.dispose == 'function') {
+      this.backgroundImageMesh.geometry.dispose();
+    }
+    if(this.backgroundImageMaterial &&
+        typeof this.backgroundImageMaterial.dispose == 'function') {
+      this.backgroundImageMaterial.dispose();
+    }
+    if(this.backgroundImageTexture &&
+        typeof this.backgroundImageTexture.dispose == 'function') {
+      this.backgroundImageTexture.dispose();
+    }
+    this.backgroundImage = new THREE.Object3D();
+    this.backgroundImage.visible = false;
+    this.backgroundImageCanvas = null;
+    this.backgroundImageContext = null;
+    this.backgroundImageTexture = null;
+    this.backgroundImageMaterial = null;
+    this.backgroundImageMesh = null;
   },
 
   // Grid is a singleton shared by every screen.  Drop project-owned meshes,
@@ -100,6 +137,14 @@ Grid.prototype = {
     removeFromScene(this.selectionDragControls);
     removeFromScene(this.typingCursor);
 
+    if(this.backgroundImageContext && this.backgroundImageCanvas) {
+      try {
+        this.backgroundImageContext.clearRect(0, 0,
+          this.backgroundImageCanvas.width, this.backgroundImageCanvas.height);
+      } catch(error) {}
+    }
+    this.disposeBackgroundImageBacking();
+
     this.gridData = null;
     this.holder = null;
     this.ghostHolder = null;
@@ -114,15 +159,11 @@ Grid.prototype = {
     this.selectionOffsetX = 0;
     this.selectionOffsetY = 0;
     this.backgroundImageSet = false;
-    this.backgroundImageTexture = null;
-    this.backgroundImageMaterial = null;
-
-    if(this.backgroundImageContext && this.backgroundImageCanvas) {
-      try {
-        this.backgroundImageContext.clearRect(0, 0,
-          this.backgroundImageCanvas.width, this.backgroundImageCanvas.height);
-      } catch(error) {}
-    }
+    this.backgroundImageSource = null;
+    this.backgroundImageX = 0;
+    this.backgroundImageY = 0;
+    this.backgroundImageDrawWidth = 0;
+    this.backgroundImageDrawHeight = 0;
 
     if(this.grid2d && typeof this.grid2d.resetProjectState == 'function') {
       this.grid2d.resetProjectState();
@@ -762,35 +803,216 @@ Grid.prototype = {
   },
 
   setupBackgroundImage: function() {
-    return;
+    var canvasWidth = Math.round(this.width * this.cellSizeX / this.pixelTo3dUnits);
+    var canvasHeight = Math.round(this.height * this.cellSizeY / this.pixelTo3dUnits);
+    if(this.editor && this.editor.graphic) {
+      if(typeof this.editor.graphic.getGraphicWidth == 'function') {
+        canvasWidth = Number(this.editor.graphic.getGraphicWidth());
+      }
+      if(typeof this.editor.graphic.getGraphicHeight == 'function') {
+        canvasHeight = Number(this.editor.graphic.getGraphicHeight());
+      }
+    }
+    if(!Number.isFinite(canvasWidth) || canvasWidth < 1 ||
+        !Number.isFinite(canvasHeight) || canvasHeight < 1 ||
+        typeof document == 'undefined' || typeof THREE.Texture != 'function') {
+      return false;
+    }
 
-//    this.backgroundImage.visible = false;
+    this.disposeBackgroundImageBacking();
+    this.backgroundImageCanvas = document.createElement('canvas');
+    this.backgroundImageCanvas.width = canvasWidth;
+    this.backgroundImageCanvas.height = canvasHeight;
+    this.backgroundImageContext = this.backgroundImageCanvas.getContext('2d');
+    if(!this.backgroundImageContext) {
+      this.disposeBackgroundImageBacking();
+      return false;
+    }
+    this.backgroundImageContext.imageSmoothingEnabled = false;
+    this.backgroundImageContext.webkitImageSmoothingEnabled = false;
+    this.backgroundImageContext.mozImageSmoothingEnabled = false;
+    this.backgroundImageContext.msImageSmoothingEnabled = false;
+    this.backgroundImageContext.oImageSmoothingEnabled = false;
+
+    this.backgroundImageTexture = new THREE.Texture(this.backgroundImageCanvas);
+    if(typeof THREE.NearestFilter != 'undefined') {
+      this.backgroundImageTexture.minFilter = THREE.NearestFilter;
+      this.backgroundImageTexture.magFilter = THREE.NearestFilter;
+    }
+    this.backgroundImageTexture.generateMipmaps = false;
+    this.backgroundImageTexture.needsUpdate = true;
+
+    if(typeof THREE.MeshBasicMaterial == 'function' &&
+        typeof THREE.PlaneGeometry == 'function' && typeof THREE.Mesh == 'function') {
+      this.backgroundImageMaterial = new THREE.MeshBasicMaterial({
+        map: this.backgroundImageTexture,
+        transparent: true,
+        side: THREE.DoubleSide
+      });
+      var geometry = new THREE.PlaneGeometry(
+        this.width * this.cellSizeX, this.height * this.cellSizeY
+      );
+      this.backgroundImageMesh = new THREE.Mesh(geometry, this.backgroundImageMaterial);
+      this.backgroundImageMesh.position.z = -0.1;
+      this.backgroundImageMesh.position.x = (this.width * this.cellSizeX) / 2;
+      this.backgroundImageMesh.position.y = (this.height * this.cellSizeY) / 2;
+      this.backgroundImage.add(this.backgroundImageMesh);
+    }
+    if(this.xyMesh && typeof this.xyMesh.add == 'function') {
+      this.xyMesh.add(this.backgroundImage);
+    }
+    if(this.backgroundImageSet && this.backgroundImageSource) {
+      try {
+        this.backgroundImageContext.drawImage(
+          this.backgroundImageSource,
+          this.backgroundImageX * this.backgroundImageScale,
+          this.backgroundImageY * this.backgroundImageScale,
+          this.backgroundImageDrawWidth * this.backgroundImageScale,
+          this.backgroundImageDrawHeight * this.backgroundImageScale
+        );
+        this.backgroundImageTexture.needsUpdate = true;
+        this.backgroundImage.visible = true;
+      } catch(error) {
+        this.backgroundImageSet = false;
+        this.backgroundImage.visible = false;
+      }
+    }
+    return true;
   },
 
   setBackgroundImage: function(image, x, y, drawWidth, drawHeight) {
 
-    x *= this.backgroundImageScale;
-    y *= this.backgroundImageScale;
-    drawWidth *= this.backgroundImageScale;
-    drawHeight *= this.backgroundImageScale;
+    if((typeof x == 'string' && x.trim() == '') ||
+        (typeof y == 'string' && y.trim() == '') ||
+        (typeof drawWidth == 'string' && drawWidth.trim() == '') ||
+        (typeof drawHeight == 'string' && drawHeight.trim() == '')) {
+      return false;
+    }
+    x = Number(x);
+    y = Number(y);
+    drawWidth = Number(drawWidth);
+    drawHeight = Number(drawHeight);
+    var sourceWidth = image && Number(image.naturalWidth || image.videoWidth || image.width);
+    var sourceHeight = image && Number(image.naturalHeight || image.videoHeight || image.height);
+    if(!image || !Number.isFinite(sourceWidth) || sourceWidth <= 0 ||
+        !Number.isFinite(sourceHeight) || sourceHeight <= 0 ||
+        !Number.isFinite(x) || !Number.isFinite(y) ||
+        !Number.isFinite(drawWidth) || drawWidth <= 0 ||
+        !Number.isFinite(drawHeight) || drawHeight <= 0) {
+      return false;
+    }
+    if((!this.backgroundImageContext || !this.backgroundImageCanvas ||
+        !this.backgroundImageTexture) && !this.setupBackgroundImage()) {
+      return false;
+    }
+
+    var scaledX = x * this.backgroundImageScale;
+    var scaledY = y * this.backgroundImageScale;
+    var scaledWidth = drawWidth * this.backgroundImageScale;
+    var scaledHeight = drawHeight * this.backgroundImageScale;
+    var previousImage = this.backgroundImageSource;
+    var previousX = this.backgroundImageX;
+    var previousY = this.backgroundImageY;
+    var previousWidth = this.backgroundImageDrawWidth;
+    var previousHeight = this.backgroundImageDrawHeight;
+    var hadPreviousImage = this.backgroundImageSet && previousImage;
 
     this.backgroundImageContext.clearRect(0, 0, this.backgroundImageCanvas.width, this.backgroundImageCanvas.height);
 
-    this.backgroundImageContext.drawImage(image, x, y, drawWidth, drawHeight);
+    try {
+      this.backgroundImageContext.drawImage(image, scaledX, scaledY, scaledWidth, scaledHeight);
+    } catch(error) {
+      if(hadPreviousImage) {
+        try {
+          this.backgroundImageContext.drawImage(previousImage,
+            previousX * this.backgroundImageScale,
+            previousY * this.backgroundImageScale,
+            previousWidth * this.backgroundImageScale,
+            previousHeight * this.backgroundImageScale);
+          this.backgroundImageTexture.needsUpdate = true;
+        } catch(restoreError) {}
+      }
+      return false;
+    }
     this.backgroundImageTexture.needsUpdate = true;
 
     this.backgroundImageSet = true;
     this.backgroundImage.visible = true;
+    this.backgroundImageSource = image;
+    this.backgroundImageX = x;
+    this.backgroundImageY = y;
+    this.backgroundImageDrawWidth = drawWidth;
+    this.backgroundImageDrawHeight = drawHeight;
 //    this.showBackgroundImage(true);
+
+    this.invalidateBackgroundImage();
+
+    return true;
+
+  },
+
+  getBackgroundImage: function() {
+    if(!this.backgroundImageSet || !this.backgroundImageSource) {
+      return null;
+    }
+    return {
+      image: this.backgroundImageSource,
+      x: this.backgroundImageX,
+      y: this.backgroundImageY,
+      drawWidth: this.backgroundImageDrawWidth,
+      drawHeight: this.backgroundImageDrawHeight
+    };
 
   },
 
   toggleBackgroundImage: function() {
     if(!this.backgroundImageSet) {
       this.editor.backgroundImage.start();
+      return false;
     }
 
     this.backgroundImage.visible = !this.backgroundImage.visible;
+    this.invalidateBackgroundImage();
+    return true;
+  },
+
+  invalidateBackgroundImage: function() {
+    if(this.editor && this.editor.gridView2d &&
+        typeof this.editor.gridView2d.setBackBufferNeedsRedraw == 'function') {
+      this.editor.gridView2d.setBackBufferNeedsRedraw();
+    }
+    if(this.editor && this.editor.graphic &&
+        typeof this.editor.graphic.redraw == 'function') {
+      this.editor.graphic.redraw({ allCells: true });
+    }
+  },
+
+  drawBackgroundImage: function(context, args) {
+    if(!context || typeof context.drawImage != 'function' ||
+        !this.backgroundImageSet || !this.backgroundImage ||
+        !this.backgroundImage.visible || !this.backgroundImageCanvas) {
+      return false;
+    }
+    args = args || {};
+    var values = [args.srcX, args.srcY, args.srcWidth, args.srcHeight,
+      args.dstX, args.dstY, args.dstWidth, args.dstHeight];
+    for(var i = 0; i < values.length; i++) {
+      if(!Number.isFinite(values[i])) {
+        return false;
+      }
+    }
+    if(args.srcWidth <= 0 || args.srcHeight <= 0 ||
+        args.dstWidth <= 0 || args.dstHeight <= 0) {
+      return false;
+    }
+    try {
+      context.drawImage(this.backgroundImageCanvas,
+        args.srcX, args.srcY, args.srcWidth, args.srcHeight,
+        args.dstX, args.dstY, args.dstWidth, args.dstHeight);
+    } catch(error) {
+      return false;
+    }
+    return true;
   },
 
 

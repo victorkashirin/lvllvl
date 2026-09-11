@@ -28,10 +28,7 @@ GridDimensionsDialog.prototype = {
       this.canvas = document.getElementById('settingsDimensionsOffsetCanvas');      
     }
 
-    $('.dimensionsNumber').on('change', function(e) {
-      _this.updateDimensions();
-    });
-    $('.dimensionsNumber').on('keyup', function(e) {
+    $('.dimensionsNumber').on('input change', function(e) {
       _this.updateDimensions();
     });
 
@@ -92,10 +89,13 @@ GridDimensionsDialog.prototype = {
       this.okButton = UI.create('UI.Button', { "text": "OK", "color": "primary" });
       this.dimensionsDialog.addButton(this.okButton);
       this.okButton.on('click', function(event) {
-        var args = {};
-
-        
         var graphic = _this.editor.graphic;
+        var dimensions = _this.getValidatedDimensions(graphic.getType() == 'sprite');
+        _this.showValidationErrors(dimensions.errors);
+        if(!dimensions.valid) {
+          $(dimensions.firstInvalidSelector).focus();
+          return;
+        }
 
         // have to set tile dimensions first
         if(graphic.getType() == 'sprite') {      
@@ -106,27 +106,27 @@ GridDimensionsDialog.prototype = {
             var currentTileWidth = tileSet.getTileWidth();
             var currentTileHeight = tileSet.getTileHeight();
 
-            args = {};
-            args.width = parseInt($('#settingsDimensionsTileWidth').val(), 10);
-            args.height = parseInt($('#settingsDimensionsTileHeight').val(), 10);
-            args.offsetX = 0;
-            args.offsetY = 0;
+            var tileArgs = {
+              width: dimensions.tileWidth,
+              height: dimensions.tileHeight,
+              offsetX: 0,
+              offsetY: 0
+            };
 
-            if(args.tileWidth != currentTileWidth || args.tileHeight != currentTileHeight) {
-              tileSet.setTileDimensions(args);
+            if(tileArgs.width != currentTileWidth || tileArgs.height != currentTileHeight) {
+              tileSet.setTileDimensions(tileArgs);
 
               // need to resize the layers..
             }
           }
         }
 
-        args = {};
-        args.width = parseInt($('#settingsDimensionsWidth').val(), 10);
-        args.height = parseInt($('#settingsDimensionsHeight').val(), 10);
-        var depth = $('#settingsDimensionsDepth').val();
-
-        args.offsetX = parseInt($('#settingsDimensionsOffsetX').val(), 10);
-        args.offsetY = parseInt($('#settingsDimensionsOffsetY').val(), 10);
+        var args = {
+          width: dimensions.width,
+          height: dimensions.height,
+          offsetX: dimensions.offsetX,
+          offsetY: dimensions.offsetY
+        };
 
 
         _this.editor.graphic.setGridDimensions(args);//width, height, offsetX, offsetY);
@@ -189,15 +189,78 @@ GridDimensionsDialog.prototype = {
 //    $('#settingsDimensionsDepth').val(depth);
   },
 
+  getValidatedDimensions: function(includeTileDimensions) {
+    var maxTileDimension = typeof TileSet != 'undefined' && TileSet.MAX_TILE_DIMENSION
+      ? TileSet.MAX_TILE_DIMENSION
+      : 128;
+    var fields = [
+      { name: 'width', selector: '#settingsDimensionsWidth', label: 'Grid width', min: 1, max: 200 },
+      { name: 'height', selector: '#settingsDimensionsHeight', label: 'Grid height', min: 1, max: 200 },
+      { name: 'offsetX', selector: '#settingsDimensionsOffsetX', label: 'Offset X', min: -1000, max: 1000 },
+      { name: 'offsetY', selector: '#settingsDimensionsOffsetY', label: 'Offset Y', min: -1000, max: 1000 }
+    ];
+    if(includeTileDimensions) {
+      fields.push(
+        { name: 'tileWidth', selector: '#settingsDimensionsTileWidth', label: 'Tile width', min: 1, max: maxTileDimension },
+        { name: 'tileHeight', selector: '#settingsDimensionsTileHeight', label: 'Tile height', min: 1, max: maxTileDimension }
+      );
+    }
+
+    var result = { valid: true, errors: {}, firstInvalidSelector: null };
+    for(var i = 0; i < fields.length; i++) {
+      var field = fields[i];
+      var rawValue = $(field.selector).val();
+      var value = Number(rawValue);
+      if((typeof rawValue == 'string' && rawValue.trim() == '') ||
+          !Number.isFinite(value) || !Number.isInteger(value) ||
+          value < field.min || value > field.max) {
+        result.valid = false;
+        result.errors[field.selector] = field.label + ' must be a whole number from ' +
+          field.min + ' to ' + field.max + '.';
+        if(result.firstInvalidSelector == null) {
+          result.firstInvalidSelector = field.selector;
+        }
+      } else {
+        result[field.name] = value;
+      }
+    }
+    return result;
+  },
+
+  showValidationErrors: function(errors) {
+    var selectors = [
+      '#settingsDimensionsWidth', '#settingsDimensionsHeight',
+      '#settingsDimensionsOffsetX', '#settingsDimensionsOffsetY',
+      '#settingsDimensionsTileWidth', '#settingsDimensionsTileHeight'
+    ];
+    for(var i = 0; i < selectors.length; i++) {
+      var selector = selectors[i];
+      var errorSelector = selector + 'Error';
+      if(errors[selector]) {
+        $(selector).attr('aria-invalid', 'true');
+        $(errorSelector).text(errors[selector]).show();
+      } else {
+        $(selector).removeAttr('aria-invalid');
+        $(errorSelector).hide().text('');
+      }
+    }
+  },
+
   updateDimensions: function() {
 
     this.context = this.canvas.getContext('2d');
+    var dimensions = this.getValidatedDimensions(this.editor.graphic.getType() == 'sprite');
+    this.showValidationErrors(dimensions.errors);
+    this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    if(!dimensions.valid) {
+      return false;
+    }
 
-    this.width = parseInt($('#settingsDimensionsWidth').val(), 10);
-    this.height = parseInt($('#settingsDimensionsHeight').val(), 10);
+    this.width = dimensions.width;
+    this.height = dimensions.height;
 
-    this.offsetX = parseInt($('#settingsDimensionsOffsetX').val(), 10);
-    this.offsetY = parseInt($('#settingsDimensionsOffsetY').val(), 10);
+    this.offsetX = dimensions.offsetX;
+    this.offsetY = dimensions.offsetY;
 
     this.bigger = true;
 
@@ -209,7 +272,6 @@ GridDimensionsDialog.prototype = {
       this.bigger = false;
     }
 
-    this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
     this.scale = this.canvas.width / this.width;
 
 
@@ -254,6 +316,8 @@ GridDimensionsDialog.prototype = {
       this.context.stroke();
 
     }
+
+    return true;
 
   },
 

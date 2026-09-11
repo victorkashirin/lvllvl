@@ -7,11 +7,15 @@ var TileSetImport = function() {
   this.editor = null;
   this.uiComponent = null;  
 
-  this.loadFormat = 'image';
+  this.loadFormat = false;
+  this.importReady = false;
+  this.importReadyCallback = false;
+  this.importGeneration = 0;
   this.onscreenCanvas = null;
   this.loadImage = null;
   this.loadImageCanvas = null;
   this.loadImageData = null;
+  this.loadImageObjectURL = null;
 
   this.indexedColorCanvas = null;
   this.indexedColorPalette = [];
@@ -65,6 +69,8 @@ var TileSetImport = function() {
 
   this.projectDocument = null;
   this.projectGeneration = undefined;
+  this.contentLoaded = false;
+  this.contentInitialized = false;
 }
 
 TileSetImport.prototype = {
@@ -94,22 +100,77 @@ TileSetImport.prototype = {
       g_app.isCurrentProject(context.document, context.generation));
   },
 
-  resetProjectState: function() {
-    if(this.loadImage && this.loadImage.onload) {
-      this.loadImage.onload = null;
+  setImportReady: function(ready) {
+    this.importReady = !!ready;
+    if(this.okButton && typeof this.okButton.setEnabled == 'function') {
+      this.okButton.setEnabled(this.importReady);
     }
-    this.dialogReadyCallback = false;
-    this.projectDocument = null;
-    this.projectGeneration = undefined;
-    this.loadImage = null;
+    if(typeof this.importReadyCallback == 'function') {
+      this.importReadyCallback(this.importReady);
+    }
+  },
+
+  isCurrentImport: function(context) {
+    return context.importGeneration === this.importGeneration && this.isCurrentProject(context);
+  },
+
+  isImportReady: function() {
+    if(!this.importReady || !this.loadFormat) {
+      return false;
+    }
+    if(this.loadFormat == 'image') {
+      return !!this.loadImageData && this.loadImageData.width > 0 && this.loadImageData.height > 0;
+    }
+    if(this.loadFormat == 'binary') {
+      return !!this.importArgs.tileData && this.importArgs.tileData.length > 0;
+    }
+    if(this.loadFormat == 'json') {
+      return !!this.importArgs.jsonData;
+    }
+    if(this.loadFormat == 'charpad') {
+      return !!this.importCharPad && !!this.importArgs.tileData && this.importArgs.tileData.length > 0;
+    }
+    if(this.loadFormat == 'font') {
+      return !!this.font;
+    }
+    return false;
+  },
+
+  releaseLoadImageObjectURL: function() {
+    if(this.loadImageObjectURL) {
+      var url = window.URL || window.webkitURL;
+      url.revokeObjectURL(this.loadImageObjectURL);
+      this.loadImageObjectURL = null;
+    }
+  },
+
+  resetImportSource: function() {
+    this.importGeneration++;
+    if(this.loadImage) {
+      this.loadImage.onload = null;
+      this.loadImage.onerror = null;
+    }
+    this.releaseLoadImageObjectURL();
+    this.loadFormat = false;
     this.loadImageData = null;
-    this.tileSet = null;
+    this.label = '';
     this.font = null;
     this.uncd = null;
+    this.importCharPad = null;
     this.importArgs.tileData = null;
     this.importArgs.jsonData = null;
     this.importArgs.srcImageData = null;
     this.importArgs.dstImageData = null;
+    this.setImportReady(false);
+  },
+
+  resetProjectState: function() {
+    this.dialogReadyCallback = false;
+    this.projectDocument = null;
+    this.projectGeneration = undefined;
+    this.resetImportSource();
+    this.loadImage = null;
+    this.tileSet = null;
   },
 
   start: function(args) {
@@ -118,12 +179,17 @@ TileSetImport.prototype = {
     var _this = this;
 
     this.dialogReadyCallback = false;
+    this.importReadyCallback = false;
 
     if(typeof args != 'undefined') {
       if(typeof args.dialogReadyCallback != 'undefined') {
         this.dialogReadyCallback = args.dialogReadyCallback;
       }
+      if(typeof args.importReadyCallback != 'undefined') {
+        this.importReadyCallback = args.importReadyCallback;
+      }
     }
+    this.resetImportSource();
 
 
     if(this.uiComponent == null) {
@@ -139,11 +205,13 @@ TileSetImport.prototype = {
       this.htmlComponent = UI.create("UI.HTMLPanel");
       this.uiComponent.add(this.htmlComponent);
       this.htmlComponent.load('html/textMode/tileSetImport.html', function() {
+        _this.contentLoaded = true;
         if(!_this.isCurrentProject()) {
           return;
         }
         _this.initContent();
         _this.initEvents();
+        _this.contentInitialized = true;
         if(_this.dialogReadyCallback !== false) {
           _this.dialogReadyCallback();
         }
@@ -152,14 +220,15 @@ TileSetImport.prototype = {
 
 
       if(this.parentComponent == null) {
-        this.okButton = UI.create('UI.Button', { "text": "OK", "color": "primary" });
+        this.okButton = UI.create('UI.Button', { "text": "OK", "color": "primary", "enabled": false });
         this.uiComponent.addButton(this.okButton);
         this.okButton.on('click', function(event) {
           if(!_this.isCurrentProject()) {
             return;
           }
-          _this.importTileSet();        
-          UI.closeDialog();
+          if(_this.importTileSet()) {
+            UI.closeDialog();
+          }
         });
 
         this.closeButton = UI.create('UI.Button', { "text": "Cancel", "color": "secondary" });
@@ -171,7 +240,13 @@ TileSetImport.prototype = {
       }
 
     } else {
-      if(this.isCurrentProject() && this.dialogReadyCallback !== false) {
+      if(this.contentLoaded && !this.contentInitialized && this.isCurrentProject()) {
+        this.initContent();
+        this.initEvents();
+        this.contentInitialized = true;
+      }
+      if(this.contentInitialized && this.isCurrentProject() &&
+          this.dialogReadyCallback !== false) {
         this.dialogReadyCallback();
       }  
     }
@@ -401,6 +476,7 @@ TileSetImport.prototype = {
   },
 
   chooseTileSetFile: function(file) {
+    this.resetImportSource();
     if(typeof file == 'undefined') {
       return;
     }
@@ -408,7 +484,8 @@ TileSetImport.prototype = {
     this.captureProjectContext();
     var projectContext = {
       document: this.projectDocument,
-      generation: this.projectGeneration
+      generation: this.projectGeneration,
+      importGeneration: this.importGeneration
     };
 
     var _this = this;
@@ -475,28 +552,32 @@ TileSetImport.prototype = {
         this.loadImageCanvas = document.createElement('canvas');
       }
 
-      if(!this.loadImage) {
-        this.loadImage = new Image();
-      }
+      var image = new Image();
+      this.loadImage = image;
 
       var url = window.URL || window.webkitURL;
       var src = url.createObjectURL(file);
+      this.loadImageObjectURL = src;
       var _this = this;
 
       this.loadImage.onload = function() {
-        if(!_this.isCurrentProject(projectContext)) {
+        if(_this.loadImage !== image || !_this.isCurrentImport(projectContext)) {
           return;
         }
         _this.resize = false;//parseInt($('input[name=loadTileSetResize]:checked').val(), 10);
 
-        var imageWidth = _this.loadImage.naturalWidth;
-        var imageHeight = _this.loadImage.naturalHeight;
+        var imageWidth = image.naturalWidth;
+        var imageHeight = image.naturalHeight;
+        if(imageWidth <= 0 || imageHeight <= 0) {
+          _this.releaseLoadImageObjectURL();
+          return;
+        }
 
         _this.loadImageCanvas.width = imageWidth;
         _this.loadImageCanvas.height = imageHeight; 
         _this.loadImageContext = UI.getContextNoSmoothing(_this.loadImageCanvas);
 
-        _this.loadImageContext.drawImage(_this.loadImage, 0, 0);
+        _this.loadImageContext.drawImage(image, 0, 0);
 
         _this.loadImageData = _this.loadImageContext.getImageData(0, 0, imageWidth, imageHeight);    
 
@@ -510,9 +591,17 @@ TileSetImport.prototype = {
 
         // set the parameters and redraw
         _this.setLoadParameters(true);
+        _this.setImportReady(true);
+        _this.releaseLoadImageObjectURL();
 //        _this.previewTileSet();
       }
-      this.loadImage.src = src;
+      image.onerror = function() {
+        if(_this.loadImage === image && _this.isCurrentImport(projectContext)) {
+          _this.releaseLoadImageObjectURL();
+          _this.setImportReady(false);
+        }
+      };
+      image.src = src;
     } else if(this.loadFormat == 'font') {
 
       $('#loadTileSetParameters').hide();
@@ -525,7 +614,7 @@ TileSetImport.prototype = {
       var _this = this;
       var fileReader = new FileReader();
       fileReader.onload = function(e) {
-        if(!_this.isCurrentProject(projectContext)) {
+        if(!_this.isCurrentImport(projectContext)) {
           return;
         }
 //        var byteArray = new Uint8Array(e.target.result);
@@ -549,7 +638,7 @@ TileSetImport.prototype = {
       // load as json
       var fileReader = new FileReader();
       fileReader.onload = function(e) {
-        if(!_this.isCurrentProject(projectContext)) {
+        if(!_this.isCurrentImport(projectContext)) {
           return;
         }
         _this.readJson(e.target.result);
@@ -571,7 +660,7 @@ TileSetImport.prototype = {
       var _this = this;
       var fileReader = new FileReader();
       fileReader.onload = function(e) {
-        if(!_this.isCurrentProject(projectContext)) {
+        if(!_this.isCurrentImport(projectContext)) {
           return;
         }
         var byteArray = new Uint8Array(e.target.result);
@@ -603,11 +692,12 @@ TileSetImport.prototype = {
       var _this = this;      
       var fileReader = new FileReader();
       fileReader.onload = function(e) {
-        if(!_this.isCurrentProject(projectContext)) {
+        if(!_this.isCurrentImport(projectContext)) {
           return;
         }
         _this.importArgs.tileData = new Uint8Array(e.target.result);
         _this.previewTileSet();
+        _this.setImportReady(_this.importArgs.tileData.length > 0);
       }
       fileReader.readAsArrayBuffer(file);
     }
@@ -816,14 +906,19 @@ TileSetImport.prototype = {
  
   readCharPad: function(byteArray) {
     if(!this.isCurrentProject()) {
-      return;
+      return false;
     }
-    if(this.importCharPad == null) {
-      this.importCharPad = new ImportCharPad();
-      this.importCharPad.init(this.editor);
+    if(!byteArray || byteArray.length < 4 || byteArray[0] != 67 || byteArray[1] != 84 || byteArray[2] != 77) {
+      this.setImportReady(false);
+      return false;
     }
+    this.importCharPad = new ImportCharPad();
+    this.importCharPad.init(this.editor);
     this.importCharPad.readCharPad(byteArray);
+    this.importArgs.tileData = this.importCharPad.getCharData();
     this.setLoadParameters(true);
+    this.setImportReady(!!this.importArgs.tileData && this.importArgs.tileData.length > 0);
+    return this.importReady;
 
   },
 
@@ -833,10 +928,20 @@ TileSetImport.prototype = {
 
   readFont: function(buffer) {
     if(!this.isCurrentProject()) {
-      return;
+      return false;
     }
     console.log("READ FONT!!!");
-    this.font = Typr.parse(buffer)[0];
+    try {
+      this.font = Typr.parse(buffer)[0];
+    } catch(err) {
+      this.font = null;
+      this.setImportReady(false);
+      return false;
+    }
+    if(!this.font) {
+      this.setImportReady(false);
+      return false;
+    }
     console.log(this.font);
     
     
@@ -859,6 +964,8 @@ TileSetImport.prototype = {
     this.importArgs.characterHeight = 60;
 
     this.previewFontTileSet();
+    this.setImportReady(!!this.font);
+    return this.importReady;
 
     // offset to draw..
 //    off=0;  gid=0;    
@@ -928,23 +1035,149 @@ TileSetImport.prototype = {
 
   },
 
+  validateJsonData: function(jsonData) {
+    if(!jsonData || typeof jsonData != 'object' || Array.isArray(jsonData)) {
+      return false;
+    }
+    var width = Number(jsonData.width);
+    var height = Number(jsonData.height);
+    var maxDimension = typeof TileSet != 'undefined' && TileSet.MAX_TILE_DIMENSION
+      ? TileSet.MAX_TILE_DIMENSION : 128;
+    if(!Number.isInteger(width) || width < 1 || width > maxDimension ||
+        !Number.isInteger(height) || height < 1 || height > maxDimension ||
+        !Array.isArray(jsonData.tiles) || jsonData.tiles.length < 1 ||
+        jsonData.tiles.length > 4096) {
+      return false;
+    }
+
+    var pixelsPerTile = width * height;
+    for(var tileIndex = 0; tileIndex < jsonData.tiles.length; tileIndex++) {
+      var tile = jsonData.tiles[tileIndex];
+      if(!tile || typeof tile != 'object' || !Array.isArray(tile.data) ||
+          tile.data.length < 1) {
+        return false;
+      }
+      for(var frameIndex = 0; frameIndex < tile.data.length; frameIndex++) {
+        var frame = tile.data[frameIndex];
+        if(!Array.isArray(frame) || frame.length !== pixelsPerTile) {
+          return false;
+        }
+        for(var pixelIndex = 0; pixelIndex < frame.length; pixelIndex++) {
+          if(typeof frame[pixelIndex] != 'number' ||
+              !Number.isFinite(frame[pixelIndex])) {
+            return false;
+          }
+        }
+      }
+      if(typeof tile.props != 'undefined' &&
+          (!tile.props || typeof tile.props != 'object' || Array.isArray(tile.props))) {
+        return false;
+      }
+      if(tile.props && tile.props.animated) {
+        if(!Number.isInteger(Number(tile.props.frames)) ||
+            Number(tile.props.frames) !== tile.data.length ||
+            !Number.isFinite(Number(tile.props.ticksPerFrame)) ||
+            Number(tile.props.ticksPerFrame) <= 0) {
+          return false;
+        }
+      }
+    }
+
+    if(jsonData.type == 'vector') {
+      if(!Array.isArray(jsonData.vectorData) ||
+          jsonData.vectorData.length !== jsonData.tiles.length ||
+          !Number.isFinite(Number(jsonData.unitsPerEm)) ||
+          Number(jsonData.unitsPerEm) <= 0 ||
+          !Number.isFinite(Number(jsonData.ascent)) ||
+          !Number.isFinite(Number(jsonData.descent))) {
+        return false;
+      }
+      for(var vectorIndex = 0; vectorIndex < jsonData.vectorData.length; vectorIndex++) {
+        var vector = jsonData.vectorData[vectorIndex];
+        if(!vector || typeof vector != 'object' || typeof vector.path != 'string') {
+          return false;
+        }
+      }
+    }
+
+    if(typeof jsonData.sortMethods != 'undefined' &&
+        !Array.isArray(jsonData.sortMethods)) {
+      return false;
+    }
+    if(typeof jsonData.paletteLayouts != 'undefined') {
+      if(!Array.isArray(jsonData.paletteLayouts)) {
+        return false;
+      }
+      for(var layoutIndex = 0; layoutIndex < jsonData.paletteLayouts.length; layoutIndex++) {
+        var layout = jsonData.paletteLayouts[layoutIndex];
+        if(!layout || typeof layout != 'object') {
+          return false;
+        }
+        if(typeof layout.map != 'undefined') {
+          if(!layout.map || typeof layout.map != 'object' ||
+              !Array.isArray(layout.map.data)) {
+            return false;
+          }
+          for(var rowIndex = 0; rowIndex < layout.map.data.length; rowIndex++) {
+            if(!Array.isArray(layout.map.data[rowIndex])) {
+              return false;
+            }
+          }
+        }
+      }
+    }
+
+    if(typeof jsonData.blockSet != 'undefined') {
+      if(!Array.isArray(jsonData.blockSet)) {
+        return false;
+      }
+      for(var blockIndex = 0; blockIndex < jsonData.blockSet.length; blockIndex++) {
+        var block = jsonData.blockSet[blockIndex];
+        if(!block || typeof block != 'object' || !Array.isArray(block.tileData) ||
+            block.tileData.length < 1) {
+          return false;
+        }
+        for(var blockRowIndex = 0; blockRowIndex < block.tileData.length;
+            blockRowIndex++) {
+          var blockRow = block.tileData[blockRowIndex];
+          if(!Array.isArray(blockRow) || blockRow.length < 1) {
+            return false;
+          }
+          for(var blockColumnIndex = 0; blockColumnIndex < blockRow.length;
+              blockColumnIndex++) {
+            var blockCell = blockRow[blockColumnIndex];
+            if(!blockCell || typeof blockCell != 'object' ||
+                !Number.isInteger(Number(blockCell.t)) || Number(blockCell.t) < 0 ||
+                Number(blockCell.t) >= jsonData.tiles.length) {
+              return false;
+            }
+          }
+        }
+      }
+    }
+
+    jsonData.width = width;
+    jsonData.height = height;
+    return true;
+  },
+
   readJson: function(jsonString) {
     if(!this.isCurrentProject()) {
-      return;
+      return false;
     }
+    this.importArgs.jsonData = null;
+    this.setImportReady(false);
     var jsonData = {};
     try {
       jsonData = $.parseJSON(jsonString);
     } catch(err) {
       console.log(err.message);
-      return;
+      return false;
     }
-    if(typeof jsonData.height == 'undefined' ||
-      typeof jsonData.width == 'undefined' ||
-      typeof jsonData.tiles == 'undefined') {
-        alert("Sorry, could not interpret the JSON file");
-        return;
-      }
+    if(!this.validateJsonData(jsonData)) {
+      alert("Sorry, could not interpret the JSON file");
+      return false;
+    }
 
     var tileCount = jsonData.tiles.length;
 
@@ -958,6 +1191,8 @@ TileSetImport.prototype = {
     $('#loadTileSetCountStatic').html(tileCount);
 
     this.setLoadParameters(true);
+    this.setImportReady(true);
+    return true;
 //    this.previewTileSet();
   },
 
@@ -1841,8 +2076,8 @@ TileSetImport.prototype = {
 
   importTileSet: function(args) {
     args = args || {};
-    if(!this.isCurrentProject()) {
-      return;
+    if(!this.isCurrentProject() || !this.isImportReady()) {
+      return false;
     }
     var callback = false;
     var colorPalette = null;
@@ -1948,7 +2183,7 @@ TileSetImport.prototype = {
       var tilesPerRow = 16;
 
       if(isNaN(tileWidth) || isNaN(tileHeight) || isNaN(fontSize)) {
-        return;
+        return false;
       }
 
       tileSet.readVectorData({
@@ -1993,6 +2228,7 @@ TileSetImport.prototype = {
         
       }
     }
+    return true;
   }
 
 

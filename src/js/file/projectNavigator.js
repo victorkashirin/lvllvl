@@ -1235,6 +1235,7 @@ ProjectNavigator.prototype = {
     var input = document.getElementById('newProjectFileName');  
     input.focus();
     input.setSelectionRange(0, selectLength);
+    this.updateNewRecordSubmitState();
   },
 
   reloadTreeBranch: function(branch) {
@@ -1323,11 +1324,31 @@ ProjectNavigator.prototype = {
     }
 
     $('#newDocBinaryFiles').html(html);
+    this.updateNewRecordSubmitState();
 
 
   },
+
+  updateNewRecordSubmitState: function() {
+    if(!this.okButton || typeof this.okButton.setEnabled != 'function') {
+      return;
+    }
+    var enabled = true;
+    if(this.newDocRecordType == 'binary') {
+      var fileInput = document.getElementById('newDocRecordBinaryFile');
+      enabled = !!fileInput && fileInput.files.length > 0;
+    }
+    this.okButton.setEnabled(enabled);
+  },
   
   submitNewDocRecordDialog: function() {
+    if(this.newDocRecordType == 'binary') {
+      var fileInput = document.getElementById('newDocRecordBinaryFile');
+      if(!fileInput || fileInput.files.length == 0) {
+        alert('Please choose at least one binary file');
+        return false;
+      }
+    }
     var args = {};
     var parentNode = this.tree.getSelectedNode();
     if(parentNode) {
@@ -1343,13 +1364,14 @@ ProjectNavigator.prototype = {
       alert('Please enter a name');
 
       $('#newProjectFileName').focus();
-      return;
+      return false;
     }
     args.parentNode = parentNode;
 
     this.newFile(args);
 
     UI.closeDialog();
+    return true;
   },
 
   selectDocRecord: function(path) {

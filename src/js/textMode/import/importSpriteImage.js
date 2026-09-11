@@ -33,6 +33,8 @@ var ImportSpriteImage = function() {
   this.spriteMarginRight = 0;
   this.spriteMarginBottom = 0;
   this.spriteRects = [];
+  this.importReady = false;
+  this.objectURL = null;
 
   this.rectWidth = 24;
   this.rectHeight = 21;
@@ -60,15 +62,45 @@ ImportSpriteImage.prototype = {
         || g_app.isCurrentProject(context.document, context.generation));
   },
 
-  resetProjectState: function() {
-    this.projectDocument = null;
-    this.projectGeneration = undefined;
-    this.visible = false;
+  setImportReady: function(ready) {
+    this.importReady = ready === true
+      && !!this.spriteSource
+      && this.spriteRects.length >= this.spriteCount;
+    if(this.okButton) {
+      this.okButton.setEnabled(this.importReady);
+    }
+    return this.importReady;
+  },
+
+  releaseObjectURL: function() {
+    if(this.objectURL) {
+      var url = window.URL || window.webkitURL;
+      if(url && typeof url.revokeObjectURL == 'function') {
+        url.revokeObjectURL(this.objectURL);
+      }
+    }
+    this.objectURL = null;
+  },
+
+  resetImportSource: function() {
+    if(this.loadImage) {
+      this.loadImage.onload = null;
+      this.loadImage.onerror = null;
+    }
+    this.releaseObjectURL();
     this.loadImage = null;
     this.loadImageData = null;
     this.spriteSource = null;
     this.spriteRects = [];
     this.spritePreviewIndex = 0;
+    this.setImportReady(false);
+  },
+
+  resetProjectState: function() {
+    this.resetImportSource();
+    this.projectDocument = null;
+    this.projectGeneration = undefined;
+    this.visible = false;
     this.importContext = null;
     this.spritePreviewContext = null;
     this.canvas = null;
@@ -81,6 +113,7 @@ ImportSpriteImage.prototype = {
     var _this = this;
 
     this.captureProjectContext();
+    this.resetImportSource();
 
     if(this.uiComponent == null) {
       this.uiComponent = UI.create("UI.Dialog", { "id": "importSpriteImageDialog", "title": "Import", "width": 615, "height": 500 });
@@ -167,11 +200,12 @@ ImportSpriteImage.prototype = {
       this.initEvents();
 
 
-      this.okButton = UI.create('UI.Button', { "text": "Import", "color": "primary" });
+      this.okButton = UI.create('UI.Button', { "text": "Import", "color": "primary", "enabled": false });
       this.uiComponent.addButton(this.okButton);
       this.okButton.on('click', function(event) {
-        _this.doImport();
-        UI.closeDialog();
+        if(_this.doImport()) {
+          UI.closeDialog();
+        }
       });
 
       this.closeButton = UI.create('UI.Button', { "text": "Cancel", "color": "secondary" });
@@ -393,6 +427,7 @@ ImportSpriteImage.prototype = {
   },
 
   chooseImportSpriteFile: function(file) {
+    this.resetImportSource();
     if(typeof file == 'undefined') {
       return;
     }
@@ -424,37 +459,47 @@ ImportSpriteImage.prototype = {
     this.loadFormat = loadFormat;
 
     if(this.loadFormat == 'image') {
-      if(!this.loadImage) {
-        this.loadImage = new Image();
-      }
+      var image = new Image();
+      this.loadImage = image;
 
       var url = window.URL || window.webkitURL;
       var src = url.createObjectURL(file);
+      this.objectURL = src;
 
-      this.loadImage.onload = function() {
-        if(!_this.isCurrentProject(projectContext)) {
+      image.onload = function() {
+        if(_this.loadImage !== image || !_this.isCurrentProject(projectContext)) {
           return;
         }
-        var imageWidth = _this.loadImage.naturalWidth;
-        var imageHeight = _this.loadImage.naturalHeight;
+        var imageWidth = image.naturalWidth;
+        var imageHeight = image.naturalHeight;
+        if(imageWidth <= 0 || imageHeight <= 0) {
+          _this.resetImportSource();
+          return;
+        }
 
         _this.loadImageCanvas.width = imageWidth;
         _this.loadImageCanvas.height = imageHeight;
         _this.loadImageContext = _this.loadImageCanvas.getContext('2d');
 
-        _this.loadImageContext.drawImage(_this.loadImage, 0, 0);
+        _this.loadImageContext.drawImage(image, 0, 0);
 
         _this.loadImageData = _this.loadImageContext.getImageData(0, 0, imageWidth, imageHeight);    
 
 
         _this.setSpriteSource();
+        _this.setImportReady(true);
 
         _this.draw(this.context);
+        _this.releaseObjectURL();
+      };
 
+      image.onerror = function() {
+        if(_this.loadImage === image) {
+          _this.resetImportSource();
+        }
+      };
 
-      }
-
-      this.loadImage.src = src;
+      image.src = src;
 
     }
   },
@@ -566,20 +611,23 @@ ImportSpriteImage.prototype = {
 
   doImport: function() {
 
-    if(!this.isCurrentProject()) {
-      return;
+    if(!this.isCurrentProject() || !this.importReady || !this.spriteSource ||
+      this.spriteRects.length < this.spriteCount) {
+      return false;
     }
 
     var layer = this.editor.layers.getSelectedLayerObject();
     if(!layer || layer.getType() !== 'grid') {
       alert('Please choose a grid layer');
-      return;
+      return false;
     }
 
     var graphic = this.editor.graphic;
     graphic.setDrawEnabled(false);
     this.editor.history.setEnabled(false);
     var tileSet = layer.getTileSet();
+
+    try {
 
     /*
     if(this.sprMulticolor) {
@@ -679,14 +727,15 @@ ImportSpriteImage.prototype = {
 
     }
 
-    layer.setCreateSpriteTiles(true);
-    this.editor.history.setEnabled(true);
-    graphic.setDrawEnabled(true);    
     this.editor.spriteFrames.draw({ framesChanged: true });
     this.editor.frames.gotoFrame(0);
     this.editor.graphic.redraw();
-
-
+    return true;
+    } finally {
+      layer.setCreateSpriteTiles(true);
+      this.editor.history.setEnabled(true);
+      graphic.setDrawEnabled(true);
+    }
   },
   /*
   ,

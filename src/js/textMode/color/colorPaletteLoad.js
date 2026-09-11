@@ -5,9 +5,14 @@ var ColorPaletteLoad = function() {
   this.colorPaletteDisplay = null;
 
   this.colorsAcross = 8;
+  this.colorsAcrossValid = true;
   this.importColors = 16;
 
   this.colorMap = [];
+  this.colors = [];
+  this.importReady = false;
+  this.importReadyCallback = false;
+  this.importGeneration = 0;
 
   this.editor = null;
 
@@ -19,10 +24,13 @@ var ColorPaletteLoad = function() {
 
   this.callback = false;
   this.dialogReadyCallback = false;
+  this.contentLoaded = false;
+  this.contentInitialized = false;
 
   this.parentComponent = null;
 
   this.colorPaletteLoadFromURL = null;
+  this.importImageObjectURL = null;
 
   this.name = '';
 
@@ -57,27 +65,70 @@ ColorPaletteLoad.prototype = {
       g_app.isCurrentProject(context.document, context.generation));
   },
 
-  resetProjectState: function() {
-    if(this.importImage && this.importImage.onload) {
-      this.importImage.onload = null;
+  setImportReady: function(ready) {
+    this.importReady = !!ready && this.colorsAcrossValid &&
+      this.validateColorsAcross(this.colorsAcross) !== false &&
+      Array.isArray(this.colors) && this.colors.length > 0;
+    if(this.okButton && typeof this.okButton.setEnabled == 'function') {
+      this.okButton.setEnabled(this.importReady);
     }
+    if(typeof this.importReadyCallback == 'function') {
+      this.importReadyCallback(this.importReady);
+    }
+  },
+
+  isCurrentImport: function(context) {
+    return context.importGeneration === this.importGeneration && this.isCurrentProject(context);
+  },
+
+  releaseImportImageObjectURL: function() {
+    if(this.importImageObjectURL) {
+      var url = window.URL || window.webkitURL;
+      url.revokeObjectURL(this.importImageObjectURL);
+      this.importImageObjectURL = null;
+    }
+  },
+
+  resetImportSource: function() {
+    this.importGeneration++;
+    if(this.importImage) {
+      this.importImage.onload = null;
+      this.importImage.onerror = null;
+    }
+    this.releaseImportImageObjectURL();
+    this.colors = [];
+    this.colorMap = [];
+    this.loadMap = false;
+    this.name = '';
+    this.colorsAcross = 8;
+    this.colorsAcrossValid = true;
+    $('#colorPaletteLoadColorsAcross').val(this.colorsAcross);
+    $('#colorPaletteLoadColorsAcross').removeAttr('aria-invalid');
+    this.setImportReady(false);
+  },
+
+  resetProjectState: function() {
     this.dialogReadyCallback = false;
     this.projectDocument = null;
     this.projectGeneration = undefined;
     this.visible = false;
     this.callback = false;
-    this.colors = [];
-    this.colorMap = [];
-    this.loadMap = false;
+    this.resetImportSource();
   },
 
   show: function(args) {
     this.captureProjectContext();
+    this.dialogReadyCallback = false;
+    this.importReadyCallback = false;
     if(typeof args != 'undefined') {
       if(typeof args.dialogReadyCallback != 'undefined') {
         this.dialogReadyCallback = args.dialogReadyCallback;
       }
+      if(typeof args.importReadyCallback != 'undefined') {
+        this.importReadyCallback = args.importReadyCallback;
+      }
     }
+    this.resetImportSource();
 
     var _this = this;
     if(this.uiComponent == null) {
@@ -92,12 +143,14 @@ ColorPaletteLoad.prototype = {
       this.colorPaletteLoadPanel = UI.create("UI.HTMLPanel");
       this.uiComponent.add(this.colorPaletteLoadPanel);
       this.colorPaletteLoadPanel.load('html/textMode/colorPaletteLoad.html', function() {
+        _this.contentLoaded = true;
         if(!_this.isCurrentProject()) {
           return;
         }
         _this.htmlComponentLoaded();
         _this.initContent();
         _this.initEvents();
+        _this.contentInitialized = true;
 
         if(_this.dialogReadyCallback != false) {
           _this.dialogReadyCallback();
@@ -105,14 +158,15 @@ ColorPaletteLoad.prototype = {
       });
 
       if(!this.parentComponent) {
-        this.okButton = UI.create('UI.Button', { "text": "OK", "color": "primary" });
+        this.okButton = UI.create('UI.Button', { "text": "OK", "color": "primary", "enabled": false });
         this.uiComponent.addButton(this.okButton);
         this.okButton.on('click', function(event) {
           if(!_this.isCurrentProject()) {
             return;
           }
-          _this.setPalette();
-          UI.closeDialog();
+          if(_this.setPalette()) {
+            UI.closeDialog();
+          }
         });
 
         this.closeButton = UI.create('UI.Button', { "text": "Cancel", "color": "secondary" });
@@ -136,7 +190,14 @@ ColorPaletteLoad.prototype = {
       if(!this.isCurrentProject()) {
         return;
       }
-      this.initContent();
+      if(this.contentLoaded && !this.contentInitialized) {
+        this.htmlComponentLoaded();
+        this.initContent();
+        this.initEvents();
+        this.contentInitialized = true;
+      } else if(this.contentLoaded) {
+        this.initContent();
+      }
 
       if(this.parentComponent == null) {
         UI.showDialog("colourPaletteLoadDialog");
@@ -144,7 +205,8 @@ ColorPaletteLoad.prototype = {
 
       this.visible = true;
   
-      if(_this.dialogReadyCallback != false && _this.isCurrentProject()) {
+      if(this.contentInitialized && _this.dialogReadyCallback != false &&
+          _this.isCurrentProject()) {
         _this.dialogReadyCallback();
       }
     }
@@ -181,18 +243,8 @@ ColorPaletteLoad.prototype = {
     });
 
 
-    $('#colorPaletteLoadColorsAcross').on('keyup', function(event) {
-      var colorsAcross = parseInt($('#colorPaletteLoadColorsAcross').val(), 10);
-      if(!isNaN(colorsAcross)) {
-        _this.setColorsAcross(colorsAcross);
-      }
-    });
-
-    $('#colorPaletteLoadColorsAcross').on('change', function(event) {
-      var colorsAcross = parseInt($('#colorPaletteLoadColorsAcross').val(), 10);
-      if(!isNaN(colorsAcross)) {
-        _this.setColorsAcross(colorsAcross);
-      }
+    $('#colorPaletteLoadColorsAcross').on('input change', function(event) {
+      _this.setColorsAcross($('#colorPaletteLoadColorsAcross').val());
     });
 
 /*
@@ -224,16 +276,17 @@ ColorPaletteLoad.prototype = {
   },
 
   loadLospecPalette: function() {
+    this.resetImportSource();
     if(this.colorPaletteLoadFromURL == null) {
       this.colorPaletteLoadFromURL = new ColorPaletteLoadFromURL();
     }
 
 //    console.log('load palette from url' + url);
     var _this = this;
-    var context = { document: this.projectDocument, generation: this.projectGeneration };
+    var context = { document: this.projectDocument, generation: this.projectGeneration, importGeneration: this.importGeneration };
     this.colorPaletteLoadFromURL.show({
       callback: function(response) {
-        if(_this.isCurrentProject(context)) {
+        if(_this.isCurrentImport(context)) {
           _this.createPaletteFromLoSpec(response.response);
         }
       }
@@ -242,17 +295,18 @@ ColorPaletteLoad.prototype = {
   },
 
   loadPaletteFromURL: function(url) {
+    this.resetImportSource();
     if(this.colorPaletteLoadFromURL == null) {
       this.colorPaletteLoadFromURL = new ColorPaletteLoadFromURL();
     }
 
     console.log('load palette from url' + url);
     var _this = this;
-    var context = { document: this.projectDocument, generation: this.projectGeneration };
+    var context = { document: this.projectDocument, generation: this.projectGeneration, importGeneration: this.importGeneration };
     this.colorPaletteLoadFromURL.loadURL({
       url: url,
       callback: function(response) {
-        if(_this.isCurrentProject(context)) {
+        if(_this.isCurrentImport(context)) {
           _this.createPaletteFromLoSpec(response.response);
         }
       }
@@ -294,14 +348,15 @@ ColorPaletteLoad.prototype = {
 
 
   setPalette: function(args) {
-    if(!this.isCurrentProject()) {
-      return;
+    args = args || {};
+    var colorsAcross = this.validateColorsAcross(this.colorsAcross);
+    if(!this.isCurrentProject() || !this.importReady || !this.colors.length ||
+        !this.colorsAcrossValid || colorsAcross === false) {
+      return false;
     }
     var callback = false;
     
-    if(typeof args != 'undefined') {
-      callback = args.callback;
-    }
+    callback = args.callback;
 
     var colorPaletteManager = this.editor.colorPaletteManager;
 
@@ -313,8 +368,8 @@ ColorPaletteLoad.prototype = {
       colorPalette = new ColorPalette();
     }
 
-    var colorsDown = Math.ceil(this.colors.length / this.colorsAcross);
-    colorPalette.setColors(this.colors, this.colorsAcross, colorsDown);
+    var colorsDown = Math.ceil(this.colors.length / colorsAcross);
+    colorPalette.setColors(this.colors, colorsAcross, colorsDown);
 
     if(colorPaletteCreated) {
       if(callback) {
@@ -340,12 +395,34 @@ ColorPaletteLoad.prototype = {
         g_app.colorPaletteEditor.draw();
       }
     }
+    return true;
 
   },
 
+  validateColorsAcross: function(colorsAcross) {
+    if(typeof colorsAcross == 'string' && colorsAcross.trim() == '') {
+      return false;
+    }
+    colorsAcross = Number(colorsAcross);
+    if(!Number.isFinite(colorsAcross) || !Number.isInteger(colorsAcross) ||
+        colorsAcross < 1 || colorsAcross > 256) {
+      return false;
+    }
+    return colorsAcross;
+  },
+
   setColorsAcross: function(colorsAcross) {
+    colorsAcross = this.validateColorsAcross(colorsAcross);
+    this.colorsAcrossValid = colorsAcross !== false;
+    if(!this.colorsAcrossValid) {
+      $('#colorPaletteLoadColorsAcross').attr('aria-invalid', 'true');
+      this.setImportReady(false);
+      return false;
+    }
+    $('#colorPaletteLoadColorsAcross').removeAttr('aria-invalid');
     this.colorsAcross = colorsAcross;
     this.updatePreviewPalette();
+    return true;
   },
 
   autoColorsAcross: function() {
@@ -355,11 +432,17 @@ ColorPaletteLoad.prototype = {
     } else if(this.colors.length <= 16) {
       this.colorsAcross = 16;
     }
+    this.colorsAcrossValid = true;
     $('#colorPaletteLoadColorsAcross').val(this.colorsAcross);
+    $('#colorPaletteLoadColorsAcross').removeAttr('aria-invalid');
   },
 
   createColorMap: function() {
-    var colorsAcross = this.colorsAcross;
+    var colorsAcross = this.validateColorsAcross(this.colorsAcross);
+    if(!this.colorsAcrossValid || colorsAcross === false) {
+      this.colorMap = [];
+      return false;
+    }
     var colorCount = this.importColors;
     var colorsDown = Math.ceil(this.importColors / colorsAcross);
     if(colorCount > this.colors.length) {
@@ -379,10 +462,12 @@ ColorPaletteLoad.prototype = {
         index++;
       }
     }
+    return true;
   },
 
 
   setImportFile: function(file, callback) {
+    this.resetImportSource();
     if(typeof file == 'undefined') {
       return;
     }
@@ -435,32 +520,39 @@ ColorPaletteLoad.prototype = {
   },
 
   loadPNG: function(file) {
-    if(!this.importImage) {
-      this.importImage = new Image();
-    }
+    var image = new Image();
+    this.importImage = image;
 
     var _this = this;
-    var context = { document: this.projectDocument, generation: this.projectGeneration };
+    var context = { document: this.projectDocument, generation: this.projectGeneration, importGeneration: this.importGeneration };
     this.importImage.onload = function() {
-      if(_this.isCurrentProject(context)) {
+      if(_this.importImage === image && _this.isCurrentImport(context)) {
         _this.createPaletteFromImage();
+        _this.releaseImportImageObjectURL();
       }
     }
 
     var url = window.URL || window.webkitURL;
     var src = url.createObjectURL(file);
-    this.importImage.src = src;
+    this.importImageObjectURL = src;
+    image.onerror = function() {
+      if(_this.importImage === image && _this.isCurrentImport(context)) {
+        _this.releaseImportImageObjectURL();
+        _this.setImportReady(false);
+      }
+    };
+    image.src = src;
 
   },
 
   loadTXT: function(file) {
     var _this = this;
-    var context = { document: this.projectDocument, generation: this.projectGeneration };
+    var context = { document: this.projectDocument, generation: this.projectGeneration, importGeneration: this.importGeneration };
 
     var fileReader = new FileReader();
     fileReader.onload = function(e) {
       var colorText = e.target.result;
-      if(_this.isCurrentProject(context)) {
+        if(_this.isCurrentImport(context)) {
         _this.createPaletteFromPaintTxt(colorText);
       }
 
@@ -470,12 +562,12 @@ ColorPaletteLoad.prototype = {
 
   loadVPL: function(file) {
     var _this = this;
-    var context = { document: this.projectDocument, generation: this.projectGeneration };
+    var context = { document: this.projectDocument, generation: this.projectGeneration, importGeneration: this.importGeneration };
 
     var fileReader = new FileReader();
     fileReader.onload = function(e) {
       var colorText = e.target.result;
-      if(_this.isCurrentProject(context)) {
+        if(_this.isCurrentImport(context)) {
         _this.createPaletteFromVPL(colorText);
       }
 
@@ -486,12 +578,12 @@ ColorPaletteLoad.prototype = {
 
   loadGPL: function(file) {
     var _this = this;
-    var context = { document: this.projectDocument, generation: this.projectGeneration };
+    var context = { document: this.projectDocument, generation: this.projectGeneration, importGeneration: this.importGeneration };
 
     var fileReader = new FileReader();
     fileReader.onload = function(e) {
       var colorText = e.target.result;
-      if(_this.isCurrentProject(context)) {
+        if(_this.isCurrentImport(context)) {
         _this.createPaletteFromGPL(colorText);
       }
 
@@ -501,11 +593,11 @@ ColorPaletteLoad.prototype = {
 
   loadACO: function(file) {
     var _this = this;
-    var context = { document: this.projectDocument, generation: this.projectGeneration };
+    var context = { document: this.projectDocument, generation: this.projectGeneration, importGeneration: this.importGeneration };
 
     var fileReader = new FileReader();
     fileReader.onload = function(e) {
-      if(_this.isCurrentProject(context)) {
+        if(_this.isCurrentImport(context)) {
         _this.createPaletteFromACO(new Uint8Array(e.target.result));
       }
     }
@@ -520,11 +612,11 @@ ColorPaletteLoad.prototype = {
     }
 
     var _this = this;
-    var context = { document: this.projectDocument, generation: this.projectGeneration };
+    var context = { document: this.projectDocument, generation: this.projectGeneration, importGeneration: this.importGeneration };
 
     var fileReader = new FileReader();
     fileReader.onload = function(e) {
-      if(_this.isCurrentProject(context)) {
+        if(_this.isCurrentImport(context)) {
         _this.createPaletteFromASE(new Uint8Array(e.target.result));
       }
     }
@@ -534,11 +626,11 @@ ColorPaletteLoad.prototype = {
 
   loadBinary: function(file) {
     var _this = this;
-    var context = { document: this.projectDocument, generation: this.projectGeneration };
+    var context = { document: this.projectDocument, generation: this.projectGeneration, importGeneration: this.importGeneration };
 
     var fileReader = new FileReader();
     fileReader.onload = function(e) {
-      if(_this.isCurrentProject(context)) {
+        if(_this.isCurrentImport(context)) {
         _this.createPaletteFromBinary(new Uint8Array(e.target.result));
       }
     }
@@ -559,12 +651,12 @@ ColorPaletteLoad.prototype = {
 
   loadJSON: function(file) {
     var _this = this;
-    var context = { document: this.projectDocument, generation: this.projectGeneration };
+    var context = { document: this.projectDocument, generation: this.projectGeneration, importGeneration: this.importGeneration };
 
     var fileReader = new FileReader();
     fileReader.onload = function(e) {
       var colorText = e.target.result;
-      if(_this.isCurrentProject(context)) {
+        if(_this.isCurrentImport(context)) {
         _this.createPaletteFromJSON(colorText);
       }
 
@@ -578,6 +670,7 @@ ColorPaletteLoad.prototype = {
       var color = (this.colors[i]) >>> 0;
       this.colors[i] = ((alpha << 24) | color) >>> 0;
     }
+    this.setImportReady(this.colors.length > 0);
   },
 
   createPaletteFromJSON: function(jsonString) {
@@ -594,15 +687,6 @@ ColorPaletteLoad.prototype = {
           colors.push(colorJson.data[i]);
         }
       }
-
-      if(typeof colorJson.across != 'undefined') {
-        this.colorsAcross = colorJson.across;
-        $('#colorPaletteLoadColorsAcross').val(this.colorsAcross);
-
-      } else {
-        this.autoColorsAcross();
-      }
-
 
       if(typeof colorJson.maps != 'undefined' && colorJson.maps.length > 0) {
         this.loadMap = true;
@@ -622,6 +706,18 @@ ColorPaletteLoad.prototype = {
 
       if(colors.length > 0) {
         this.colors = colors;
+        var colorsAcross = typeof colorJson.across != 'undefined'
+          ? this.validateColorsAcross(colorJson.across)
+          : false;
+        if(colorsAcross === false) {
+          this.autoColorsAcross();
+        } else {
+          this.colorsAcross = colorsAcross;
+          this.colorsAcrossValid = true;
+          $('#colorPaletteLoadColorsAcross').val(this.colorsAcross);
+          $('#colorPaletteLoadColorsAcross').removeAttr('aria-invalid');
+        }
+        this.setImportReady(true);
         this.setColorCount(colors.length);
 
         if(this.callback) {
@@ -731,7 +827,15 @@ ColorPaletteLoad.prototype = {
 
       this.setColorCount(this.colors.length);
 
-      this.colorsAcross = colors.colorsAcross;
+      var colorsAcross = this.validateColorsAcross(colors.colorsAcross);
+      if(colorsAcross === false) {
+        this.autoColorsAcross();
+      } else {
+        this.colorsAcross = colorsAcross;
+        this.colorsAcrossValid = true;
+        $('#colorPaletteLoadColorsAcross').val(this.colorsAcross);
+        $('#colorPaletteLoadColorsAcross').removeAttr('aria-invalid');
+      }
       this.updatePreviewPalette();
     }
   },
@@ -789,7 +893,9 @@ ColorPaletteLoad.prototype = {
         if(colors.length == 16) {
 
           this.colorsAcross = 8;
+          this.colorsAcrossValid = true;
           $('#colorPaletteLoadColorsAcross').val(this.colorsAcross);
+          $('#colorPaletteLoadColorsAcross').removeAttr('aria-invalid');
 
         } else {
           this.autoColorsAcross();
@@ -949,14 +1055,17 @@ There is no version number written in the file. The file is 768 or 772 bytes lon
 
 
   updatePreviewPalette: function() {
-    if(!this.loadMap) {
-      this.createColorMap();
+    if(!this.loadMap && !this.createColorMap()) {
+      this.setImportReady(false);
+      return false;
     }
 
     $('#colorPaletteLoadColorsAcross').val(this.colorsAcross);
     this.colorPaletteDisplay.setColors(this.colors, { colorCount: this.importColors, colorMap: this.colorMap });
     $('#colorPaletteLoadSettings').show();
     $('#colorPaletteLoadColorCount').html(this.colors.length);    
+    this.setImportReady(this.colors.length > 0);
+    return true;
   }
 
 }

@@ -199,6 +199,8 @@ var TileSet = function() {
   this.tile3d = null;
 }
 
+TileSet.MAX_TILE_DIMENSION = 128;
+
 TileSet.prototype = {
   setToVector: function(vectorFile, callback, errorCallback) {
     this.setType('vector');
@@ -443,10 +445,26 @@ TileSet.prototype = {
   },
 
   setTileDimensions: function(args) {
-    var offsetX = args.offsetX;
-    var offsetY = args.offsetY;
-    var width = args.width;
-    var height = args.height;
+    args = args || {};
+    if((typeof args.width == 'string' && args.width.trim() == '') ||
+        (typeof args.height == 'string' && args.height.trim() == '') ||
+        (typeof args.offsetX == 'string' && args.offsetX.trim() == '') ||
+        (typeof args.offsetY == 'string' && args.offsetY.trim() == '')) {
+      return false;
+    }
+    var offsetX = typeof args.offsetX == 'undefined' ? 0 : Number(args.offsetX);
+    var offsetY = typeof args.offsetY == 'undefined' ? 0 : Number(args.offsetY);
+    var width = Number(args.width);
+    var height = Number(args.height);
+
+    if(!Number.isFinite(width) || !Number.isInteger(width) || width < 1 ||
+        width > TileSet.MAX_TILE_DIMENSION ||
+        !Number.isFinite(height) || !Number.isInteger(height) || height < 1 ||
+        height > TileSet.MAX_TILE_DIMENSION ||
+        !Number.isFinite(offsetX) || !Number.isInteger(offsetX) || Math.abs(offsetX) > 1000 ||
+        !Number.isFinite(offsetY) || !Number.isInteger(offsetY) || Math.abs(offsetY) > 1000) {
+      return false;
+    }
 
     var currentWidth = this.charWidth;
     var currentHeight = this.charHeight;
@@ -482,6 +500,7 @@ TileSet.prototype = {
       }
       this.updateCharacterCurrentData(t);
     }
+    return true;
   },
   
   setType: function(type) {
@@ -1438,16 +1457,24 @@ TileSet.prototype = {
 
     var tileCount = this.getTileCount();
     var tilesAcross = 16;
-    var tilesDown = Math.ceil(tileCount / tilesAcross);
     
     if(typeof args != 'undefined') {
       if(typeof args.filename != 'undefined') {
         filename = args.filename;
       }
       if(typeof args.tilesAcross != 'undefined') {
-        tilesAcross = args.tilesAcross;
+        if(typeof args.tilesAcross == 'string' && args.tilesAcross.trim() == '') {
+          return false;
+        }
+        tilesAcross = Number(args.tilesAcross);
       }
     }
+
+    if(!Number.isFinite(tilesAcross) || !Number.isInteger(tilesAcross) ||
+        tilesAcross < 1 || tilesAcross > 256) {
+      return false;
+    }
+    var tilesDown = Math.ceil(tileCount / tilesAcross);
 
 
     //this.importCanvas.width = 16 * this.charWidth;

@@ -1817,9 +1817,27 @@ test("image import opens, reuses its editor instance, and closes cleanly", async
     status: "ready",
   });
   await expect(panel).toBeVisible();
+  await expect(panel.getByRole("button", { name: "Import", exact: true }))
+    .toHaveClass(/ui-button-disabled/);
   expect(await page.evaluate(() => UI.dialogStack.filter((dialog) =>
     dialog.uiID === "importImageDialog" || dialog.uiID === "importImageMobile",
   ).length)).toBe(1);
+
+  await page.evaluate(() => {
+    const importer = g_app.services.imageImport.getActive(g_app.textModeEditor);
+    importer.importSource = "image";
+    importer.importImage = { naturalWidth: 1, naturalHeight: 1 };
+    importer.setMediaReady(true);
+  });
+  await expect(panel.getByRole("button", { name: "Import", exact: true }))
+    .not.toHaveClass(/ui-button-disabled/);
+  await page.evaluate(() => UI.closeDialog());
+  await expect(panel).toHaveCount(0);
+
+  await page.evaluate(() => g_app.openImageImport());
+  await expect(panel).toBeVisible();
+  await expect(panel.getByRole("button", { name: "Import", exact: true }))
+    .toHaveClass(/ui-button-disabled/);
 
   await page.evaluate(() => g_app.closeImageImport());
   await expect.poll(() => page.evaluate(() =>

@@ -1405,10 +1405,17 @@ LayerGrid.prototype = {
 
   setBlockDimensions: function(width, height) {
     // need to make sure current block set is compatible..
-    this.doc.blockWidth = parseInt(width, 10);
-    this.doc.blockHeight = parseInt(height, 10);
+    width = Number(width);
+    height = Number(height);
+    if(!Number.isFinite(width) || !Number.isInteger(width) || width < 1 || width > 64 ||
+        !Number.isFinite(height) || !Number.isInteger(height) || height < 1 || height > 64) {
+      return false;
+    }
+    this.doc.blockWidth = width;
+    this.doc.blockHeight = height;
     this.invalidateTileUsage();
     this.editor.modified();
+    return true;
   },
 
 
@@ -1851,6 +1858,16 @@ LayerGrid.prototype = {
   // recreate frames if dimensions or character dimensions change
   setGridDimensions: function(args) {
 
+    args = args || {};
+    if((typeof args.width == 'string' && args.width.trim() == '') ||
+        (typeof args.height == 'string' && args.height.trim() == '') ||
+        (typeof args.offsetX == 'string' && args.offsetX.trim() == '') ||
+        (typeof args.offsetY == 'string' && args.offsetY.trim() == '') ||
+        (typeof args.cellWidth == 'string' && args.cellWidth.trim() == '') ||
+        (typeof args.cellHeight == 'string' && args.cellHeight.trim() == '')) {
+      return false;
+    }
+
     var tileSet = this.getTileSet();
     var doc = this.doc;
 
@@ -1886,6 +1903,21 @@ LayerGrid.prototype = {
         cellHeight = args.cellHeight;
       }
 
+    }
+
+    width = Number(width);
+    height = Number(height);
+    offsetX = Number(offsetX);
+    offsetY = Number(offsetY);
+    cellWidth = Number(cellWidth);
+    cellHeight = Number(cellHeight);
+    if(!Number.isFinite(width) || !Number.isInteger(width) || width < 1 || width > 200 ||
+        !Number.isFinite(height) || !Number.isInteger(height) || height < 1 || height > 200 ||
+        !Number.isFinite(offsetX) || !Number.isInteger(offsetX) || Math.abs(offsetX) > 1000 ||
+        !Number.isFinite(offsetY) || !Number.isInteger(offsetY) || Math.abs(offsetY) > 1000 ||
+        !Number.isFinite(cellWidth) || !Number.isInteger(cellWidth) || cellWidth < 1 ||
+        !Number.isFinite(cellHeight) || !Number.isInteger(cellHeight) || cellHeight < 1) {
+      return false;
     }
 
     // TODO: account for pixel dimensions...

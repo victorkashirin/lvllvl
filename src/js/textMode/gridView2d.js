@@ -4147,6 +4147,19 @@ GridView2d.prototype = {
 
 
 
+    if(this.editor.grid && typeof this.editor.grid.drawBackgroundImage == 'function') {
+      this.editor.grid.drawBackgroundImage(this.backBufferContext, {
+        srcX: srcX,
+        srcY: srcY,
+        srcWidth: srcWidth,
+        srcHeight: srcHeight,
+        dstX: dstX,
+        dstY: dstY,
+        dstWidth: dstWidth,
+        dstHeight: dstHeight
+      });
+    }
+
     // draw to the back buffer
     var frame = this.editor.graphic.getCurrentFrame();
     var allCells = false;

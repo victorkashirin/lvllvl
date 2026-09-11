@@ -1147,7 +1147,9 @@ TextModeEditor.prototype = {
       var _this = this;
       this.blockSetManager.showBlockSizeDialog(function(width, height, colorMode) {
 
-        _this.blockSetManager.checkBlockMode(width, height);
+        if(!_this.blockSetManager.checkBlockMode(width, height)) {
+          return false;
+        }
         
         layer.setBlockModeEnabled(enabled);
         layer.setBlockDimensions(width, height);
@@ -1160,6 +1162,7 @@ TextModeEditor.prototype = {
 
         _this.layers.updateLayerLabel(layer.getId());      
         _this.startBlockTool();  
+        return true;
       });
     } else {
       layer.setBlockModeEnabled(enabled);
@@ -1200,13 +1203,15 @@ TextModeEditor.prototype = {
 
     var _this = this;
     this.blockSetManager.showBlockSizeDialog(function(width, height, colorMode) {
-      _this.blockSetManager.checkBlockMode(width, height);
+      if(!_this.blockSetManager.checkBlockMode(width, height)) {
+        return false;
+      }
       
       layer.setBlockModeEnabled(true);
       layer.setBlockDimensions(width, height);
       layer.setColorPerMode(colorMode);
       _this.graphic.redraw({ allCells: true });
-
+      return true;
     });
   },
 

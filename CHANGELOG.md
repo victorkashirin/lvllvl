@@ -9,6 +9,16 @@
 
 ### Fixed
 
+- Validate palette import/export and tile-export layouts, document and MetaTile
+  dimensions, template links, background-image drafts, and C64 sprite-data
+  ranges so stale or malformed dialog state cannot freeze the UI, corrupt a
+  document, or produce misleading output. Render background images in the 2D
+  editor, preserve first-open palette and tile-set import callbacks, release
+  replaced image/video resources, validate tile-set JSON before mutation, and
+  reject C64 BASIC exports whose generated line numbers overflow. Also honor
+  canceled MetaTile resizes, preserve imported tiles up to 128 pixels, and
+  require fresh source data for image/video, C64, tile-set, palette,
+  reference-image, and binary-file imports.
 - Report image clipboard success and failures, keep mobile Project Explorer's
   initial Open action functional, and disable Undo/Redo at history boundaries.
 - Prevent asynchronous export and mobile document creation from closing

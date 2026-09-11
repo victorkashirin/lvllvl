@@ -3,6 +3,8 @@ var ExportC64SpriteData = function () {
   this.textEditor = null;
   this.lineIncrement = 10;
   this.lineNumber = 10;
+  this.outputValid = false;
+  this.outputSignature = null;
 }
 
 ExportC64SpriteData.prototype = {
@@ -24,7 +26,7 @@ ExportC64SpriteData.prototype = {
         _this.initEvents();
       });
 
-      this.displayButton = UI.create('UI.Button', { "imageSrc": "icons/svg/glyphicons-basic-614-copy.svg", "text": "Copy To Clipboard", "color": "primary" });
+      this.displayButton = UI.create('UI.Button', { "imageSrc": "icons/svg/glyphicons-basic-614-copy.svg", "text": "Copy To Clipboard", "color": "primary", "enabled": false });
       this.uiComponent.addButton(this.displayButton);
       this.displayButton.on('click', function(event) {
         //UI.closeDialog();
@@ -66,62 +68,105 @@ ExportC64SpriteData.prototype = {
       this.textEditor.getSession().setMode(mode);//"ace/mode/assembly_6502");
       this.textEditor.setShowInvisibles(false);
     }
+    this.exportData();
 
   },
 
   download: function() {
+    if(!this.isOutputFresh()) {
+      return false;
+    }
     var filename = $('#exportSpriteDataAs').val();
     var content = this.textEditor.getValue();
     download(content, filename, "application/txt");
+    return true;
   },
 
   copyToClipboard: function() {
+    if(!this.isOutputFresh()) {
+      return false;
+    }
     var sel = this.textEditor.selection.toJSON(); // save selection
     this.textEditor.selectAll();
     this.textEditor.focus();
     document.execCommand('copy');
     this.textEditor.selection.fromJSON(sel); // restore selection  
+    return true;
   },
 
   initEvents: function() {
     var _this = this;
-    $('#exportSpriteDataFrom').on('change', function() {
-      _this.exportData();
-    });
-    $('#exportSpriteDataTo').on('change', function() {
-      _this.exportData();
-    });
-    $('#exportSpriteDataFrom').on('keyup', function() {
-      _this.exportData();
-    });
-    $('#exportSpriteDataTo').on('keyup', function() {
-      _this.exportData();
-    });
+    $('#exportSpriteDataFrom, #exportSpriteDataTo, #exportSpriteLineNumber')
+      .on('input change', function() {
+        _this.exportData();
+      });
     $('#exportC64SpriteDataDownload').on('click', function() {
       _this.download();
     });
 
-    $('#exportSpriteLineNumber').on('change', function() {
-      _this.exportData();
-    });
-    $('#exportSpriteLineNumber').on('keyup', function() {
-      _this.exportData();
-    });
+  },
 
+  getInputSignature: function() {
+    return [
+      String($('#exportSpriteDataFrom').val()).trim(),
+      String($('#exportSpriteDataTo').val()).trim(),
+      String($('#exportSpriteLineNumber').val()).trim()
+    ].join('|');
+  },
+
+  setOutputValid: function(valid, message) {
+    this.outputValid = valid;
+    this.outputSignature = valid ? this.getInputSignature() : null;
+    if(this.textEditor && !valid) {
+      this.textEditor.setValue('', -1);
+    }
+    if(this.displayButton) {
+      this.displayButton.setEnabled(valid);
+    }
+    $('#exportC64SpriteDataDownload').toggleClass('ui-button-disabled', !valid)
+      .attr('aria-disabled', valid ? 'false' : 'true');
+    $('#exportSpriteDataError').text(message || '');
+  },
+
+  isOutputFresh: function() {
+    return this.outputValid && this.outputSignature === this.getInputSignature();
   },
 
 
   exportData: function() {
-    var exportFrom = parseInt($('#exportSpriteDataFrom').val(), 16);
-    var exportTo = parseInt($('#exportSpriteDataTo').val(), 16);
-    var lineNumber = parseInt($('#exportSpriteLineNumber').val(), 10);
-
-    if(isNaN(exportFrom) || isNaN(exportTo) || isNaN(lineNumber)) {
-      return;
+    this.setOutputValid(false, 'Enter a hexadecimal From and To address.');
+    var fromText = String($('#exportSpriteDataFrom').val()).trim();
+    var toText = String($('#exportSpriteDataTo').val()).trim();
+    var lineText = String($('#exportSpriteLineNumber').val()).trim();
+    if(!/^[0-9a-f]+$/i.test(fromText) || !/^[0-9a-f]+$/i.test(toText)) {
+      return false;
     }
-
-    if(exportTo < exportFrom) {
-      return;
+    if(!/^\d+$/.test(lineText)) {
+      this.setOutputValid(false, 'First line number must be a positive whole number.');
+      return false;
+    }
+    var exportFrom = Number.parseInt(fromText, 16);
+    var exportTo = Number.parseInt(toText, 16);
+    var lineNumber = Number(lineText);
+    if(exportFrom < 0 || exportFrom > 0xffff || exportTo < 0 || exportTo > 0x10000) {
+      this.setOutputValid(false, 'Addresses must be between $0000 and $10000.');
+      return false;
+    }
+    if(exportTo <= exportFrom) {
+      this.setOutputValid(false, 'To address must be greater than From address.');
+      return false;
+    }
+    if(lineNumber < 1 || lineNumber > 63999) {
+      this.setOutputValid(false, 'First line number must be from 1 to 63999.');
+      return false;
+    }
+    var bytesPerLine = 8;
+    var lineCount = Math.ceil((exportTo - exportFrom) / bytesPerLine);
+    var lastLineNumber = lineNumber + (lineCount - 1) * this.lineIncrement;
+    if(lastLineNumber > 63999) {
+      this.setOutputValid(false,
+        'The selected range would exceed BASIC line number 63999.');
+      return false;
     }
 
     this.generateBasic({
@@ -129,6 +174,8 @@ ExportC64SpriteData.prototype = {
       from: exportFrom,
       to: exportTo
     });
+    this.setOutputValid(true, '');
+    return true;
   },
 
   getLine: function(statement) {

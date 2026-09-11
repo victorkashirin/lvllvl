@@ -535,8 +535,12 @@ ImportImageMobile.prototype = {
 
 
 
-      this.importButton = UI.create('UI.Button', { "text": "Import" });
+      this.importButton = UI.create('UI.Button', { "text": "Import", "enabled": false });
       this.importButton.on('click', function(event) {
+        if(!_this.importer.hasLoadedMedia()) {
+          _this.importer.updateImportButtonState();
+          return;
+        }
         _this.doImport = true;
         UI.closeDialog();
 
@@ -593,7 +597,14 @@ ImportImageMobile.prototype = {
     }
     this.visible = true;
     this.importer.visible = true;
+    this.importer.updateImportButtonState();
 
+  },
+
+  setImportEnabled: function(enabled) {
+    if(this.importButton) {
+      this.importButton.setEnabled(enabled === true);
+    }
   },
 
   whenClosed: function() {
@@ -1007,7 +1018,7 @@ ImportImageMobile.prototype = {
 
   setImportVideo: function(file) {
     if(!this.isCurrentProject()) {
-      return;
+      return false;
     }
 //    this.importer.resetCacheCanvas();
 //    this.importer.importSource = 'video';
@@ -1015,18 +1026,21 @@ ImportImageMobile.prototype = {
     $('#importImageSourceContainer').css('height', '296px');
     $('#importImageControlsContainer').css('top', '308px');
     $('#importImageControlsContainer').show();
-    this.importer.setImportVideo(file);
+    return this.importer.setImportVideo(file);
   },
 
   setImportImage: function(file) {
     if(!this.isCurrentProject()) {
-      return;
+      return false;
+    }
+    if(!file) {
+      this.importer.setMediaReady(false);
+      return false;
     }
     
-    if(file.type.indexOf('video/') === 0) {
+    if(typeof file.type == 'string' && file.type.indexOf('video/') === 0) {
 //    if(file.type == 'video/mp4' || file.type == 'video/webm') {
-      this.setImportVideo(file);
-      return;
+      return this.setImportVideo(file);
     }
 
     $('.importImageMobileVideoSetting').hide();
@@ -1034,16 +1048,22 @@ ImportImageMobile.prototype = {
     $('#importImageControlsContainer').css('top', '292px');
     $('#importImageControlsContainer').show();
 
+    this.importer.resetMediaSelection();
     this.importer.resetCacheCanvas();
     this.importer.importSource = 'image';
-    if(!this.importer.importImage) {
-      this.importer.importImage = new Image();      
-    }
+    this.importer.setMediaReady(false);
     var url = window.URL || window.webkitURL;
     var src = url.createObjectURL(file);
+    this.importer.mediaObjectURL = src;
+    this.importer.importImage = new Image();
+    var image = this.importer.importImage;
     var _this = this;
-    this.importer.importImage.onload = function() {
+    image.onload = function() {
+      if(_this.importer.importImage !== image) {
+        return;
+      }
       if(!_this.isCurrentProject()) {
+        _this.importer.releaseMediaObjectURL(src);
         return;
       }
 
@@ -1052,8 +1072,22 @@ ImportImageMobile.prototype = {
       _this.setBrightness(0);
       _this.setSaturation(0);
       _this.setContrast(0);
+      _this.importer.setMediaReady(true);
+      _this.importer.releaseMediaObjectURL(src);
     }
-    this.importer.importImage.src = src;
+    image.onerror = function() {
+      if(_this.importer.importImage !== image) {
+        return;
+      }
+      if(!_this.isCurrentProject()) {
+        _this.importer.releaseMediaObjectURL(src);
+        return;
+      }
+      _this.importer.setMediaReady(false);
+      _this.importer.releaseMediaObjectURL(src);
+    };
+    image.src = src;
+    return true;
 
   },
 
@@ -1062,12 +1096,13 @@ ImportImageMobile.prototype = {
   },
   
   startImport: function() {
-    if(!this.isCurrentProject()) {
+    if(!this.isCurrentProject() || !this.importer.hasLoadedMedia()) {
+      this.importer.updateImportButtonState();
       return false;
     }
     this.importer.useChars = this.useChars;
     this.importer.useColors = this.useColors;
-    this.importer.startImport();
+    return this.importer.startImport();
 
   },
 

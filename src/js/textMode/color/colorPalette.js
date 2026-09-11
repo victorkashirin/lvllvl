@@ -356,6 +356,15 @@ ColorPalette.prototype = {
     if(typeof across == 'undefined') {
       colorsAcross = this.getColorsAcross();
     }
+    colorsAcross = Number(colorsAcross);
+    if(!Number.isFinite(colorsAcross) || !Number.isInteger(colorsAcross) ||
+        colorsAcross < 1 || colorsAcross > Math.max(1, colors.length)) {
+      colorsAcross = Number(this.getColorsAcross());
+    }
+    if(!Number.isFinite(colorsAcross) || !Number.isInteger(colorsAcross) ||
+        colorsAcross < 1 || colorsAcross > Math.max(1, colors.length)) {
+      colorsAcross = Math.max(1, Math.min(8, colors.length || 1));
+    }
 
 
     var sortOrder = this.editor.colorPaletteManager.sortColors(colors, { 'sortMethod': sortOrderMethod });

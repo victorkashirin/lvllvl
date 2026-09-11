@@ -94,6 +94,10 @@ CreateTemplateLink.prototype = {
       _this.generateLink();
     });
 
+    $('#templateLinkWidth, #templateLinkHeight').on('input change keyup', function() {
+      _this.generateLink();
+    });
+
 
     $('#templateLinkCopy').on('click', function() {
       _this.copyLink();
@@ -213,11 +217,35 @@ CreateTemplateLink.prototype = {
     var editor = $('#templateLinkEditorList').val();
     var tileSet = $('#templateLinkTileSetList').val();
     var colorPalette = $('#templateLinkColorPaletteList').val();
-    var width = parseInt($('#templateLinkWidth').val(), 10);
-    var height = parseInt($('#templateLinkHeight').val(), 10);
+    var width = Number($('#templateLinkWidth').val());
+    var height = Number($('#templateLinkHeight').val());
     var screenMode = $('#templateLinkScreenMode').val();
     var tileFlip = $('#templateLinkCanFlipTiles').is(':checked');
     var tileRotate = $('#templateLinkCanRotateTiles').is(':checked');
+
+    var widthValid = Number.isFinite(width) && Number.isInteger(width) && width >= 1 && width <= 500;
+    var heightValid = Number.isFinite(height) && Number.isInteger(height) && height >= 1 && height <= 500;
+    var dimensionsValid = widthValid && heightValid;
+    if(widthValid) {
+      $('#templateLinkWidth').removeAttr('aria-invalid');
+    } else {
+      $('#templateLinkWidth').attr('aria-invalid', 'true');
+    }
+    if(heightValid) {
+      $('#templateLinkHeight').removeAttr('aria-invalid');
+    } else {
+      $('#templateLinkHeight').attr('aria-invalid', 'true');
+    }
+    $('#templateLinkDimensionsError').toggle(!dimensionsValid).text(
+      dimensionsValid ? '' : 'Width and height must be whole numbers from 1 to 500.'
+    );
+    $('#templateLinkCopy').toggleClass('ui-button-disabled', !dimensionsValid)
+      .attr('aria-disabled', dimensionsValid ? 'false' : 'true');
+    if(!dimensionsValid) {
+      $('#templateLink').val('');
+      this.linkValid = false;
+      return false;
+    }
 
     var link = 'https://lvllvl.com/?';
 
@@ -234,14 +262,20 @@ CreateTemplateLink.prototype = {
       link += '&tilerotate=1';
     }
     $('#templateLink').val(link);
+    this.linkValid = true;
+    return true;
   },
 
   copyLink: function() {
+    if(!this.generateLink() || !this.linkValid) {
+      return false;
+    }
     var copyText = document.getElementById("templateLink");
 
     copyText.select();
     copyText.setSelectionRange(0, 99999); /*For mobile devices*/
-    document.execCommand("copy");    
+    document.execCommand("copy");
+    return true;
   }
 
 }

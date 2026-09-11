@@ -825,6 +825,13 @@ Graphic.prototype = {
 
   },
   setGridDimensions: function(args) {
+    args = args || {};
+    if((typeof args.width == 'string' && args.width.trim() == '') ||
+        (typeof args.height == 'string' && args.height.trim() == '') ||
+        (typeof args.offsetX == 'string' && args.offsetX.trim() == '') ||
+        (typeof args.offsetY == 'string' && args.offsetY.trim() == '')) {
+      return false;
+    }
     var width = this.gridWidth;
     var height = this.gridHeight;
 
@@ -832,20 +839,24 @@ Graphic.prototype = {
     var offsetX = 0;
     var offsetY = 0;
 
-    if(typeof args != 'undefined') {
-      if(typeof args.width != 'undefined') {
-        width = args.width;
-      }
-      if(typeof args.height != 'undefined') {
-        height = args.height;
-      }
-      if(typeof args.offsetX != 'undefined') {
-        offsetX = args.offsetX;
-      }
-      if(typeof args.offsetY != 'undefined') {
-        offsetY = args.offsetY;
-      }
+    if(typeof args.width != 'undefined') {
+      width = Number(args.width);
+    }
+    if(typeof args.height != 'undefined') {
+      height = Number(args.height);
+    }
+    if(typeof args.offsetX != 'undefined') {
+      offsetX = Number(args.offsetX);
+    }
+    if(typeof args.offsetY != 'undefined') {
+      offsetY = Number(args.offsetY);
+    }
 
+    if(!Number.isFinite(width) || !Number.isInteger(width) || width < 1 || width > 200 ||
+        !Number.isFinite(height) || !Number.isInteger(height) || height < 1 || height > 200 ||
+        !Number.isFinite(offsetX) || !Number.isInteger(offsetX) || Math.abs(offsetX) > 1000 ||
+        !Number.isFinite(offsetY) || !Number.isInteger(offsetY) || Math.abs(offsetY) > 1000) {
+      return false;
     }
 
     this.gridWidth = width;
@@ -870,6 +881,7 @@ Graphic.prototype = {
     if(this.type == 'sprite') {
       this.editor.tools.drawTools.tilePalette.drawTilePalette();
     }
+    return true;
   },
 
 

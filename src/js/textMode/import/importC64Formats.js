@@ -22,6 +22,8 @@ var ImportC64Formats = function() {
   this.importCharPad = null;
 
   this.importType = '';
+  this.importReady = false;
+  this.importGeneration = 0;
   this.screnMode = TextModeEditor.Mode.TEXTMODE;
   this.extendedBackground = false;
 
@@ -64,10 +66,28 @@ ImportC64Formats.prototype = {
       g_app.isCurrentProject(context.document, context.generation));
   },
 
+  setImportReady: function(ready, importType) {
+    this.importReady = !!ready;
+    this.importType = this.importReady ? importType : '';
+    if(this.okButton && typeof this.okButton.setEnabled == 'function') {
+      this.okButton.setEnabled(this.importReady);
+    }
+  },
+
+  isCurrentImport: function(context) {
+    return context.importGeneration === this.importGeneration && this.isCurrentProject(context);
+  },
+
+  resetImportSource: function() {
+    this.importGeneration++;
+    this.setImportReady(false);
+    this.filename = '';
+  },
+
   resetProjectState: function() {
     this.projectDocument = null;
     this.projectGeneration = undefined;
-    this.importType = '';
+    this.resetImportSource();
     this.tileData = [];
     this.screenData = [];
     this.colorData = [];
@@ -151,6 +171,7 @@ ImportC64Formats.prototype = {
   start: function() {
     var _this = this;
     this.captureProjectContext();
+    this.resetImportSource();
 
     if(this.uiComponent == null) {
       this.uiComponent = UI.create("UI.Dialog", { "id": "importC64FormatsDialog", "title": "Import", "width": 615, "height": 500 });
@@ -180,11 +201,12 @@ ImportC64Formats.prototype = {
         _this.initEvents();
       });
 
-      this.okButton = UI.create('UI.Button', { "text": "Import", "color": "primary" });
+      this.okButton = UI.create('UI.Button', { "text": "Import", "color": "primary", "enabled": false });
       this.uiComponent.addButton(this.okButton);
       this.okButton.on('click', function(event) {
-        _this.doImport();
-        UI.closeDialog();
+        if(_this.doImport()) {
+          UI.closeDialog();
+        }
       });
 
       this.closeButton = UI.create('UI.Button', { "text": "Cancel", "color": "secondary" });
@@ -546,13 +568,10 @@ ImportC64Formats.prototype = {
   // ---------------------------- Load SEQ ------------------------- //
 
   loadSeq: function(file) {
-    this.importType = 'seq';
     this.screenMode = TextModeEditor.Mode.TEXTMODE;
 
-    if(this.importSeq == null) {
-      this.importSeq = new ImportSeq();
-      this.importSeq.init(this.editor);
-    }
+    this.importSeq = new ImportSeq();
+    this.importSeq.init(this.editor);
 
     $('#importC64FormatsFrames').hide();
     $('#importC64FormatsViceSettings').hide();
@@ -560,15 +579,19 @@ ImportC64Formats.prototype = {
 
 
     var _this = this;
-    var context = { document: this.projectDocument, generation: this.projectGeneration };
+    var context = { document: this.projectDocument, generation: this.projectGeneration, importGeneration: this.importGeneration };
     var reader = new FileReader();
     reader.onload = function(e) {
-      if(!_this.isCurrentProject(context)) {
+      if(!_this.isCurrentImport(context)) {
         return;
       }
       var byteArray = new Uint8Array(e.target.result);
+      if(byteArray.length == 0) {
+        return;
+      }
       var result = _this.importSeq.readSeq(byteArray);
       _this.showSeq();
+      _this.setImportReady(true, 'seq');
     };
     reader.readAsArrayBuffer(file);
 
@@ -675,10 +698,8 @@ ImportC64Formats.prototype = {
   // -------------------------------  Import PETSCII C ---------------------------- //
 
   loadC: function(file) {
-    if(this.importC == null) {
-      this.importC = new ImportC();
-      this.importC.init(this.editor);
-    }
+    this.importC = new ImportC();
+    this.importC.init(this.editor);
 
     $('#importC64FormatsFrames').show();
     $('#importC64FormatsViceSettings').hide();
@@ -690,22 +711,24 @@ ImportC64Formats.prototype = {
     this.previewOffsetY = 0;
 
     var _this = this;
-    var context = { document: this.projectDocument, generation: this.projectGeneration };
+    var context = { document: this.projectDocument, generation: this.projectGeneration, importGeneration: this.importGeneration };
 
     var fileReader = new FileReader();
     fileReader.onload = function(e) {
-      if(!_this.isCurrentProject(context)) {
+      if(!_this.isCurrentImport(context)) {
         return;
       }
       var result = _this.importC.read(e.target.result);
+      if(!_this.importC.getFrameCount || _this.importC.getFrameCount() <= 0) {
+        return;
+      }
       _this.frame = 0;
       _this.showC();
+      _this.setImportReady(true, 'c');
 //      _this.readJson(e.target.result);
 
     }
     fileReader.readAsText(file);
-
-    this.importType = 'c';
   },
 
   showC: function() {
@@ -807,27 +830,30 @@ ImportC64Formats.prototype = {
     $('#importC64Settings').show();
 
     var _this = this;
-    var context = { document: this.projectDocument, generation: this.projectGeneration };
+    var context = { document: this.projectDocument, generation: this.projectGeneration, importGeneration: this.importGeneration };
     var reader = new FileReader();
     reader.onload = function(e) {
-      if(!_this.isCurrentProject(context)) {
+      if(!_this.isCurrentImport(context)) {
         return;
       }
       var data = new Uint8Array(reader.result);
+      if(data.length < 2) {
+        return;
+      }
 
       /*
       c64_reset();
       c64_loadPRG(data, data.length, false);
       c64.insertText('run\n');
       */
-      _this.startPRG(data, false);
+      _this.startPRG(data, false, function() {
+        _this.setImportReady(true, 'prg');
+      });
     };
     reader.readAsArrayBuffer(file);
 
 
 //    this.c64.loadPRG(file);
-
-    this.importType = 'prg';
   },
 
 
@@ -844,21 +870,23 @@ ImportC64Formats.prototype = {
     $('#importC64Settings').show();
 
     var _this = this;
-    var context = { document: this.projectDocument, generation: this.projectGeneration };
+    var context = { document: this.projectDocument, generation: this.projectGeneration, importGeneration: this.importGeneration };
     var reader = new FileReader();
     reader.onload = function(e) {
-      if(!_this.isCurrentProject(context)) {
+      if(!_this.isCurrentImport(context)) {
         return;
       }
       var data = new Uint8Array(reader.result);
+      if(data.length == 0) {
+        return;
+      }
       _this.startCRT(data, false);
+      _this.setImportReady(true, 'prg');
     };
     reader.readAsArrayBuffer(file);
 
 
 //    this.c64.loadPRG(file);
-
-    this.importType = 'prg';
   },  
 
   startCRT: function(data) {
@@ -874,9 +902,9 @@ ImportC64Formats.prototype = {
 
 
   
-  startPRG: function(data, inject) {
+  startPRG: function(data, inject, readyCallback) {
     var _this = this;
-    var context = { document: this.projectDocument, generation: this.projectGeneration };
+    var context = { document: this.projectDocument, generation: this.projectGeneration, importGeneration: this.importGeneration };
     var loadAddress = data[0] + (data[1] << 8);
     console.log('load address = ' + loadAddress.toString(16));
     var endAddress = loadAddress - 2 + data.length;
@@ -890,7 +918,7 @@ ImportC64Formats.prototype = {
     delay = Math.random() * 100;
 
     setTimeout(function() {
-      if(!_this.isCurrentProject(context)) {
+      if(!_this.isCurrentImport(context)) {
         return;
       }
       c64_loadPRG(data, data.length, inject ? 1:0);
@@ -904,11 +932,14 @@ ImportC64Formats.prototype = {
         
       } else {
         setTimeout(function() {
-          if(!_this.isCurrentProject(context)) {
+          if(!_this.isCurrentImport(context)) {
             return;
           }
           c64.insertText('load "*",8,1\nrun\n');
         }, 2000);
+      }
+      if(typeof readyCallback == 'function') {
+        readyCallback();
       }
     }, delay);
 
@@ -928,30 +959,32 @@ ImportC64Formats.prototype = {
 //    this.c64.attachDisk(file);
 
     var _this = this;
-    var context = { document: this.projectDocument, generation: this.projectGeneration };
+    var context = { document: this.projectDocument, generation: this.projectGeneration, importGeneration: this.importGeneration };
     var reader = new FileReader();
     reader.onload = function(e) {
-      if(!_this.isCurrentProject(context)) {
+      if(!_this.isCurrentImport(context)) {
         return;
       }
       var data = new Uint8Array(reader.result);
+      if(data.length == 0) {
+        return;
+      }
       c64_insertDisk(data, data.length);
+      _this.setImportReady(true, 'prg');
     };
     reader.readAsArrayBuffer(file);
 
 
     var filename = file.name;
     $('#importC64FormatsAttachedDisk').text(filename);
-
-    this.importType = 'prg';
   },
 
   resetC64: function() {
 //    this.c64.restoreState();
 //    this.c64.machineReset();
     c64_reset();
+    this.resetImportSource();
 
-    this.importType = 'prg';
     document.getElementById('importC64FormatsForm').reset();
 
     $('#importC64FormatsAttachedDisk').html('');
@@ -1023,12 +1056,8 @@ ImportC64Formats.prototype = {
 
 
   loadCharPad: function(file) {
-    this.importType = 'ctm';
-
-    if(this.importCharPad == null) {
-      this.importCharPad = new ImportCharPad();
-      this.importCharPad.init(this.editor);      
-    }
+    this.importCharPad = new ImportCharPad();
+    this.importCharPad.init(this.editor);
 
     $('#importC64PRGControls').hide();
     $('#importC64FormatsFrames').hide();
@@ -1038,15 +1067,19 @@ ImportC64Formats.prototype = {
     this.previewOffsetY = 0;
 
     var _this = this;
-    var context = { document: this.projectDocument, generation: this.projectGeneration };
+    var context = { document: this.projectDocument, generation: this.projectGeneration, importGeneration: this.importGeneration };
     var reader = new FileReader();
     reader.onload = function(e) {
-      if(!_this.isCurrentProject(context)) {
+      if(!_this.isCurrentImport(context)) {
         return;
       }
       var byteArray = new Uint8Array(e.target.result);
+      if(byteArray.length < 4 || byteArray[0] != 67 || byteArray[1] != 84 || byteArray[2] != 77) {
+        return;
+      }
       var result = _this.importCharPad.readCharPad(byteArray);
       _this.showCharPad();
+      _this.setImportReady(true, 'ctm');
     };
     reader.readAsArrayBuffer(file);
 
@@ -1356,18 +1389,14 @@ ImportC64Formats.prototype = {
 
 
   loadVsf: function(file) {
-    this.importType = 'vsf';
-
     $('#importC64PRGControls').hide();
     $('.importC64Settings').hide();
     $('#importC64FormatsViceSettings').show();
     $('#importC64FormatsFrames').hide();
 
 
-    if(this.viceSnapshotReader == null) {
-      this.viceSnapshotReader = new ViceSnapshotReader();
-      this.viceSnapshotReader.init(this.editor);
-    }
+    this.viceSnapshotReader = new ViceSnapshotReader();
+    this.viceSnapshotReader.init(this.editor);
 
     this.previewOffsetX = 0;
     this.previewOffsetY = 0;
@@ -1375,15 +1404,19 @@ ImportC64Formats.prototype = {
     this.screenHeight =25;
 
     var _this = this;
-    var context = { document: this.projectDocument, generation: this.projectGeneration };
+    var context = { document: this.projectDocument, generation: this.projectGeneration, importGeneration: this.importGeneration };
     var reader = new FileReader();
     reader.onload = function(e) {
-      if(!_this.isCurrentProject(context)) {
+      if(!_this.isCurrentImport(context)) {
         return;
       }
       var byteArray = new Uint8Array(e.target.result);
       var result = _this.viceSnapshotReader.readSnapshot(byteArray);
+      if(result === false) {
+        return;
+      }
       _this.showVsf();
+      _this.setImportReady(true, 'vsf');
     };
     reader.readAsArrayBuffer(file);
   },
@@ -1501,6 +1534,7 @@ ImportC64Formats.prototype = {
   },
 
   setImportFile: function(file) {
+    this.resetImportSource();
     if(typeof file == 'undefined') {
       return;
     }
@@ -1561,8 +1595,6 @@ ImportC64Formats.prototype = {
     //this.c64.machineReset();
 //    this.c64.restoreState();
 //    this.c64.loadPrg(file);
-
-    this.importType = 'prg';
 
   },
 
@@ -1735,8 +1767,13 @@ c64_cpuRead(address);
 
 
   doImport: function() {
-    if(!this.isCurrentProject()) {
-      return;
+    if(!this.isCurrentProject() || !this.importReady || !this.importType) {
+      return false;
+    }
+    var layer = this.editor.layers.getSelectedLayerObject();
+    if(!layer || layer.getType() !== 'grid') {
+      alert('Please choose a grid layer');
+      return false;
     }
     if(this.importType == 'prg') {
       this.importPrg();
@@ -1759,6 +1796,7 @@ c64_cpuRead(address);
     if(this.importType == 'ctm') {
       this.doImportCharPad();
     }
+    return true;
   },
 
   keyDown: function(event) {

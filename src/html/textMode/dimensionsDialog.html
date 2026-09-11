@@ -7,12 +7,14 @@
       </div>
       <div class="formGroup">
         <label class="controlLabel" for="settingsDimensionsTileWidth">Tile Width:</label>
-        <input type="number" class="formControl number dimensionsNumber" min="1" id="settingsDimensionsTileWidth" size="4"/>
+        <input type="number" class="formControl number dimensionsNumber" min="1" max="128" id="settingsDimensionsTileWidth" size="4"/>
+        <span class="dimensionsFieldError" id="settingsDimensionsTileWidthError" role="alert" style="display: none"></span>
       </div>
 
       <div class="formGroup">
         <label class="controlLabel" for="settingsDimensionsTileHeight">Tile Height:</label>
-        <input type="number" class="formControl number dimensionsNumber" min="1" id="settingsDimensionsTileHeight" size="4"/>
+        <input type="number" class="formControl number dimensionsNumber" min="1" max="128" id="settingsDimensionsTileHeight" size="4"/>
+        <span class="dimensionsFieldError" id="settingsDimensionsTileHeightError" role="alert" style="display: none"></span>
       </div>
     </div>
 
@@ -22,12 +24,14 @@
     </div>
     <div class="formGroup">
       <label class="controlLabel" for="settingsDimensionsWidth">Grid Width:</label>
-      <input type="number" class="formControl number dimensionsNumber" min="1" id="settingsDimensionsWidth" size="4"/>
+      <input type="number" class="formControl number dimensionsNumber" min="1" max="200" id="settingsDimensionsWidth" size="4"/>
+      <span class="dimensionsFieldError" id="settingsDimensionsWidthError" role="alert" style="display: none"></span>
     </div>
 
     <div class="formGroup">
       <label class="controlLabel" for="settingsDimensionsHeight">Grid Height:</label>
-      <input type="number" class="formControl number dimensionsNumber" min="1" id="settingsDimensionsHeight" size="4"/>
+      <input type="number" class="formControl number dimensionsNumber" min="1" max="200" id="settingsDimensionsHeight" size="4"/>
+      <span class="dimensionsFieldError" id="settingsDimensionsHeightError" role="alert" style="display: none"></span>
     </div>
 
 
@@ -43,12 +47,14 @@
 
     <div class="formGroup">
       <label class="controlLabel" for="settingsDimensionsOffsetX">Offset X:</label>
-      <input type="number" class="formControl number dimensionsNumber" min="-1000" value="0" id="settingsDimensionsOffsetX" size="4"/>
+      <input type="number" class="formControl number dimensionsNumber" min="-1000" max="1000" value="0" id="settingsDimensionsOffsetX" size="4"/>
+      <span class="dimensionsFieldError" id="settingsDimensionsOffsetXError" role="alert" style="display: none"></span>
     </div>
     
     <div class="formGroup">
       <label class="controlLabel" for="settingsDimensionsOffsetY">Offset Y:</label>
-      <input type="number" class="formControl number dimensionsNumber" min="-1000" value="0" id="settingsDimensionsOffsetY" size="4"/>
+      <input type="number" class="formControl number dimensionsNumber" min="-1000" max="1000" value="0" id="settingsDimensionsOffsetY" size="4"/>
+      <span class="dimensionsFieldError" id="settingsDimensionsOffsetYError" role="alert" style="display: none"></span>
     </div>
 
 

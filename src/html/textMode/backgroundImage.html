@@ -16,18 +16,18 @@
             <div style="padding: 4px">
               <label for="bgImageScale">Scale</label>
               <button type="button" id="bgImageScaleDecrease">-</button>
-              <input size="3" id="bgImageScale" value="100"/>
+              <input type="number" min="0.01" max="10000" size="3" id="bgImageScale" value="100"/>
               <button type="button" id="bgImageScaleIncrease">+</button> %
             </div>
 
             <div style="padding: 4px">
               <label for="bgImageX">X</label>
-              <input size="3" id="bgImageX" value="0"/> 
+              <input type="number" size="3" id="bgImageX" value="0"/>
             </div>
 
             <div style="padding: 4px">
               <label for="bgImageY">Y</label>
-              <input size="3" id="bgImageY" value="0"/> 
+              <input type="number" size="3" id="bgImageY" value="0"/>
             </div>
 
           </td>
@@ -37,4 +37,3 @@
 
   </form>
 </div>
-

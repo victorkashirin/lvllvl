@@ -31,18 +31,55 @@ BackgroundImage.prototype = {
     this.projectGeneration = g_app.projectGeneration;
   },
 
-  isCurrentProject: function() {
-    return !!this.projectDocument && (!g_app.isCurrentProject ||
-      g_app.isCurrentProject(this.projectDocument, this.projectGeneration));
+  isCurrentProject: function(projectContext) {
+    var document = projectContext ? projectContext.document : this.projectDocument;
+    var generation = projectContext ? projectContext.generation : this.projectGeneration;
+    return !!document && (!g_app.isCurrentProject ||
+      g_app.isCurrentProject(document, generation));
+  },
+
+  releaseDraftObjectURL: function() {
+    if(this.objectURL && window.URL && typeof window.URL.revokeObjectURL == 'function') {
+      window.URL.revokeObjectURL(this.objectURL);
+    }
+    this.objectURL = null;
+  },
+
+  initializeDraft: function() {
+    this.releaseDraftObjectURL();
+    var applied = this.editor.grid && typeof this.editor.grid.getBackgroundImage == 'function'
+      ? this.editor.grid.getBackgroundImage()
+      : null;
+    this.bgImage = applied ? applied.image : null;
+    this.x = applied ? applied.x : 0;
+    this.y = applied ? applied.y : 0;
+    this.drawWidth = applied ? applied.drawWidth : 0;
+    this.drawHeight = applied ? applied.drawHeight : 0;
+    this.scale = 100;
+    if(applied && this.bgImage) {
+      var baseSize = this.getBaseDrawSize(this.bgImage);
+      if(baseSize.width > 0) {
+        this.scale = applied.drawWidth / baseSize.width * 100;
+      }
+    }
+  },
+
+  discardDraft: function() {
+    this.releaseDraftObjectURL();
+    this.bgImage = null;
+    this.x = 0;
+    this.y = 0;
+    this.drawWidth = 0;
+    this.drawHeight = 0;
+    if(this.okButton) {
+      this.okButton.setEnabled(false);
+    }
   },
 
   resetProjectState: function() {
     this.projectDocument = null;
     this.projectGeneration = undefined;
-    if(this.objectURL && window.URL && typeof window.URL.revokeObjectURL == 'function') {
-      window.URL.revokeObjectURL(this.objectURL);
-    }
-    this.objectURL = null;
+    this.releaseDraftObjectURL();
     this.bgImage = null;
     this.x = 0;
     this.y = 0;
@@ -55,6 +92,7 @@ BackgroundImage.prototype = {
   start: function() {
     var _this = this;
     this.captureProjectContext();
+    this.initializeDraft();
     var projectContext = {
       document: this.projectDocument,
       generation: this.projectGeneration
@@ -73,17 +111,23 @@ BackgroundImage.prototype = {
         _this.initEvents();
       });
 
-      this.okButton = UI.create('UI.Button', { "text": "OK" });
+      this.okButton = UI.create('UI.Button', { "text": "OK", "enabled": false });
       this.uiComponent.addButton(this.okButton);
       this.okButton.on('click', function(event) {
-        _this.setBackgroundImage();
-        UI.closeDialog();
+        if(_this.setBackgroundImage()) {
+          UI.closeDialog();
+          _this.discardDraft();
+        }
       });
 
       this.closeButton = UI.create('UI.Button', { "text": "Cancel" });
       this.uiComponent.addButton(this.closeButton);
       this.closeButton.on('click', function(event) {
         UI.closeDialog();
+        _this.discardDraft();
+      });
+      this.uiComponent.on('close', function() {
+        _this.discardDraft();
       });
     } else {
       this.initContent();
@@ -111,8 +155,16 @@ BackgroundImage.prototype = {
     this.context.msImageSmoothingEnabled = false;
     this.context.oImageSmoothingEnabled = false;
 
+    $('#bgImageSourceFile').val('');
+    $('#bgImageX').val(this.x);
+    $('#bgImageY').val(this.y);
+    $('#bgImageScale').val(Math.round(this.scale * 100) / 100);
+    this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
     if(this.bgImage) {
       this.showImage();
+    } else if(this.okButton) {
+      this.okButton.setEnabled(false);
     }
 
 
@@ -129,15 +181,15 @@ BackgroundImage.prototype = {
     var currentOffsetX = 0;
     var currentOffsetY = 0;
 
-    $('#bgImageX').on('keyup', function() {
+    $('#bgImageX').on('input change', function() {
       _this.showImage();
     });
 
-    $('#bgImageY').on('keyup', function() {
+    $('#bgImageY').on('input change', function() {
       _this.showImage();
     });
 
-    $('#bgImageScale').on('keyup', function() {
+    $('#bgImageScale').on('input change', function() {
       _this.showImage();
     });
 
@@ -204,10 +256,12 @@ BackgroundImage.prototype = {
 
 
   setBackgroundImage: function() {
-    if(!this.isCurrentProject()) {
-      return;
+    if(!this.showImage() || !this.hasValidDraft()) {
+      return false;
     }
-    this.editor.grid.setBackgroundImage(this.bgImage, this.x, this.y, this.drawWidth, this.drawHeight);
+    return this.editor.grid.setBackgroundImage(
+      this.bgImage, this.x, this.y, this.drawWidth, this.drawHeight
+    );
   },
 
   chooseImage: function(file) {
@@ -215,8 +269,12 @@ BackgroundImage.prototype = {
       return;
     }
     this.captureProjectContext();
-    if(!this.bgImage) {
-      this.bgImage = new Image();
+    this.releaseDraftObjectURL();
+    this.bgImage = new Image();
+    this.drawWidth = 0;
+    this.drawHeight = 0;
+    if(this.okButton) {
+      this.okButton.setEnabled(false);
     }
 
 //    this.initCanvas();
@@ -224,9 +282,6 @@ BackgroundImage.prototype = {
 
     var url = window.URL || window.webkitURL;
     var src = url.createObjectURL(file);
-    if(this.objectURL && url.revokeObjectURL) {
-      url.revokeObjectURL(this.objectURL);
-    }
     this.objectURL = src;
     this.bgImage.src = src;
 
@@ -237,6 +292,34 @@ BackgroundImage.prototype = {
       }
       _this.showImage();
     }
+    this.bgImage.onerror = function() {
+      _this.drawWidth = 0;
+      _this.drawHeight = 0;
+      if(_this.okButton) {
+        _this.okButton.setEnabled(false);
+      }
+    };
+  },
+
+  getBaseDrawSize: function(image) {
+    var naturalWidth = Number(image && image.naturalWidth);
+    var naturalHeight = Number(image && image.naturalHeight);
+    if(!Number.isFinite(naturalWidth) || naturalWidth <= 0 ||
+        !Number.isFinite(naturalHeight) || naturalHeight <= 0) {
+      return { width: 0, height: 0 };
+    }
+    var fitScale = Math.min(1, 320 / naturalWidth, 200 / naturalHeight);
+    return {
+      width: naturalWidth * fitScale,
+      height: naturalHeight * fitScale
+    };
+  },
+
+  hasValidDraft: function() {
+    return !!this.bgImage && Number(this.bgImage.naturalWidth) > 0 &&
+      Number(this.bgImage.naturalHeight) > 0 && Number.isFinite(this.x) &&
+      Number.isFinite(this.y) && Number.isFinite(this.drawWidth) &&
+      this.drawWidth > 0 && Number.isFinite(this.drawHeight) && this.drawHeight > 0;
   },
 
 
@@ -246,38 +329,46 @@ BackgroundImage.prototype = {
       return;
     }
 
-    var drawWidth = this.bgImage.naturalWidth;
-    var drawHeight = this.bgImage.naturalHeight;
-    var scale = 100;
+    var baseSize = this.getBaseDrawSize(this.bgImage);
+    var drawWidth = baseSize.width;
+    var drawHeight = baseSize.height;
+    var scaleValue = $('#bgImageScale').val();
+    var xValue = $('#bgImageX').val();
+    var yValue = $('#bgImageY').val();
+    var scale = Number(scaleValue);
 
-    if(drawWidth > 320) {
-      scale = 320 / this.bgImage.naturalWidth;
-      drawWidth = this.bgImage.naturalWidth * scale;
-      drawHeight = this.bgImage.naturalHeight * scale;
+    this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    this.x = Number(xValue);
+    this.y = Number(yValue);
+    if((typeof scaleValue == 'string' && scaleValue.trim() == '') ||
+        (typeof xValue == 'string' && xValue.trim() == '') ||
+        (typeof yValue == 'string' && yValue.trim() == '') ||
+        !Number.isFinite(scale) || scale <= 0 || scale > 10000 ||
+        !Number.isFinite(this.x) || !Number.isFinite(this.y) ||
+        drawWidth <= 0 || drawHeight <= 0) {
+      this.drawWidth = 0;
+      this.drawHeight = 0;
+      if(this.okButton) {
+        this.okButton.setEnabled(false);
+      }
+      return false;
     }
-
-    if(drawHeight > 200) {
-      scale = 200 / this.bgImage.naturalHeight;
-      drawWidth = this.bgImage.naturalWidth * scale;
-      drawHeight = this.bgImage.naturalHeight * scale;
-    }
-
-    scale = parseInt($('#bgImageScale').val());
 
 
   //  console.log('scale = ' + scale);
     drawWidth = drawWidth * scale / 100;
     drawHeight = drawHeight * scale / 100;
 
-    this.x = parseInt($('#bgImageX').val());
-    this.y = parseInt($('#bgImageY').val());
     this.drawWidth = drawWidth;
     this.drawHeight = drawHeight;
 
 //    console.log('x = ' + x + 'y = ' + y);
 
-    this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
     this.context.drawImage(this.bgImage, this.x, this.y, this.drawWidth, this.drawHeight);
+    if(this.okButton) {
+      this.okButton.setEnabled(true);
+    }
+    return true;
 
 
   },

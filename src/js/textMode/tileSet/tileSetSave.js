@@ -30,8 +30,9 @@ TileSetSave.prototype = {
       this.okButton = UI.create('UI.Button', { "text": "OK", "color": "primary" });
       this.uiComponent.addButton(this.okButton);
       this.okButton.on('click', function(event) {
-        _this.save();
-        UI.closeDialog();
+        if(_this.save() !== false) {
+          UI.closeDialog();
+        }
       });
 
       this.closeButton = UI.create('UI.Button', { "text": "Cancel", "color": "secondary" });
@@ -47,10 +48,20 @@ TileSetSave.prototype = {
   },
 
   updateTilesAcross: function() {
-    var tilesAcross = parseInt($('#saveTileSetTilesAcross').val(), 10);
-    if(!isNaN(tilesAcross)) {
+    var maxTilesAcross = 256;
+    var tilesAcross = Number($('#saveTileSetTilesAcross').val());
+    if(Number.isFinite(tilesAcross) && Number.isInteger(tilesAcross) &&
+        tilesAcross >= 1 && tilesAcross <= maxTilesAcross) {
       this.tilesAcross = tilesAcross;
+      $('#saveTileSetTilesAcross').removeAttr('aria-invalid');
+      $('#saveTileSetTilesAcrossError').hide().text('');
+      return true;
     }
+    $('#saveTileSetTilesAcross').attr('aria-invalid', 'true');
+    $('#saveTileSetTilesAcrossError').text(
+      'Tiles across must be a whole number from 1 to ' + maxTilesAcross + '.'
+    ).show();
+    return false;
   },
 
   updateExportFormat: function() {
@@ -64,6 +75,7 @@ TileSetSave.prototype = {
   },
 
   initContent: function() {
+    $('#saveTileSetTilesAcross').attr('max', 256);
     this.updateExportFormat();
     this.updateTilesAcross();
   },
@@ -92,6 +104,9 @@ TileSetSave.prototype = {
         tileSet.saveAsJson(filename);
         break;
       case 'png':
+        if(!this.updateTilesAcross()) {
+          return false;
+        }
         tileSet.exportPng({ filename: filename, tilesAcross: this.tilesAcross });
         break;
 
@@ -100,6 +115,8 @@ TileSetSave.prototype = {
         break;
 
     }
+
+    return true;
 
   }
 }

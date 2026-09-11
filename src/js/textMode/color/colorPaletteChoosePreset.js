@@ -27,6 +27,7 @@ var ColorPaletteChoosePreset = function() {
   this.previewColorPaletteDescription = '';
 
   this.activeTab = 'system';
+  this.suppressLoadTabStart = false;
 
   this.colorPalettes = [];
   this.visible = false;
@@ -124,10 +125,13 @@ ColorPaletteChoosePreset.prototype = {
         if(tabIndex >= 0) {
           if(key == 'load') {
             _this.colorPaletteChoosePanel.showOnly('colorPaletteImportPanel');
-            _this.startLoadColorPalette({});
+            if(!_this.suppressLoadTabStart) {
+              _this.startLoadColorPalette({});
+            }
           } else {
             _this.colorPaletteChoosePanel.showOnly("colorPaletteChoosePresetPanel");
             _this.setColorPalettePresetType(key);
+            _this.setLoadImportReady(true);
           }
         }
       });
@@ -170,7 +174,11 @@ ColorPaletteChoosePreset.prototype = {
 
         if(_this.activeTab == 'load') {
           if(_this.colorPaletteLoad) {
-            _this.colorPaletteLoad.setPalette({ callback: _this.callback, createColorPalette: _this.createOnLoad});
+            if(!_this.colorPaletteLoad.setPalette({ callback: _this.callback, createColorPalette: _this.createOnLoad})) {
+              return;
+            }
+          } else {
+            return;
           }
         } else {
           if(_this.previewColorPalette) {
@@ -216,6 +224,11 @@ ColorPaletteChoosePreset.prototype = {
   },
 
   startLoadColorPalette: function(args) {
+    args = args || {};
+    var _this = this;
+    args.importReadyCallback = function(ready) {
+      _this.setLoadImportReady(ready);
+    };
     
     if(this.colorPaletteLoad == null) {
       this.colorPaletteLoad = new ColorPaletteLoad();
@@ -224,6 +237,12 @@ ColorPaletteChoosePreset.prototype = {
 
     this.colorPaletteLoad.show(args);
 
+  },
+
+  setLoadImportReady: function(ready) {
+    if(this.okButton && typeof this.okButton.setEnabled == 'function') {
+      this.okButton.setEnabled(this.activeTab != 'load' || !!ready);
+    }
   },
 
   keydown: function(event) {
@@ -330,8 +349,10 @@ ColorPaletteChoosePreset.prototype = {
       if(args.tab == 'load') {
         this.activeTab = 'load';
         this.colorPaletteChoosePanel.showOnly('colorPaletteImportPanel');
-        this.startLoadColorPalette(args);
+        this.suppressLoadTabStart = true;
         this.tabPanel.showTab('load');
+        this.suppressLoadTabStart = false;
+        this.startLoadColorPalette(args);
       } else {
         this.activeTab = 'system';
         this.colorPaletteChoosePanel.showOnly("colorPaletteChoosePresetPanel");

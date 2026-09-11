@@ -62,6 +62,8 @@ var ImportImage = function() {
 
   this.importImage = null;
   this.importVideo = null;
+  this.mediaObjectURL = null;
+  this.mediaReady = false;
   this.importingVideo = false;
   this.videoFrameReady = false;
   this.firstVideoFrame = true;
@@ -434,6 +436,84 @@ ImportImage.prototype = {
     return true;
   },
 
+  hasLoadedMedia: function() {
+    if(!this.mediaReady || !this.isCurrentProject()) {
+      return false;
+    }
+    if(this.importSource == 'image') {
+      return !!this.importImage && Number(this.importImage.naturalWidth) > 0 &&
+        Number(this.importImage.naturalHeight) > 0;
+    }
+    if(this.importSource == 'video') {
+      return !!this.importVideo && Number(this.importVideo.videoWidth) > 0 &&
+        Number(this.importVideo.videoHeight) > 0;
+    }
+    return false;
+  },
+
+  updateImportButtonState: function() {
+    var enabled = this.hasLoadedMedia();
+    if(this.okButton) {
+      this.okButton.setEnabled(enabled);
+    }
+    if(this.importImageMobile && typeof this.importImageMobile.setImportEnabled == 'function') {
+      this.importImageMobile.setImportEnabled(enabled);
+    }
+    return enabled;
+  },
+
+  setMediaReady: function(ready) {
+    this.mediaReady = ready === true;
+    return this.updateImportButtonState();
+  },
+
+  releaseMediaObjectURL: function(objectURL) {
+    if(!this.mediaObjectURL ||
+        (typeof objectURL != 'undefined' && objectURL !== this.mediaObjectURL)) {
+      return false;
+    }
+    if(typeof window != 'undefined') {
+      var url = window.URL || window.webkitURL;
+      if(url && typeof url.revokeObjectURL == 'function') {
+        url.revokeObjectURL(this.mediaObjectURL);
+      }
+    }
+    this.mediaObjectURL = null;
+    return true;
+  },
+
+  resetMediaSelection: function() {
+    if(this.importImage) {
+      this.importImage.onload = null;
+      this.importImage.onerror = null;
+    }
+    if(this.importVideo) {
+      this.importVideo.onseeked = null;
+      this.importVideo.oncanplaythrough = null;
+      this.importVideo.onerror = null;
+      if(typeof this.importVideo.pause == 'function') {
+        this.importVideo.pause();
+      }
+      if(typeof this.importVideo.removeAttribute == 'function') {
+        this.importVideo.removeAttribute('src');
+      }
+      if(typeof this.importVideo.load == 'function') {
+        this.importVideo.load();
+      }
+    }
+    this.releaseMediaObjectURL();
+    this.importImage = null;
+    this.importVideo = null;
+    this.importSource = 'image';
+    this.importingVideo = false;
+    this.videoLoaded = false;
+    this.videoFrameReady = false;
+    this.firstVideoFrame = true;
+    $('#importImageSourceFile, #importImageMobileSourceFile').val('');
+    $('#importImageChooseFileName').html('');
+    return this.setMediaReady(false);
+  },
+
   openShaderEditor: function() {
     if(!this.isCurrentProject()) {
       return;
@@ -459,6 +539,7 @@ ImportImage.prototype = {
     // Invalidate all delayed callbacks before closing the dialog. Mobile's
     // close handler normally starts an import after the dialog closes; that
     // must be cancelled when the close is caused by a project transition.
+    this.resetMediaSelection();
     this.projectDocument = null;
     this.projectGeneration = undefined;
     this.importInProgress = false;
@@ -1162,6 +1243,11 @@ ImportImage.prototype = {
       return false;
     }
 
+    // Importers are reused, but a new dialog session requires a new explicit
+    // source selection. Do not let decoded media from an old session re-enable
+    // Import before the user has chosen or supplied media for this one.
+    this.resetMediaSelection();
+
     // stop play only after confirming that this route can open.
     this.editor.frames.stop();
 
@@ -1283,9 +1369,13 @@ ImportImage.prototype = {
         _this.updateScrollbars();
       });
 
-      this.okButton = UI.create('UI.Button', { "text": 'Import', "color": "primary" });
+      this.okButton = UI.create('UI.Button', { "text": 'Import', "color": "primary", "enabled": false });
       this.uiComponent.addButton(this.okButton);
       this.okButton.on('click', function(event) {
+        if(!_this.hasLoadedMedia()) {
+          _this.updateImportButtonState();
+          return;
+        }
         UI.closeDialog();
         _this.frame = 0;
         _this.showProgress();
@@ -1320,6 +1410,8 @@ ImportImage.prototype = {
         _this.dialogReadyCallback(_this);
       }
     }
+
+    this.updateImportButtonState();
 
     if(!this.visible) {
       UI.showDialog("importImageDialog");
@@ -3228,7 +3320,13 @@ ImportImage.prototype = {
 
 
   setImportVideo: function(file) {  
+    if(!this.isCurrentProject() || !file) {
+      this.setMediaReady(false);
+      return false;
+    }
+    this.resetMediaSelection();
     this.importSource = 'video';
+    this.setMediaReady(false);
     this.resetCacheCanvas();
 
     if(this.host.isMobile()) {
@@ -3257,17 +3355,20 @@ ImportImage.prototype = {
 
     var url = window.URL || window.webkitURL;
     var src = url.createObjectURL(file);
+    this.mediaObjectURL = src;
 
-    if(!this.importVideo) {
-      this.importVideo = document.createElement("video");
-    }    
+    this.importVideo = document.createElement("video");
+    var video = this.importVideo;
 
     var videoParamsSet = false;
     this.videoLoaded = false;
 
     var _this = this;
 
-    this.importVideo.onseeked = function() {
+    video.onseeked = function() {
+      if(_this.importVideo !== video || !_this.isCurrentProject()) {
+        return;
+      }
 
       _this.videoFrameReady = true;
 
@@ -3287,11 +3388,14 @@ ImportImage.prototype = {
       }
     }
 
-    this.importVideo.oncanplaythrough = function() {
+    video.oncanplaythrough = function() {
+      if(_this.importVideo !== video || !_this.isCurrentProject()) {
+        return;
+      }
 
-      var duration = _this.importVideo.duration;
-      var playbackRate = _this.importVideo.playbackRate;
-      var seekable = _this.importVideo.seekable;
+      var duration = video.duration;
+      var playbackRate = video.playbackRate;
+      var seekable = video.seekable;
 
       if(!videoParamsSet) {
         _this.videoFrameReady = true;
@@ -3322,6 +3426,7 @@ ImportImage.prototype = {
 //      if(!_this.videoLoaded) {
   //      _this.videoLoaded = true;
         _this.scaleImageToFit();        
+        _this.setMediaReady(true);
 //      }
 
       }
@@ -3348,11 +3453,19 @@ ImportImage.prototype = {
 
     }
 
-    this.importVideo.src = src;
-    this.importVideo.load();
-    this.importVideo.currentTime = 0;
+    video.onerror = function() {
+      if(_this.importVideo !== video || !_this.isCurrentProject()) {
+        return;
+      }
+      _this.setMediaReady(false);
+    };
+
+    video.src = src;
+    video.load();
+    video.currentTime = 0;
 
     this.updateAnimateSettings();
+    return true;
   },
 
   setImportImageFromReferenceImage: function() {
@@ -3377,46 +3490,53 @@ ImportImage.prototype = {
 
   setImportImage: function(file) {
     if(!this.isCurrentProject()) {
-      return;
+      return false;
     }
     if(typeof file == 'undefined' || !file) {
-      return;
+      return false;
     }
 //    if(file.type == 'video/mp4' || file.type == 'video/webm') {
-    if(file.type.indexOf('video/') === 0) {
-      this.setImportVideo(file);
-      return;
+    if(typeof file.type == 'string' && file.type.indexOf('video/') === 0) {
+      return this.setImportVideo(file);
     }
 
-    if(typeof file.name != 'undefined') { 
-      $('#importImageChooseFileName').text(file.name);
-    } else {
-      $('#importImageChooseFileName').html('');
-    }
     var url = window.URL || window.webkitURL;
     var src = url.createObjectURL(file);
 
-    this.setImportImageFromSrc(src);
+    var result = this.setImportImageFromSrc(src, true);
+    if(result) {
+      if(typeof file.name != 'undefined') {
+        $('#importImageChooseFileName').text(file.name);
+      }
+    }
+    return result;
   },
 
-  setImportImageFromSrc: function(src) {
+  setImportImageFromSrc: function(src, isObjectURL) {
     if(!this.isCurrentProject()) {
-      return;
+      return false;
     }
-    this.importVideo = null;
+    if(typeof src != 'string' || src.trim() == '') {
+      this.setMediaReady(false);
+      return false;
+    }
+    this.resetMediaSelection();
+    if(isObjectURL) {
+      this.mediaObjectURL = src;
+    }
 
     $('#importImageVideoControls').hide();
     $('#importImageTickControls').show();
 
     this.importSource = 'image';
+    this.setMediaReady(false);
     this.resizeImportPanels();
     this.resetCacheCanvas();
 
     this.setAnimationParameters();
 
-    if(!this.importImage) {
-      this.importImage = new Image();
-    }
+    this.importImage = new Image();
+    var image = this.importImage;
 
     this.currentColorCount = false;
 //    this.initCanvas();
@@ -3424,10 +3544,16 @@ ImportImage.prototype = {
     var _this = this;
     var projectDocument = this.projectDocument;
     var projectGeneration = this.projectGeneration;
-    this.importImage.onload = function() {
+    image.onload = function() {
+      if(_this.importImage !== image) {
+        return;
+      }
       if(!_this.isCurrentProject() ||
           (typeof g_app != 'undefined' && typeof g_app.isCurrentProject == 'function' &&
           !g_app.isCurrentProject(projectDocument, projectGeneration))) {
+        if(isObjectURL) {
+          _this.releaseMediaObjectURL(src);
+        }
         return;
       }
       $('#importImageScale').val(100);  
@@ -3444,11 +3570,31 @@ ImportImage.prototype = {
       _this.scaleImageToFit();
 
       _this.parameterChanged();
+      _this.setMediaReady(true);
+      if(isObjectURL) {
+        _this.releaseMediaObjectURL(src);
+      }
 //      _this.showImportImage();
     }
-    this.importImage.src = src;
+    image.onerror = function() {
+      if(_this.importImage !== image) {
+        return;
+      }
+      if(!_this.isCurrentProject()) {
+        if(isObjectURL) {
+          _this.releaseMediaObjectURL(src);
+        }
+        return;
+      }
+      _this.setMediaReady(false);
+      if(isObjectURL) {
+        _this.releaseMediaObjectURL(src);
+      }
+    };
+    image.src = src;
 
     this.updateAnimateSettings();
+    return true;
 
   },
 
@@ -3898,6 +4044,10 @@ ImportImage.prototype = {
   startImport: function() {
 
     if(!this.isCurrentProject()) {
+      return false;
+    }
+    if(!this.hasLoadedMedia()) {
+      this.updateImportButtonState();
       return false;
     }
 
