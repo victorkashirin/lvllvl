@@ -344,7 +344,10 @@ test("declared menu IDs dispatch once through real menu and editor handlers; uno
       setGridVisible: (value) => { gridVisible = value; effects.push(["grid", value]); },
       showDimensionsDialog: () => effects.push("dimensions"),
       setScreenMode: (value) => effects.push(["screenMode", value]),
-      history: { undo: () => effects.push("editor undo") },
+      history: {
+        canUndo: () => true,
+        undo: () => effects.push("editor undo"),
+      },
     },
     colorPaletteEditor: { colorPaletteEdit: { undo: () => effects.push("palette undo") } },
     undo: Editor.prototype.undo,
@@ -770,8 +773,13 @@ test("menu aliases keep one stable command identity, metadata, handler, and pref
   const editorUndo = menuItem("menu-edit-undo", "edit-undo", "Renamed Editor Undo");
   const paletteUndo = menuItem("menu-palette-undo", "colorpaletteedit-undo", "Renamed Palette Undo");
   const activations = [];
+  let canUndo = true;
+  const app = {
+    menuClick: (...args) => activations.push(args),
+    textModeEditor: { history: { canUndo: () => canUndo } },
+  };
   const catalog = createLegacyCommandCatalogAdapter({
-    app: { menuClick: (...args) => activations.push(args) },
+    app,
     commands,
     document: { getElementById: () => null, querySelectorAll: () => [] },
     toolMetadata,
@@ -804,6 +812,16 @@ test("menu aliases keep one stable command identity, metadata, handler, and pref
   const result = commands.execute("edit.undo", { source: "menu" }, context);
   assert.equal(result.accepted, true);
   assert.deepEqual(activations, [["edit-undo", "menu"]]);
+
+  canUndo = false;
+  catalog.updateCommandStates();
+  assert.equal(editorUndo.enabled, false);
+  assert.equal(commands.execute("edit.undo", { source: "menu" }, context).accepted, false);
+
+  canUndo = true;
+  catalog.updateCommandStates();
+  assert.equal(editorUndo.enabled, true);
+  assert.equal(commands.execute("edit.undo", { source: "menu" }, context).accepted, true);
 });
 
 test("classic tools keep catalog labels and default shortcuts without services", async () => {
@@ -865,6 +883,68 @@ test("classic redo restores position and enabled state after replay fails", asyn
   assert.throws(() => history.redo(), /redo failed/);
   assert.equal(history.historyPosition, 0);
   assert.equal(history.enabled, true);
+});
+
+test("classic history publishes Undo and Redo availability changes", async () => {
+  const stateChanges = [];
+  const History = await loadClassic("js/textMode/history.js", "History", {
+    UI: { commandContextChanged: (source) => stateChanges.push(source) },
+    g_newSystem: false,
+  });
+  let backgroundColor = 2;
+  const history = new History();
+  history.init({
+    setBackgroundColor(color) { backgroundColor = color; },
+    tileSetManager: { getCurrentTileSet: () => ({}) },
+    tools: { currentBackgroundColor: backgroundColor },
+  });
+
+  assert.equal(history.canUndo(), false);
+  assert.equal(history.canRedo(), false);
+  history.startEntry("background");
+  history.addAction("setBackgroundColor", { oldColor: 2, newColor: 7 });
+  history.endEntry();
+  assert.equal(history.canUndo(), true);
+  assert.equal(history.canRedo(), false);
+
+  history.undo();
+  assert.equal(backgroundColor, 2);
+  assert.equal(history.canUndo(), false);
+  assert.equal(history.canRedo(), true);
+
+  history.redo();
+  assert.equal(backgroundColor, 7);
+  assert.equal(history.canUndo(), true);
+  assert.equal(history.canRedo(), false);
+
+  history.clear();
+  assert.equal(history.canUndo(), false);
+  assert.equal(history.canRedo(), false);
+  assert.deepEqual(stateChanges, ["history", "history", "history", "history"]);
+});
+
+test("switching text documents publishes the restored history state", async () => {
+  const stateChanges = [];
+  class TestHistory {
+    init(editor) { this.editor = editor; }
+    notifyCommandStateChanged() { stateChanges.push(this.editor.doc.id); }
+  }
+  const TextModeEditor = await loadClassic(
+    "js/textMode/textModeEditor.js",
+    "TextModeEditor",
+    { History: TestHistory },
+  );
+  const editor = new TextModeEditor();
+
+  editor.doc = { id: "first" };
+  editor.setupHistory();
+  editor.doc = { id: "second" };
+  editor.setupHistory();
+  editor.doc = { id: "first" };
+  editor.setupHistory();
+
+  assert.deepEqual(stateChanges, ["first", "second", "first"]);
+  assert.equal(editor.history, editor.histories.first);
 });
 
 test("classic history restores a layer mode and its lossless tile set", async () => {

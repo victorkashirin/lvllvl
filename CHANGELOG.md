@@ -9,6 +9,8 @@
 
 ### Fixed
 
+- Report image clipboard success and failures, keep mobile Project Explorer's
+  initial Open action functional, and disable Undo/Redo at history boundaries.
 - Prevent asynchronous export and mobile document creation from closing
   unrelated dialogs, make non-cancellable progress dialogs non-dismissible,
   and validate New Project/mobile document names and grid dimensions.

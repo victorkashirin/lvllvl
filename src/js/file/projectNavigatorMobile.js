@@ -11,6 +11,7 @@ var ProjectNavigatorMobile = function() {
   this.settings = {};
 
   this.selectedId = false;
+  this.selectedPath = false;
 
   this.currentEditor = null;
 }
@@ -24,6 +25,7 @@ ProjectNavigatorMobile.prototype = {
     this.treeMap = Object.create(null);
     this.settings = {};
     this.selectedId = false;
+    this.selectedPath = false;
     this.currentEditor = null;
   },
 
@@ -52,8 +54,9 @@ ProjectNavigatorMobile.prototype = {
     var openButton = UI.create('UI.Button', { "text": "Open", "color": "primary" });
     this.uiComponent.addButton(openButton);
     openButton.on('click', function(event) {
-      _this.openSelected();
-      UI.closeDialog();
+      if(_this.openSelected()) {
+        UI.closeDialog(_this.uiComponent);
+      }
     });
 
     var openButton = UI.create('UI.Button', { "text": "Close", "color": "secondary" });
@@ -583,11 +586,18 @@ ProjectNavigatorMobile.prototype = {
 //    this.selectedId = false;
 
     if(this.selectedId === false) {
+      this.selectedPath = false;
       var currentEditor = g_app.projectNavigator.getCurrentEditor();
       if(currentEditor) {
         var currentDoc = currentEditor.doc;
         if(currentDoc) {
-          this.selectedId = currentDoc.id;
+          var currentPath = currentEditor.path;
+          if(!currentPath && typeof g_app.projectNavigator.getCurrentPath == 'function') {
+            currentPath = g_app.projectNavigator.getCurrentPath();
+          }
+          if(typeof currentPath == 'string' && currentPath.length > 0) {
+            this.selectDoc(currentDoc.id, currentPath.replace(/^\//, ''));
+          }
         }
       }
     }
@@ -693,18 +703,15 @@ ProjectNavigatorMobile.prototype = {
 
 
   openSelected: function() {
-
-    if( this.currentEditor) {
-      if(typeof this.currentEditor.saveSettings !== 'undefined') {
-        this.currentEditor.saveSettings(this.settings);
-      }
+    if(typeof this.selectedPath != 'string' || this.selectedPath.length == 0) {
+      return false;
     }
 
-    var path = '/' + this.selectedPath;
+    var path = this.selectedPath.charAt(0) == '/' ? this.selectedPath : '/' + this.selectedPath;
     console.log("PATH = '" + path + "'");
 
     var slashPos = path.lastIndexOf('/');
-    parentPath = path.substring(0, slashPos);
+    var parentPath = path.substring(0, slashPos);
 
     var record = g_app.doc.getDocRecord(path);
     if(!record) {
@@ -712,11 +719,16 @@ ProjectNavigatorMobile.prototype = {
       return false;
     }
 
+    if(this.currentEditor && typeof this.currentEditor.saveSettings !== 'undefined') {
+      this.currentEditor.saveSettings(this.settings);
+    }
+
     var type = record.type;
 
 
     console.log("TYPE = " + type);
 
+    var opened = true;
     switch(type) {
       case 'textmode':
       case 'graphic':
@@ -759,9 +771,10 @@ ProjectNavigatorMobile.prototype = {
         g_app.c64Debugger.showFile(path);
         this.currentEditor = g_app.c64Debugger;
         break;
-    
-
+      default:
+        opened = false;
     }
+    return opened;
   },
 
 

@@ -244,6 +244,9 @@ Object.assign(Editor.prototype, {
       this.textModeEditor.cmdDown = false;
       this.textModeEditor.history = null;
       this.textModeEditor.histories = {};
+      if(typeof UI.commandContextChanged == 'function') {
+        UI.commandContextChanged('history');
+      }
       if(this.textModeEditor.currentTile && typeof this.textModeEditor.currentTile.resetProjectState == 'function') {
         this.textModeEditor.currentTile.resetProjectState();
       }

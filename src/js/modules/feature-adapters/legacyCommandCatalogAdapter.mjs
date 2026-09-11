@@ -1,7 +1,7 @@
 /** @typedef {import("../application/commandService.mjs").CommandService} CommandService */
 /** @typedef {import("../domain/shortcutContext.mjs").ShortcutContextClause} ShortcutContextClause */
 /** @typedef {ReturnType<typeof import("./shortcutLabelProjection.mjs").createShortcutLabelProjection>} ShortcutLabelProjection */
-/** @typedef {{commandId: string, menu: any, menuItem: any}} MenuEntry */
+/** @typedef {{baseEnabled: boolean, commandId: string, menu: any, menuItem: any}} MenuEntry */
 
 import { getEditorCommandDefinition } from "../domain/editorCommandDefinitions.mjs";
 
@@ -73,7 +73,7 @@ function collectMenuEntries(menuBar) {
       if (!getEditorCommandDefinition(commandId)) {
         throw new Error(`Menu commandId ${String(commandId)} has no command definition`);
       }
-      entries.push({ commandId, menu, menuItem });
+      entries.push({ baseEnabled: menuItem.enabled !== false, commandId, menu, menuItem });
     }
   }
   return entries;
@@ -97,6 +97,38 @@ export function createLegacyCommandCatalogAdapter({
   let connected = false;
   /** @type {any[]} */
   let menuItems = [];
+  /** @type {MenuEntry[]} */
+  let menuEntries = [];
+
+  /** @param {MenuEntry} entry */
+  function entryEnabled(entry) {
+    if(!entry.baseEnabled || !entry.menuItem.visible) return false;
+    if(entry.commandId !== "edit.undo" && entry.commandId !== "edit.redo") {
+      return entry.menuItem.enabled;
+    }
+    const menuClasses = typeof entry.menu.className === "string"
+      ? entry.menu.className.split(/\s+/)
+      : [];
+    if(!menuClasses.includes("ui-menu-tilemode") && !menuClasses.includes("ui-menu-3d")) {
+      return entry.menuItem.enabled;
+    }
+    const history = app.textModeEditor?.history;
+    const predicate = entry.commandId === "edit.undo" ? "canUndo" : "canRedo";
+    return typeof history?.[predicate] === "function" && history[predicate]();
+  }
+
+  function updateCommandStates() {
+    for(const entry of menuEntries) {
+      if(entry.commandId !== "edit.undo" && entry.commandId !== "edit.redo") continue;
+      const menuClasses = typeof entry.menu.className === "string"
+        ? entry.menu.className.split(/\s+/)
+        : [];
+      if(!menuClasses.includes("ui-menu-tilemode") && !menuClasses.includes("ui-menu-3d")) continue;
+      const enabled = entryEnabled(entry);
+      if(typeof entry.menuItem.setEnabled === "function") entry.menuItem.setEnabled(enabled);
+      else entry.menuItem.enabled = enabled;
+    }
+  }
 
   /** @param {MenuEntry[]} entries */
   function registerMenuCommands(entries) {
@@ -126,7 +158,8 @@ export function createLegacyCommandCatalogAdapter({
         execute: (details) => app.menuClick(definition.legacyAction, details?.source || "menu"),
         keyboardPolicy,
       });
-      for (const { menu, menuItem } of surfaces) {
+      for (const entry of surfaces) {
+        const { menu, menuItem } = entry;
         let commandContexts = menuCommandContexts(menu);
         if (keyboardPolicy === "global") {
           commandContexts = commandContexts.map(({ shortcutsAllowed: _ignored, ...commandContext }) => commandContext);
@@ -134,7 +167,7 @@ export function createLegacyCommandCatalogAdapter({
         commands.addCommandActivation(commandId, {
           actionContexts: menuActionContexts(menu, commandContexts),
           contexts: commandContexts,
-          isEnabled: () => menuItem.enabled && menuItem.visible,
+          isEnabled: () => entryEnabled(entry),
         });
         // Keep the independent assembler accelerator path for shared menus.
         const menuClasses = typeof menu.className === "string" ? menu.className.split(/\s+/) : [];
@@ -191,15 +224,18 @@ export function createLegacyCommandCatalogAdapter({
       registerMenuCommands(entries);
       registerAdditionalSurfaceActivations();
       menuItems = entries.map(({ menuItem }) => menuItem);
+      menuEntries = entries;
       menuBar.commandService = commands;
       commands.onDidChange(updateLabels);
       menuBar.shortcuts = menuBar.shortcuts.filter((/** @type {any} */ shortcut) =>
         shortcut.menuItem.commandId == null || shortcut.menuItem.legacyShortcutModes.length > 0);
       updateLabels();
+      updateCommandStates();
       schedule(updateLabels);
     },
     formatToolLabel: labels.formatToolLabel,
     getToolPresentation: labels.getToolPresentation,
     updateLabels,
+    updateCommandStates,
   });
 }

@@ -1,5 +1,147 @@
 var ImageUtils = {};
 
+ImageUtils.clipboardWrites = new WeakSet();
+ImageUtils.clipboardButtonResets = new WeakMap();
+
+ImageUtils.canCopyToClipboard = function() {
+  return Boolean(typeof ClipboardItem == 'function'
+    && typeof navigator != 'undefined'
+    && navigator.clipboard
+    && typeof navigator.clipboard.write == 'function');
+}
+
+ImageUtils.setClipboardButtonPending = function(button, pending) {
+  if(!button) {
+    return;
+  }
+
+  if(typeof button.setEnabled == 'function') {
+    button.setEnabled(!pending);
+    return;
+  }
+
+  button.setAttribute('aria-disabled', String(pending));
+  button.classList.toggle('ui-button-disabled', pending);
+}
+
+ImageUtils.setClipboardButtonText = function(button, text) {
+  if(!button) {
+    return;
+  }
+
+  if(typeof button.setText == 'function') {
+    button.setText(text);
+  } else {
+    button.textContent = text;
+  }
+}
+
+ImageUtils.getClipboardButtonText = function(button) {
+  if(!button) {
+    return false;
+  }
+  if(typeof button.getText == 'function') {
+    return button.getText();
+  }
+  return button.textContent;
+}
+
+ImageUtils.clipboardErrorMessage = function(error) {
+  if(error && error.name == 'NotAllowedError') {
+    return 'Clipboard permission was denied. Allow clipboard access and try again.';
+  }
+  if(error && (error.name == 'NotSupportedError' || error.name == 'DataError')) {
+    return 'This browser cannot copy this image. Try downloading it instead.';
+  }
+  if(error && error.message == 'invalid image blob') {
+    return 'Could not prepare the image for copying. Try downloading it instead.';
+  }
+  return 'Could not copy the image. Check clipboard permission and try again.';
+}
+
+ImageUtils.showClipboardMessage = function(message, title) {
+  if(typeof UI != 'undefined' && typeof UI.alert == 'function') {
+    var result = UI.alert(message, { title: title });
+    if(result && typeof result.catch == 'function') {
+      result.catch(function(error) {
+        console.error('Could not show clipboard status.', error);
+      });
+    }
+    return;
+  }
+  if(typeof alert == 'function') {
+    alert(message);
+  }
+}
+
+ImageUtils.copyCanvasToClipboard = async function(canvas, args) {
+  args = args || {};
+  var button = args.button || null;
+  var pendingTarget = button || canvas;
+  var pendingReset = button ? ImageUtils.clipboardButtonResets.get(button) : null;
+  var originalText = pendingReset
+    ? pendingReset.originalText
+    : ImageUtils.getClipboardButtonText(button);
+
+  if(!ImageUtils.canCopyToClipboard()) {
+    ImageUtils.showClipboardMessage(
+      'Image clipboard access is not available in this browser. Try downloading the image instead.',
+      'Copy Failed'
+    );
+    return false;
+  }
+  if(!canvas || typeof canvas.toBlob != 'function') {
+    ImageUtils.showClipboardMessage(
+      'Could not prepare the image for copying. Try downloading it instead.',
+      'Copy Failed'
+    );
+    return false;
+  }
+  if(ImageUtils.clipboardWrites.has(pendingTarget)) {
+    return false;
+  }
+
+  ImageUtils.clipboardWrites.add(pendingTarget);
+  ImageUtils.setClipboardButtonPending(button, true);
+
+  try {
+    var blob = await new Promise(function(resolve, reject) {
+      canvas.toBlob(function(result) {
+        if(!result || !Number.isFinite(result.size) || result.size <= 0) {
+          reject(new Error('invalid image blob'));
+          return;
+        }
+        resolve(result);
+      }, 'image/png');
+    });
+    var item = new ClipboardItem({ 'image/png': blob });
+    await navigator.clipboard.write([item]);
+
+    if(button) {
+      ImageUtils.setClipboardButtonText(button, 'Copied');
+      var reset = { originalText: originalText || 'Copy To Clipboard' };
+      ImageUtils.clipboardButtonResets.set(button, reset);
+      setTimeout(function() {
+        if(ImageUtils.clipboardButtonResets.get(button) !== reset) {
+          return;
+        }
+        ImageUtils.setClipboardButtonText(button, reset.originalText);
+        ImageUtils.clipboardButtonResets.delete(button);
+      }, 1500);
+    } else {
+      ImageUtils.showClipboardMessage('Image copied to the clipboard.', 'Copied');
+    }
+    return true;
+  } catch(error) {
+    console.warn('Could not copy image to clipboard.', error);
+    ImageUtils.showClipboardMessage(ImageUtils.clipboardErrorMessage(error), 'Copy Failed');
+    return false;
+  } finally {
+    ImageUtils.clipboardWrites.delete(pendingTarget);
+    ImageUtils.setClipboardButtonPending(button, false);
+  }
+}
+
 
 ImageUtils.createColorPaletteFromImage = function(colors, image) {
   var opts = {

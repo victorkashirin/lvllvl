@@ -176,7 +176,7 @@ ExportPng.prototype = {
     //this.initContent();
     this.resizePreview();
 
-    if(typeof ClipboardItem !== 'undefined') {
+    if(ImageUtils.canCopyToClipboard()) {
       this.copyButton.setVisible(true);
     } else {
       this.copyButton.setVisible(false);
@@ -553,10 +553,7 @@ ExportPng.prototype = {
 
 
   copyToClipboard: function() {
-    this.canvas.toBlob(function(blob) { 
-      var item = new ClipboardItem({ "image/png": blob });
-      navigator.clipboard.write([item]); 
-    });
+    return ImageUtils.copyCanvasToClipboard(this.canvas, { button: this.copyButton });
   },
 
   exportPng: function() {

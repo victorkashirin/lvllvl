@@ -618,6 +618,7 @@ TextModeEditor.prototype = {
       this.history.init(this);
       this.histories[id] = this.history;
     }
+    this.history.notifyCommandStateChanged();
   },
 
   open3d: function(path, settings) {

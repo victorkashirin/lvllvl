@@ -52,14 +52,17 @@ function createJQueryState() {
     return {
       focus() { item.focused = true; return this; },
       hide() { item.visible = false; return this; },
+      addClass() { return this; },
       html(value) {
         if(value !== undefined) { item.text = value; return this; }
         return item.text;
       },
       is(query) { return query === ":checked" ? item.checked === true : false; },
+      on() { return this; },
       attr(name, value) { item[name] = value; return this; },
       prop(name, value) { item[name] = value; return this; },
       removeAttr(name) { delete item[name]; return this; },
+      removeClass() { return this; },
       show() { item.visible = true; return this; },
       text(value) {
         if(value !== undefined) { item.text = value; return this; }
@@ -80,6 +83,7 @@ function loadProjectState() {
   const sandbox = vm.createContext({
     $: jquery.$,
     console,
+    document: {},
     Editor: function Editor() {},
     TextModeEditor: { Mode: { C64STANDARD: "c64standard" } },
     UI: {},
@@ -426,4 +430,66 @@ test("mobile document completion closes its owner without closing a newer dialog
   assert.deepEqual(UI.dialogStack, [newerDialog]);
   assert.equal(projectDialog.isOpen, false);
   assert.equal(newerDialog.isOpen, true);
+});
+
+test("mobile Project Explorer opens its highlighted current document immediately", () => {
+  const { TestProjectNavigatorMobile, UI, document, g_app } = loadProjectState();
+  const currentEditor = {
+    doc: { id: "current-screen" },
+    path: "/screens/Current",
+    saveSettings() {},
+  };
+  const projectList = { replaceChildren() {} };
+  const buttons = [];
+  const closedDialogs = [];
+  let loadedPath = null;
+
+  document.getElementById = () => projectList;
+  UI.getScreenWidth = () => 400;
+  UI.create = (type, args = {}) => {
+    if(type === "UI.Button") {
+      const button = {
+        on(event, callback) { if(event === "click") this.click = callback; },
+      };
+      buttons.push(button);
+      return button;
+    }
+    return {
+      id: args.id,
+      add() {},
+      addButton() {},
+      on() {},
+    };
+  };
+  UI.showDialog = () => {};
+  UI.closeDialog = (dialog) => { closedDialogs.push(dialog); };
+  g_app.projectNavigator = {
+    getCurrentEditor: () => currentEditor,
+    getCurrentPath: () => currentEditor.path,
+  };
+  g_app.doc = {
+    dir: () => [],
+    getDocRecord: (path) => path === currentEditor.path
+      ? { id: "current-screen", type: "graphic" }
+      : null,
+  };
+  g_app.setMode = () => {};
+  g_app.textModeEditor = {
+    loadScreen(path) { loadedPath = path; },
+  };
+
+  const navigator = new TestProjectNavigatorMobile();
+  navigator.init();
+  navigator.show();
+
+  assert.equal(navigator.selectedId, "current-screen");
+  assert.equal(navigator.selectedPath, "screens/Current");
+  navigator.selectedPath = false;
+  buttons[0].click();
+  assert.deepEqual(closedDialogs, []);
+
+  navigator.selectDoc("current-screen", "screens/Current");
+  buttons[0].click();
+  assert.equal(loadedPath, "/screens/Current");
+  assert.deepEqual(closedDialogs, [navigator.uiComponent]);
 });

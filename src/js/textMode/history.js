@@ -17,6 +17,28 @@ History.prototype = {
     this.editor = editor;
   },
 
+  canUndo: function() {
+    return this.historyPosition > 0;
+  },
+
+  canRedo: function() {
+    return this.historyPosition < this.historyLength;
+  },
+
+  notifyCommandStateChanged: function() {
+    if(typeof UI != 'undefined' && typeof UI.commandContextChanged == 'function') {
+      UI.commandContextChanged('history');
+    }
+  },
+
+  clear: function() {
+    this.history = [];
+    this.historyLength = 0;
+    this.historyPosition = 0;
+    this.changes = [];
+    this.notifyCommandStateChanged();
+  },
+
   setEnabled: function(enabled) {
     this.enabled = enabled;
   },
@@ -241,6 +263,7 @@ History.prototype = {
       throw error;
     } finally {
       this.setEnabled(previousEnabled);
+      this.notifyCommandStateChanged();
     }
   },
 
@@ -467,6 +490,7 @@ History.prototype = {
       throw error;
     } finally {
       this.setEnabled(previousEnabled);
+      this.notifyCommandStateChanged();
     }
   },
 
@@ -550,6 +574,7 @@ History.prototype = {
       this.historyPosition++;
       this.historyLength = this.historyPosition;
       this.history.length = this.historyLength;
+      this.notifyCommandStateChanged();
     }
    // console.log(this.history);
     this.changes = [];

@@ -185,7 +185,7 @@ ExportPngMobile.prototype = {
   initContent: function() {
     var _this = this;
 
-    if(typeof ClipboardItem !== 'undefined') {
+    if(ImageUtils.canCopyToClipboard()) {
       $('#pngExportCopyToClipboard').show();
       $('#exportPNGMobileCanvasHolder').css('height', '270px');
       $('#exportPNGMobileControlsHolder').css('top', '282px');
@@ -757,11 +757,9 @@ ExportPngMobile.prototype = {
   },
 
   copyToClipboard: function() {
-    this.canvas.toBlob(function(blob) { 
-      var item = new ClipboardItem({ "image/png": blob });
-      navigator.clipboard.write([item]); 
+    return ImageUtils.copyCanvasToClipboard(this.canvas, {
+      button: document.getElementById('pngExportCopyToClipboard')
     });
-
   },
 
   exportPng: function() {

@@ -96,7 +96,10 @@ const shortcutCatalog = createLegacyCommandCatalogAdapter({
 
 legacy.UI.commandKeyDown = (/** @type {KeyboardEvent} */ event) => commands.handleKeyDown(event).handled;
 legacy.UI.commandKeyUp = (/** @type {KeyboardEvent} */ event) => commands.handleKeyUp(event).handled;
-legacy.UI.commandContextChanged = (/** @type {string} */ source) => commands.cleanup({ source });
+legacy.UI.commandContextChanged = (/** @type {string} */ source) => {
+  commands.cleanup({ source });
+  shortcutCatalog.updateCommandStates();
+};
 
 const cleanupCommandDispatcher = (/** @type {Event} */ event) =>
   commands.cleanup({ source: event.type });

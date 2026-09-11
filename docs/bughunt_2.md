@@ -68,7 +68,7 @@ Downstream `createDoc()` accepts these values without a boundary check, so `NaN`
 
 ## P2
 
-### 6. Image “Copy To Clipboard” can fail as a silent no-op
+### 6. Image “Copy To Clipboard” can fail as a silent no-op — Completed
 
 **Locations:** `src/js/textMode/export/exportImage.js:355-359`, `src/js/textMode/export/exportImage.js:1477-1536`, `src/js/textMode/export/exportPng.js:179-183`, `src/js/textMode/export/exportPng.js:555-559`, `src/js/textMode/export/exportPngMobile.js:188-196`, `src/js/textMode/export/exportPngMobile.js:759-763`, `src/js/textMode/export/exportSpritePng.js:154-158`, `src/js/textMode/export/exportSpritePng.js:530-534`
 
@@ -76,7 +76,7 @@ The buttons are shown when `ClipboardItem` exists, but the code does not consist
 
 **Fix:** expose one async clipboard helper that checks the complete capability, validates the blob, awaits `write()`, and reports success or a concise actionable error. Disable the button while the write is pending.
 
-### 7. Mobile Project Explorer can highlight the current document without making Open functional
+### 7. Mobile Project Explorer can highlight the current document without making Open functional — Completed
 
 **Locations:** `src/js/file/projectNavigatorMobile.js:52-57`, `src/js/file/projectNavigatorMobile.js:560-579`, `src/js/file/projectNavigatorMobile.js:671-699`, `src/js/file/projectNavigatorMobile.js:783-793`
 
@@ -84,7 +84,7 @@ When no prior selection exists, `updateProjectList()` copies only the current do
 
 **Fix:** restore selection through `selectDoc(id, path)` or store ID and path together. Have `openSelected()` return success and close the dialog only on success. Test opening the explorer and immediately pressing Open without first tapping a row.
 
-### 8. Undo and Redo remain enabled at history boundaries and silently do nothing
+### 8. Undo and Redo remain enabled at history boundaries and silently do nothing — Completed
 
 **Locations:** `src/js/editor/editorInterface.js:171-179`, `src/js/modules/feature-adapters/legacyCommandCatalogAdapter.mjs:129-138`, `src/js/textMode/history.js:32-45`, `src/js/textMode/history.js:247-256`, `src/js/textMode/history.js:539-555`
 

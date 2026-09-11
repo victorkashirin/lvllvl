@@ -353,7 +353,7 @@ ExportImage.prototype = {
     //this.initContent();
     this.resizePreview();
 
-    if(typeof ClipboardItem !== 'undefined') {
+    if(ImageUtils.canCopyToClipboard()) {
       this.copyButton.setVisible(true);
     } else {
       this.copyButton.setVisible(false);
@@ -1475,18 +1475,12 @@ ExportImage.prototype = {
   },
 
 
-  copyToClipboard: function(args) {
-    if(typeof navigator == 'undefined' || typeof navigator.clipboard == 'undefined' || typeof navigator.clipboard.write == 'undefined') {
-      return;
-    }
-
-    try {
-      
-      var section = false;
-      var fromX = 0;
-      var fromY = 0;
-      var width = 0;
-      var height = 0;
+  copyToClipboard: async function(args) {
+    var section = false;
+    var fromX = 0;
+    var fromY = 0;
+    var width = 0;
+    var height = 0;
 
       if(typeof args != 'undefined') {
         if(typeof args.section != 'undefined') {
@@ -1509,32 +1503,24 @@ ExportImage.prototype = {
         }
       }
 
-      if(section) {
-        if(!this.clipboardCanvas) {
-          this.clipboardCanvas = document.createElement('canvas');
-        }
-        this.clipboardCanvas.width = width;
-        this.clipboardCanvas.height = height;
-        this.clipboardContext = this.clipboardCanvas.getContext('2d');
-        this.clipboardContext.drawImage(this.canvas,
-          fromX, fromY, width, height,
-          0, 0, width, height
-          );
-
-        this.clipboardCanvas.toBlob(function(blob) { 
-          var item = new ClipboardItem({ "image/png": blob });
-          navigator.clipboard.write([item]); 
-        });
-    
-      } else {
-        this.canvas.toBlob(function(blob) { 
-          var item = new ClipboardItem({ "image/png": blob });
-          navigator.clipboard.write([item]); 
-        });
+    var canvas = this.canvas;
+    if(section) {
+      if(!this.clipboardCanvas) {
+        this.clipboardCanvas = document.createElement('canvas');
       }
-    } catch(e) {
-
+      this.clipboardCanvas.width = width;
+      this.clipboardCanvas.height = height;
+      this.clipboardContext = this.clipboardCanvas.getContext('2d');
+      this.clipboardContext.drawImage(this.canvas,
+        fromX, fromY, width, height,
+        0, 0, width, height
+      );
+      canvas = this.clipboardCanvas;
     }
+
+    return ImageUtils.copyCanvasToClipboard(canvas, {
+      button: this.visible ? this.copyButton : null
+    });
   },
 
   exportImage: function() {
