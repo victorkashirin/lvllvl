@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.498.3 - 2026-09-11
+
 ### Added
 
 - Speed up local development with unminified coarse-map bundles and a
@@ -9,6 +11,9 @@
 
 ### Fixed
 
+- Rebuild the production bundle before release-artifact verification, keep
+  dynamically available menu commands usable after startup, and exercise
+  renderer stress cases within the supported grid-dimension limit.
 - Validate palette import/export and tile-export layouts, document and MetaTile
   dimensions, template links, background-image drafts, and C64 sprite-data
   ranges so stale or malformed dialog state cannot freeze the UI, corrupt a
@@ -34,7 +39,7 @@
   and layer/crop actions synchronized with their actual interactive state.
 - Keep the module architecture baseline in sync with the shared message dialog.
 - Regenerate the runtime dependency inventory and build-artifact baseline for
-  the 0.498.2 release.
+  the 0.498.3 release.
 - Update the cross-browser form-theme regression check for native accent-colour
   controls and the current disabled-text contrast.
 - Keep the Edit Color Palette file actions on one row when Firefox reserves

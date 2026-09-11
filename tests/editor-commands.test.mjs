@@ -77,7 +77,7 @@ test("Zoom In keeps both built-in aliases in one override lifecycle", async () =
   });
   const zoomItem = {
     commandId: "view.zoomin",
-    enabled: true,
+    enabled: false,
     id: "menu-view-zoomin",
     label: "Renamed Zoom",
     setShortcutText() {},
@@ -98,6 +98,8 @@ test("Zoom In keeps both built-in aliases in one override lifecycle", async () =
   const catalog = createLegacyCommandCatalogAdapter({ app, commands, document, toolMetadata });
   catalog.connectMenuBar(menuBar);
 
+  assert.equal(commands.execute("view.zoomin").accepted, false);
+  zoomItem.enabled = true;
   assert.equal(commands.formatBindings("view.zoomin"), "Ctrl+= / Ctrl+Shift+=");
   const summary = commands.getCommands().find(({ id }) => id === "view.zoomin");
   assert.equal(summary.title, "Zoom In");

@@ -73,10 +73,7 @@ async function open2DProject(page, testInfo, { vector = false } = {}) {
 
   await page.locator("#start2D").click();
   if (vector) {
-    await page.locator('input[name="newProjectMode"][value="vector"]').evaluate((input) => {
-      input.checked = true;
-      input.dispatchEvent(new Event("change", { bubbles: true }));
-    });
+    await page.getByText("Vector Mode", { exact: true }).click();
   }
   await page.getByText("OK", { exact: true }).last().click();
   await expect(page.locator("#startPage")).toBeHidden();
@@ -1018,7 +1015,7 @@ for (const vector of [false, true]) {
 
         editor.tools.drawTools.setDrawTool("pen");
         const work = [];
-        for (const [width, height] of [[40, 25], [160, 100], [320, 200]]) {
+        for (const [width, height] of [[40, 25], [160, 100], [200, 200]]) {
           graphic.setGridDimensions({ width, height });
           if (!vector) {
             const image = document.createElement("canvas");
@@ -1338,7 +1335,7 @@ for (const vector of [false, true]) {
         return equal(bounded, pixels());
       };
       const results = [];
-      for (const [width, height] of [[40, 25], [320, 200]]) {
+      for (const [width, height] of [[40, 25], [200, 200]]) {
         graphic.setGridDimensions({ width, height });
         view.setCameraPosition(0, 0);
         const x = Math.floor(width / 2), y = Math.floor(height / 2);
@@ -1437,7 +1434,7 @@ for (const vector of [false, true]) {
         view.setScale(2.25, false);
         view.setCameraPosition(0, 0);
         graphic.redraw({ allCells: true });
-        if (width === 320) {
+        if (width === 200) {
           shapes.startShape("rect", x + 80, y, 0);
           shapes.setShapeTo(x + 82, y + 2, 0);
           shapes.flushPreview();

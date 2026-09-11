@@ -1,7 +1,7 @@
 /** @typedef {import("../application/commandService.mjs").CommandService} CommandService */
 /** @typedef {import("../domain/shortcutContext.mjs").ShortcutContextClause} ShortcutContextClause */
 /** @typedef {ReturnType<typeof import("./shortcutLabelProjection.mjs").createShortcutLabelProjection>} ShortcutLabelProjection */
-/** @typedef {{baseEnabled: boolean, commandId: string, menu: any, menuItem: any}} MenuEntry */
+/** @typedef {{commandId: string, menu: any, menuItem: any}} MenuEntry */
 
 import { getEditorCommandDefinition } from "../domain/editorCommandDefinitions.mjs";
 
@@ -73,7 +73,7 @@ function collectMenuEntries(menuBar) {
       if (!getEditorCommandDefinition(commandId)) {
         throw new Error(`Menu commandId ${String(commandId)} has no command definition`);
       }
-      entries.push({ baseEnabled: menuItem.enabled !== false, commandId, menu, menuItem });
+      entries.push({ commandId, menu, menuItem });
     }
   }
   return entries;
@@ -102,7 +102,7 @@ export function createLegacyCommandCatalogAdapter({
 
   /** @param {MenuEntry} entry */
   function entryEnabled(entry) {
-    if(!entry.baseEnabled || !entry.menuItem.visible) return false;
+    if(!entry.menuItem.visible) return false;
     if(entry.commandId !== "edit.undo" && entry.commandId !== "edit.redo") {
       return entry.menuItem.enabled;
     }

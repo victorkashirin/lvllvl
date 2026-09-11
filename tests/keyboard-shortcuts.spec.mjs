@@ -75,6 +75,11 @@ test("active canvas typing owns destructive and printable menu shortcuts", async
   }))).toEqual({ clearAllCount: 0, typingEvents: ["Delete", "q"] });
 
   expect(await page.evaluate(() => {
+    g_app.textModeEditor.tools.drawTools.select.setSelection({
+      from: { x: 0, y: 0, z: 0 },
+      to: { x: 1, y: 1, z: 0 },
+      saveInHistory: false,
+    });
     let cropCount = 0;
     g_app.textModeEditor.cropToSelection = () => { cropCount++ };
     const commands = g_app.services.commands;
