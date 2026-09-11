@@ -1880,6 +1880,15 @@ LayerGrid.prototype = {
 
     var cellWidth = this.getCellWidth();
     var cellHeight = this.getCellHeight();
+    // New layers do not have persisted cell dimensions yet. Their initial
+    // dimensions follow the selected tile set, as they did before validation
+    // was added to this method.
+    if(typeof cellWidth == 'undefined') {
+      cellWidth = tileSet.getTileWidth();
+    }
+    if(typeof cellHeight == 'undefined') {
+      cellHeight = tileSet.getTileHeight();
+    }
 
     if(typeof args != 'undefined') {
       if(typeof args.width != 'undefined') {

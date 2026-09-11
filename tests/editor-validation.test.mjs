@@ -268,6 +268,24 @@ test("document, tile, and MetaTile model boundaries reject malformed dimensions"
   assert.equal(layer.setGridDimensions({ width: 0, height: 25 }), false);
   assert.equal(layer.doc.gridWidth, 40);
 
+  const newLayer = new LayerGrid();
+  newLayer.doc = { frames: [] };
+  newLayer.frames = [];
+  newLayer.frameCount = 0;
+  newLayer.editor = { modified() {} };
+  newLayer.getTileSet = () => ({ getTileWidth: () => 8, getTileHeight: () => 8 });
+  newLayer.invalidateAllCells = () => {};
+  assert.notEqual(newLayer.setGridDimensions({ width: 40, height: 25 }), false);
+  assert.deepEqual(
+    {
+      cellHeight: newLayer.doc.cellHeight,
+      cellWidth: newLayer.doc.cellWidth,
+      gridHeight: newLayer.doc.gridHeight,
+      gridWidth: newLayer.doc.gridWidth,
+    },
+    { cellHeight: 8, cellWidth: 8, gridHeight: 25, gridWidth: 40 },
+  );
+
   const manager = new BlockSetManager();
   for(const dimensions of [["", 2], [0, 2], [-1, 2], [65, 2], [2, "x"]]) {
     assert.equal(manager.validateBlockDimensions(...dimensions).valid, false);

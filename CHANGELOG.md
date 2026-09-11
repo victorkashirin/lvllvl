@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Fixed
+
+- Initialize new layer dimensions from the selected tile set so adding a layer
+  completes without empty-canvas errors and closes its properties dialog.
+
 ## 0.498.3 - 2026-09-11
 
 ### Added

@@ -689,6 +689,38 @@ test("new projects replace project palette and tile set menu entries", async ({ 
   await expect.poll(projectTileSetLabels).toEqual(["C64 PETSCII"]);
 });
 
+test("adding a layer initializes its canvas and closes the properties dialog", async ({ page }, testInfo) => {
+  test.skip(!isDesktop2DRendererProject(testInfo));
+  const localFailures = observeLocalFailures(page, testInfo.project.use.baseURL);
+  await open2DProject(page, testInfo);
+
+  await page.locator("#layersNewLayer").click();
+  const dialog = page.locator("#dialog-layer-properties-dialog");
+  await expect(dialog).toBeVisible();
+  await dialog.getByText("OK", { exact: true }).click();
+
+  await expect(dialog).toBeHidden();
+  await expect.poll(() => page.evaluate(() => {
+    const layers = g_app.textModeEditor.layers;
+    const layer = layers.getLayerObject(layers.getLayerId(1));
+    return {
+      canvasHeight: layer.getCanvas().height,
+      canvasWidth: layer.getCanvas().width,
+      gridHeight: layer.getGridHeight(),
+      gridWidth: layer.getGridWidth(),
+      layerCount: layers.getLayerCount(),
+    };
+  })).toEqual({
+    canvasHeight: 200,
+    canvasWidth: 320,
+    gridHeight: 25,
+    gridWidth: 40,
+    layerCount: 2,
+  });
+  await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 150)));
+  expect(localFailures, localFailures.join("\n")).toEqual([]);
+});
+
 test("handheld editor starts compact and exposes expanded controls on demand", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "chromium-handheld");
 
