@@ -37,7 +37,7 @@ Out of scope for this pass:
 ## Completion tracker
 
 - [x] Audit existing coverage and identify the main scenario gaps.
-- [ ] Scenario 1: create a project, draw artwork, and use undo/redo.
+- [x] Scenario 1: create a project, draw artwork, and use undo/redo.
 - [ ] Scenario 2: copy, paste, move, and clear a selection.
 - [ ] Scenario 3: manage layers without losing or misrouting artwork.
 - [ ] Scenario 4: duplicate, edit, navigate, and delete frames.
@@ -94,12 +94,12 @@ edit is tracked by the real document history.
 
 ### Completion
 
-- [ ] Pointer coordinates are derived from the live canvas and grid geometry.
-- [ ] Cell data is asserted before editing, after editing, after undo, and after
+- [x] Pointer coordinates are derived from the live canvas and grid geometry.
+- [x] Cell data is asserted before editing, after editing, after undo, and after
   redo.
-- [ ] Revision and history behavior is asserted without replacing history
+- [x] Revision and history behavior is asserted without replacing history
   methods.
-- [ ] Test passes independently with `--grep "create, draw, undo, and redo"`.
+- [x] Test passes independently with `--grep "create, draw, undo, and redo"`.
 
 ## Scenario 2: edit a selection
 
