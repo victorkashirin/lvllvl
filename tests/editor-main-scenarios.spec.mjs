@@ -1,4 +1,55 @@
+import { readFile } from "node:fs/promises";
+
 import { expect, test } from "@playwright/test";
+
+function createStripedBmp() {
+  const width = 8;
+  const height = 5;
+  const rowSize = width * 3;
+  const pixelOffset = 54;
+  const buffer = Buffer.alloc(pixelOffset + rowSize * height);
+  buffer.write("BM", 0, "ascii");
+  buffer.writeUInt32LE(buffer.length, 2);
+  buffer.writeUInt32LE(pixelOffset, 10);
+  buffer.writeUInt32LE(40, 14);
+  buffer.writeInt32LE(width, 18);
+  buffer.writeInt32LE(height, 22);
+  buffer.writeUInt16LE(1, 26);
+  buffer.writeUInt16LE(24, 28);
+  buffer.writeUInt32LE(rowSize * height, 34);
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const value = x % 2 === 0 ? 0 : 255;
+      const offset = pixelOffset + y * rowSize + x * 3;
+      buffer[offset] = value;
+      buffer[offset + 1] = value;
+      buffer[offset + 2] = value;
+    }
+  }
+  return buffer;
+}
+
+async function decodePngPixels(page, bytes, points) {
+  return page.evaluate(async ({ base64, samplePoints }) => {
+    const encoded = atob(base64);
+    const data = Uint8Array.from(encoded, (character) => character.charCodeAt(0));
+    const bitmap = await createImageBitmap(new Blob([data], { type: "image/png" }));
+    const canvas = document.createElement("canvas");
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    const context = canvas.getContext("2d");
+    context.drawImage(bitmap, 0, 0);
+    const result = {
+      height: bitmap.height,
+      pixels: samplePoints.map(({ x, y }) =>
+        Array.from(context.getImageData(x, y, 1, 1).data)),
+      width: bitmap.width,
+    };
+    bitmap.close();
+    return result;
+  }, { base64: bytes.toString("base64"), samplePoints: points });
+}
 
 async function openDefault2DProject(page) {
   await page.route(/^https:\/\//, (route) =>
@@ -1355,4 +1406,144 @@ test("save and reopen a real project", async ({ page }, testInfo) => {
   expect(await readStoredProjects(page)).toEqual([
     { id: saved.currentProjectId, name: projectName },
   ]);
+});
+
+test("import and export artwork", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "chromium-desktop");
+
+  await openDefault2DProject(page);
+  await chooseMenuItem(page, "Import", /^Image \/ Video\b/);
+
+  const importDialog = page.getByRole("dialog", { name: "Import Image / Video" });
+  const importButton = importDialog.getByRole("button", { name: "Import", exact: true });
+  await expect(importDialog).toBeVisible();
+  await expect(importButton).toHaveClass(/ui-button-disabled/);
+
+  await page.locator("#importImageMethod").selectOption("method1");
+  await page.locator("#importImageBackgroundColorType").selectOption("perCell");
+  await page.locator("#importImageUseColors").selectOption("create");
+  await page.locator("#importImageCreatePaletteColorCount").selectOption("2");
+  await page.locator("#importImageColorReduction").selectOption("closest");
+  await page.locator("#importImageUseChars").selectOption("all");
+  await expect(page.locator("#importImageSmoothing")).not.toBeChecked();
+
+  await page.locator("#importImageSourceFile").setInputFiles({
+    buffer: createStripedBmp(),
+    mimeType: "image/bmp",
+    name: "scenario-6-stripes.bmp",
+  });
+  await expect(page.locator("#importImageChooseFileName"))
+    .toHaveText("scenario-6-stripes.bmp");
+  await expect.poll(() => page.evaluate(() => {
+    const importer = g_app.services.imageImport.getActive(g_app.textModeEditor);
+    return {
+      height: importer.importImage?.naturalHeight,
+      mediaReady: importer.mediaReady,
+      scale: importer.importImageScale,
+      width: importer.importImage?.naturalWidth,
+    };
+  })).toEqual({ height: 5, mediaReady: true, scale: 4000, width: 8 });
+  await expect(importButton).not.toHaveClass(/ui-button-disabled/);
+
+  await importButton.click();
+  await expect(importDialog).toBeHidden();
+  await expect.poll(() => page.evaluate(() => {
+    const importer = g_app.services.imageImport.getActive(g_app.textModeEditor);
+    return {
+      importInProgress: importer.importInProgress,
+      progressVisible: getComputedStyle(document.querySelector("#importImageProgress")).display,
+    };
+  })).toEqual({ importInProgress: false, progressVisible: "none" });
+
+  const imported = await page.evaluate(() => {
+    const editor = g_app.textModeEditor;
+    const layer = editor.layers.getSelectedLayerObject();
+    const tileSet = layer.getTileSet();
+    const palette = layer.getColorPalette();
+    const positions = [2, 7, 12, 17].map((x) => ({ x, y: 12 }));
+    const cells = positions.map(({ x, y }) => {
+      const { bc, fc, t } = layer.getCell({ x, y });
+      const tileColors = new Set();
+      for (let pixelY = 0; pixelY < tileSet.getTileHeight(); pixelY++) {
+        for (let pixelX = 0; pixelX < tileSet.getTileWidth(); pixelX++) {
+          tileColors.add(tileSet.getPixel(t, pixelX, pixelY));
+        }
+      }
+      const centerUsesForeground = tileSet.getPixel(
+        t,
+        Math.floor(tileSet.getTileWidth() / 2),
+        Math.floor(tileSet.getTileHeight() / 2),
+      ) !== 0;
+      const centerColor = centerUsesForeground ? fc : bc;
+      return {
+        bc,
+        centerHex: palette.getHex(centerColor),
+        fc,
+        t,
+        tileColorCount: tileColors.size,
+      };
+    });
+    return {
+      cells,
+      dimensions: {
+        cellHeight: layer.getCellHeight(),
+        cellWidth: layer.getCellWidth(),
+        graphicHeight: editor.graphic.getGraphicHeight(),
+        graphicWidth: editor.graphic.getGraphicWidth(),
+        gridHeight: layer.getGridHeight(),
+        gridWidth: layer.getGridWidth(),
+      },
+      historyEntry: editor.history.history[editor.history.historyPosition - 1]?.name,
+      palette: Array.from({ length: palette.getColorCount() }, (_, index) =>
+        palette.getHex(index)),
+    };
+  });
+  expect(imported.dimensions).toEqual({
+    cellHeight: 8,
+    cellWidth: 8,
+    graphicHeight: 200,
+    graphicWidth: 320,
+    gridHeight: 25,
+    gridWidth: 40,
+  });
+  expect(imported.historyEntry).toBe("Import Image");
+  expect(new Set(imported.palette)).toEqual(new Set([0x000000, 0xffffff]));
+  expect(imported.cells.map(({ centerHex }) => centerHex))
+    .toEqual([0x000000, 0xffffff, 0x000000, 0xffffff]);
+  expect(imported.cells[0]).toEqual(imported.cells[2]);
+  expect(imported.cells[1]).toEqual(imported.cells[3]);
+  expect(imported.cells[0]).not.toEqual(imported.cells[1]);
+  expect(imported.cells.every(({ tileColorCount }) => tileColorCount === 1)).toBe(true);
+
+  await chooseMenuItem(page, "Export", /^GIF \/ PNG\b/);
+  const exportDialog = page.getByRole("dialog", { name: "Export Image" });
+  await expect(exportDialog).toBeVisible();
+  await expect(page.locator("input[name='exportImageFormat'][value='png']")).toBeChecked();
+  await page.locator("#exportImageAs").fill("scenario-6-import");
+  await page.locator("#exportImageScale").selectOption("1");
+  await expect(page.locator("#exportImageDimensions")).toHaveText("320x200 pixels");
+
+  const downloadPromise = page.waitForEvent("download");
+  await exportDialog.getByRole("button", { name: "Download", exact: true }).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toBe("scenario-6-import.png");
+  const png = await readFile(await download.path());
+  expect(png.subarray(0, 8).toString("hex")).toBe("89504e470d0a1a0a");
+  expect(png.readUInt32BE(16)).toBe(320);
+  expect(png.readUInt32BE(20)).toBe(200);
+  expect(await decodePngPixels(page, png, [
+    { x: 20, y: 100 },
+    { x: 60, y: 100 },
+    { x: 100, y: 100 },
+    { x: 140, y: 100 },
+  ])).toEqual({
+    height: 200,
+    pixels: [
+      [0, 0, 0, 255],
+      [255, 255, 255, 255],
+      [0, 0, 0, 255],
+      [255, 255, 255, 255],
+    ],
+    width: 320,
+  });
 });

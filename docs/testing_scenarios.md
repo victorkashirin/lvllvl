@@ -42,11 +42,11 @@ Out of scope for this pass:
 - [x] Scenario 3: manage layers without losing or misrouting artwork.
 - [x] Scenario 4: duplicate, edit, navigate, and delete frames.
 - [x] Scenario 5: save and reopen a representative real project.
-- [ ] Scenario 6: import a small image and export the resulting artwork.
-- [ ] Run each scenario independently while implementing it.
-- [ ] Run the complete new scenario spec in Chromium desktop.
-- [ ] Run the existing source tests once after the scenario suite is complete.
-- [ ] Record any product defect exposed by a scenario before weakening an
+- [x] Scenario 6: import a small image and export the resulting artwork.
+- [x] Run each scenario independently while implementing it.
+- [x] Run the complete new scenario spec in Chromium desktop.
+- [x] Run the existing source tests once after the scenario suite is complete.
+- [x] Record any product defect exposed by a scenario before weakening an
   assertion or adding a workaround.
 
 ## Test organization
@@ -266,11 +266,11 @@ that a user can complete the import-to-export workflow with real editor data.
 
 ### Completion
 
-- [ ] The import uses a real file payload and production decode path.
-- [ ] The Import button becomes enabled from actual media readiness.
-- [ ] Resulting document data is asserted after import.
-- [ ] Export uses the visible UI and produces a valid PNG with expected pixels.
-- [ ] Test passes independently with `--grep "import and export artwork"`.
+- [x] The import uses a real file payload and production decode path.
+- [x] The Import button becomes enabled from actual media readiness.
+- [x] Resulting document data is asserted after import.
+- [x] Export uses the visible UI and produces a valid PNG with expected pixels.
+- [x] Test passes independently with `--grep "import and export artwork"`.
 
 ## Implementation order
 
