@@ -173,6 +173,7 @@ test("browser storage creates, reopens after reload, and deletes a project", asy
     });
     const contents = g_app.doc.getDocRecord("/file.txt")?.data;
     const activeRevision = g_app.doc.documentSession.activeRevision;
+    const dirtyIds = Object.keys(g_app.doc.modified);
     const deleted = await g_app.fileManager.deleteBrowserStorageProject({ projectId });
     const afterDelete = await new Promise((resolve) => {
       g_app.fileManager.getProjectList({ thumbnails: false, type: "project" }, resolve);
@@ -183,6 +184,7 @@ test("browser storage creates, reopens after reload, and deletes a project", asy
       contents,
       deleteJournalPresent: __storage.has(BrowserStorage.PROJECT_DELETE_JOURNAL_KEY),
       deleteSuccess: deleted.success,
+      dirtyIds,
       listedNames: listed.projects.map((project) => project.name),
       manifestPresent: __storage.has(manifest.versionKey),
       openFailed: Boolean(opened.error),
@@ -197,6 +199,7 @@ test("browser storage creates, reopens after reload, and deletes a project", asy
     contents: "browser lifecycle contents",
     deleteJournalPresent: false,
     deleteSuccess: true,
+    dirtyIds: [],
     listedNames: ["Created project"],
     manifestPresent: false,
     openFailed: false,

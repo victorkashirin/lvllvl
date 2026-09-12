@@ -165,6 +165,7 @@ async function prepareLayerCell(page) {
         : { x: cell.x, y: cell.y < lastVisibleY ? cell.y + 1 : cell.y - 1 };
     const canvasBounds = view.canvas.getBoundingClientRect();
     return {
+      awayCell,
       awayPoint: {
         x: canvasBounds.left + artworkX + (awayCell.x + 0.5) * cellWidth,
         y: canvasBounds.top + artworkY + (awayCell.y + 0.5) * cellHeight,
@@ -263,6 +264,133 @@ function readAnimationState(page, cell) {
       playing: editor.frames.playFrames,
     };
   }, cell);
+}
+
+function readSavedProjectState(page, fixture) {
+  return page.evaluate(({ glyph, palette, positions }) => {
+    const editor = g_app.textModeEditor;
+    const graphic = editor.graphic;
+    const layers = editor.layers;
+    const tileSet = editor.tileSetManager.getCurrentTileSet();
+    const colorPalette = editor.colorPaletteManager.getCurrentColorPalette();
+    const copyCell = (cell) => {
+      const { bc, fc, fh, fv, rz, t } = cell;
+      return { bc, fc, fh, fv, rz, t };
+    };
+    const files = g_app.doc.getFiles();
+    const screenFile = files.find((file) => file.id === graphic.doc.id);
+    const tileSetFile = files.find((file) => file.id === tileSet.getId());
+    const paletteFile = files.find((file) => file.id === colorPalette.getId());
+    if (!screenFile || !tileSetFile || !paletteFile) {
+      throw new Error("Representative project files were not serialized");
+    }
+
+    return {
+      dirtyIds: Object.keys(g_app.doc.modified).sort(),
+      dirtyRecords: Object.entries(g_app.doc.modified)
+        .map(([id, record]) => ({ id, path: record.path }))
+        .sort((left, right) => left.path.localeCompare(right.path)),
+      fileIds: {
+        palette: paletteFile.id,
+        screen: screenFile.id,
+        tileSet: tileSetFile.id,
+      },
+      filePaths: files.map((file) => file.path).sort(),
+      runtime: {
+        frameDurations: Array.from(
+          { length: graphic.getFrameCount() },
+          (_, frame) => graphic.getFrameDuration(frame),
+        ),
+        glyphPixel: tileSet.getPixel(glyph.tile, glyph.x, glyph.y),
+        layers: layers.layers.map((layer) => {
+          const layerObject = layers.getLayerObject(layer.layerId);
+          return {
+            cells: Array.from({ length: graphic.getFrameCount() }, (_, frame) =>
+              positions.map((position) => copyCell(layerObject.getCell({ ...position, frame })))),
+            id: layer.layerId,
+            label: layer.label,
+            visible: layer.visible,
+          };
+        }),
+        paletteColor: colorPalette.getHex(palette.index),
+      },
+      serialized: {
+        frameDurations: screenFile.content.frames.map((frame) => frame.duration),
+        glyphPixel: tileSetFile.content.tiles[glyph.tile]
+          .data[0][glyph.x + glyph.y * tileSetFile.content.width],
+        layers: screenFile.content.layers.map((layer) => ({
+          cells: layer.frames.map((frame) =>
+            positions.map(({ x, y }) => copyCell(frame.data[y][x]))),
+          id: layer.layerId,
+          label: layer.label,
+          visible: layer.visible,
+        })),
+        paletteColor: paletteFile.content.data[palette.index] & 0xffffff,
+      },
+      session: {
+        activeRevision: g_app.doc.documentSession.activeRevision,
+        currentFrame: graphic.getCurrentFrame(),
+        currentProjectId: g_app.doc.currentProjectId,
+        selectedLayerId: layers.getSelectedLayerId(),
+      },
+    };
+  }, fixture);
+}
+
+function readStoredProjects(page) {
+  return page.evaluate(() => new Promise((resolve) => {
+    g_app.fileManager.getProjectList(
+      { thumbnails: false, type: "project" },
+      (result) => resolve(result.projects.map((project) => ({
+        id: project.id,
+        name: project.name,
+      }))),
+    );
+  }));
+}
+
+function readDocumentSaveState(page) {
+  return page.evaluate(() => ({
+    activeRevision: g_app.doc.documentSession.activeRevision,
+    currentProjectId: g_app.doc.currentProjectId,
+    isNew: g_app.fileManager.getIsNew(),
+    saveInFlight: g_app.doc.documentSession.saveInFlight,
+  }));
+}
+
+async function chooseMenuItem(page, menuName, itemName) {
+  await page.locator(".ui-menubar-item").filter({ hasText: new RegExp(`^${menuName}$`) }).click();
+  const item = page.getByRole("menuitem", { name: itemName }).first();
+  await expect(item).toBeVisible();
+  await item.click();
+}
+
+function readCellPixelPoint(page, { cell, pixel }) {
+  return page.evaluate(({ cell: position, pixel: tilePixel }) => {
+    const editor = g_app.textModeEditor;
+    const view = editor.gridView2d;
+    const layer = editor.layers.getSelectedLayerObject();
+    const scale = view.displayScale;
+    const artworkX = Math.floor(
+      view.width / 2
+        - editor.graphic.getGraphicWidth() * scale / 2
+        - view.camera.position.x * scale,
+    );
+    const artworkY = Math.floor(
+      view.height / 2
+        - editor.graphic.getGraphicHeight() * scale / 2
+        + view.camera.position.y * scale,
+    );
+    const bounds = view.canvas.getBoundingClientRect();
+    return {
+      x: bounds.left + artworkX
+        + position.x * layer.getCellWidth() * scale
+        + (tilePixel.x + 0.5) * scale,
+      y: bounds.top + artworkY
+        + position.y * layer.getCellHeight() * scale
+        + (tilePixel.y + 0.5) * scale,
+    };
+  }, { cell, pixel });
 }
 
 async function prepareHorizontalStroke(page, length = 3) {
@@ -979,4 +1107,252 @@ test("edit an animation across frames", async ({ page }, testInfo) => {
     layerCurrentFrame: 0,
     playing: false,
   });
+});
+
+test("save and reopen a real project", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "chromium-desktop");
+
+  await openDefault2DProject(page);
+  const projectName = "Scenario 5 Persistence";
+  const firstBrush = await selectBrushFromEditorControls(page, { staticTile: true });
+  const target = await prepareLayerCell(page);
+  const initialLayerId = await page.evaluate(() =>
+    g_app.textModeEditor.layers.getSelectedLayerId());
+
+  await page.locator(`#textModeLayerDetails${initialLayerId}`).dblclick();
+  const layerDialog = page.getByRole("dialog", { name: "Layer Properties" });
+  await expect(layerDialog).toBeVisible();
+  await page.locator("#layersRefImageName").fill("Base Artwork");
+  await layerDialog.getByText("OK", { exact: true }).click();
+  await expect(layerDialog).toBeHidden();
+
+  await page.mouse.click(target.point.x, target.point.y);
+  await page.mouse.move(0, 0);
+  await expect.poll(() => page.evaluate(({ layerId, position }) => {
+    const cell = g_app.textModeEditor.layers.getLayerObject(layerId).getCell(position);
+    return { fc: cell.fc, t: cell.t };
+  }, { layerId: initialLayerId, position: target.cell })).toEqual({
+    fc: firstBrush.color,
+    t: firstBrush.tile,
+  });
+
+  const firstDuration = await page.evaluate(() =>
+    g_app.textModeEditor.graphic.getFrameDuration(0));
+  await page.locator("#duplicateFrame").click();
+  await expect.poll(() => page.evaluate(() => ({
+    currentFrame: g_app.textModeEditor.graphic.getCurrentFrame(),
+    frameCount: g_app.textModeEditor.graphic.getFrameCount(),
+  }))).toEqual({ currentFrame: 1, frameCount: 2 });
+
+  const secondBrush = await selectBrushFromEditorControls(page, {
+    overlapTile: firstBrush.tile,
+    staticTile: true,
+  });
+  await page.mouse.click(target.point.x, target.point.y);
+  await page.mouse.move(0, 0);
+  const secondDuration = firstDuration === 3 ? 4 : 3;
+  await page.locator("#frameDuration").fill(String(secondDuration));
+  await page.locator("#frameDuration").press("Tab");
+  await expect.poll(() => page.evaluate(() =>
+    g_app.textModeEditor.graphic.getFrameDuration(1))).toBe(secondDuration);
+
+  await page.locator("#layersNewLayer").click();
+  await expect(layerDialog).toBeVisible();
+  await page.locator("#layersRefImageName").fill("Hidden Overlay");
+  await layerDialog.getByText("OK", { exact: true }).click();
+  await expect(layerDialog).toBeHidden();
+  const overlayLayerId = await page.evaluate(() =>
+    g_app.textModeEditor.layers.getSelectedLayerId());
+
+  await page.mouse.click(target.awayPoint.x, target.awayPoint.y);
+  await page.mouse.move(0, 0);
+  await expect.poll(() => page.evaluate(({ layerId, position }) => {
+    const cell = g_app.textModeEditor.layers.getLayerObject(layerId).getCell(position);
+    return { fc: cell.fc, t: cell.t };
+  }, { layerId: overlayLayerId, position: target.awayCell })).toEqual({
+    fc: secondBrush.color,
+    t: secondBrush.tile,
+  });
+
+  await chooseMenuItem(page, "Layers", /^Send Backward\b/);
+  await expect.poll(() => page.evaluate(() =>
+    g_app.textModeEditor.layers.layers.map((layer) => layer.layerId))).toEqual([
+    overlayLayerId,
+    initialLayerId,
+  ]);
+  await page.locator(`#textModeLayerVisible${overlayLayerId}`).click();
+  await expect.poll(() => page.evaluate((layerId) => {
+    const layers = g_app.textModeEditor.layers;
+    return layers.layers[layers.getLayerIndex(layerId)].visible;
+  }, overlayLayerId)).toBe(false);
+
+  await chooseMenuItem(page, "Tiles", /^Show Tile Editor\b/);
+  const tileEditorCanvas = page.locator("#tileEditorCanvas");
+  await expect(tileEditorCanvas).toBeVisible();
+  const glyph = await page.evaluate((expectedTile) => {
+    const grid = g_app.textModeEditor.tileEditor.tileEditorGrid;
+    const tile = grid.characters[0][0];
+    if (tile !== expectedTile) throw new Error("Tile editor did not open the selected tile");
+    for (let y = 0; y < grid.charHeight; y++) {
+      for (let x = 0; x < grid.charWidth; x++) {
+        if (grid.getPixel(x, y) === 0) {
+          return {
+            tile,
+            x,
+            y,
+            clickX: (x + 0.5) * grid.pixelWidth,
+            clickY: (y + 0.5) * grid.pixelHeight,
+          };
+        }
+      }
+    }
+    throw new Error("Selected glyph has no blank pixel to modify");
+  }, secondBrush.tile);
+  await tileEditorCanvas.click({ position: { x: glyph.clickX, y: glyph.clickY } });
+  await expect.poll(() => page.evaluate(({ tile, x, y }) =>
+    g_app.textModeEditor.tileSetManager.getCurrentTileSet().getPixel(tile, x, y), glyph))
+    .toBe(1);
+
+  await chooseMenuItem(page, "Colors", /^Show Color Editor\b/);
+  const colorInput = page.locator("#editColorHex");
+  await expect(colorInput).toBeVisible();
+  const originalPaletteColor = await page.evaluate((index) =>
+    g_app.textModeEditor.colorPaletteManager.getCurrentColorPalette().getHex(index),
+  secondBrush.color);
+  const paletteColor = originalPaletteColor === 0x2a6fca ? 0xd45c31 : 0x2a6fca;
+  await colorInput.fill(paletteColor.toString(16).padStart(6, "0"));
+  await colorInput.press("Tab");
+  await expect.poll(() => page.evaluate((index) =>
+    g_app.textModeEditor.colorPaletteManager.getCurrentColorPalette().getHex(index),
+  secondBrush.color)).toBe(paletteColor);
+
+  const fixture = {
+    glyph: { tile: glyph.tile, x: glyph.x, y: glyph.y },
+    palette: { index: secondBrush.color },
+    positions: [target.cell, target.awayCell],
+  };
+  const expected = await readSavedProjectState(page, fixture);
+  expect(expected.runtime).toEqual(expected.serialized);
+  expect(expected.dirtyIds.length).toBeGreaterThan(0);
+  expect(expected.runtime.frameDurations).toEqual([firstDuration, secondDuration]);
+  expect(expected.runtime.layers.map(({ id, label, visible }) => ({ id, label, visible })))
+    .toEqual([
+      { id: overlayLayerId, label: "Hidden Overlay", visible: false },
+      { id: initialLayerId, label: "Base Artwork", visible: true },
+    ]);
+  expect(expected.runtime.layers[1].cells[0][0])
+    .toEqual(expect.objectContaining({ fc: firstBrush.color, t: firstBrush.tile }));
+  expect(expected.runtime.layers[1].cells[1][0])
+    .toEqual(expect.objectContaining({ fc: secondBrush.color, t: secondBrush.tile }));
+  expect(expected.runtime.layers[0].cells[1][1])
+    .toEqual(expect.objectContaining({ fc: secondBrush.color, t: secondBrush.tile }));
+  expect(expected.session).toEqual(expect.objectContaining({
+    currentFrame: 1,
+    selectedLayerId: overlayLayerId,
+  }));
+
+  const renderedPoint = await readCellPixelPoint(page, {
+    cell: target.cell,
+    pixel: glyph,
+  });
+  const expectedRgba = [
+    (paletteColor >> 16) & 0xff,
+    (paletteColor >> 8) & 0xff,
+    paletteColor & 0xff,
+    255,
+  ];
+  await expect.poll(() => readEditorCanvasPixel(page, renderedPoint)).toEqual(expectedRgba);
+
+  await chooseMenuItem(page, "Project", /^Save As\b/);
+  const saveDialog = page.getByRole("dialog", { name: "Save As" });
+  await expect(saveDialog).toBeVisible();
+  await page.locator("#saveProjectAs").fill(projectName);
+  await page.getByText("Save", { exact: true }).last().click();
+  await expect(saveDialog).toBeHidden();
+  await expect.poll(() => readDocumentSaveState(page)).toEqual({
+    activeRevision: expect.any(String),
+    currentProjectId: expect.any(String),
+    isNew: false,
+    saveInFlight: false,
+  });
+  const saved = await readDocumentSaveState(page);
+  const savedProjects = await readStoredProjects(page);
+  expect(savedProjects).toEqual([{ id: saved.currentProjectId, name: projectName }]);
+
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await expect(page.locator("#startPage")).toBeVisible();
+  const savedProjectTile = page.locator(".start-tile-label.project-open", {
+    hasText: projectName,
+  });
+  await expect(savedProjectTile).toBeVisible();
+  await savedProjectTile.click();
+  await expect(page.locator("#startPage")).toBeHidden();
+  await expect.poll(() => page.evaluate(() => ({
+    frameCount: g_app.textModeEditor?.graphic?.getFrameCount(),
+    layerCount: g_app.textModeEditor?.layers?.getLayerCount(),
+    opening: g_app.openingProject,
+  }))).toEqual({ frameCount: 2, layerCount: 2, opening: false });
+
+  const reopened = await readSavedProjectState(page, fixture);
+  expect(reopened.dirtyRecords).toEqual([]);
+  expect(reopened.fileIds).toEqual(expected.fileIds);
+  expect(reopened.filePaths).toEqual(expected.filePaths);
+  expect(reopened.runtime).toEqual(expected.runtime);
+  expect(reopened.serialized).toEqual(expected.serialized);
+  expect(reopened.session).toEqual(expect.objectContaining({
+    activeRevision: saved.activeRevision,
+    currentProjectId: saved.currentProjectId,
+  }));
+  await expect(page.locator(`#textModeLayerVisible${overlayLayerId} .layerHiddenIcon`))
+    .toBeVisible();
+  await expect(page.locator(`#textModeLayerDetails${initialLayerId} .layerLabelName`))
+    .toHaveText("Base Artwork");
+  await expect(page.locator(`#textModeLayerDetails${overlayLayerId} .layerLabelName`))
+    .toHaveText("Hidden Overlay");
+
+  if (reopened.session.currentFrame === 0) {
+    await page.locator("#nextFrame").click();
+  }
+  await expect.poll(() => page.evaluate(() =>
+    g_app.textModeEditor.graphic.getCurrentFrame())).toBe(1);
+  const reopenedRenderedPoint = await readCellPixelPoint(page, {
+    cell: target.cell,
+    pixel: glyph,
+  });
+  await expect.poll(() => readEditorCanvasPixel(page, reopenedRenderedPoint))
+    .toEqual(expectedRgba);
+
+  await page.locator(`#textModeLayerDetails${initialLayerId}`).click();
+  await expect.poll(() => page.evaluate(() =>
+    g_app.textModeEditor.layers.getSelectedLayerId())).toBe(initialLayerId);
+  const postReloadTarget = await prepareLayerCell(page);
+  const postReloadBrush = await selectBrushFromEditorControls(page, { staticTile: true });
+  await page.mouse.click(postReloadTarget.awayPoint.x, postReloadTarget.awayPoint.y);
+  await page.mouse.move(0, 0);
+  await expect.poll(() => page.evaluate(({ layerId, position }) => {
+    const cell = g_app.textModeEditor.layers.getLayerObject(layerId).getCell(position);
+    return { fc: cell.fc, t: cell.t };
+  }, { layerId: initialLayerId, position: postReloadTarget.awayCell })).toEqual({
+    fc: postReloadBrush.color,
+    t: postReloadBrush.tile,
+  });
+  await expect.poll(async () => (await readSavedProjectState(page, fixture)).dirtyIds.length)
+    .toBeGreaterThan(0);
+
+  await chooseMenuItem(page, "Project", /^Save\b(?! As)/);
+  await expect.poll(async () => {
+    const state = await readSavedProjectState(page, fixture);
+    return {
+      dirtyIds: state.dirtyIds,
+      projectId: state.session.currentProjectId,
+      revisionChanged: state.session.activeRevision !== saved.activeRevision,
+    };
+  }).toEqual({
+    dirtyIds: [],
+    projectId: saved.currentProjectId,
+    revisionChanged: true,
+  });
+  expect(await readStoredProjects(page)).toEqual([
+    { id: saved.currentProjectId, name: projectName },
+  ]);
 });

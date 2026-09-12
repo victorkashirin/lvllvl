@@ -41,7 +41,7 @@ Out of scope for this pass:
 - [x] Scenario 2: copy, paste, move, and clear a selection.
 - [x] Scenario 3: manage layers without losing or misrouting artwork.
 - [x] Scenario 4: duplicate, edit, navigate, and delete frames.
-- [ ] Scenario 5: save and reopen a representative real project.
+- [x] Scenario 5: save and reopen a representative real project.
 - [ ] Scenario 6: import a small image and export the resulting artwork.
 - [ ] Run each scenario independently while implementing it.
 - [ ] Run the complete new scenario spec in Chromium desktop.
@@ -230,11 +230,17 @@ Build one compact project containing:
 
 ### Completion
 
-- [ ] The production `Document.getFiles()` and open-project paths are used.
-- [ ] No persistence method or serialized file list is replaced by the test.
-- [ ] Every representative project value is checked after a page reload.
-- [ ] Dirty-state and subsequent-save behavior are checked.
-- [ ] Test passes independently with `--grep "save and reopen"`.
+- [x] The production `Document.getFiles()` and open-project paths are used.
+- [x] No persistence method or serialized file list is replaced by the test.
+- [x] Every representative project value is checked after a page reload.
+- [x] Dirty-state and subsequent-save behavior are checked.
+- [x] Test passes independently with `--grep "save and reopen"`.
+
+The scenario exposed and now covers three reopen defects: reconstructing stored
+records and initializing the editor left an untouched project dirty,
+serialization created an empty MetaTile set as a side effect, and a persisted
+hidden layer reopened with a visible-eye icon even though its model state and
+rendering were hidden.
 
 ## Scenario 6: import and export artwork
 

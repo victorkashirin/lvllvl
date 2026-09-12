@@ -1990,7 +1990,15 @@ TileSet.prototype = {
 
     json.tiles = saveTileData;
 
-    var blockSet = this.editor.blockSetManager.getCurrentBlockSet();
+    // Serialization must not create an empty default block set. Besides
+    // changing the project merely by reading it, that would make a freshly
+    // reopened document dirty before the user edits anything.
+    var blockSet = null;
+    var blockSetPath = this.getPath() + '/block sets/block set';
+    var document = this.document || g_app.doc;
+    if(document && document.getDocRecord(blockSetPath)) {
+      blockSet = this.editor.blockSetManager.getBlockSet(blockSetPath, document);
+    }
     if(blockSet) {
 
       var blockCount = blockSet.getBlockCount();

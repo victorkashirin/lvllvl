@@ -6,6 +6,9 @@
 
 - Preserve tile rotation and flip values when undoing an overlapping selection
   move.
+- Keep reopened browser-storage projects clean, avoid creating an empty
+  MetaTile set during serialization, and restore hidden-layer controls from
+  their persisted visibility.
 
 ## 0.498.4 - 2026-09-12
 

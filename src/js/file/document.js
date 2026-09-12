@@ -442,6 +442,17 @@ Document.prototype = {
     }
   },
 
+  markOpenRevisionClean: function() {
+    if(!this.documentSession) {
+      this.modified = {};
+      this.modifiedRevision = 0;
+      return;
+    }
+    this.documentSession.open(this.documentSession.activeRevision);
+    this.modified = this.documentSession.modified;
+    this.modifiedRevision = this.documentSession.modifiedRevision;
+  },
+
   recordModified: function(record, path) {
 
     var id = record.id;
@@ -1562,6 +1573,11 @@ Document.prototype = {
           callback({ success: false, stale: true });
           return;
         }
+        // Reconstructing stored files uses the same record-creation paths as
+        // editing, which temporarily marks those records as modified. Once all
+        // files have loaded, make the opened storage revision the clean
+        // baseline so an untouched reopened project is not immediately dirty.
+        _this.markOpenRevisionClean();
         // if there is a repository, check repository for updates..
         if(githubOwner && githubRepository && g_app.isRemoteProviderEnabled('github')) {
           g_app.github.setRepositoryDetails(githubOwner, githubRepository);

@@ -218,6 +218,71 @@ test("palette map and tile PNG layout enforce safe column counts", async () => {
   assert.equal(tileSet.exportPng({ tilesAcross: 257 }), false);
 });
 
+test("tile-set serialization is side-effect free and preserves existing MetaTiles", async () => {
+  const TileSet = await loadConstructor(
+    "src/js/textMode/tileSet/tileSet.js",
+    "TileSet",
+    { HTMLCanvasElement: class {}, Blob, Uint8Array, atob: () => "", setTimeout },
+  );
+  const blockSetPath = "/tile sets/Test Tiles/block sets/block set";
+  let storedBlockSet = null;
+  let blockSetLookups = 0;
+  const document = {
+    getDocRecord(path) {
+      return path === blockSetPath ? storedBlockSet : null;
+    },
+  };
+  const blockSet = {
+    getBlockCount: () => 1,
+    getBlocks: () => [{
+      colorMode: "percell",
+      data: [[
+        { bc: 3, fc: 2, t: 7 },
+        { bc: 5, fc: 4, t: 8 },
+      ]],
+    }],
+  };
+  const tileSet = new TileSet();
+  tileSet.name = "Test Tiles";
+  tileSet.document = document;
+  tileSet.docRecord = {
+    id: "test-tiles",
+    name: "Test Tiles",
+    data: {
+      height: 8,
+      sortMethods: [],
+      tileData: [{ data: [[0]], props: {} }],
+      width: 8,
+    },
+  };
+  tileSet.editor = {
+    blockSetManager: {
+      getBlockSet(path, ownerDocument) {
+        blockSetLookups++;
+        assert.equal(path, blockSetPath);
+        assert.equal(ownerDocument, document);
+        return blockSet;
+      },
+    },
+    getColorPerMode: () => "cell",
+  };
+
+  const withoutMetaTiles = tileSet.getJSON();
+  assert.equal(withoutMetaTiles.blockSet, undefined);
+  assert.equal(blockSetLookups, 0);
+
+  storedBlockSet = { id: "stored-block-set" };
+  const withMetaTiles = tileSet.getJSON();
+  assert.equal(blockSetLookups, 1);
+  assert.deepEqual(JSON.parse(JSON.stringify(withMetaTiles.blockSet)), [{
+    colorMode: "percell",
+    tileData: [[
+      { bc: 3, fc: 2, t: 7 },
+      { bc: 5, fc: 4, t: 8 },
+    ]],
+  }]);
+});
+
 test("document, tile, and MetaTile model boundaries reject malformed dimensions", async () => {
   const [Graphic, TileSet, LayerGrid, BlockSetManager] = await Promise.all([
     loadConstructor("src/js/textMode/graphic.js", "Graphic"),

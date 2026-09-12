@@ -134,6 +134,10 @@ Object.assign(Editor.prototype, {
 
       // set the repository details..
       _this.github.setRepositoryDetails(githubOwner, githubRepository);
+      // Loading the active editor can lazily create derived records (for
+      // example the default block-set container). They belong to the opened
+      // revision, not to a user edit.
+      doc.markOpenRevisionClean();
       _this.openingProject = false;
 
     });

@@ -1103,7 +1103,7 @@ Layers.prototype = {
   },
 
 
-  getLayerHTML: function(layerId, label) {
+  getLayerHTML: function(layerId, label, visible) {
     var previewWidth = 32;
     var previewHeight = 20;
     var escapedLayerId = SafeHTML.escape(layerId);
@@ -1115,7 +1115,11 @@ Layers.prototype = {
 
 
     layerHTML += '<span class="textModeLayerVisible" data-layer-id="' + escapedLayerId + '" id="textModeLayerVisible' + escapedLayerId + '" style="cursor: pointer; padding: 1px">';
-    layerHTML += '<img src="icons/svg/glyphicons-halflings-25-eye.svg" class="layerVisibleIcon" style="width: 16px; cursor: pointer"/>'
+    if(visible === false) {
+      layerHTML += '<img src="icons/svg/glyphicons-halflings-26-eye-off.svg" class="layerHiddenIcon" style="width: 16px; cursor: pointer"/>';
+    } else {
+      layerHTML += '<img src="icons/svg/glyphicons-halflings-25-eye.svg" class="layerVisibleIcon" style="width: 16px; cursor: pointer"/>';
+    }
     layerHTML += '</span>';
 
     layerHTML += '</div>';
@@ -1295,7 +1299,7 @@ Layers.prototype = {
       var layerId = this.layers[i].layerId;
       var label = this.layers[i].label;
 
-      var layerHTML = this.getLayerHTML(layerId, label);
+      var layerHTML = this.getLayerHTML(layerId, label, this.layers[i].visible);
       $('#' + holderElementId).append(layerHTML);
 
 //      this.layers[i].previewCanvas = document.getElementById('layer' + layerId + 'preview');
@@ -1555,7 +1559,7 @@ Layers.prototype = {
     }
 
 
-    var layerHTML = this.getLayerHTML(layerId, label);
+    var layerHTML = this.getLayerHTML(layerId, label, layerData.visible);
 
     if(this.selectedLayerId === false) {
       if(g_app.isMobile()) {
