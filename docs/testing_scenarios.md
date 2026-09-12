@@ -38,7 +38,7 @@ Out of scope for this pass:
 
 - [x] Audit existing coverage and identify the main scenario gaps.
 - [x] Scenario 1: create a project, draw artwork, and use undo/redo.
-- [ ] Scenario 2: copy, paste, move, and clear a selection.
+- [x] Scenario 2: copy, paste, move, and clear a selection.
 - [ ] Scenario 3: manage layers without losing or misrouting artwork.
 - [ ] Scenario 4: duplicate, edit, navigate, and delete frames.
 - [ ] Scenario 5: save and reopen a representative real project.
@@ -127,11 +127,15 @@ be added later when those features change or expose defects.
 
 ### Completion
 
-- [ ] Marquee creation uses a real pointer drag.
-- [ ] Copy, paste, move, and clear use production commands or shortcuts.
-- [ ] Assertions include tile, foreground, background, rotation, and flip data.
-- [ ] Undo and redo restore both artwork and selection state.
-- [ ] Test passes independently with `--grep "edit a selection"`.
+- [x] Marquee creation uses a real pointer drag.
+- [x] Copy, paste, move, and clear use production commands or shortcuts.
+- [x] Assertions include tile, foreground, background, rotation, and flip data.
+- [x] Undo and redo restore both artwork and selection state.
+- [x] Test passes independently with `--grep "edit a selection"`.
+
+The scenario exposed and now covers a history-coalescing defect where undoing an
+overlapping selection move restored the tiles but lost their original rotation
+and flip values.
 
 ## Scenario 3: manage layers
 

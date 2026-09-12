@@ -977,6 +977,69 @@ test("classic history publishes Undo and Redo availability changes", async () =>
   assert.deepEqual(stateChanges, ["history", "history", "history", "history"]);
 });
 
+test("classic history coalesces cell edits per layer without losing original orientation", async () => {
+  const History = await loadClassic("js/textMode/history.js", "History", { g_newSystem: false });
+  const history = new History();
+  const original = {
+    oldB: 3,
+    oldBgColor: 4,
+    oldCharacter: 5,
+    oldColor: 6,
+    oldFh: 1,
+    oldFv: 0,
+    oldRx: 0.25,
+    oldRy: 0.5,
+    oldRz: 0.75,
+  };
+
+  history.startEntry("overlapping move");
+  history.addAction("setCell", {
+    ...original,
+    frame: 0,
+    layerRef: 1,
+    newCharacter: 0,
+    x: 2,
+    y: 3,
+    z: 0,
+  });
+  history.addAction("setCell", {
+    frame: 0,
+    layerRef: 1,
+    newCharacter: 9,
+    oldB: 0,
+    oldBgColor: -1,
+    oldCharacter: 0,
+    oldColor: 1,
+    oldFh: 0,
+    oldFv: 0,
+    oldRx: 0,
+    oldRy: 0,
+    oldRz: 0,
+    x: 2,
+    y: 3,
+    z: 0,
+  });
+  history.addAction("setCell", {
+    frame: 0,
+    layerRef: 2,
+    newCharacter: 8,
+    oldCharacter: 7,
+    x: 2,
+    y: 3,
+    z: 0,
+  });
+  history.endEntry();
+
+  assert.equal(history.history[0].actions.length, 2);
+  const params = history.history[0].actions[0].params;
+  for (const [key, value] of Object.entries(original)) {
+    assert.equal(params[key], value, `${key} should come from the first edit`);
+  }
+  assert.equal(params.newCharacter, 9);
+  assert.equal(params.layerRef, 1);
+  assert.equal(history.history[0].actions[1].params.layerRef, 2);
+});
+
 test("switching text documents publishes the restored history state", async () => {
   const stateChanges = [];
   class TestHistory {

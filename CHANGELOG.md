@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Fixed
+
+- Preserve tile rotation and flip values when undoing an overlapping selection
+  move.
+
 ## 0.498.4 - 2026-09-12
 
 ### Added

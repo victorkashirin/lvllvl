@@ -543,15 +543,19 @@ History.prototype = {
           this.changes[i].params.x == params.x &&
           this.changes[i].params.y == params.y &&
           this.changes[i].params.z == params.z &&
-          this.changes[i].params.frame == params.frame) {
+          this.changes[i].params.frame == params.frame &&
+          (actionName != 'setCell' || this.changes[i].params.layerRef == params.layerRef)) {
 
           params.layerRef = this.changes[i].params.layerRef;
           params.oldCharacter = this.changes[i].params.oldCharacter;
           params.oldColor = this.changes[i].params.oldColor;
           params.oldBgColor = this.changes[i].params.oldBgColor;
-          params.oldRotX = this.changes[i].params.oldRotX;
-          params.oldRotY = this.changes[i].params.oldRotY;
-          params.oldRotZ = this.changes[i].params.oldRotZ;
+          params.oldRx = this.changes[i].params.oldRx;
+          params.oldRy = this.changes[i].params.oldRy;
+          params.oldRz = this.changes[i].params.oldRz;
+          params.oldFh = this.changes[i].params.oldFh;
+          params.oldFv = this.changes[i].params.oldFv;
+          params.oldB = this.changes[i].params.oldB;
           this.changes.splice(i, 1);
         }
       }
