@@ -2,17 +2,28 @@
 
 ## Unreleased
 
+## 0.498.4 - 2026-09-12
+
 ### Added
 
 - Add a tile-palette header toggle that previews tiles in fixed off-black and
-  off-white colors across both desktop palette panels.
+  off-white colors across the desktop palette panels and tile picker popup.
 
 ### Fixed
 
+- Fit rectangular glyphs inside the tile-palette header preview and keep its
+  current tile colors independent from the monochrome palette setting.
+- Remember the shared tile-palette monochrome setting across browser sessions.
+- Keep hidden mobile controls from claiming the desktop current-tile preview,
+  so the selected tile remains visible beside the bottom tile palette.
+- Swap desktop menu dropdowns atomically on hover so stale content does not
+  flash while the next menu appears in browsers.
 - Remember independent 2D and 3D grid visibility settings across application
   restarts.
 - Initialize new layer dimensions from the selected tile set so adding a layer
   completes without empty-canvas errors and closes its properties dialog.
+- Regenerate the runtime dependency inventory and build-artifact baseline for
+  the 0.498.4 release.
 
 ## 0.498.3 - 2026-09-11
 

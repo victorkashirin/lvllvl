@@ -84,6 +84,22 @@ test("GlyphPreview renders bitmap tiles on the exact backing lattice", () => {
   assert.deepEqual(blits[0].slice(3), [0, 0, 8, 8, 3, 4, 10, 12]);
 });
 
+test("GlyphPreview centers rectangular tiles without cropping", () => {
+  const { canvas } = canvasFixture();
+  const { UI } = fixture(1);
+  const preview = new UI.GlyphPreview(canvas);
+  preview.resize(16, 16);
+
+  assert.deepEqual(
+    { ...preview.getDestinationCssRect({}, 8, 16) },
+    { x: 4, y: 0, width: 8, height: 16 },
+  );
+  assert.deepEqual(
+    { ...preview.getDestinationCssRect({}, 16, 8) },
+    { x: 0, y: 4, width: 16, height: 8 },
+  );
+});
+
 test("GlyphPreview renders vectors physically and redraws on a DPR revision", () => {
   const { canvas } = canvasFixture();
   const { UI, listeners, blits } = fixture();

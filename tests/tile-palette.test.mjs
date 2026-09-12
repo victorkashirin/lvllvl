@@ -7,7 +7,13 @@ import { fileURLToPath } from "node:url";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-async function createTilePalette({ preferences = {}, prefix = "", visible = true } = {}) {
+async function createTilePalette({
+  preferences = {},
+  prefix = "",
+  tileHeight = 8,
+  tileWidth = 8,
+  visible = true,
+} = {}) {
   const source = await readFile(
     path.join(projectRoot, "src/js/textMode/tools/tilePalette.js"),
     "utf8",
@@ -39,6 +45,11 @@ async function createTilePalette({ preferences = {}, prefix = "", visible = true
         state.text = value;
         return control;
       },
+      html(value) {
+        if (value === undefined) return state.html;
+        state.html = value;
+        return control;
+      },
       val(value) {
         if (value === undefined) return state.value;
         state.value = value;
@@ -58,7 +69,21 @@ async function createTilePalette({ preferences = {}, prefix = "", visible = true
   let paletteVisible = visible;
   const context = vm.createContext({
     $: jquery,
-    UI: { isMobile: { any: () => false } },
+    UI: {
+      isMobile: { any: () => false },
+      onDevicePixelRatioChange() {
+        return () => {};
+      },
+    },
+    TextModeEditor: {
+      Mode: {
+        C64ECM: "c64ecm",
+        C64MULTICOLOR: "c64multicolor",
+        C64STANDARD: "c64standard",
+        INDEXED: "indexed",
+        TEXTMODE: "textmode",
+      },
+    },
     localStorage,
     g_app: {
       isMobile() {
@@ -72,6 +97,13 @@ async function createTilePalette({ preferences = {}, prefix = "", visible = true
       },
     },
   });
+  const tileSet = {
+    getCharacterBGColor: () => 5,
+    getTileColor: () => 4,
+    getTileHeight: () => tileHeight,
+    getTileWidth: () => tileWidth,
+    getType: () => "bitmap",
+  };
   vm.runInContext(source, context, {
     filename: "src/js/textMode/tools/tilePalette.js",
   });
@@ -111,22 +143,44 @@ async function createTilePalette({ preferences = {}, prefix = "", visible = true
     },
   };
   const palette = new context.TilePalette();
-  palette.prefix = prefix;
-  palette.editor = {
+  const editor = {
     getTilePalettePanelVisible() {
       return paletteVisible;
     },
-    graphic: { getType: () => "textmode" },
+    colorPaletteManager: { noColor: -1 },
+    getCursorTileTransparent: () => false,
+    graphic: {
+      getBackgroundColor: () => 0,
+      getType: () => "textmode",
+    },
+    currentTile: {
+      flipH: false,
+      flipV: false,
+      getBGColor: () => 3,
+      getColor: () => 2,
+      getTiles: () => [[3]],
+      rotZ: 0,
+      tileSettingsTileCanvas: { height: 24, width: 24 },
+    },
+    layers: {
+      getSelectedLayerObject() {
+        return {
+          getHasTileFlip: () => false,
+          getHasTileRotate: () => false,
+          getColorPerMode: () => "cell",
+          getScreenMode: () => "textmode",
+          getType: () => "grid",
+        };
+      },
+    },
     tileSetManager: {
       getCurrentTileSet() {
-        return {
-          getTileHeight: () => 8,
-          getTileWidth: () => 8,
-        };
+        return tileSet;
       },
     },
   };
   palette.tilePaletteDisplay = display;
+  palette.init(editor, { prefix });
   palette.tileHeight = 8;
   palette.tileWidth = 8;
 
@@ -248,6 +302,64 @@ test("monochrome mode redraws and stays synchronized across tile palettes", asyn
   assert.equal(bottom.controlState.get("#tilePaletteMonochrome")["aria-pressed"], "false");
   assert.equal(side.controlState.get("#sidetilePaletteMonochrome")["aria-pressed"], "false");
   assert.equal(side.controlState.get("#sidetilePaletteMonochromeState").text, "N");
+});
+
+test("tile info preview delegates fitting without inheriting monochrome mode", async () => {
+  const fixture = await createTilePalette({ tileHeight: 16, tileWidth: 8 });
+  const draws = [];
+  fixture.palette.characterGlyphPreview = {
+    drawTile(args) {
+      draws.push(args);
+    },
+  };
+  fixture.palette.monochrome = true;
+
+  fixture.palette.setCharacterInfo(3);
+
+  assert.equal(draws.length, 1);
+  assert.equal(draws[0].tileSet.getTileWidth(), 8);
+  assert.equal(draws[0].tileSet.getTileHeight(), 16);
+  assert.equal(draws[0].character, 3);
+  assert.equal(draws[0].color, 2);
+  assert.equal(draws[0].bgColor, 3);
+  assert.equal(draws[0].colorRGB, undefined);
+  assert.equal(draws[0].bgColorRGB, undefined);
+  assert.equal(draws[0].backgroundColor, "#222222");
+});
+
+test("tile info preview delegates the selected tile without changing its colors", async () => {
+  const fixture = await createTilePalette();
+  const draws = [];
+  fixture.palette.characterGlyphPreview = {
+    drawBitmap(args) {
+      draws.push(args);
+    },
+  };
+
+  fixture.palette.setCharacterInfo(false);
+
+  assert.equal(draws.length, 1);
+  assert.equal(draws[0].sourceCanvas, fixture.palette.editor.currentTile.tileSettingsTileCanvas);
+  assert.equal(draws[0].backgroundColor, "#222222");
+});
+
+test("monochrome mode persists as a shared browser preference", async () => {
+  const preferences = {};
+  const first = await createTilePalette({ preferences });
+
+  first.palette.setMonochrome(true, false);
+
+  assert.equal(preferences["tilepalette.monochrome"], "yes");
+  const restored = await createTilePalette({ preferences, prefix: "side" });
+  assert.equal(restored.palette.monochrome, true);
+  assert.equal(restored.display.colors, "monochrome");
+  assert.equal(
+    restored.controlState.get("#sidetilePaletteMonochrome")["aria-pressed"],
+    "true",
+  );
+
+  restored.palette.setMonochrome(false, false);
+  assert.equal(preferences["tilepalette.monochrome"], "no");
 });
 
 test("legacy scales for another tile size do not change the Fit default", async () => {

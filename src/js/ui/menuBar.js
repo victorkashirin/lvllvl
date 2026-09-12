@@ -831,9 +831,19 @@ UI.MenuBar = function() {
 
     this.hideMenu();
 
+    var menuBarItemPosition = $('#' + menuBarItemId).offset();
+    var menuPosition = {};
+    menuPosition.left = menuBarItemPosition.left;
+    menuPosition.top = menuBarItemPosition.top + 25;
+
     this.menuBarItemShownId = menuBarItemId;
     this.menuShownId = id;
-    document.body.append(this.menus[index].getElement());
+    var popup = this.menus[index].getElement();
+    popup.style.left = menuPosition.left + 'px';
+    popup.style.top = menuPosition.top + 'px';
+    popup.style.opacity = '';
+    popup.style.display = 'block';
+    document.body.append(popup);
     $('#' + menuBarItemId).attr('aria-expanded', 'true').attr('aria-controls', id);
     $('#ui-menu-background').show();
 
@@ -844,17 +854,7 @@ UI.MenuBar = function() {
     }
 //    UI.captureMouse(this, { "addLayer": false });
 
-    var menuBarItemPosition = $('#' + menuBarItemId).offset();
-
-    var menuPosition = {};
-    menuPosition.left = menuBarItemPosition.left;
-    menuPosition.top = menuBarItemPosition.top + 25;
-
     $('#' + menuBarItemId).addClass('ui-menubar-item-selected');
-
-    $('#' + id).css('top', menuPosition.top + 'px');
-    $('#' + id).css('left', menuPosition.left + 'px');
-    $('#' + id).fadeIn(20);
   }
 
   this.triggerKeyDown = function(event, menu) {

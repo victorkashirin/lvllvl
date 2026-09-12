@@ -86,6 +86,35 @@ async function open2DProject(page, testInfo, { vector = false } = {}) {
   )).toBe(true);
 }
 
+test("desktop menu hover swaps dropdown content atomically", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "chromium-desktop");
+  await open2DProject(page, testInfo);
+
+  const projectMenu = page.getByRole("menuitem", { name: "Project", exact: true });
+  await projectMenu.click();
+  await expect(projectMenu).toHaveAttribute("aria-expanded", "true");
+
+  const hoverState = await page.evaluate(() => {
+    const editTrigger = document.getElementById("menu-tilemode-edit-trigger");
+    editTrigger.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+    const visibleMenus = Array.from(document.querySelectorAll(".ui-menu"))
+      .filter((menu) => getComputedStyle(menu).display !== "none");
+    const popup = visibleMenus[0];
+
+    return {
+      labels: popup
+        ? Array.from(popup.querySelectorAll(".ui-menu-item-label"), (label) => label.textContent)
+        : [],
+      opacity: popup ? getComputedStyle(popup).opacity : null,
+      visibleMenuIds: visibleMenus.map((menu) => menu.id),
+    };
+  });
+
+  expect(hoverState.visibleMenuIds).toEqual(["menu-tilemode-edit"]);
+  expect(hoverState.labels.slice(0, 2)).toEqual(["Undo", "Redo"]);
+  expect(hoverState.opacity).toBe("1");
+});
+
 test("application alerts use the styled modal and preserve queued messages", async ({ page }) => {
   await page.route(/^https:\/\//, (route) =>
     route.fulfill({ body: "", contentType: "application/javascript", status: 200 }),

@@ -366,7 +366,9 @@ DrawTools.prototype = {
 
     var width = 60;
     var height = 60;
-    this.editor.currentTile.setCanvasGlyphPreviewCanvas(characterCanvas, width, height);
+    if(this.editor.deviceType == 'mobile') {
+      this.editor.currentTile.setCanvasGlyphPreviewCanvas(characterCanvas, width, height);
+    }
 
     var _this = this;
     characterCanvas.addEventListener("click", function(event){

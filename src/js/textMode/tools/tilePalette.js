@@ -6,7 +6,7 @@ var TilePalette = function() {
 
   this.canvas = null;
   this.canvasSurface = null;
-  this.characterCanvasSurface = null;
+  this.characterGlyphPreview = null;
 
   this.width = 0;
   this.height = 0;
@@ -64,6 +64,7 @@ TilePalette.prototype = {
     }
 
     this.editor = editor;
+    this.loadMonochromePreference();
     if(!this.removeDevicePixelRatioListener) {
       var _this = this;
       this.removeDevicePixelRatioListener = UI.onDevicePixelRatioChange(function() {
@@ -268,6 +269,7 @@ TilePalette.prototype = {
 
     this.tilePaletteDisplay = new TilePaletteDisplay();
     this.tilePaletteDisplay.init(this.editor, {canvasElementId: this.prefix + "charPaletteCanvas", resizeCanvas: false, blockStacking: this.blockStacking });
+    this.loadMonochromePreference();
 
 
     var _this = this;
@@ -509,6 +511,7 @@ TilePalette.prototype = {
 
   setMonochrome: function(monochrome, syncPalettes) {
     this.monochrome = monochrome === true;
+    g_app.setPref(this.getMonochromePreferenceName(), this.monochrome ? 'yes' : 'no');
     if(this.tilePaletteDisplay) {
       this.tilePaletteDisplay.setColors(this.monochrome ? 'monochrome' : 'current', false);
     }
@@ -709,6 +712,18 @@ TilePalette.prototype = {
   getFitToWidthPreferenceName: function() {
     var panelName = this.prefix == 'side' ? 'side' : 'bottom';
     return 'tilepalette.fitToWidth.' + panelName;
+  },
+
+  getMonochromePreferenceName: function() {
+    return 'tilepalette.monochrome';
+  },
+
+  loadMonochromePreference: function() {
+    this.monochrome = g_app.getPref(this.getMonochromePreferenceName()) == 'yes';
+    if(this.tilePaletteDisplay) {
+      this.tilePaletteDisplay.setColors(this.monochrome ? 'monochrome' : 'current', false);
+    }
+    this.updateMonochromeControl();
   },
 
   loadFitToWidthPreference: function() {
@@ -1166,37 +1181,10 @@ TilePalette.prototype = {
       this.characterCanvas = document.getElementById(this.prefix + 'tilepalette-tileinfocanvas');
     }
 
-    var tileSet = this.editor.tileSetManager.getCurrentTileSet();
-    var charWidth = tileSet.getTileWidth();
-    var charHeight = tileSet.getTileHeight();
-    this.characterCanvasScale = UI.devicePixelRatio;
-
-    var charScale = 2;
-    if(charHeight >= 10) {
-      charScale = 1;
+    if(!this.characterGlyphPreview) {
+      this.characterGlyphPreview = new UI.GlyphPreview(this.characterCanvas);
     }
-
-    if(charScale * charHeight > 26) {
-      charScale = 26 / charHeight;
-    }
-
-    
-    if(!this.characterCanvasSurface) {
-      this.characterCanvasSurface = new UI.CanvasSurface(this.characterCanvas);
-    }
-    this.characterCanvasSurface.resize({ cssWidth: 16, cssHeight: 16 });
-
-    /*
-    this.characterCanvas.width = charScale * charWidth * this.characterCanvasScale;
-    this.characterCanvas.height = charScale * charHeight * this.characterCanvasScale;
-    this.characterCanvas.style.width = charScale * charWidth + 'px';
-    this.characterCanvas.style.height = charScale * charHeight + 'px';
-    */
-
-    this.characterCanvasScale *= charScale;
-
-    this.characterContext = this.characterCanvas.getContext('2d');
-    this.characterImageData = this.characterContext.getImageData(0, 0, this.characterCanvas.width, this.characterCanvas.height);    
+    this.characterGlyphPreview.resize(16, 16);
 
   },
 
@@ -1215,7 +1203,7 @@ TilePalette.prototype = {
     }
 
     var currentTile = this.editor.currentTile;
-    tiles = currentTile.getTiles();
+    var tiles = currentTile.getTiles();
 //    
     var html = '';
 
@@ -1227,10 +1215,11 @@ TilePalette.prototype = {
     $('#' + this.prefix + 'charpalette-charinfo').html(html);
 
     var currentTileCanvas = currentTile.tileSettingsTileCanvas;
-    if(currentTileCanvas && this.characterContext) {
-      this.characterContext.clearRect(0, 0, this.characterCanvas.width, this.characterCanvas.height);
-      this.characterContext.drawImage(currentTileCanvas, 0, 0, currentTileCanvas.width, currentTileCanvas.height,
-        0, 0, this.characterCanvas.width, this.characterCanvas.height);
+    if(currentTileCanvas && this.characterGlyphPreview) {
+      this.characterGlyphPreview.drawBitmap({
+        sourceCanvas: currentTileCanvas,
+        backgroundColor: '#222222'
+      });
     }
 
   },
@@ -1254,8 +1243,6 @@ TilePalette.prototype = {
 
     
     var tileSet = this.editor.tileSetManager.getCurrentTileSet();
-    var scale = this.characterCanvas.width / tileSet.getTileWidth();// this.characterCanvasScale;
-
     var characterIndex = parseInt(character);
     if(isNaN(characterIndex)) {
       return;
@@ -1264,9 +1251,13 @@ TilePalette.prototype = {
     var flipV = false;
     var flipH = false;
     var rotZ = 0;
+    var screenMode = TextModeEditor.Mode.TEXTMODE;
+    var colorPerMode = 'cell';
 
     var layer = this.editor.layers.getSelectedLayerObject();
     if(layer && layer.getType() == 'grid') {
+      screenMode = layer.getScreenMode();
+      colorPerMode = layer.getColorPerMode();
       if(layer.getHasTileFlip()) {
         flipH = this.editor.currentTile.flipH;
         flipV = this.editor.currentTile.flipV;
@@ -1276,34 +1267,47 @@ TilePalette.prototype = {
       }  
     }
 
-    if(layer.getScreenMode() == TextModeEditor.Mode.C64ECM) {
-      var ecmGroup = Math.floor(characterIndex / 256);
-      characterIndex = (characterIndex % 64) + ecmGroup * 256;
-    }
- 
-    
-
-    if(tileSet.getType() == 'vector') {
-      this.characterContext.clearRect(0, 0, this.characterCanvas.width, this.characterCanvas.height);
-    }
-
-    tileSet.drawCharacter({
-      character: characterIndex, 
-      x: 0,
-      y: 0,
-      scale: scale,
-      imageData: this.characterImageData,
-      context: this.characterContext,
-      colorRGB: 0xdddddd,
-      bgColorRGB: 0x111111,
+    var drawArgs = {
+      tileSet: tileSet,
+      character: characterIndex,
+      screenMode: screenMode,
+      color: this.editor.currentTile.getColor(),
+      bgColor: this.editor.currentTile.getBGColor(),
+      backgroundColor: '#222222',
       flipV: flipV,
       flipH: flipH,
       rotZ: rotZ
-    })
+    };
 
-    if(tileSet.getType() != 'vector') {
-      this.characterContext.putImageData(this.characterImageData, 0, 0);
+    if(colorPerMode == 'character') {
+      drawArgs.color = tileSet.getTileColor(characterIndex);
+      drawArgs.bgColor = tileSet.getCharacterBGColor(characterIndex);
     }
+
+    if(screenMode == TextModeEditor.Mode.C64ECM) {
+      var ecmGroup = Math.floor(characterIndex / 256);
+      var ecmBGColor = Math.floor(characterIndex / 64) % 4;
+      characterIndex = (characterIndex % 64) + ecmGroup * 256;
+      drawArgs.character = characterIndex;
+      drawArgs.bgColor = layer.getC64ECMColor(ecmBGColor);
+    }
+
+    if(screenMode == TextModeEditor.Mode.C64STANDARD) {
+      drawArgs.bgColor = this.editor.colorPaletteManager.noColor;
+    } else if(screenMode == TextModeEditor.Mode.C64MULTICOLOR) {
+      drawArgs.bgColor = layer.getBackgroundColor();
+      drawArgs.c64Multi1Color = layer.getC64Multi1Color();
+      drawArgs.c64Multi2Color = layer.getC64Multi2Color();
+    } else if(screenMode == TextModeEditor.Mode.INDEXED) {
+      drawArgs.transparentColorIndex = layer.getTransparentColorIndex();
+    }
+
+    if(drawArgs.bgColor == this.editor.colorPaletteManager.noColor
+      && !this.editor.getCursorTileTransparent()) {
+      drawArgs.bgColor = this.editor.graphic.getBackgroundColor();
+    }
+
+    this.characterGlyphPreview.drawTile(drawArgs);
   },
 
 }

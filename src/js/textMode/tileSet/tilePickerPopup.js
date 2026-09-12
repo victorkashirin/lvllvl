@@ -214,6 +214,12 @@ TilePickerPopup.prototype = {
     this.tilePaletteDisplay.setScale(2);
 
     this.tilePaletteDisplay.setMode(this.mode);
+    var tilePalette = this.editor.tools && this.editor.tools.drawTools
+      ? this.editor.tools.drawTools.tilePalette
+      : null;
+    this.tilePaletteDisplay.setColors(tilePalette && tilePalette.monochrome
+      ? 'monochrome'
+      : 'current', false);
     if(this.mode == 'single') {
       if(typeof args.selected != 'undefined') {
         this.tilePaletteDisplay.setSelectedGrid([]);

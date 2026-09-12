@@ -1,25 +1,38 @@
-+- Performance optimisation
-+- Memory leaks tracking
-- custom keyboard shortcuts
 - shift + swipe to move around
 - filter/search tilesets and palettes
+- building tree view of tilesets to expose nested
 - favorites in tilesets and palettes
 - update dependencies
 - magic wand
 - sketch layer with pen
-- navigate tile/color picker with arrows
+
 - grid on/off setting doesn't get saved
 - select tiles/colors modal should show currently used tiles/map set, if unmodified
 - add reference image as layer that can be reshaped
-- replace native alert dialogs with styled + add 'save changes' on closing
-- stylise input fields to be true dark mode
-- BUG: switch from text mode to vector mode is destructive and can't be rolled back
-- Fix color editor, add oklch mode
-- in shortcuts modal change highlight color of input field and remove
-- in text mode backspace/delete don't remove characters
-- double click on grid removes character (but smart - don't remove background if it's not on affects)
-- command-drag eraser - draw selection rectangle and clean
 
+- select with m wand or marquee and change bg, fg, symbol
+- feat: in color palette editor, if cell is empty, eydrop shoud place current color there. Also, enable copy/paste, or some way to duplicate
+- bug: bucket should work on full selection
+
+
+- in shortcuts modal change highlight color of input field and remove
+- double click on grid removes character (but smart - don't remove background if it's not on affects)
+- shift-command-drag eraser - draw selection rectangle and clean
+- feat: shift+enter in type mode gets to next line in alignment
+- BUG: gif export custom animation frequency doesn't work
+- feat: snapshots
+
+
++ feat: monochrome tile palette in panel
++ navigate tile/color picker with arrows
++ BUG: switch from text mode to vector mode is destructive and can't be rolled back
++- replace native alert dialogs with styled + add 'save changes' on closing (alerts are by system)
++ stylise input fields to be true dark mode
++- Performance optimisation
++- Memory leaks tracking
++ custom keyboard shortcuts
++ Fix color editor, add oklch mode
++ in text mode backspace/delete don't remove characters
 + improve mobile mode
 + tab for preview mode
 + zen mode

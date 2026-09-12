@@ -549,6 +549,21 @@ test("desktop tile palettes share monochrome preview mode", async ({ page }) => 
     bottom: g_app.textModeEditor.tools.drawTools.tilePalette.tilePaletteDisplay.colors,
     side: g_app.textModeEditor.sideTilePalette.tilePaletteDisplay.colors,
   }))).toEqual({ bottom: "monochrome", side: "monochrome" });
+  await expect.poll(() => page.evaluate(() =>
+    localStorage.getItem("tilepalette.monochrome"),
+  )).toBe("yes");
+
+  await page.evaluate(() => {
+    g_app.textModeEditor.tileSetManager.showCharacterPicker(100, 100, {
+      characterPickedCallback() {},
+      selected: 0,
+    });
+  });
+  await expect(page.locator("#characterPickerCanvas")).toBeVisible();
+  await expect.poll(() => page.evaluate(() =>
+    g_app.textModeEditor.tileSetManager.tilePickerPopup.tilePaletteDisplay.colors,
+  )).toBe("monochrome");
+  await page.evaluate(() => UI.hidePopup());
 
   await sideToggle.click();
 
@@ -556,6 +571,19 @@ test("desktop tile palettes share monochrome preview mode", async ({ page }) => 
   await expect(sideToggle).toHaveAttribute("aria-pressed", "false");
   await expect(bottomState).toHaveText("N");
   await expect(sideState).toHaveText("N");
+  await expect.poll(() => page.evaluate(() =>
+    localStorage.getItem("tilepalette.monochrome"),
+  )).toBe("no");
+
+  await page.evaluate(() => {
+    g_app.textModeEditor.tileSetManager.showCharacterPicker(100, 100, {
+      characterPickedCallback() {},
+      selected: 0,
+    });
+  });
+  await expect.poll(() => page.evaluate(() =>
+    g_app.textModeEditor.tileSetManager.tilePickerPopup.tilePaletteDisplay.colors,
+  )).toBe("current");
 });
 
 test("tile palettes fit their panels and retain a precise manual scale", async ({ page }) => {
@@ -859,6 +887,69 @@ test("tile palette backing stores follow fractional display pixel ratios", async
   expect(result.glyphCall).toBeTruthy();
   expect(result.paletteBlit[2]).toBe(result.paletteBlit[6]);
   expect(result.paletteBlit[3]).toBe(result.paletteBlit[7]);
+});
+
+test("hidden mobile controls do not claim the desktop current-tile preview", async ({ page }) => {
+  await openDefaultProject(page);
+
+  const result = await page.evaluate(() => {
+    const currentTile = g_app.textModeEditor.currentTile;
+    const desktopCanvas = currentTile.canvasPanel.getCanvas();
+    currentTile.canvasDrawCharacters();
+    const pixels = desktopCanvas.getContext("2d").getImageData(
+      0, 0, desktopCanvas.width, desktopCanvas.height,
+    ).data;
+    let opaquePixels = 0;
+    for(let index = 3; index < pixels.length; index += 4) {
+      if(pixels[index] !== 0) opaquePixels++;
+    }
+
+    return {
+      activeCanvas: currentTile.canvas.id,
+      desktopCanvas: desktopCanvas.id,
+      opaquePixels,
+      previewCanvas: currentTile.canvasGlyphPreview.canvas.id,
+    };
+  });
+
+  expect(result.activeCanvas).toBe(result.desktopCanvas);
+  expect(result.previewCanvas).toBe(result.desktopCanvas);
+  expect(result.opaquePixels).toBeGreaterThan(0);
+});
+
+test("tile info hover preview remains visible and color-independent in monochrome mode", async ({ page }) => {
+  await openDefaultProject(page);
+
+  const result = await page.evaluate(() => {
+    const editor = g_app.textModeEditor;
+    const palette = editor.sideTilePalette;
+    const tileSet = editor.tileSetManager.getCurrentTileSet();
+    const colorPalette = editor.colorPaletteManager.getCurrentColorPalette();
+    const character = tileSet.currentTileData.findIndex((tile) =>
+      tile && Array.from(tile).some((pixel) => pixel > 0));
+    editor.currentTile.color = 2;
+    const expectedColor = colorPalette.getHex(editor.currentTile.color);
+    palette.setMonochrome(true);
+    palette.setCharacterInfo(character);
+
+    const pixels = palette.characterCanvas.getContext("2d").getImageData(
+      0, 0, palette.characterCanvas.width, palette.characterCanvas.height,
+    ).data;
+    let currentColorPixels = 0;
+    for(let index = 0; index < pixels.length; index += 4) {
+      if(pixels[index] === ((expectedColor >> 16) & 0xff)
+        && pixels[index + 1] === ((expectedColor >> 8) & 0xff)
+        && pixels[index + 2] === (expectedColor & 0xff)
+        && pixels[index + 3] === 0xff) {
+        currentColorPixels++;
+      }
+    }
+    return { character, currentColorPixels, expectedColor };
+  });
+
+  expect(result.character).toBeGreaterThanOrEqual(0);
+  expect(result.expectedColor).not.toBe(0xdddddd);
+  expect(result.currentColorPixels).toBeGreaterThan(0);
 });
 
 test("mobile glyph previews follow a runtime fractional DPR change", async ({ page }) => {
