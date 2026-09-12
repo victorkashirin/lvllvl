@@ -1450,10 +1450,16 @@ test("import and export artwork", async ({ page }, testInfo) => {
   await expect.poll(() => page.evaluate(() => {
     const importer = g_app.services.imageImport.getActive(g_app.textModeEditor);
     return {
+      historyEntry: g_app.textModeEditor.history
+        .history[g_app.textModeEditor.history.historyPosition - 1]?.name,
       importInProgress: importer.importInProgress,
       progressVisible: getComputedStyle(document.querySelector("#importImageProgress")).display,
     };
-  })).toEqual({ importInProgress: false, progressVisible: "none" });
+  }), { timeout: 30_000 }).toEqual({
+    historyEntry: "Import Image",
+    importInProgress: false,
+    progressVisible: "none",
+  });
 
   const imported = await page.evaluate(() => {
     const editor = g_app.textModeEditor;
