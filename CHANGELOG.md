@@ -2,13 +2,18 @@
 
 ## Unreleased
 
+## 0.498.5 - 2026-09-12
+
 ### Fixed
 
+- Restore tile-set preview loading after project transitions and show an error
+  when a preview image cannot be loaded.
 - Preserve tile rotation and flip values when undoing an overlapping selection
   move.
 - Keep reopened browser-storage projects clean, avoid creating an empty
   MetaTile set during serialization, and restore hidden-layer controls from
   their persisted visibility.
+- Regenerate the build-artifact baseline for the 0.498.5 release.
 
 ## 0.498.4 - 2026-09-12
 

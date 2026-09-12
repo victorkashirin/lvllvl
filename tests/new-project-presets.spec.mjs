@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-test("new-project preset selectors load their assets from the landing page", async ({ page }, testInfo) => {
+test("new-project preset selectors load assets and recover after project transitions", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "chromium-desktop");
 
   await page.route(/^https:\/\//, (route) =>
@@ -49,5 +49,31 @@ test("new-project preset selectors load their assets from the landing page", asy
   await expect.poll(() => page.evaluate(() => {
     const loader = g_app.textModeEditor.colorPaletteManager.getChoosePresetDialog().colorPaletteLoad;
     return Boolean(loader.paletteCanvas && loader.colors?.length > 0);
+  })).toBe(true);
+
+  await page.evaluate(() => UI.closeDialog());
+  await page.evaluate(() => new Promise((resolve) => g_app.newProject({}, resolve)));
+  await page.evaluate(() => g_app.textModeEditor.tileSetManager.showChoosePreset({}));
+
+  await expect(page.locator('.characterSetListEntry[value="petscii"]')).toBeVisible();
+  await expect.poll(() => page.evaluate(() => {
+    const chooser = g_app.textModeEditor.tileSetManager.getChoosePresetDialog();
+    return Boolean(
+      chooser.previewCharsetId === "petscii"
+      && chooser.previewReady
+      && chooser.img?.complete
+      && chooser.img.naturalWidth > 0
+      && chooser.tileSet,
+    );
+  })).toBe(true);
+
+  await page.locator('.characterSetListEntry[value="atascii"]').click();
+  await expect.poll(() => page.evaluate(() => {
+    const chooser = g_app.textModeEditor.tileSetManager.getChoosePresetDialog();
+    return Boolean(
+      chooser.previewCharsetId === "atascii"
+      && chooser.previewReady
+      && chooser.tileSet,
+    );
   })).toBe(true);
 });

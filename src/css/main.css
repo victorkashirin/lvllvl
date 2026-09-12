@@ -543,6 +543,16 @@ input[type=checkbox] {
   max-width: 100%;
 }
 
+.presetChooserPreviewStatus {
+  align-self: center;
+  color: #aaaaaa;
+  padding: 24px;
+}
+
+.presetChooserPreviewStatus[data-state="error"] {
+  color: #ff9b9b;
+}
+
 .presetChooserOptions {
   background-color: #272727;
   box-sizing: border-box;

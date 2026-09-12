@@ -7,7 +7,9 @@ var TileSetChoosePreset = function() {
   this.type = false; //'character';
   this.tileSet = null;
   this.tileSetImport = null;
+  this.img = null;
 
+  this.previewCharset = null;
   this.previewCharsetId = false;
   this.previewCharsetDescription = '';
 
@@ -16,6 +18,8 @@ var TileSetChoosePreset = function() {
   this.tileSets = [];
   this.visible = false;
   this.suppressLoadTabStart = false;
+  this.previewReady = false;
+  this.loadImportReady = false;
 }
 
 TileSetChoosePreset.prototype = {
@@ -39,16 +43,22 @@ TileSetChoosePreset.prototype = {
   },
 
   resetProjectState: function() {
-    if(this.img && this.img.onload) {
+    if(this.img) {
       this.img.onload = null;
+      this.img.onerror = null;
+      this.img = null;
     }
     this.projectDocument = null;
     this.projectGeneration = undefined;
     this.callback = false;
+    this.type = false;
     this.tileSet = null;
+    this.tileSets = [];
     this.previewCharset = null;
     this.previewCharsetId = false;
     this.previewCharsetDescription = '';
+    this.previewReady = false;
+    this.loadImportReady = false;
     this.visible = false;
     if(this.tileSetImport && typeof this.tileSetImport.resetProjectState == 'function') {
       this.tileSetImport.resetProjectState();
@@ -96,7 +106,7 @@ TileSetChoosePreset.prototype = {
           } else {
             _this.tileSetChoosePanel.showOnly('tileSetChoosePresetPanel');
             _this.setTilePresetType(key);
-            _this.setLoadImportReady(true);
+            _this.updateOkButton();
           }
         }
       });
@@ -142,6 +152,9 @@ TileSetChoosePreset.prototype = {
             return;
           }
         } else {
+          if(!_this.previewReady) {
+            return;
+          }
           if(_this.callback !== false) {          
             _this.callback({
               tileSetCreated: false,
@@ -215,8 +228,21 @@ TileSetChoosePreset.prototype = {
   },
 
   setLoadImportReady: function(ready) {
+    this.loadImportReady = !!ready;
+    this.updateOkButton();
+  },
+
+  setPreviewReady: function(ready) {
+    this.previewReady = !!ready;
+    this.updateOkButton();
+  },
+
+  updateOkButton: function() {
     if(this.okButton && typeof this.okButton.setEnabled == 'function') {
-      this.okButton.setEnabled(this.activeTab != 'load' || !!ready);
+      var ready = this.activeTab == 'load'
+        ? this.loadImportReady
+        : this.previewReady;
+      this.okButton.setEnabled(ready);
     }
   },
 
@@ -623,10 +649,10 @@ TileSetChoosePreset.prototype = {
         this.charCanvas = document.createElement('canvas');
       }
 
-      this.charCanvas.width = this.img.naturalWidth;
-      this.charCanvas.height = this.img.naturalHeight;
+      this.charCanvas.width = img.naturalWidth;
+      this.charCanvas.height = img.naturalHeight;
       var charContext = this.charCanvas.getContext('2d');
-      charContext.drawImage(this.img, 0, 0);
+      charContext.drawImage(img, 0, 0);
       var charImageData = charContext.getImageData(0, 0, this.charCanvas.width, this.charCanvas.height);
 
 
@@ -698,22 +724,46 @@ TileSetChoosePreset.prototype = {
       url = 'vectorsets/' + filename;
     }
 
-    if(!this.img) {
-      this.img = new Image();
-      this.img.onload = function() {
-        if(!_this.isCurrentProject()) {
-          return;
-        }
-        var args = {};
+    var img = new Image();
+    this.img = img;
+    this.tileSet = null;
+    this.setPreviewReady(false);
+    $('#chooseCharacterSetPreview').hide();
+    $('#chooseCharacterSetPreviewStatus')
+      .attr('data-state', 'loading')
+      .text('Loading preview…')
+      .show();
+    $('#chooseCharacterSetPreviewHolder').attr('aria-busy', 'true');
 
-        args["img"] = _this.img;
-        args['interpret'] = _this.type != 'vector';
-        _this.setPreviewFromImg(args);
-
+    img.onload = function() {
+      if(_this.img !== img || !_this.isCurrentProject()) {
+        return;
       }
-    }
+      var args = {};
 
-    this.img.src = url;
+      args["img"] = img;
+      args['interpret'] = _this.type != 'vector';
+      _this.setPreviewFromImg(args);
+      $('#chooseCharacterSetPreviewHolder').attr('aria-busy', 'false');
+      $('#chooseCharacterSetPreviewStatus').hide().text('');
+      $('#chooseCharacterSetPreview').show();
+      _this.setPreviewReady(true);
+    };
+    img.onerror = function() {
+      if(_this.img !== img || !_this.isCurrentProject()) {
+        return;
+      }
+      _this.tileSet = null;
+      _this.setPreviewReady(false);
+      $('#chooseCharacterSetPreviewHolder').attr('aria-busy', 'false');
+      $('#chooseCharacterSetPreview').hide();
+      $('#chooseCharacterSetPreviewStatus')
+        .attr('data-state', 'error')
+        .text('Could not load this tile-set preview. Try selecting it again.')
+        .show();
+    };
+
+    img.src = url;
   },
 
 

@@ -628,6 +628,98 @@ test("first-open palette and tile-set imports preserve their ready callbacks", a
   assert.equal(tileSetStarts[0].dialogReadyCallback, ready);
 });
 
+test("tile-set preview requests reset safely and report load failures", async () => {
+  const $ = createJQueryState();
+  const images = [];
+  class FakeImage {
+    constructor() {
+      this.onload = null;
+      this.onerror = null;
+      this.src = "";
+      images.push(this);
+    }
+  }
+
+  let projectDocument = { id: "first" };
+  let projectGeneration = 1;
+  const g_app = {
+    get doc() { return projectDocument; },
+    get projectGeneration() { return projectGeneration; },
+    isCurrentProject(document, generation) {
+      return document === projectDocument && generation === projectGeneration;
+    },
+  };
+  const TileSetChoosePreset = await loadConstructor(
+    "src/js/textMode/tileSet/tileSetChoosePreset.js",
+    "TileSetChoosePreset",
+    { $, g_app, Image: FakeImage },
+  );
+  const chooser = new TileSetChoosePreset();
+  const rendered = [];
+  const readyStates = [];
+  chooser.activeTab = "character";
+  chooser.okButton = {
+    setEnabled(ready) { readyStates.push(ready); },
+  };
+  chooser.type = "character";
+  chooser.getCharacterSetDescription = (id) => ({ id, name: id });
+  chooser.setPreviewFromImg = ({ img }) => {
+    rendered.push(img);
+    chooser.tileSet = {};
+  };
+  chooser.captureProjectContext();
+
+  chooser.setPreviewCharacterset("petscii");
+  const firstImage = images[0];
+  assert.equal(readyStates.at(-1), false);
+  assert.equal($.state["#chooseCharacterSetPreview"].visible, false);
+  assert.equal($.state["#chooseCharacterSetPreviewStatus"].visible, true);
+  assert.match($.state["#chooseCharacterSetPreviewStatus"].text, /Loading preview/);
+  firstImage.onload();
+  assert.deepEqual(rendered, [firstImage]);
+  assert.equal(readyStates.at(-1), true);
+  assert.equal($.state["#chooseCharacterSetPreview"].visible, true);
+  assert.equal($.state["#chooseCharacterSetPreviewStatus"].visible, false);
+
+  chooser.resetProjectState();
+  assert.equal(chooser.img, null);
+  assert.equal(chooser.type, false);
+  assert.equal(firstImage.onload, null);
+  assert.equal(firstImage.onerror, null);
+
+  projectDocument = { id: "second" };
+  projectGeneration++;
+  chooser.captureProjectContext();
+  chooser.showCharacterSetPresets = () => chooser.setPreviewCharacterset("atascii");
+  chooser.setTilePresetType("character");
+  const secondImage = images[1];
+  assert.notEqual(secondImage, firstImage);
+  assert.equal(typeof secondImage.onload, "function");
+  secondImage.onload();
+  assert.deepEqual(rendered, [firstImage, secondImage]);
+
+  chooser.setPreviewCharacterset("apple2");
+  const failedImage = images[2];
+  assert.equal(readyStates.at(-1), false);
+  failedImage.onerror();
+  assert.equal(chooser.tileSet, null);
+  assert.equal(readyStates.at(-1), false);
+  assert.equal($.state["#chooseCharacterSetPreview"].visible, false);
+  assert.equal($.state["#chooseCharacterSetPreviewStatus"].visible, true);
+  assert.equal(
+    $.state["#chooseCharacterSetPreviewStatus"].attrs["data-state"],
+    "error",
+  );
+  assert.match(
+    $.state["#chooseCharacterSetPreviewStatus"].text,
+    /Could not load this tile-set preview/,
+  );
+  assert.equal(
+    $.state["#chooseCharacterSetPreviewHolder"].attrs["aria-busy"],
+    "false",
+  );
+});
+
 test("embedded importers defer ready callbacks until their HTML is initialized", async () => {
   const $ = createJQueryState();
   const projectDocument = {};
