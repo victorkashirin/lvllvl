@@ -39,7 +39,7 @@ Out of scope for this pass:
 - [x] Audit existing coverage and identify the main scenario gaps.
 - [x] Scenario 1: create a project, draw artwork, and use undo/redo.
 - [x] Scenario 2: copy, paste, move, and clear a selection.
-- [ ] Scenario 3: manage layers without losing or misrouting artwork.
+- [x] Scenario 3: manage layers without losing or misrouting artwork.
 - [ ] Scenario 4: duplicate, edit, navigate, and delete frames.
 - [ ] Scenario 5: save and reopen a representative real project.
 - [ ] Scenario 6: import a small image and export the resulting artwork.
@@ -162,11 +162,11 @@ conversion are not required in this main-scenario pass.
 
 ### Completion
 
-- [ ] Add, select, visibility, reorder, and delete actions use visible controls.
-- [ ] Assertions use stable layer IDs as well as labels and positions.
-- [ ] Overlapping artwork proves which layer is visible and on top.
-- [ ] Deleting one layer cannot remove or select the wrong surviving layer.
-- [ ] Test passes independently with `--grep "manage layers"`.
+- [x] Add, select, visibility, reorder, and delete actions use visible controls.
+- [x] Assertions use stable layer IDs as well as labels and positions.
+- [x] Overlapping artwork proves which layer is visible and on top.
+- [x] Deleting one layer cannot remove or select the wrong surviving layer.
+- [x] Test passes independently with `--grep "manage layers"`.
 
 ## Scenario 4: edit an animation across frames
 

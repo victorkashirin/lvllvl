@@ -20,8 +20,8 @@ async function openDefault2DProject(page) {
   )).toBe(true);
 }
 
-async function selectBrushFromEditorControls(page) {
-  const readTileChoice = () => page.evaluate(() => {
+async function selectBrushFromEditorControls(page, { overlapTile = null } = {}) {
+  const readTileChoice = () => page.evaluate((referenceTile) => {
     const editor = g_app.textModeEditor;
     const palette = editor.getTilePalettePanelVisible("side")
       ? editor.sideTilePalette
@@ -46,6 +46,18 @@ async function selectBrushFromEditorControls(page) {
         }
       }
       if (!nonblank) continue;
+      if (referenceTile !== null) {
+        let overlaps = false;
+        for (let y = 0; y < tileSet.getTileHeight() && !overlaps; y++) {
+          for (let x = 0; x < tileSet.getTileWidth(); x++) {
+            if (tileSet.getPixel(tile, x, y) && tileSet.getPixel(referenceTile, x, y)) {
+              overlaps = true;
+              break;
+            }
+          }
+        }
+        if (!overlaps) continue;
+      }
 
       for (const location of locations) {
         const x = location.paletteX - display.scrollX + dimensions.width / 2;
@@ -56,7 +68,7 @@ async function selectBrushFromEditorControls(page) {
       }
     }
     return null;
-  });
+  }, overlapTile);
   await expect.poll(readTileChoice).not.toBeNull();
   const tile = await readTileChoice();
   await page.locator(`#${tile.canvasId}`).click({ position: { x: tile.x, y: tile.y } });
@@ -95,7 +107,104 @@ async function selectBrushFromEditorControls(page) {
     g_app.textModeEditor.currentTile.getColor(),
   )).toBe(color.color);
 
-  return { color: color.color, tile: tile.tile };
+  const overlap = overlapTile === null ? null : await page.evaluate(({ first, second }) => {
+    const tileSet = g_app.textModeEditor.tileSetManager.getCurrentTileSet();
+    for (let y = 0; y < tileSet.getTileHeight(); y++) {
+      for (let x = 0; x < tileSet.getTileWidth(); x++) {
+        if (tileSet.getPixel(first, x, y) && tileSet.getPixel(second, x, y)) {
+          return { x, y };
+        }
+      }
+    }
+    return null;
+  }, { first: overlapTile, second: tile.tile });
+
+  return { color: color.color, overlap, tile: tile.tile };
+}
+
+async function prepareLayerCell(page) {
+  return page.evaluate(() => {
+    const editor = g_app.textModeEditor;
+    const view = editor.gridView2d;
+    const layer = editor.layers.getSelectedLayerObject();
+    const scale = view.displayScale;
+    const cellWidth = layer.getCellWidth() * scale;
+    const cellHeight = layer.getCellHeight() * scale;
+    const artworkX = Math.floor(
+      view.width / 2
+        - editor.graphic.getGraphicWidth() * scale / 2
+        - view.camera.position.x * scale,
+    );
+    const artworkY = Math.floor(
+      view.height / 2
+        - editor.graphic.getGraphicHeight() * scale / 2
+        + view.camera.position.y * scale,
+    );
+    const firstVisibleX = Math.max(0, Math.ceil(-artworkX / cellWidth));
+    const lastVisibleX = Math.min(
+      layer.getGridWidth() - 1,
+      Math.floor((view.width - artworkX) / cellWidth) - 1,
+    );
+    const firstVisibleY = Math.max(0, Math.ceil(-artworkY / cellHeight));
+    const lastVisibleY = Math.min(
+      layer.getGridHeight() - 1,
+      Math.floor((view.height - artworkY) / cellHeight) - 1,
+    );
+    const cell = {
+      x: Math.floor((firstVisibleX + lastVisibleX) / 2),
+      y: Math.floor((firstVisibleY + lastVisibleY) / 2),
+    };
+    const canvasBounds = view.canvas.getBoundingClientRect();
+    return {
+      cell,
+      canvasOrigin: {
+        x: canvasBounds.left + artworkX + cell.x * cellWidth,
+        y: canvasBounds.top + artworkY + cell.y * cellHeight,
+      },
+      point: {
+        x: canvasBounds.left + artworkX + (cell.x + 0.5) * cellWidth,
+        y: canvasBounds.top + artworkY + (cell.y + 0.5) * cellHeight,
+      },
+      scale,
+    };
+  });
+}
+
+function readLayerState(page, cell) {
+  return page.evaluate(({ x, y }) => {
+    const editor = g_app.textModeEditor;
+    const layers = editor.layers;
+    const copyCell = (layerId) => {
+      const { bc, fc, fh, fv, rz, t } = layers.getLayerObject(layerId).getCell({ x, y });
+      return { bc, fc, fh, fv, rz, t };
+    };
+    return {
+      deleteControl: {
+        ariaDisabled: document.querySelector("#layersDeleteLayer").getAttribute("aria-disabled"),
+        disabled: document.querySelector("#layersDeleteLayer").disabled,
+        menuEnabled: UI("layers-delete").enabled,
+      },
+      domOrder: Array.from(document.querySelectorAll("#layersHolder > .textModeLayer"))
+        .map((element) => element.dataset.layerId),
+      layers: layers.layers.map((layer) => ({
+        cell: copyCell(layer.layerId),
+        id: layer.layerId,
+        label: layer.label,
+        visible: layer.visible,
+      })),
+      selectedId: layers.getSelectedLayerId(),
+    };
+  }, cell);
+}
+
+function readEditorCanvasPixel(page, point) {
+  return page.evaluate(({ x, y }) => {
+    const canvas = g_app.textModeEditor.gridView2d.canvas;
+    const bounds = canvas.getBoundingClientRect();
+    const pixelX = Math.floor((x - bounds.left) * canvas.width / bounds.width);
+    const pixelY = Math.floor((y - bounds.top) * canvas.height / bounds.height);
+    return Array.from(canvas.getContext("2d").getImageData(pixelX, pixelY, 1, 1).data);
+  }, point);
 }
 
 async function prepareHorizontalStroke(page, length = 3) {
@@ -523,4 +632,136 @@ test("edit a selection", async ({ page }, testInfo) => {
     const state = await readSelectionState(page, observedPositions);
     return { cells: state.cells, selection: state.selection };
   }).toEqual({ cells: cleared.cells, selection: cleared.selection });
+});
+
+test("manage layers", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "chromium-desktop");
+
+  await openDefault2DProject(page);
+  const firstBrush = await selectBrushFromEditorControls(page);
+  const target = await prepareLayerCell(page);
+  const initial = await readLayerState(page, target.cell);
+  expect(initial.layers).toHaveLength(1);
+  const firstLayer = initial.layers[0];
+
+  await page.mouse.click(target.point.x, target.point.y);
+  await page.mouse.move(0, 0);
+  await expect.poll(async () => (await readLayerState(page, target.cell)).layers[0].cell)
+    .toEqual(expect.objectContaining({ fc: firstBrush.color, t: firstBrush.tile }));
+  const firstArtwork = (await readLayerState(page, target.cell)).layers[0].cell;
+
+  await page.locator("#layersNewLayer").click();
+  const layerDialog = page.getByRole("dialog", { name: "Layer Properties" });
+  await expect(layerDialog).toBeVisible();
+  await page.locator("#layersRefImageName").fill("Overlay Ink");
+  await layerDialog.getByText("OK", { exact: true }).click();
+  await expect(layerDialog).toBeHidden();
+  await expect.poll(async () => (await readLayerState(page, target.cell)).layers.length).toBe(2);
+
+  const added = await readLayerState(page, target.cell);
+  const secondLayer = added.layers.find((layer) => layer.id !== firstLayer.id);
+  expect(secondLayer).toBeTruthy();
+  expect(added.layers.map(({ id, label }) => ({ id, label }))).toEqual([
+    { id: firstLayer.id, label: firstLayer.label },
+    { id: secondLayer.id, label: "Overlay Ink" },
+  ]);
+  expect(added.domOrder).toEqual([secondLayer.id, firstLayer.id]);
+  expect(added.selectedId).toBe(secondLayer.id);
+
+  await page.locator(`#textModeLayerDetails${firstLayer.id}`).click();
+  await expect.poll(async () => (await readLayerState(page, target.cell)).selectedId)
+    .toBe(firstLayer.id);
+  await page.locator(`#textModeLayerDetails${secondLayer.id}`).click();
+  await expect.poll(async () => (await readLayerState(page, target.cell)).selectedId)
+    .toBe(secondLayer.id);
+
+  const secondBrush = await selectBrushFromEditorControls(page, { overlapTile: firstBrush.tile });
+  expect(secondBrush.overlap).not.toBeNull();
+  const overlapClip = {
+    x: target.canvasOrigin.x + (secondBrush.overlap.x + 0.5) * target.scale,
+    y: target.canvasOrigin.y + (secondBrush.overlap.y + 0.5) * target.scale,
+    width: 1,
+    height: 1,
+  };
+  const firstLayerPixel = await page.screenshot({ clip: overlapClip });
+  const firstLayerRgba = await readEditorCanvasPixel(page, overlapClip);
+
+  await page.mouse.click(target.point.x, target.point.y);
+  await page.mouse.move(0, 0);
+  await expect.poll(async () => {
+    const state = await readLayerState(page, target.cell);
+    return state.layers.find((layer) => layer.id === secondLayer.id).cell;
+  }).toEqual(expect.objectContaining({ fc: secondBrush.color, t: secondBrush.tile }));
+  const stacked = await readLayerState(page, target.cell);
+  const secondArtwork = stacked.layers.find((layer) => layer.id === secondLayer.id).cell;
+  expect(secondArtwork).not.toEqual(firstArtwork);
+  const secondLayerPixel = await page.screenshot({ clip: overlapClip });
+  expect(secondLayerPixel.equals(firstLayerPixel)).toBe(false);
+  const secondLayerRgba = await readEditorCanvasPixel(page, overlapClip);
+  expect(secondLayerRgba).not.toEqual(firstLayerRgba);
+
+  await page.locator(`#textModeLayerVisible${secondLayer.id}`).click();
+  await expect.poll(async () => {
+    const state = await readLayerState(page, target.cell);
+    return state.layers.find((layer) => layer.id === secondLayer.id).visible;
+  }).toBe(false);
+  const hiddenPixel = await page.screenshot({ clip: overlapClip });
+  expect(hiddenPixel.equals(firstLayerPixel)).toBe(true);
+
+  await page.locator(`#textModeLayerVisible${secondLayer.id}`).click();
+  await expect.poll(async () => {
+    const state = await readLayerState(page, target.cell);
+    return state.layers.find((layer) => layer.id === secondLayer.id).visible;
+  }).toBe(true);
+  const reshownPixel = await page.screenshot({ clip: overlapClip });
+  expect(reshownPixel.equals(secondLayerPixel)).toBe(true);
+
+  const layersMenu = page.locator(".ui-menubar-item").filter({ hasText: /^Layers$/ });
+  await layersMenu.click();
+  await page.getByRole("menuitem", { name: /^Send Backward\b/ }).click();
+  await expect.poll(async () => {
+    const state = await readLayerState(page, target.cell);
+    const domLayers = await page.locator("#layersHolder > .textModeLayer").evaluateAll(
+      (elements) => elements.map((element) => ({
+        id: element.dataset.layerId,
+        label: element.querySelector(".layerLabelName")?.textContent,
+      })),
+    );
+    return {
+      domLayers,
+      modelLayers: state.layers.map(({ id, label }) => ({ id, label })),
+      selectedId: state.selectedId,
+    };
+  }).toEqual({
+    domLayers: [
+      { id: firstLayer.id, label: firstLayer.label },
+      { id: secondLayer.id, label: "Overlay Ink" },
+    ],
+    modelLayers: [
+      { id: secondLayer.id, label: "Overlay Ink" },
+      { id: firstLayer.id, label: firstLayer.label },
+    ],
+    selectedId: secondLayer.id,
+  });
+  await expect.poll(() => readEditorCanvasPixel(page, overlapClip)).toEqual(firstLayerRgba);
+
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.locator("#layersDeleteLayer").click();
+  await expect.poll(async () => (await readLayerState(page, target.cell)).layers.length).toBe(1);
+  const final = await readLayerState(page, target.cell);
+  expect(final).toEqual({
+    deleteControl: {
+      ariaDisabled: "true",
+      disabled: true,
+      menuEnabled: false,
+    },
+    domOrder: [firstLayer.id],
+    layers: [{
+      cell: firstArtwork,
+      id: firstLayer.id,
+      label: firstLayer.label,
+      visible: true,
+    }],
+    selectedId: firstLayer.id,
+  });
 });
