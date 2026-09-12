@@ -700,6 +700,19 @@ TilePaletteDisplay.prototype = {
     this.mode = mode;
   },
 
+  setColors: function(colors, redraw) {
+    var nextColors = colors == 'monochrome' ? 'monochrome' : 'current';
+    if(this.colors == nextColors) {
+      return;
+    }
+
+    this.colors = nextColors;
+    this.tilePaletteLayoutState = false;
+    if(redraw !== false) {
+      this.draw({ redrawTiles: true });
+    }
+  },
+
   setColumnWidthMax: function(max) {
     this.columnWidthMax = max;
     if(this.columnWidthMax !== false && this.columnWidth > this.columnWidthMax) {
@@ -963,6 +976,7 @@ TilePaletteDisplay.prototype = {
       && state.page === this.page
       && state.map === this.charPaletteMap
       && state.mapType === this.charPaletteMapType
+      && state.colors === this.colors
       && state.columns === this.columns
       && state.columnWidth === this.columnWidth
       && state.columnHeight === this.columnHeight
@@ -985,6 +999,7 @@ TilePaletteDisplay.prototype = {
       page: this.page,
       map: this.charPaletteMap,
       mapType: this.charPaletteMapType,
+      colors: this.colors,
       columns: this.columns,
       columnWidth: this.columnWidth,
       columnHeight: this.columnHeight,
@@ -1008,11 +1023,13 @@ TilePaletteDisplay.prototype = {
     if(state.screenMode === TextModeEditor.Mode.C64ECM) {
       var ecmBGColor = Math.floor(drawArgs['character'] / 64) % 4;
       var ecmGroup = Math.floor(drawArgs['character'] / 256);
-      drawArgs['bgColorRGB'] = colorPalette.getHex(layer.getC64ECMColor(ecmBGColor));
+      if(this.colors != 'monochrome') {
+        drawArgs['bgColorRGB'] = colorPalette.getHex(layer.getC64ECMColor(ecmBGColor));
+      }
       drawArgs['character'] = (drawArgs['character'] % 64) + ecmGroup * 256;
     }
 
-    if(state.colorPerMode == 'character') {
+    if(state.colorPerMode == 'character' && this.colors != 'monochrome') {
       fgColor = tileSet.getTileColor(ch);
       bgColor = tileSet.getCharacterBGColor(ch);
 

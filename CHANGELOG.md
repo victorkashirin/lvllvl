@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Added
+
+- Add a tile-palette header toggle that previews tiles in fixed off-black and
+  off-white colors across both desktop palette panels.
+
 ### Fixed
 
 - Initialize new layer dimensions from the selected tile set so adding a layer

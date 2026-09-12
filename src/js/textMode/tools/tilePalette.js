@@ -21,6 +21,7 @@ var TilePalette = function() {
 
   this.fitToWidth = false;
   this.fitPreferenceLoaded = false;
+  this.monochrome = false;
 
   this.pendingTilePaletteRedraw = false;
   this.pendingTilePaletteTiles = null;
@@ -106,7 +107,7 @@ TilePalette.prototype = {
     html += '<div style=" position: absolute; left: 0px; right: 0px; top: 18px; height: 24px; display: flex; align-items: center; background-color: #222222; padding: 0px;">';
 
     // ----------  highlight tile
-    html += '<div style="margin-left: 2px; display: flex; align-items: center">';
+    html += '<div style="margin-left: 2px; display: flex; align-items: center; min-width: 0; overflow: hidden">';
     html += '<canvas style="background-color: #222222; border: 1px solid #333333" width="16" height="16" id="' + this.prefix + 'tilepalette-tileinfocanvas"></canvas>';
     html += '<div id="' + this.prefix + 'charpalette-charinfo" style="display: flex; width: 60px; margin-left: 4px;  overflow: hidden; white-space: nowrap; text-overflow: ellipsis">0x32</div>';
 
@@ -129,8 +130,12 @@ TilePalette.prototype = {
     html += '<div id="' + this.prefix + 'charpalette-flipvbutton" class="ui-button ui-button-small" style="margin-left: 4px" data-label="Tile Flip Y" data-shortcut-command="textMode.tile.flipVertical" data-shortcut-label="Tile Flip Y" title="Tile Flip Y"><img src="icons/svg/glyphicons-basic-748-reflect-x.svg"></div>';
     html += '</div>';
 
+    html += '</div>';
 
-
+    html += '<div class="tile-palette-monochrome-control">';
+    html += '<div class="gridinfo-label">Mono</div>';
+    html += '<div id="' + this.prefix + 'tilePaletteMonochromeState" style="width: 10px; text-align: center">N</div>';
+    html += '<button type="button" class="ui-button ui-button-small tile-palette-monochrome-button" style="margin-left: 4px" id="' + this.prefix + 'tilePaletteMonochrome" aria-label="Toggle monochrome tile preview" aria-pressed="false" title="Toggle fixed off-black and off-white tile colors"><span class="tile-palette-monochrome-swatch" aria-hidden="true"></span></button>';
     html += '</div>';
 
     // -------------------------
@@ -403,6 +408,10 @@ TilePalette.prototype = {
       _this.editor.setTilePalettePanelVisible(_this.prefix, false);
     });
 
+    $('#' + this.prefix + 'tilePaletteMonochrome').on('click', function() {
+      _this.setMonochrome(!_this.monochrome);
+    });
+
     $('#' + this.prefix + 'charPaletteSortOrder').on('change', function(event) {
       var value = $(this).val();
       _this.selectTilePaletteMapType(value);
@@ -487,7 +496,40 @@ TilePalette.prototype = {
 
     this.updateFitToWidthControls();
     this.updateScaleControl();
+    this.updateMonochromeControl();
 
+  },
+
+  updateMonochromeControl: function() {
+    var button = $('#' + this.prefix + 'tilePaletteMonochrome');
+    button.attr('aria-pressed', this.monochrome ? 'true' : 'false');
+    button.toggleClass('ui-button-primary', false);
+    $('#' + this.prefix + 'tilePaletteMonochromeState').text(this.monochrome ? 'Y' : 'N');
+  },
+
+  setMonochrome: function(monochrome, syncPalettes) {
+    this.monochrome = monochrome === true;
+    if(this.tilePaletteDisplay) {
+      this.tilePaletteDisplay.setColors(this.monochrome ? 'monochrome' : 'current', false);
+    }
+    this.updateMonochromeControl();
+    this.drawTilePalette({ redrawTiles: true });
+
+    if(syncPalettes === false || !this.editor) {
+      return;
+    }
+
+    var palettes = [];
+    if(this.editor.tools && this.editor.tools.drawTools) {
+      palettes.push(this.editor.tools.drawTools.tilePalette);
+    }
+    palettes.push(this.editor.sideTilePalette);
+    for(var i = 0; i < palettes.length; i++) {
+      var palette = palettes[i];
+      if(palette && palette !== this && palette.monochrome !== this.monochrome) {
+        palette.setMonochrome(this.monochrome, false);
+      }
+    }
   },
 
   

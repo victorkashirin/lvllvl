@@ -502,6 +502,62 @@ test("desktop and mobile modes switch to cohesive, operable layouts", async ({ p
   expect(pageErrors).toEqual([]);
 });
 
+test("desktop tile palettes share monochrome preview mode", async ({ page }) => {
+  await openDefaultProject(page);
+
+  const bottomToggle = page.locator("#tilePaletteMonochrome");
+  const sideToggle = page.locator("#sidetilePaletteMonochrome");
+  const bottomState = page.locator("#tilePaletteMonochromeState");
+  const sideState = page.locator("#sidetilePaletteMonochromeState");
+  await expect(bottomToggle).toBeVisible();
+  await expect(sideToggle).toBeVisible();
+  await expect(bottomToggle).toHaveAttribute("aria-pressed", "false");
+  await expect(sideToggle).toHaveAttribute("aria-pressed", "false");
+  await expect(bottomState).toHaveText("N");
+  await expect(sideState).toHaveText("N");
+
+  const toggleLayout = await page.evaluate(() => ["", "side"].map((prefix) => {
+    const toggle = document.getElementById(`${prefix}tilePaletteMonochrome`);
+    const flip = document.getElementById(`${prefix}charpalette-fliphbutton`);
+    const row = toggle.parentElement.parentElement;
+    const toggleRect = toggle.getBoundingClientRect();
+    const flipRect = flip.getBoundingClientRect();
+    const rowRect = row.getBoundingClientRect();
+    return {
+      backgroundMatches: getComputedStyle(toggle).backgroundColor ===
+        getComputedStyle(flip).backgroundColor,
+      heightDelta: Math.abs(toggleRect.height - flipRect.height),
+      rightGap: rowRect.right - toggleRect.right,
+      widthDelta: Math.abs(toggleRect.width - flipRect.width),
+    };
+  }));
+  for (const layout of toggleLayout) {
+    expect(layout.backgroundMatches).toBe(true);
+    expect(layout.heightDelta).toBeLessThan(0.1);
+    expect(layout.widthDelta).toBeLessThan(0.1);
+    expect(layout.rightGap).toBeCloseTo(2, 1);
+  }
+
+  await bottomToggle.click();
+
+  await expect(bottomToggle).toHaveAttribute("aria-pressed", "true");
+  await expect(sideToggle).toHaveAttribute("aria-pressed", "true");
+  await expect(bottomState).toHaveText("Y");
+  await expect(sideState).toHaveText("Y");
+  await expect(bottomToggle).not.toHaveClass(/ui-button-primary/);
+  await expect.poll(() => page.evaluate(() => ({
+    bottom: g_app.textModeEditor.tools.drawTools.tilePalette.tilePaletteDisplay.colors,
+    side: g_app.textModeEditor.sideTilePalette.tilePaletteDisplay.colors,
+  }))).toEqual({ bottom: "monochrome", side: "monochrome" });
+
+  await sideToggle.click();
+
+  await expect(bottomToggle).toHaveAttribute("aria-pressed", "false");
+  await expect(sideToggle).toHaveAttribute("aria-pressed", "false");
+  await expect(bottomState).toHaveText("N");
+  await expect(sideState).toHaveText("N");
+});
+
 test("tile palettes fit their panels and retain a precise manual scale", async ({ page }) => {
   await openDefaultProject(page);
 

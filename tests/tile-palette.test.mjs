@@ -34,6 +34,11 @@ async function createTilePalette({ preferences = {}, prefix = "", visible = true
         state[name] = enabled;
         return control;
       },
+      text(value) {
+        if (value === undefined) return state.text;
+        state.text = value;
+        return control;
+      },
       val(value) {
         if (value === undefined) return state.value;
         state.value = value;
@@ -72,6 +77,7 @@ async function createTilePalette({ preferences = {}, prefix = "", visible = true
   });
 
   const display = {
+    colors: "current",
     drawCalls: [],
     mapTypeCalls: [],
     scale: 2,
@@ -92,6 +98,9 @@ async function createTilePalette({ preferences = {}, prefix = "", visible = true
     },
     quantizeScale(scale) {
       return Math.round(scale * 8) / 8;
+    },
+    setColors(colors) {
+      this.colors = colors;
     },
     setScale(scale) {
       this.scale = scale;
@@ -207,6 +216,38 @@ test("side and bottom palettes persist Fit independently", async () => {
 
   assert.equal(bottom.palette.getFitToWidthPreferenceName(), "tilepalette.fitToWidth.bottom");
   assert.equal(side.palette.getFitToWidthPreferenceName(), "tilepalette.fitToWidth.side");
+});
+
+test("monochrome mode redraws and stays synchronized across tile palettes", async () => {
+  const bottom = await createTilePalette();
+  const side = await createTilePalette({ prefix: "side" });
+  const editor = bottom.palette.editor;
+  editor.tools = { drawTools: { tilePalette: bottom.palette } };
+  editor.sideTilePalette = side.palette;
+  side.palette.editor = editor;
+
+  bottom.palette.setMonochrome(true);
+
+  assert.equal(bottom.palette.monochrome, true);
+  assert.equal(side.palette.monochrome, true);
+  assert.equal(bottom.display.colors, "monochrome");
+  assert.equal(side.display.colors, "monochrome");
+  assert.equal(bottom.controlState.get("#tilePaletteMonochrome")["aria-pressed"], "true");
+  assert.equal(side.controlState.get("#sidetilePaletteMonochrome")["aria-pressed"], "true");
+  assert.equal(bottom.controlState.get("#tilePaletteMonochromeState").text, "Y");
+  assert.equal(bottom.controlState.get("#tilePaletteMonochrome")["ui-button-primary"], false);
+  assert.equal(bottom.display.drawCalls.length, 1);
+  assert.equal(bottom.display.drawCalls[0].redrawTiles, true);
+  assert.equal(side.display.drawCalls.length, 1);
+  assert.equal(side.display.drawCalls[0].redrawTiles, true);
+
+  side.palette.setMonochrome(false);
+
+  assert.equal(bottom.display.colors, "current");
+  assert.equal(side.display.colors, "current");
+  assert.equal(bottom.controlState.get("#tilePaletteMonochrome")["aria-pressed"], "false");
+  assert.equal(side.controlState.get("#sidetilePaletteMonochrome")["aria-pressed"], "false");
+  assert.equal(side.controlState.get("#sidetilePaletteMonochromeState").text, "N");
 });
 
 test("legacy scales for another tile size do not change the Fit default", async () => {

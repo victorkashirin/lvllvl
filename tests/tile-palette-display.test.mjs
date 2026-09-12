@@ -124,6 +124,7 @@ async function createTestTileSet() {
 }
 
 async function createPaletteRenderFixture({
+  colorPerMode = "cell",
   pixelRatio = 1,
   screenMode = "textmode",
   type = "bitmap",
@@ -187,8 +188,8 @@ async function createPaletteRenderFixture({
   };
   const context = vm.createContext({
     ColorUtils: {
-      hexStringToInt() {
-        return 0xdddddd;
+      hexStringToInt(value) {
+        return Number.parseInt(value.slice(1), 16);
       },
     },
     TextModeEditor: {
@@ -210,7 +211,7 @@ async function createPaletteRenderFixture({
       },
     },
     styles: {
-      textMode: { tilePaletteBg: "#111", tilePaletteFg: "#ddd" },
+      textMode: { tilePaletteBg: "#222222", tilePaletteFg: "#d0d0d0" },
       tilePalette: { highlightOutline: "#fff", selectOutline: "#0ff" },
       ui: { scrollbar: "#aaa", scrollbarHolder: "#111", scrollbarWidth: 10 },
     },
@@ -232,7 +233,9 @@ async function createPaletteRenderFixture({
     drawCharacter(args) {
       drawnCharacters.push(args.character);
       drawCalls.push({
+        bgColorRGB: args.bgColorRGB,
         character: args.character,
+        colorRGB: args.colorRGB,
         scale: args.scale,
         x: args.x,
         y: args.y,
@@ -254,7 +257,7 @@ async function createPaletteRenderFixture({
   };
   const layer = {
     getC64ECMColor: (index) => index,
-    getColorPerMode: () => "cell",
+    getColorPerMode: () => colorPerMode,
     getHasTileFlip: () => false,
     getHasTileRotate: () => false,
     getScreenMode: () => screenMode,
@@ -582,6 +585,17 @@ test("blocked keyboard movement preserves the tile selection", async () => {
 
   display.moveSelection(1, 0);
   assert.deepEqual([...display.selectedCharacters], [1]);
+});
+
+test("monochrome tile palettes use fixed off-black and off-white colors", async () => {
+  const fixture = await createPaletteRenderFixture({ colorPerMode: "character" });
+  fixture.display.setColors("monochrome", false);
+
+  fixture.display.drawTilePalette();
+
+  const drawCall = fixture.drawCalls.find((call) => call.character === 17);
+  assert.equal(drawCall.bgColorRGB, 0x222222);
+  assert.equal(drawCall.colorRGB, 0xd0d0d0);
 });
 
 test("selective bitmap updates reuse the slot map and upload only changed tiles", async () => {

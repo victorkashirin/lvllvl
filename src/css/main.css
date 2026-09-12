@@ -26,6 +26,29 @@ a {
   right: 0;
 }
 
+.tile-palette-monochrome-control {
+  align-items: center;
+  display: flex;
+  flex: 0 0 auto;
+  margin-left: auto;
+  margin-right: 1px;
+}
+
+.tile-palette-monochrome-button {
+  width: 22px;
+}
+
+.tile-palette-monochrome-button .tile-palette-monochrome-swatch {
+  background: linear-gradient(135deg, #d0d0d0 0 50%, #222222 50% 100%);
+  border: 1px solid #777777;
+  border-radius: 50%;
+  box-sizing: border-box;
+  display: block;
+  height: 12px;
+  margin: 0;
+  width: 12px;
+}
+
 .tile-palette-control-row {
   box-sizing: border-box;
   display: flex;
