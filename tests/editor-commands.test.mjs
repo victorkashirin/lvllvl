@@ -480,10 +480,15 @@ test("3D grid view implements shared zoom and fit commands", async () => {
 
 test("2D and 3D grid menu checks keep their independent visibility", async () => {
   const checks = [];
+  const preferences = {};
   const UI = (id) => ({
     setChecked: (visible) => checks.push([id, visible]),
   });
-  const TextModeEditor = await loadClassic("js/textMode/textModeEditor.js", "TextModeEditor", { UI });
+  const g_app = {
+    getPref: (key) => preferences[key],
+    setPref: (key, value) => { preferences[key] = value; },
+  };
+  const TextModeEditor = await loadClassic("js/textMode/textModeEditor.js", "TextModeEditor", { UI, g_app });
   const editor = {
     currentTile: { setType() {} },
     graphic: { redraw() {} },
@@ -506,6 +511,7 @@ test("2D and 3D grid menu checks keep their independent visibility", async () =>
     ["grid2d", "redraw"],
     ["grid2d", "render"],
   ]);
+  assert.equal(preferences["textmode.gridvisible"], 0);
 
   checks.length = 0;
   editor.type = "3d";
@@ -514,6 +520,8 @@ test("2D and 3D grid menu checks keep their independent visibility", async () =>
     ["grid3d", false],
     ["view-3dgrid", false],
   ]);
+  assert.equal(preferences["textmode.gridvisible"], 0);
+  assert.equal(preferences["textmode.grid3dvisible"], 0);
 
   checks.length = 0;
   TextModeEditor.prototype.setType.call(editor, "3d");
@@ -527,6 +535,50 @@ test("2D and 3D grid menu checks keep their independent visibility", async () =>
   const emptyGrid = new Grid3d();
   assert.equal(emptyGrid.getGridVisible(), false);
   assert.doesNotThrow(() => emptyGrid.setGridVisible(true));
+  assert.equal(emptyGrid.getGridVisible(), true);
+
+  const applied = [];
+  Grid3d.prototype.setCurrentLayer.call({
+    currentLayer: null,
+    editor: {
+      colorPaletteManager: { updateColorPaletteMenu() {} },
+      setInterfaceColorPerMode() {},
+      setInterfaceScreenMode() {},
+      tileSetManager: { updateTileSetMenu() {} },
+    },
+    getColorPalette: () => null,
+    getColorPerMode: () => "cell",
+    getScreenMode: () => "textmode",
+    preferredGridVisible: false,
+  }, {
+    createGrid: () => applied.push("create"),
+    getTileSet: () => null,
+    setGridVisible: (visible) => applied.push(["visible", visible]),
+  });
+  assert.deepEqual(applied, ["create", ["visible", false]]);
+});
+
+test("grid preferences restore independent 2D and deferred 3D visibility", async () => {
+  const restored = [];
+  const g_app = {
+    getPref: (key) => ({
+      "textmode.gridvisible": "1",
+      "textmode.grid3dvisible": "0",
+    })[key],
+  };
+  const TextModeEditor = await loadClassic(
+    "js/textMode/textModeEditor.js",
+    "TextModeEditor",
+    { g_app },
+  );
+
+  TextModeEditor.prototype.loadPreferences.call({
+    grid3d: { setGridVisible: (visible) => restored.push(["3d", visible]) },
+    setCursorTileTransparent() {},
+    setGridVisible: (visible) => restored.push(["2d", visible]),
+  });
+
+  assert.deepEqual(restored, [["2d", true], ["3d", false]]);
 });
 
 test("Block Editor and palette surfaces use shared native commands", () => {

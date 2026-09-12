@@ -327,6 +327,16 @@ TextModeEditor.prototype = {
     if(typeof cursorTransparent != 'undefined' && cursorTransparent != null) {
       this.setCursorTileTransparent(parseInt(cursorTransparent, 10) == 1);
     }
+
+    var gridVisible = g_app.getPref("textmode.gridvisible");
+    if(typeof gridVisible != 'undefined' && gridVisible != null) {
+      this.setGridVisible(parseInt(gridVisible, 10) == 1);
+    }
+
+    var grid3dVisible = g_app.getPref("textmode.grid3dvisible");
+    if(typeof grid3dVisible != 'undefined' && grid3dVisible != null) {
+      this.grid3d.setGridVisible(parseInt(grid3dVisible, 10) == 1);
+    }
   },
 
   init: function(services) {
@@ -1261,9 +1271,11 @@ TextModeEditor.prototype = {
     if(this.type == '3d') {
       this.grid3d.setGridVisible(visible);
       UI('view-3dgrid').setChecked(visible);
+      g_app.setPref("textmode.grid3dvisible", visible ? 1 : 0);
     } else {
       this.gridVisible = visible;
       UI('edit-showgrid').setChecked(visible);
+      g_app.setPref("textmode.gridvisible", visible ? 1 : 0);
       if(this.gridView2d) {
         this.gridView2d.setGridNeedsRedraw();
         this.gridView2d.render();

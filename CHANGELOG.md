@@ -9,6 +9,8 @@
 
 ### Fixed
 
+- Remember independent 2D and 3D grid visibility settings across application
+  restarts.
 - Initialize new layer dimensions from the selected tile set so adding a layer
   completes without empty-canvas errors and closes its properties dialog.
 

@@ -24,6 +24,22 @@ async function open2DProject(page) {
   ))).toBe(true);
 }
 
+test("2D grid visibility persists across application reloads", async ({ page }) => {
+  await open2DProject(page);
+
+  await page.evaluate(() => g_app.textModeEditor.setGridVisible(false));
+  await expect.poll(() => page.evaluate(() =>
+    localStorage.getItem("textmode.gridvisible"),
+  )).toBe("0");
+
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await expect(page.locator("#startPage")).toBeVisible();
+  await expect.poll(() => page.evaluate(() => ({
+    menuChecked: UI("edit-showgrid").getChecked(),
+    visible: g_app.textModeEditor.getGridVisible(),
+  }))).toEqual({ menuChecked: false, visible: false });
+});
+
 test("landing page and About show plus release information", async ({ page }) => {
   await page.goto("/", { waitUntil: "domcontentloaded" });
   await expect(page.locator("#startPage")).toBeVisible();

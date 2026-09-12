@@ -23,6 +23,7 @@ var Grid3d = function() {
 
 
   this.currentLayer = null;
+  this.preferredGridVisible = null;
 
   this.backgroundColorIndex = 0;
   this.backgroundColorRGB = 0x333333;
@@ -328,6 +329,9 @@ Grid3d.prototype = {
 
     this.editor.setInterfaceColorPerMode(this.getColorPerMode());
     this.currentLayer.createGrid();
+    if(this.preferredGridVisible !== null) {
+      this.currentLayer.setGridVisible(this.preferredGridVisible);
+    }
 
   },
 
@@ -541,13 +545,17 @@ Grid3d.prototype = {
 */
 
   setGridVisible: function(visible) {
+    this.preferredGridVisible = visible;
     if(this.currentLayer) {
       this.currentLayer.setGridVisible(visible);
     }
   },
 
   getGridVisible: function() {
-    return this.currentLayer ? this.currentLayer.getGridVisible() : false;
+    if(this.currentLayer) {
+      return this.currentLayer.getGridVisible();
+    }
+    return this.preferredGridVisible === null ? false : this.preferredGridVisible;
   },
 
   getXYGridVisible: function() {
