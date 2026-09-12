@@ -40,7 +40,7 @@ Out of scope for this pass:
 - [x] Scenario 1: create a project, draw artwork, and use undo/redo.
 - [x] Scenario 2: copy, paste, move, and clear a selection.
 - [x] Scenario 3: manage layers without losing or misrouting artwork.
-- [ ] Scenario 4: duplicate, edit, navigate, and delete frames.
+- [x] Scenario 4: duplicate, edit, navigate, and delete frames.
 - [ ] Scenario 5: save and reopen a representative real project.
 - [ ] Scenario 6: import a small image and export the resulting artwork.
 - [ ] Run each scenario independently while implementing it.
@@ -192,11 +192,11 @@ existing focused tests and should not be duplicated here.
 
 ### Completion
 
-- [ ] Duplicate, navigate, play/stop, and delete use production controls.
-- [ ] Frame content and duration are asserted independently.
-- [ ] Deleting a frame preserves the surviving frame's artwork.
-- [ ] Single-frame control state is asserted at the end.
-- [ ] Test passes independently with `--grep "animation across frames"`.
+- [x] Duplicate, navigate, play/stop, and delete use production controls.
+- [x] Frame content and duration are asserted independently.
+- [x] Deleting a frame preserves the surviving frame's artwork.
+- [x] Single-frame control state is asserted at the end.
+- [x] Test passes independently with `--grep "animation across frames"`.
 
 ## Scenario 5: save and reopen a real project
 

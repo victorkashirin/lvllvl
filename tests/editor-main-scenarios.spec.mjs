@@ -20,8 +20,11 @@ async function openDefault2DProject(page) {
   )).toBe(true);
 }
 
-async function selectBrushFromEditorControls(page, { overlapTile = null } = {}) {
-  const readTileChoice = () => page.evaluate((referenceTile) => {
+async function selectBrushFromEditorControls(
+  page,
+  { overlapTile = null, staticTile = false } = {},
+) {
+  const readTileChoice = () => page.evaluate(({ referenceTile, staticTileOnly }) => {
     const editor = g_app.textModeEditor;
     const palette = editor.getTilePalettePanelVisible("side")
       ? editor.sideTilePalette
@@ -36,6 +39,7 @@ async function selectBrushFromEditorControls(page, { overlapTile = null } = {}) 
     for (let tile = 0; tile < tileSet.getTileCount(); tile++) {
       const locations = display.tileLocations[tile];
       if (tile === current || !locations?.length) continue;
+      if (staticTileOnly && tileSet.getAnimatedType(tile)) continue;
       let nonblank = false;
       for (let y = 0; y < tileSet.getTileHeight() && !nonblank; y++) {
         for (let x = 0; x < tileSet.getTileWidth(); x++) {
@@ -68,7 +72,7 @@ async function selectBrushFromEditorControls(page, { overlapTile = null } = {}) 
       }
     }
     return null;
-  }, overlapTile);
+  }, { referenceTile: overlapTile, staticTileOnly: staticTile });
   await expect.poll(readTileChoice).not.toBeNull();
   const tile = await readTileChoice();
   await page.locator(`#${tile.canvasId}`).click({ position: { x: tile.x, y: tile.y } });
@@ -154,8 +158,17 @@ async function prepareLayerCell(page) {
       x: Math.floor((firstVisibleX + lastVisibleX) / 2),
       y: Math.floor((firstVisibleY + lastVisibleY) / 2),
     };
+    const awayCell = cell.x < lastVisibleX
+      ? { x: cell.x + 1, y: cell.y }
+      : cell.x > firstVisibleX
+        ? { x: cell.x - 1, y: cell.y }
+        : { x: cell.x, y: cell.y < lastVisibleY ? cell.y + 1 : cell.y - 1 };
     const canvasBounds = view.canvas.getBoundingClientRect();
     return {
+      awayPoint: {
+        x: canvasBounds.left + artworkX + (awayCell.x + 0.5) * cellWidth,
+        y: canvasBounds.top + artworkY + (awayCell.y + 0.5) * cellHeight,
+      },
       cell,
       canvasOrigin: {
         x: canvasBounds.left + artworkX + cell.x * cellWidth,
@@ -205,6 +218,51 @@ function readEditorCanvasPixel(page, point) {
     const pixelY = Math.floor((y - bounds.top) * canvas.height / bounds.height);
     return Array.from(canvas.getContext("2d").getImageData(pixelX, pixelY, 1, 1).data);
   }, point);
+}
+
+function readAnimationState(page, cell) {
+  return page.evaluate(({ x, y }) => {
+    const editor = g_app.textModeEditor;
+    const graphic = editor.graphic;
+    const layer = editor.layers.getSelectedLayerObject();
+    const readControl = (selector) => {
+      const control = document.querySelector(selector);
+      return {
+        ariaDisabled: control.getAttribute("aria-disabled"),
+        disabled: Boolean(control.disabled),
+      };
+    };
+    const copyCell = (frame) => {
+      const args = { x, y };
+      if (typeof frame !== "undefined") args.frame = frame;
+      const { bc, fc, fh, fv, rz, t } = layer.getCell(args);
+      return { bc, fc, fh, fv, rz, t };
+    };
+
+    return {
+      activeCell: copyCell(),
+      controls: {
+        delete: readControl("#deleteFrame"),
+        next: readControl("#nextFrame"),
+        play: {
+          ...readControl("#play"),
+          ariaLabel: document.querySelector("#play").getAttribute("aria-label"),
+          ariaPressed: document.querySelector("#play").getAttribute("aria-pressed"),
+        },
+        previous: readControl("#prevFrame"),
+      },
+      currentFrame: graphic.getCurrentFrame(),
+      durationInput: document.querySelector("#frameDuration").value,
+      frameCountInfo: document.querySelector("#frameCountInfo").textContent.trim(),
+      frameInput: document.querySelector("#currentFrame").value,
+      frames: Array.from({ length: graphic.getFrameCount() }, (_, frame) => ({
+        cell: copyCell(frame),
+        duration: graphic.getFrameDuration(frame),
+      })),
+      layerCurrentFrame: layer.getCurrentFrame(),
+      playing: editor.frames.playFrames,
+    };
+  }, cell);
 }
 
 async function prepareHorizontalStroke(page, length = 3) {
@@ -763,5 +821,162 @@ test("manage layers", async ({ page }, testInfo) => {
       visible: true,
     }],
     selectedId: firstLayer.id,
+  });
+});
+
+test("edit an animation across frames", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "chromium-desktop");
+
+  await openDefault2DProject(page);
+  const firstBrush = await selectBrushFromEditorControls(page, { staticTile: true });
+  const target = await prepareLayerCell(page);
+  const initial = await readAnimationState(page, target.cell);
+  expect(initial.frames).toHaveLength(1);
+  const firstDuration = initial.frames[0].duration;
+
+  await page.mouse.click(target.point.x, target.point.y);
+  await page.mouse.move(0, 0);
+  await expect.poll(async () => (await readAnimationState(page, target.cell)).frames[0].cell)
+    .toEqual(expect.objectContaining({ fc: firstBrush.color, t: firstBrush.tile }));
+  const firstFrame = (await readAnimationState(page, target.cell)).frames[0];
+
+  await page.locator("#duplicateFrame").click();
+  await expect.poll(async () => {
+    const state = await readAnimationState(page, target.cell);
+    return { currentFrame: state.currentFrame, frameCount: state.frames.length };
+  }).toEqual({ currentFrame: 1, frameCount: 2 });
+  const duplicated = await readAnimationState(page, target.cell);
+  expect(duplicated.frames).toEqual([firstFrame, firstFrame]);
+  expect(duplicated.frameInput).toBe("2");
+  expect(duplicated.durationInput).toBe(String(firstDuration));
+  expect(duplicated.controls).toEqual({
+    delete: { ariaDisabled: "false", disabled: false },
+    next: { ariaDisabled: "true", disabled: true },
+    play: {
+      ariaDisabled: "false",
+      ariaLabel: "Play animation",
+      ariaPressed: "false",
+      disabled: false,
+    },
+    previous: { ariaDisabled: "false", disabled: false },
+  });
+
+  const secondBrush = await selectBrushFromEditorControls(page, {
+    overlapTile: firstBrush.tile,
+    staticTile: true,
+  });
+  expect(secondBrush.color).not.toBe(firstBrush.color);
+  expect(secondBrush.overlap).not.toBeNull();
+  const markerPoint = {
+    x: target.canvasOrigin.x + (secondBrush.overlap.x + 0.5) * target.scale,
+    y: target.canvasOrigin.y + (secondBrush.overlap.y + 0.5) * target.scale,
+  };
+  await page.mouse.click(target.point.x, target.point.y);
+  await page.mouse.move(0, 0);
+  await expect.poll(async () => (await readAnimationState(page, target.cell)).frames[1].cell)
+    .toEqual(expect.objectContaining({ fc: secondBrush.color, t: secondBrush.tile }));
+
+  const secondDuration = firstDuration === 3 ? 4 : 3;
+  await page.locator("#frameDuration").fill(String(secondDuration));
+  await page.locator("#frameDuration").press("Tab");
+  await expect.poll(async () => (await readAnimationState(page, target.cell)).frames[1].duration)
+    .toBe(secondDuration);
+  const edited = await readAnimationState(page, target.cell);
+  const secondFrame = edited.frames[1];
+  expect(edited.frames[0]).toEqual(firstFrame);
+  expect(secondFrame.cell).not.toEqual(firstFrame.cell);
+  expect(secondFrame.duration).toBe(secondDuration);
+
+  await page.locator("#prevFrame").click();
+  await expect.poll(async () => {
+    const state = await readAnimationState(page, target.cell);
+    return {
+      activeCell: state.activeCell,
+      currentFrame: state.currentFrame,
+      durationInput: state.durationInput,
+      frameInput: state.frameInput,
+      layerCurrentFrame: state.layerCurrentFrame,
+    };
+  }).toEqual({
+    activeCell: firstFrame.cell,
+    currentFrame: 0,
+    durationInput: String(firstDuration),
+    frameInput: "1",
+    layerCurrentFrame: 0,
+  });
+  expect((await readAnimationState(page, target.cell)).frames).toEqual([firstFrame, secondFrame]);
+  await page.mouse.move(target.awayPoint.x, target.awayPoint.y);
+  const firstMarkerRgba = await readEditorCanvasPixel(page, markerPoint);
+  expect(firstMarkerRgba[3]).toBe(255);
+
+  await page.locator("#nextFrame").click();
+  await expect.poll(async () => {
+    const state = await readAnimationState(page, target.cell);
+    return {
+      activeCell: state.activeCell,
+      currentFrame: state.currentFrame,
+      durationInput: state.durationInput,
+      frameInput: state.frameInput,
+      layerCurrentFrame: state.layerCurrentFrame,
+    };
+  }).toEqual({
+    activeCell: secondFrame.cell,
+    currentFrame: 1,
+    durationInput: String(secondDuration),
+    frameInput: "2",
+    layerCurrentFrame: 1,
+  });
+  await page.mouse.move(target.awayPoint.x, target.awayPoint.y);
+  await expect.poll(() => readEditorCanvasPixel(page, markerPoint)).not.toEqual(firstMarkerRgba);
+  expect((await readEditorCanvasPixel(page, markerPoint))[3]).toBe(255);
+
+  await page.locator("#play").click();
+  await expect(page.locator("#play")).toHaveAttribute("aria-label", "Pause animation");
+  await expect(page.locator("#play")).toHaveAttribute("aria-pressed", "true");
+  await expect.poll(async () => (await readAnimationState(page, target.cell)).currentFrame)
+    .toBe(0);
+  await page.locator("#play").click();
+  await expect.poll(async () => {
+    const state = await readAnimationState(page, target.cell);
+    return {
+      ariaLabel: state.controls.play.ariaLabel,
+      ariaPressed: state.controls.play.ariaPressed,
+      currentFrameInRange: state.currentFrame >= 0 && state.currentFrame < state.frames.length,
+      playing: state.playing,
+    };
+  }).toEqual({
+    ariaLabel: "Play animation",
+    ariaPressed: "false",
+    currentFrameInRange: true,
+    playing: false,
+  });
+
+  if((await readAnimationState(page, target.cell)).currentFrame === 0) {
+    await page.locator("#nextFrame").click();
+  }
+  await expect.poll(async () => (await readAnimationState(page, target.cell)).currentFrame).toBe(1);
+  await page.locator("#deleteFrame").click();
+  await expect.poll(async () => (await readAnimationState(page, target.cell)).frames.length).toBe(1);
+  const final = await readAnimationState(page, target.cell);
+  expect(final).toEqual({
+    activeCell: firstFrame.cell,
+    controls: {
+      delete: { ariaDisabled: "true", disabled: true },
+      next: { ariaDisabled: "true", disabled: true },
+      play: {
+        ariaDisabled: "true",
+        ariaLabel: "Play animation",
+        ariaPressed: "false",
+        disabled: true,
+      },
+      previous: { ariaDisabled: "true", disabled: true },
+    },
+    currentFrame: 0,
+    durationInput: String(firstDuration),
+    frameCountInfo: "/ 1",
+    frameInput: "1",
+    frames: [firstFrame],
+    layerCurrentFrame: 0,
+    playing: false,
   });
 });
