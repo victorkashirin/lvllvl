@@ -845,13 +845,26 @@ UI.keyDown = function(event) {
 
 
     if(UI.popup !== null) {
-      UI.popup.trigger('keydown', event);
+      var activePopup = UI.popup;
+      activePopup.trigger('keydown', event);
+      if((event.key === 'Escape' || event.keyCode == 27) &&
+          UI.popup === activePopup && activePopup.closeOnEscape !== false) {
+        event.preventDefault();
+        UI.hidePopup(activePopup);
+      }
       return;
     }
 
 
     if(UI.dialogStack.length > 0) {
-      UI.dialogStack[UI.dialogStack.length - 1].trigger('keydown', event);
+      var activeDialog = UI.dialogStack[UI.dialogStack.length - 1];
+      activeDialog.trigger('keydown', event);
+      if((event.key === 'Escape' || event.keyCode == 27) &&
+          UI.dialogStack[UI.dialogStack.length - 1] === activeDialog &&
+          activeDialog.closeOnEscape !== false) {
+        event.preventDefault();
+        UI.closeDialog(activeDialog);
+      }
       return;
     }
   }

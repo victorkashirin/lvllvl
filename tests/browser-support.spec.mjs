@@ -149,6 +149,64 @@ test("application alerts use the styled modal and preserve queued messages", asy
   await expect.poll(() => page.evaluate(() => window.__secondAlertClosed)).toBe(true);
 });
 
+test("Escape closes the topmost cancellable dialog", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "chromium-desktop");
+  await open2DProject(page, testInfo);
+
+  const dialogIds = await page.evaluate(() => {
+    window.__escapeDialogCloses = [];
+    const baseDialog = UI.create("UI.Dialog", {
+      id: "escapeBaseDialog",
+      title: "Base dialog",
+      width: 280,
+      height: 140,
+    });
+    baseDialog.add(UI.create("UI.HTMLPanel", {
+      html: '<input id="escapeDialogInput" aria-label="Dialog input">',
+    }));
+    baseDialog.on("close", () => window.__escapeDialogCloses.push("base"));
+
+    const topDialog = UI.create("UI.Dialog", {
+      id: "escapeTopDialog",
+      title: "Top dialog",
+      width: 280,
+      height: 140,
+    });
+    topDialog.on("close", () => window.__escapeDialogCloses.push("top"));
+
+    UI.showDialog(baseDialog);
+    document.getElementById("escapeDialogInput").focus();
+    UI.showDialog(topDialog);
+    return { base: baseDialog.id, top: topDialog.id };
+  });
+
+  await page.keyboard.press("Escape");
+  await expect(page.locator(`#${dialogIds.top}`)).toBeHidden();
+  await expect(page.locator(`#${dialogIds.base}`)).toBeVisible();
+  expect(await page.evaluate(() => window.__escapeDialogCloses)).toEqual(["top"]);
+
+  await page.locator("#escapeDialogInput").focus();
+  await page.keyboard.press("Escape");
+  await expect(page.locator(`#${dialogIds.base}`)).toBeHidden();
+  expect(await page.evaluate(() => window.__escapeDialogCloses)).toEqual(["top", "base"]);
+
+  const progressDialogId = await page.evaluate(() => {
+    const progressDialog = UI.create("UI.Dialog", {
+      closeOnEscape: false,
+      height: 100,
+      id: "escapeProgressDialog",
+      showCloseButton: false,
+      title: "Working",
+      width: 220,
+    });
+    UI.showDialog(progressDialog);
+    return progressDialog.id;
+  });
+  await page.keyboard.press("Escape");
+  await expect(page.locator(`#${progressDialogId}`)).toBeVisible();
+  await page.evaluate(() => UI.closeDialog("escapeProgressDialog"));
+});
+
 test("interaction controls stay synchronized with modal, frame, layer, and selection state", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "chromium-desktop");
   await open2DProject(page, testInfo);

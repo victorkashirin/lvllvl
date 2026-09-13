@@ -14,7 +14,11 @@ features without disrupting established creative workflows.
 
 - **SVG export:** export text-mode, C64 standard, C64 ECM, and vector artwork as
   scalable geometry, with correct layer dimensions and transparent backgrounds.
-- **Keyboard shortcuts manager:** assign shortcut to any action.
+- **Keyboard shortcuts manager:** assign shortcuts to any action.
+- **More capable colour and tile picking:** edit colours with synchronized OKLCH,
+  RGB, and hex controls; navigate tile and colour pickers with the arrow keys and
+  Enter; choose supported background colours with Shift+Enter or right-click;
+  and switch tile previews to a persistent high-contrast monochrome view.
 - **Faster, smoother editing:** focused redraws, cached onion-skin frames, batched
   thumbnails, and lighter shape previews reduce unnecessary work while drawing,
   selecting tiles, panning, and animating. The large image importer is loaded only
@@ -28,8 +32,8 @@ features without disrupting established creative workflows.
 - **More reliable browser projects:** saves and autosaves preserve in-memory edits
   when storage fails, publish versioned project data safely, and recover
   interrupted save, catalogue, and cleanup operations.
-- **Momentary artwork preview:** hold **Tab** with the pointer over the 2D canvas
-  to hide panels, grids, and editing guides and see the complete artwork centred.
+- **Artwork preview:** press **Tab** with the pointer over the 2D canvas to toggle
+  panels, grids, and editing guides and see the complete artwork centred.
 - **Zen Mode and a more flexible interface:** choose **Interface → Zen Mode** or
   press **Alt+Shift+Z** to hide editor chrome while keeping shortcuts active.
   Hover the top, left, right, or bottom edge to reveal stacked menus, tools, side
@@ -37,6 +41,7 @@ features without disrupting established creative workflows.
 - **A safer, better-tested web app:** current browser coverage, production startup
   and performance budgets, stricter content security, and audited runtime
   dependencies make releases more predictable across desktop, phone, and tablet.
+- **Fixed mobile mode** - mobile mode is has been repaired.
 
 See the [changelog](CHANGELOG.md) for the complete release history and detailed
 fixes.

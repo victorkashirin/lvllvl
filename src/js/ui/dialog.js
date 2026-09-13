@@ -123,6 +123,7 @@ UI.Dialog = function(args) {
     this.maxHeight = typeof args.maxHeight != 'undefined' ? args.maxHeight : false;
 
     this.showCloseButton = args.showCloseButton !== false;
+    this.closeOnEscape = args.closeOnEscape !== false;
 
     if(this.fullScreen) {
 

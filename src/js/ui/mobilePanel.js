@@ -45,6 +45,7 @@ UI.MobilePanel = function(args) {
     this.components = new Array();
     this.buttons = new Array();
     this.isOpen = false;
+    this.closeOnEscape = args.closeOnEscape !== false;
 
     this.closeButton = UI.create("UI.Button", {"imageSrc": "icons/svg/glyphicons-basic-599-menu-close.svg", "imageAlt": "Close", "text": "", "style": "padding: 1px 4px", "cssclass": "ui-dialog-close-button" });
 

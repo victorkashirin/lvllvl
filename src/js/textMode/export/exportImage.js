@@ -114,7 +114,8 @@ ExportImage.prototype = {
         "title": "Export Progress", 
         "width": 280, 
         "height": 140,
-        "showCloseButton": false
+        "showCloseButton": false,
+        "closeOnEscape": false
       });
 
     this.exportProgressHTML = UI.create("UI.HTMLPanel", {"html": html});

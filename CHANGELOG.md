@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 0.498.6 - 2026-09-13
+
+### Fixed
+
+- Close the active dialog or popup with Escape while preserving explicitly
+  non-cancellable progress dialogs.
+- Regenerate the build-artifact baseline for the 0.498.6 release.
+
 ## 0.498.5 - 2026-09-12
 
 ### Fixed

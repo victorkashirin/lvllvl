@@ -82,7 +82,7 @@ ExportGif.prototype = {
 
     this.exportProgressDialog = UI.create("UI.Dialog", 
       { "id": "exportGifProgressDialog", "title": "Export Progress", "width": 280, "height": 140,
-        "showCloseButton": false });
+        "showCloseButton": false, "closeOnEscape": false });
 
 
 
